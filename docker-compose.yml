@@ -1,0 +1,32 @@
+services:
+  backend:
+    container_name: ftr-backend
+    image: ftr-backend
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    networks:
+      - tr-net
+
+  frontend:
+    container_name: ftr-frontend
+    image: ftr-frontend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    depends_on:
+      backend:
+        condition: service_started
+    ports:
+      - "1111:1111"
+    volumes:
+      - ./frontend:/app
+    networks:
+      - tr-net
+
+
+networks:
+  tr-net:
+    driver: bridge

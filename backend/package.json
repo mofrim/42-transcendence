@@ -1,0 +1,17 @@
+{
+  "name": "backend",
+  "version": "0.0.0",
+  "description": "ft_transcendence backend",
+  "main": "src/server.js",
+	"type": "module",
+  "scripts": {
+    "dev": "node src/server.js",
+    "server": "node src/server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "socket.io": "^4.8.3"
+  }
+}

@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ft_transcendence</title>
+    <link rel="stylesheet" href="src/index.css">
+  </head>
+  <body>
+
+    <!-- <div id="root"></div> -->
+    <!-- <script type="module" src="/src/main.tsx"></script> -->
+
+  <!-- LOGIN -->
+  <div id="login-ui">
+    <div class="login-title">ft_transcendence</div>
+    <div class="login-subtitle">42 Wolfsburg Project</div>
+
+    <input id="email" type="text" placeholder="Email">
+    <input id="password" type="password" placeholder="Password">
+
+    <!-- CHECKBOXES -->
+    <label class="terms">
+      <input type="checkbox" id="privacy-checkbox">
+      <span>
+        I agree to the 
+        <a href="/privacy-policy.html" target="_blank">Privacy Policy</a>
+      </span>
+    </label>
+
+    <label class="terms">
+      <input type="checkbox" id="tos-checkbox">
+      <span>
+        I agree to the 
+        <a href="/terms.html" target="_blank">Terms of Service</a>
+      </span>
+    </label>
+
+    <button id="start-btn">ENTER</button>
+  </div>
+
+  <!-- GAME -->
+  <div id="game">
+    <div id="container"></div>
+
+    <div id="info">
+      <a href="https://threejs.org" target="_blank">three.js</a> - Walking Demo<br/>
+      Use arrows to move
+    </div>
+
+    <!----
+    <div id="chat-ui">
+      <div id="chat-frame">
+        <input id="chat-input" type="text" placeholder="Type..." />
+      </div>
+    </div>
+    -->
+  </div>
+
+  <!-- IMPORT MAP -->
+  <!-- <script type="importmap"> -->
+  <!-- { -->
+  <!--   "imports": { -->
+  <!--     "three": "../build/three.module.js", -->
+  <!--     "three/addons/": "./jsm/" -->
+  <!--   } -->
+  <!-- } -->
+  <!-- </script> -->
+
+  <!-- MAIN SCRIPT -->
+  <script type="module">
+    import { startGame } from './src/js/main.js';
+
+    document.getElementById("start-btn").addEventListener("click", () => {
+      const privacyAccepted = document.getElementById("privacy-checkbox").checked;
+      const tosAccepted = document.getElementById("tos-checkbox").checked;
+
+      /* if (!privacyAccepted || !tosAccepted) {
+        alert("You must accept both Privacy Policy and Terms of Service.");
+        return;
+      } */
+
+      document.getElementById("login-ui").style.display = "none";
+      document.getElementById("game").style.display = "block";
+
+      startGame();
+    });
+  </script>
+  </body>
+</html>
