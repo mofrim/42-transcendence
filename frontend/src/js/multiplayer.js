@@ -5,9 +5,10 @@ import { Remote_Player } from './remote_player.js';
 
 export class MultiplayerManager {
 
-    constructor(scene){
+    constructor(scene, mesh_RP) {
 
         this.scene = scene;       
+        this.mesh_RP = mesh_RP;
 
         this.players = new Map();
 
@@ -148,8 +149,8 @@ export class MultiplayerManager {
 
     spawnPlayer(id){
         //const newPlayer = new Remote_Player('src/glb/MainCharacterTest.glb', id, this.scene);
-        //const newPlayer = new Remote_Player('src/glb/Male_Test.glb', id, this.scene);
-        const newPlayer = new Remote_Player('/glb/Female_Test.glb', id, this.scene);
+        //const newPlayer = new Remote_Player('glb/Male_Test.glb', id, this.scene);
+        const newPlayer = new Remote_Player('/glb/Female_Test.glb', id, this.scene, 0, this.mesh_RP);
         this.players.set(newPlayer.id, newPlayer);
         this.scene.add(newPlayer.group );
     }

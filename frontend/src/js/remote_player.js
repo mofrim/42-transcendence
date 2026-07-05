@@ -6,14 +6,17 @@ export class Remote_Player {
     
     static gradientTexture = (() => {
             const texture = new THREE.TextureLoader().load(
-            'src/textures/gradientMaps/twoTone2.jpg'
+            '/textures/gradientMaps/twoTone2.jpg'
         );
         texture.minFilter = THREE.NearestFilter;
         texture.magFilter = THREE.NearestFilter;
         return texture;
     })();
 
-    constructor(path, id, scene, defaultAnim = 0){
+    constructor(path, id, scene, defaultAnim = 0, mesh_RP) {
+
+        this.colAr = mesh_RP;
+
         this.scene = scene;
         this.id = id;
         this.model = null;
@@ -27,6 +30,8 @@ export class Remote_Player {
         this.startSpawn = false;
         this.isSpawned = false;
 
+        this.battleRequested = false;
+
         this.loadEnemyCharacter(path, defaultAnim);
  
     }
@@ -36,7 +41,7 @@ export class Remote_Player {
         if(this.startSpawn){
             return;
         }
-        //console.log("Animating spawn " + this.id);
+        console.log("Animating spawn " + this.id);
         this.startSpawn = true;
         
         let spawnY = 1.5 + startY;
@@ -165,10 +170,12 @@ export class Remote_Player {
             //model.position.set(x, y, z);
             //model.rotation.y = rot;
             this.model.rotation.y = Math.PI;
-            
+            //this.colAr.push(this.model);
             this.model.traverse((object) => {
 
                 if (object.isMesh) {
+                    
+                    this.colAr.push(object);
 
                     object.castShadow = true;
                     object.receiveShadow = true;
@@ -182,13 +189,20 @@ export class Remote_Player {
                         object.castShadow = false;
                         return;
                     }
+                    else{
+                        object.material = new THREE.MeshToonMaterial({
+                            color: object.material.color.clone(),
+                            gradientMap: Remote_Player.gradientTexture
+                        });
+                    }
+                    
 
-                    object.material = new THREE.MeshToonMaterial({
+                    /* object.material = new THREE.MeshToonMaterial({
                         color: object.material.color.clone(),
                         gradientMap: Remote_Player.gradientTexture,
                             transparent: true,
                             opacity: 0
-                    });
+                    }); */
 
                     /* object.material = new THREE.MeshToonMaterial({
                         color: 0xffffff,

@@ -20,12 +20,12 @@ export class Camera {
         this.raycaster = new THREE.Raycaster();
         this.dir = new THREE.Vector3();
         this.rayPos = new THREE.Vector3();
-        this.raycaster.far = 5.1; 
+        this.raycaster.far = 3.0; 
     }
 
     CamColisionReset(delta, start, end, direction){
         const dist = start.distanceTo(end);
-        const camDistance = 5.1;
+        const camDistance = 3.0;
 
         //console.log("Colliders RESET" );
 
@@ -45,7 +45,7 @@ export class Camera {
 
     CamCollisionAdjust(delta, start, end, direction){
         const distHit = start.distanceTo(end);
-        const newPos = start.clone().addScaledVector(direction.normalize(), distHit);
+        const newPos = start.clone().addScaledVector(direction.normalize(), distHit-0.1);
         this.camera.position.copy(newPos);
     }
 

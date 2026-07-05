@@ -43,8 +43,11 @@ export class Player {
         this.isLoaded = false;
         this.isSpawned = false;
         
+        this.battleRequested = false;
+        this.inRPSBattleMode = false;
+        this.youSendRPGRequest = false;
         
-        this.playerCollider = new Capsule( new THREE.Vector3( 0, Player.colStartY, 0 ), new THREE.Vector3( 0, Player.colEndY, 0 ), Player.colRad );
+        this.playerCollider = new Capsule( new THREE.Vector3( 14.2, Player.colStartY, -9.2 ), new THREE.Vector3( 14.2, Player.colEndY, -9.2 ), Player.colRad );
 
         this.lowestY = Math.min(this.playerCollider.start.y, this.playerCollider.end.y) - this.playerCollider.radius;
         //console.log("Lowest Y 1: " + this.lowestY.toFixed(4));
@@ -322,7 +325,7 @@ export class Player {
                 this.group.quaternion.copy( rotate );
             }
         }
-
+        //console.log(this.group.position);
         if ( this.mixer ) 
             this.mixer.update( delta );
 
