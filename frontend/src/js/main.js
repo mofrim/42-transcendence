@@ -18,13 +18,33 @@ import { RPS_Game } from './rps_game.js';
 
 import { io } from "socket.io-client";
 
-export function startGame() {
+/** all both gender */
+const PLAYER_CHARACTER_MODELS = {
+    true: '/glb/Male_Test.glb',
+    false: '/glb/Female_Test.glb',
+};
+
+function normalizeCharacter(character) {
+    if (typeof character === 'string') {
+        const normalizedCharacter = character.toLowerCase();
+        return normalizedCharacter !== 'false' && normalizedCharacter !== 'female';
+    }
+
+    return character !== false;
+}
+
+export function startGame(character = true) {
+
+    character = normalizeCharacter(character);
+    const playerModelPath = PLAYER_CHARACTER_MODELS[character];
 
     // for hard-coding socket addr, use:
     // const socket = io("http://192.168.1.116:3000");
 
     // should work in most cases. comment-out this & uncoment above otherwise
-    const socket = io(import.meta.env.VITE_SOCKET_SERVER_URL || "http://localhost:3000");
+    const socket = io(import.meta.env.VITE_SOCKET_SERVER_URL || "http://localhost:3000", {
+        auth: { character },
+    });
 
     let player = null;
     let multiplayer = null;
@@ -40,14 +60,20 @@ export function startGame() {
         }
     });
 
-    socket.on("player_connected", (id) => {
+    socket.on("player_connected", (data) => {
+        const id = typeof data === 'string' ? data : data.id;
+        const character = typeof data === 'string' ? true : normalizeCharacter(data.character);
+
         console.log("someone joined:", id);
-        multiplayer.spawnPlayer(id);
+        if (id && multiplayer && !multiplayer.players.get(id))
+            multiplayer.spawnPlayer(id, character);
     });
 
     socket.on("player_disconnected", (id) => {
         console.log("someone left:", id);
-        multiplayer.players.get(id).removePlayer()
+        const disconnectedPlayer = multiplayer.players.get(id);
+        if (disconnectedPlayer)
+            disconnectedPlayer.removePlayer()
     });
 
     socket.on("disconnect", (reason) => {
@@ -151,6 +177,7 @@ export function startGame() {
             y,
             z,
             state,
+            character,
         });
     }
 
@@ -346,7 +373,7 @@ export function startGame() {
         }
         else {
             console.log("new player joined:", data.id);
-            multiplayer.spawnPlayer(data.id);
+            multiplayer.spawnPlayer(data.id, normalizeCharacter(data.character));
         }
     }
 
@@ -422,7 +449,7 @@ export function startGame() {
         scene.add(ambientLight);
 
         //player = new Player('glb/MainCharacterTest.glb', socket.id, scene, worldOctree);
-        player = new Player('glb/Male_Test.glb', socket.id, scene, worldOctree, 2);
+        player = new Player(playerModelPath, socket.id, scene, worldOctree, 2);
         multiplayer = new MultiplayerManager(scene, mesh_RP);
         multiplayer.initMultiplayerTest();
 
@@ -530,6 +557,7 @@ export function startGame() {
     const loader = new GLTFLoader();
 
     loadMesh('glb/42WOB_v3.glb', [0, 0, 0]);
+    // const texture = new THREE.TextureLoader().load('textures/gradientMaps/twoTone2.jpg');
 
     texture.minFilter = THREE.NearestFilter;
     texture.magFilter = THREE.NearestFilter;
@@ -963,18 +991,17 @@ export function startGame() {
             // handle tic tac toe box click, e.g. send move to server
         }
 
-        /*         const hitsRP = raycaster.intersectObjects(mesh_RP, true);
-                console.log("hitsRP.length: " + hitsRP.length , " , mesh_RP length: " + mesh_RP.length);
+        // const hitsRP = raycaster.intersectObjects(mesh_RP, true);
+        // console.log("hitsRP.length: " + hitsRP.length , " , mesh_RP length: " + mesh_RP.length);
 
-                mesh_RP.forEach(o => {
-                    console.log(o.name, o.isMesh);
-                });
+        mesh_RP.forEach(o => {
+            console.log(o.name, o.isMesh);
+        });
 
-                if (hitsRP.length > 0) {
-                    const hit = hits[0];
-                    console.log("Clicked on PLAYER:" + hits[0].object.name);
-                } */
-
+        if (hitsRP.length > 0) {
+            const hit = hits[0];
+            console.log("Clicked on PLAYER:" + hits[0].object.name);
+        }
     }
 
     function onKeyDown(event) {

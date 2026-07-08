@@ -3,11 +3,30 @@ import * as THREE from 'three';
 // import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { Remote_Player } from './remote_player.js';
 
+/** all both gender */
+const PLAYER_CHARACTER_MODELS = {
+    true: '/glb/Male_Test.glb',
+    false: '/glb/Female_Test.glb',
+};
+
+function normalizeCharacter(character) {
+    if (typeof character === 'string') {
+        const normalizedCharacter = character.toLowerCase();
+        return normalizedCharacter !== 'false' && normalizedCharacter !== 'female';
+    }
+
+    return character !== false;
+}
+
+function getRemotePlayerModelPath(character) {
+    return PLAYER_CHARACTER_MODELS[normalizeCharacter(character)];
+}
+
 export class MultiplayerManager {
 
     constructor(scene, mesh_RP) {
 
-        this.scene = scene;       
+        this.scene = scene;
         this.mesh_RP = mesh_RP;
 
         this.players = new Map();
@@ -29,7 +48,7 @@ export class MultiplayerManager {
         /* const player2 = new Remote_Player('src/glb/SpidermanMeme.glb', 2, this.scene, 1);
         const player3 = new Remote_Player('src/glb/SpidermanMeme.glb', 3, this.scene, 1);
         const player4 = new Remote_Player('src/glb/SpidermanMeme.glb', 4, this.scene, 1); */
-        
+
         /* this.loadEnemyCharacter('src/glb/MainCharacterTest.glb', 0,0,0, 0, 0, player1);
 
         this.loadEnemyCharacter('src/glb/SpidermanMeme.glb', 5.5, -0.1, 5,   1, 0, player2);
@@ -70,8 +89,8 @@ export class MultiplayerManager {
 
             if(state === 'Run')
                 player.rotateCharacter(this.desired, pos);
-            
-            pos.set(pos.x-this.nx, pos.y-this.ny, pos.z-this.nz); 
+
+            pos.set(pos.x-this.nx, pos.y-this.ny, pos.z-this.nz);
         }
     }
 
@@ -79,14 +98,14 @@ export class MultiplayerManager {
 
         const playe = this.players.get(id);
         //console.log("ID 1 " + playe.id + " to position: " + playe.group.position.y.toFixed(4) + " , y: " + y.toFixed(4));
-        
+
         if(playe){
             this.multiplayerMovement(playe, x, y, z, state);
         }
     }
 
     multiplayerMovementTest(player) {
-        
+
         let updateHZ = 50;
         this.count++;
 
@@ -101,24 +120,24 @@ export class MultiplayerManager {
                 this.desired = new THREE.Vector3(pos.x - 1.5, pos.y, pos.z);
                 player.state = 'Run';
             }
-            
+
             if (this.step === 1)
                 this.desired = new THREE.Vector3(pos.x, pos.y, pos.z - 1.5);
-            
+
             if (this.step === 2){
                 player.state = 'Idle';
                 this.desired = new THREE.Vector3(pos.x, pos.y, pos.z);
             }
-            
+
             if (this.step === 3){
                 player.state = 'Run';
-                this.desired = new THREE.Vector3(pos.x + 1.5, pos.y, pos.z);               
+                this.desired = new THREE.Vector3(pos.x + 1.5, pos.y, pos.z);
             }
 
             if (this.step === 4){
                 this.desired = new THREE.Vector3(pos.x, pos.y, pos.z + 1.5);
             }
-            
+
 
             if(this.count % 100== 0)
                 this.step = (this.step + 1) % 5;
@@ -130,7 +149,7 @@ export class MultiplayerManager {
             player.rotateCharacter(this.desired, pos);
         }
 
-        pos.set(pos.x-this.nx, pos.y-this.ny, pos.z-this.nz); 
+        pos.set(pos.x-this.nx, pos.y-this.ny, pos.z-this.nz);
     }
 
     updateMultiplayer(delta) {
@@ -147,10 +166,13 @@ export class MultiplayerManager {
         }
     }
 
-    spawnPlayer(id){
+    spawnPlayer(id, character = true){
+        if(this.players.get(id))
+            return;
+
         //const newPlayer = new Remote_Player('src/glb/MainCharacterTest.glb', id, this.scene);
         //const newPlayer = new Remote_Player('glb/Male_Test.glb', id, this.scene);
-        const newPlayer = new Remote_Player('/glb/Female_Test.glb', id, this.scene, 0, this.mesh_RP);
+        const newPlayer = new Remote_Player(getRemotePlayerModelPath(character), id, this.scene, 0, this.mesh_RP);
         this.players.set(newPlayer.id, newPlayer);
         this.scene.add(newPlayer.group );
     }

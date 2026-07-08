@@ -17,11 +17,32 @@
     <input id="email" type="text" placeholder="Email">
     <input id="password" type="password" placeholder="Password">
 
+    <div class="player-select" role="radiogroup" aria-label="Player character selection">
+      <label class="player-option">
+        <input type="radio" name="player-character" value="true" checked>
+        <span>
+          <strong>👨🏻‍💻 Male</strong>
+        </span>
+      </label>
+
+      <label class="player-option">
+        <input type="radio" name="player-character" value="false">
+        <span>
+          <strong>👩🏻‍💻 Female</strong>
+        </span>
+      </label>
+    </div>
+
+    <div id="character-preview" class="character-preview" role="img" aria-label="Selected player character 3D preview">
+      <canvas id="character-preview-canvas" aria-hidden="true"></canvas>
+      <div id="character-preview-label">Male_Test.glb</div>
+    </div>
+
     <!-- CHECKBOXES -->
     <label class="terms">
       <input type="checkbox" id="privacy-checkbox">
       <span>
-        I agree to the 
+        I agree to the
         <a href="/privacy-policy.html" target="_blank">Privacy Policy</a>
       </span>
     </label>
@@ -29,7 +50,7 @@
     <label class="terms">
       <input type="checkbox" id="tos-checkbox">
       <span>
-        I agree to the 
+        I agree to the
         <a href="/terms.html" target="_blank">Terms of Service</a>
       </span>
     </label>
@@ -68,6 +89,23 @@
   <!-- MAIN SCRIPT -->
   <script type="module">
     import { startGame } from './src/js/main.js';
+    import { createCharacterPreview } from './src/js/character_preview.js';
+
+    const selectedCharacter = () => document.querySelector('input[name="player-character"]:checked')?.value ?? "true";
+    const characterPreview = createCharacterPreview({
+      canvas: document.getElementById("character-preview-canvas"),
+      label: document.getElementById("character-preview-label"),
+    });
+
+    document.querySelectorAll('input[name="player-character"]').forEach((input) => {
+      input.addEventListener("change", () => {
+        if (input.checked) {
+          characterPreview.setCharacter(input.value);
+        }
+      });
+    });
+
+    characterPreview.setCharacter(selectedCharacter());
 
     document.getElementById("start-btn").addEventListener("click", () => {
       const privacyAccepted = document.getElementById("privacy-checkbox").checked;
@@ -81,7 +119,10 @@
       document.getElementById("login-ui").style.display = "none";
       document.getElementById("game").style.display = "block";
 
-      startGame();
+      characterPreview.dispose();
+
+      const character = selectedCharacter() === "true";
+      startGame(character);
     });
   </script>
   </body>
