@@ -33,16 +33,14 @@ function normalizeCharacter(character) {
     return character !== false;
 }
 
-export function startGame(character = true) {
+export function startGame(character = true, serverUrl = null) {
 
     character = normalizeCharacter(character);
     const playerModelPath = PLAYER_CHARACTER_MODELS[character];
+    const selectedSocketServerUrl = typeof serverUrl === 'string' ? serverUrl.trim() : '';
+    const socketServerUrl = selectedSocketServerUrl || import.meta.env.VITE_SOCKET_SERVER_URL || "http://localhost:3000";
 
-    // for hard-coding socket addr, use:
-    // const socket = io("http://192.168.1.116:3000");
-
-    // should work in most cases. comment-out this & uncoment above otherwise
-    const socket = io(import.meta.env.VITE_SOCKET_SERVER_URL || "http://localhost:3000", {
+    const socket = io(socketServerUrl, {
         auth: { character },
     });
 

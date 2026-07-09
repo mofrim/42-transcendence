@@ -38,6 +38,21 @@
       <div id="character-preview-label">Male_Test.glb</div>
     </div>
 
+    <div class="server-settings" aria-label="Game server settings">
+      <div class="server-fields">
+        <label class="server-field">
+          <span>Server address</span>
+          <input id="server-address" class="server-address" type="text" value="localhost" placeholder="localhost or 192.168.1.23" autocomplete="off" spellcheck="false">
+        </label>
+
+        <label class="server-field">
+          <span>Server port</span>
+          <input id="server-port" class="server-port" type="number" value="3000" placeholder="3000" min="1" max="65535" inputmode="numeric">
+        </label>
+      </div>
+      <div class="server-help">Default: http://localhost:3000</div>
+    </div>
+
     <!-- CHECKBOXES -->
     <label class="terms">
       <input type="checkbox" id="privacy-checkbox">
@@ -76,7 +91,6 @@
     -->
   </div>
 
-  IMPORT MAP
   <script type="importmap">
   {
     "imports": {
@@ -92,6 +106,63 @@
     import { createCharacterPreview } from './src/js/character_preview.js';
 
     const selectedCharacter = () => document.querySelector('input[name="player-character"]:checked')?.value ?? "true";
+    const serverAddressInput = document.getElementById("server-address");
+    const serverPortInput = document.getElementById("server-port");
+    const defaultServerAddress = "localhost";
+    const defaultServerPort = "3000";
+    const supportedServerProtocols = new Set(["http:", "https:", "ws:", "wss:"]);
+    const hasProtocol = (address) => /^[a-z][a-z\d+\-.]*:\/\//i.test(address);
+    const hasExplicitPort = (address) => {
+      const addressWithoutProtocol = address.replace(/^[a-z][a-z\d+\-.]*:\/\//i, "");
+      const authority = addressWithoutProtocol.split(/[/?#]/, 1)[0];
+      const host = authority.slice(authority.lastIndexOf("@") + 1);
+
+      if (host.startsWith("[")) {
+        return /^\[[^\]]+\]:\d+$/.test(host);
+      }
+
+      return /:\d+$/.test(host);
+    };
+    const readServerPort = () => {
+      const port = serverPortInput?.value.trim() || defaultServerPort;
+      const portNumber = Number(port);
+
+      if (!/^\d+$/.test(port) || !Number.isInteger(portNumber) || portNumber < 1 || portNumber > 65535) {
+        alert("Server port must be an integer from 1 to 65535.");
+        return null;
+      }
+
+      return String(portNumber);
+    };
+    const composeServerUrl = () => {
+      const address = serverAddressInput?.value.trim() || defaultServerAddress;
+      const addressWithProtocol = hasProtocol(address) ? address : `http://${address}`;
+      let serverUrl;
+
+      try {
+        serverUrl = new URL(addressWithProtocol);
+      } catch {
+        alert("Enter a valid server address.");
+        return null;
+      }
+
+      if (!supportedServerProtocols.has(serverUrl.protocol)) {
+        alert("Server protocol must be http://, https://, ws://, or wss://.");
+        return null;
+      }
+
+      if (!hasExplicitPort(address)) {
+        const port = readServerPort();
+
+        if (!port) {
+          return null;
+        }
+
+        serverUrl.port = port;
+      }
+
+      return serverUrl.origin;
+    };
     const characterPreview = createCharacterPreview({
       canvas: document.getElementById("character-preview-canvas"),
       label: document.getElementById("character-preview-label"),
@@ -116,13 +187,20 @@
         return;
       } */
 
+      const serverUrl = composeServerUrl();
+
+      if (!serverUrl) {
+        return;
+      }
+
+      const character = selectedCharacter() === "true";
+
       document.getElementById("login-ui").style.display = "none";
       document.getElementById("game").style.display = "block";
 
       characterPreview.dispose();
 
-      const character = selectedCharacter() === "true";
-      startGame(character);
+      startGame(character, serverUrl);
     });
   </script>
   </body>

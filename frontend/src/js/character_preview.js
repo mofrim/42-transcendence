@@ -174,8 +174,6 @@ export function createCharacterPreview({ canvas, label }) {
 
                 const model = gltf.scene;
                 const pivot = new THREE.Group();
-                // Blickrichtung Gesicht
-                pivot.rotation.y = 0;
 
                 model.traverse((object) => {
                     if (!object.isMesh) {
