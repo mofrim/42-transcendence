@@ -22,8 +22,7 @@ export function startGame() {
 
     // using a env-var or localhost here
     // TODO add env-var to dot-env
-    const socket = io(import.meta.env.VITE_SOCKET_SERVER_URL || "http://localhost:3000");
-    //const socket = io("http://192.168.1.116:3000");
+    const socket = io("http://192.168.1.116:3000");
 
     let player = null;
     let multiplayer = null;
@@ -57,47 +56,90 @@ export function startGame() {
         console.log("Server Disconnect:", reason);
     });
 
+
+    socket.on("initData", (data) => {
+        console.log("Received initData from server.");
+        tttGame.initGame(data);
+    });
+
     socket.on("update", (data) => {
         //console.log("Received data:" + data.type + ":", data.state);
         //console.log("Received data:" + data.type);
         switch(data.type) {
+
             case "player_update":
                 //console.log("Received player update:");
                 handlePlayer(data);
                 break;
 
-            case "ttt_update":
+            case "ttt_playerOne":
+                tttGame.setPlayerOne(data.id);
+                break;
+            case "ttt_playerTwo":
+                tttGame.setPlayerTwo(data.id);
+                break;
+            case "ttt_start":
+                handleTTTstart(data);
+                break;
+            case "ttt_reset":
+                tttGame.endGame();
+                break;
+            case "ttt_mark":
                 //console.log("Marking: " + data.board);
                 handleTTTupdate(data);
                 break;
-
-            case "ttt_start":
-                //console.log("Starting TTT game");
-                handleTTTstart(data);
+            case "ttt_win":
+                //console.log("Marking: " + data.board);
+                handleTTTwin(data);
+                break;
+            case "ttt_draw":
+                //console.log("Marking: " + data.board);
+                handleTTTdraw(data);
                 break;
 
-            case "rps_update":
+                
+            case "rps_request":
                 //console.log("RPS UPDATE");
-                handleRPS(data);
+                handleRPSRequest(data);
                 break;
-
             case "rps_accept":
                 //console.log("RPS UPDATE");
                 handleRPSAccept(data);
                 break;
-
             case "rps_decline":
                 //console.log("RPS UPDATE");
                 handleRPSDecline(data);
                 break;
 
-            case "rps_choice":
+            case "rps_winner":
+                //console.log("RPS Winner: " + data.winner);
+                handleRPSWinner(data);
+                break;
+            case "rps_draw":
+                //console.log("RPS Draw: " + data.playerOne + " and " + data.playerTwo);
+                handleRPSDraw(data);
+                break;
+            case "rps_invalid":
+                //console.log("RPS Invalid: " + data.playerOne + " and " + data.playerTwo);
+                handleRPSInvalid(data);
+                break;
+
+            /* case "rps_choice":
                 //console.log("RPS UPDATE");
                 handleChoice(data);
-                break;
+                break; */
 
         }
     });
+
+    function emitInitMap(){
+        console.log("Emitting initData to server.");
+
+        socket.emit("update", {
+            type: "initData",
+            id: socket.id
+        });
+    }
 
     function emitPosition(x, y, z, state) {
         //console.log("Received data:" + type);
@@ -113,8 +155,9 @@ export function startGame() {
     function emitBattleRequest(reqID) {
         //console.log("Received data:" + type);
         socket.emit("update", {
-            type: "rps_update",
-            reqPlayerID: reqID,
+            type: "rps_request",
+            id: socket.id,
+            requestedPlayerID: reqID,
         });
     }
 
@@ -122,7 +165,8 @@ export function startGame() {
         //console.log("Received data:" + type);
         socket.emit("update", {
             type: "rps_accept",
-            reqPlayerID: reqID,
+            id: socket.id,
+            requestedPlayerID: reqID,
         });
     }
 
@@ -130,15 +174,31 @@ export function startGame() {
         //console.log("Received data:" + type);
         socket.emit("update", {
             type: "rps_decline",
-            reqPlayerID: reqID,
+            id: socket.id,
+            requestedPlayerID: reqID,
         });
     }
 
-    function emitBattleChoice(reqID, choice) {
+    function emitRPSInvalid(){
+        socket.emit("update", {
+            type: "rps_invalid",
+        });
+    }
+
+    /* function emitBattleChoice(reqID, choice) {
         //console.log("Received data:" + type);
         socket.emit("update", {
             type: "rps_choice",
-            reqPlayerID: reqID,
+            id: socket.id,
+            requestedPlayerID: reqID,
+            choice: choice,
+        });
+    } */
+   function emitBattleChoice(choice) {
+        //console.log("Received data:" + type);
+        socket.emit("update", {
+            type: "rps_choice",
+            id: socket.id,
             choice: choice,
         });
     }
@@ -146,8 +206,8 @@ export function startGame() {
     function emitTTTmark(obj) {
         //console.log("Received data:" + type);
         socket.emit("update", {
-            type: "ttt_update",
-            board: obj,
+            type: "ttt_mark",
+            fieldName: obj,
         });
     }
 
@@ -159,16 +219,68 @@ export function startGame() {
     }
 
 
-    function handleChoice(data){
-        if(data.reqPlayerID !== player.id)
+    function handleRPSInvalid(data) {
+        if(data.playerOne === player.id || data.playerTwo === player.id){
+            console.log("Invalid RPS choice received.");
+            rpsGame.yourChoice = "";
+            rpsGame.opponentChoice = "";
+
+            //rpsGame.playChoiceAnimation = false;
+            //rpsGame.solutionRPSAnimation();
+            cancelAnimationFrame(rpsGame.animationLoop);
+            rpsGame.solutionRPSAnimation();
+        }
+    }
+
+    function handleRPSDraw(data) {
+        console.log("RPS Draw: " + data.playerOne + " and " + data.playerTwo);
+
+        if(data.playerOne === player.id || data.playerTwo === player.id){
+            console.log("The RPS game ended in a draw!");
+            rpsGame.yourChoice = data.choice;
+            rpsGame.opponentChoice = data.choice;
+
+            cancelAnimationFrame(rpsGame.animationLoop);
+            rpsGame.solutionRPSAnimation();
+            /* if(rpsGame.playChoiceAnimation == false)
+                rpsGame.solutionRPSAnimation();
+            else
+                rpsGame.playChoiceAnimation = false; */
+        }
+    }
+
+    function handleRPSWinner(data) {
+        if(data.winner === player.id){
+            console.log("You won the RPS game!");
+            rpsGame.yourChoice = data.winnerChoice;
+            rpsGame.opponentChoice = data.loserChoice;
+
+            cancelAnimationFrame(rpsGame.animationLoop);
+            rpsGame.solutionRPSAnimation();
+            /* rpsGame.playChoiceAnimation = false;
+            rpsGame.solutionRPSAnimation(); */
+        }
+        else if(data.loser === player.id){
+            console.log("You lost the RPS game!");
+            rpsGame.yourChoice = data.loserChoice;
+            rpsGame.opponentChoice = data.winnerChoice;
+
+            cancelAnimationFrame(rpsGame.animationLoop);
+            rpsGame.solutionRPSAnimation();
+            /* rpsGame.playChoiceAnimation = false;
+            rpsGame.solutionRPSAnimation(); */
+        }
+    }   
+    /* function handleChoice(data){
+        if(data.requestedPlayerID !== player.id)
             return;
 
         rpsGame.opponentChoice = data.choice;
         console.log("Player " + data.id + " made a choice: " + data.choice);
-    }
+    } */
 
     function handleRPSAccept(data) {
-        if(data.reqPlayerID !== player.id)
+        if(data.requestedPlayerID !== player.id)
             return;
 
         rpsGame.readyForRequest = true;
@@ -179,7 +291,7 @@ export function startGame() {
     }
 
     function handleRPSDecline(data) {
-        if(data.reqPlayerID !== player.id)
+        if(data.requestedPlayerID !== player.id)
             return;
 
         rpsGame.readyForRequest = true;
@@ -189,15 +301,15 @@ export function startGame() {
         console.log("Battle declined from player " + data.id);
     }
 
-    function handleRPS(data) {
+    function handleRPSRequest(data) {
         //console.log("Marking 2: " + data.board);
-        if(data.reqPlayerID !== player.id)
+        if(data.requestedPlayerID !== player.id)
             return;
 
-        if(player.battleRequested){
+        /* if(player.battleRequested){
             console.log("Player already in Request state, ignoring new request.");
             return;
-        }
+        } */
 
         player.battleRequested = true;
         rpsGame.BattleRequest(data.id);
@@ -206,11 +318,22 @@ export function startGame() {
 
     function handleTTTupdate(data) {
         //console.log("Marking 2: " + data.board);
-        tttGame.markField(data.board, data.id);
+        tttGame.markField(data.fieldName, data.id, data.mark);
     }
 
     function handleTTTstart(data) {
-        tttGame.startGame(data.id);
+        tttGame.startGame(data.playerOne, data.playerTwo);
+    }
+
+    function handleTTTwin(data) {
+        tttGame.drawWin(data.winner);
+        tttGame.winner(data.id);
+        tttGame.endGame();
+    }
+
+    function handleTTTdraw(data) {
+        tttGame.draw();
+        tttGame.endGame();
     }
 
     function handlePlayer(data) {
@@ -387,7 +510,7 @@ export function startGame() {
         worldOctree.fromGraphNode( cubeFloor ); */
 
         tttGame = new TTT_Game(scene, player, tttBox, tttStart, renderer);
-        rpsGame = new RPS_Game(scene, player, multiplayer.players, renderer);
+        rpsGame = new RPS_Game(scene, socket, player, multiplayer.players, renderer);
 
         composer = new EffectComposer(renderer);
         composer.addPass(new RenderPass(scene, camera.camera));
@@ -398,16 +521,16 @@ export function startGame() {
             0.85   // threshold
         );
         composer.addPass(bloomPass);
-
     }
 
 
 
 
+    const texture = new THREE.TextureLoader().load('textures/gradientMaps/twoTone2.jpg');
     const loader = new GLTFLoader();
 
-    const texture = new THREE.TextureLoader().load('textures/gradientMaps/twoTone2.jpg');
-    
+    loadMesh('glb/42WOB_v3.glb', [0,0,0]);
+
     texture.minFilter = THREE.NearestFilter;
     texture.magFilter = THREE.NearestFilter;
 
@@ -562,7 +685,7 @@ export function startGame() {
 
     //loadMesh('glb/42Sign.glb', [0,1,0]);
 
-    loadMesh('glb/42WOB_v4.glb', [0,0,0]);
+    //loadMesh('glb/42WOB_v3.glb', [0,0,0]);
     //loadMeshTitel('glb/Titelscreen_01.glb', [0,0,0]);
     //loadMesh('glb/Floor.glb', [0,0,0]);
 
@@ -686,7 +809,12 @@ export function startGame() {
             return;
     
         console.log("Rock key pressed");
-        if(player.youSendRPGRequest && rpsGame.playerInRange.id){
+        
+        rpsGame.rps_choiceMade = true;
+        //rpsGame.yourChoice = "rock";
+        emitBattleChoice("rock");
+
+        /* if(player.youSendRPGRequest && rpsGame.playerInRange.id){
             rpsGame.rps_choiceMade = true;
             rpsGame.yourChoice = "rock";
             emitBattleChoice(rpsGame.playerInRange.id, "rock");
@@ -697,7 +825,7 @@ export function startGame() {
             emitBattleChoice(rpsGame.battleRequestedPlayer, "rock");
         }
         else
-            console.log("No player to send rock choice to.");
+            console.log("No player to send rock choice to."); */
     }
     
     function paperKey ( event ) {
@@ -709,7 +837,12 @@ export function startGame() {
             return;
     
         console.log("Paper key pressed");
-        if(player.youSendRPGRequest && rpsGame.playerInRange.id){
+        
+        rpsGame.rps_choiceMade = true;
+        //rpsGame.yourChoice = "paper";
+        emitBattleChoice("paper");
+
+        /* if(player.youSendRPGRequest && rpsGame.playerInRange.id){
             rpsGame.rps_choiceMade = true;
             rpsGame.yourChoice = "paper";
             emitBattleChoice(rpsGame.playerInRange.id, "paper");
@@ -720,7 +853,7 @@ export function startGame() {
             emitBattleChoice(rpsGame.battleRequestedPlayer, "paper");
         }
         else
-            console.log("No player to send paper choice to.");
+            console.log("No player to send paper choice to."); */
     }
 
     function scissorsKey ( event ) {
@@ -732,7 +865,12 @@ export function startGame() {
             return;
     
         console.log("Scissors key pressed");
-        if(player.youSendRPGRequest && rpsGame.playerInRange.id){
+        
+        rpsGame.rps_choiceMade = true;
+        //rpsGame.yourChoice = "scissors";
+        emitBattleChoice("scissors");
+
+        /* if(player.youSendRPGRequest && rpsGame.playerInRange.id){
             rpsGame.rps_choiceMade = true;
             rpsGame.yourChoice = "scissors";
             emitBattleChoice(rpsGame.playerInRange.id, "scissors");
@@ -743,12 +881,38 @@ export function startGame() {
             emitBattleChoice(rpsGame.battleRequestedPlayer, "scissors");
         }
         else
-            console.log("No player to send scissors choice to.");
+            console.log("No player to send scissors choice to."); */
     }
 
 
-
     function onPressB ( event ) {
+
+        /* if(!rpsGame.inRange){
+            console.log("No player in range to interact with.");
+            return;
+        }
+        
+        if(rpsGame.playerInRange.battleRequested){
+            console.log("Player " + rpsGame.playerInRange.id + " is not ready for new battle.");
+            return;
+        }
+        
+        if(rpsGame.inBattleMode)
+            return;
+        
+        player.youSendRPGRequest = true;
+        console.log("Battle request send to player " + rpsGame.playerInRange.id);
+        rpsGame.playerInRange.battleRequested = true; */
+
+        if(!rpsGame.inRange){
+            console.log("No player in range to interact with.");
+            return;
+        }
+
+        emitBattleRequest(rpsGame.playerInRange.id);
+    }
+    
+    /* function onPressB ( event ) {
 
         if(!rpsGame.inRange){
             console.log("No player in range to interact with.");
@@ -767,7 +931,7 @@ export function startGame() {
         console.log("Battle request send to player " + rpsGame.playerInRange.id);
         rpsGame.playerInRange.battleRequested = true;
         emitBattleRequest(rpsGame.playerInRange.id);
-    }
+    } */
 
     function onClick ( event ) {
         let mousePosition = getTTTField(event);
@@ -787,13 +951,13 @@ export function startGame() {
             //console.log("Clicked on: " + hits[0].object.name );
             if(hits[0].object.name.includes("TTT_Board"))
             {
-                tttGame.markField(hits[0].object.name, socket.id);
+                //tttGame.markField(hits[0].object.name, socket.id);
                 emitTTTmark(hits[0].object.name);
                 //console.log("Clicked on TTT box:" + hits[0].object.name);
             }
             else if(hits[0].object.name.includes("TTT_Start"))
             {
-                tttGame.startGame(socket.id);
+                //tttGame.startGame(socket.id);
                 emitTTTstart();
                 //console.log("Clicked on TTT box:" + hits[0].object.name);
             }
@@ -904,7 +1068,6 @@ export function startGame() {
             player.updateAnimation(delta);
         }
         //console.log("Player ID: " + player.id);
-
         //composer.render()
     }
 }

@@ -2,8 +2,9 @@ import * as THREE from 'three';
 
 export class RPS_Game {
 
-    constructor (scene, player, players, renderer) {
+    constructor (scene, socket, player, players, renderer) {
         this.scene = scene;
+        this.socket = socket;
         this.player = player;
         this.players = players;
         this.renderer = renderer;
@@ -26,8 +27,8 @@ export class RPS_Game {
         this.inBattleMode = false;
         this.inBattleChooseMode = false;
 
-        this.yourChoice = null;
-        this.opponentChoice = null;
+        this.yourChoice = "";
+        this.opponentChoice = "";
 
         this.rpsSprite.set("Beam", this.addRPSSprite('textures/VS_Beam2.jpg', 10, 0.5));
         this.rpsSprite.get("Beam").position.set(0, -0.25, 0);
@@ -37,6 +38,7 @@ export class RPS_Game {
         this.rpsSprite.set("UserA", this.addRPSSprite('textures/UserA.png', 1, 1));
         this.rpsSprite.set("UserB", this.addRPSSprite('textures/UserB.png', 1, 1));
 
+        this.animationLoop = null;
     }
 
     updateCheck() {
@@ -70,19 +72,17 @@ export class RPS_Game {
         }
     }
 
-    BattleRequest(reqPlayerID){
+    BattleRequest(requestedPlayerID){
 
         if(!this.player.youSendRPGRequest){
             this.removeText();
-            this.addText(reqPlayerID, 0, -0.2, 50);
+            this.addText(requestedPlayerID, 0, -0.2, 50);
             this.addText("Rock Paper Scissors Battle Requested!", 0, -0.3, 100);
             this.addText("Y - Accept ", 0, -0.5, 100);
             this.addText("X - Decline", 0, -0.6, 100);
-            this.battleRequestedPlayer = reqPlayerID;
-            console.log("Battle requested: " + reqPlayerID);
+            this.battleRequestedPlayer = requestedPlayerID;
+            console.log("Battle requested: " + requestedPlayerID);
         }
-
-        
     }
 
     
@@ -113,6 +113,8 @@ export class RPS_Game {
         this.overlayScene.add(this.rpsSprite.get("VS"));
         this.overlayScene.add(this.rpsSprite.get("Beam"));
 
+        const timestamp = Date.now().toString();
+
         const yp = 0.025;
         this.rpsSprite.get("UserA").position.set(0, yp, 0);
         this.rpsSprite.get("UserB").position.set(0, yp, 0);
@@ -121,13 +123,16 @@ export class RPS_Game {
             const posA = this.rpsSprite.get("UserA").position.x;
             const posB = this.rpsSprite.get("UserB").position.x;
 
-            this.rpsSprite.get("UserA").position.set(posA-0.005, yp, 0);
-            this.rpsSprite.get("UserB").position.set(posB+0.005, yp, 0);
+            this.rpsSprite.get("UserA").position.set(posA-0.0075, yp, 0);
+            this.rpsSprite.get("UserB").position.set(posB+0.0075, yp, 0);
 
             if(posB < 0.75 && posA > -0.75) {
                 requestAnimationFrame(loop);
             }
             else{
+                const timestamp2 = Date.now().toString();
+                console.log("RPS Animation Duration: " + (timestamp2 - timestamp) + " ms");
+
                 this.overlayScene.remove(this.rpsSprite.get("UserA"));
                 this.overlayScene.remove(this.rpsSprite.get("UserB"));
                 this.overlayScene.remove(this.rpsSprite.get("VS"));
@@ -159,20 +164,25 @@ export class RPS_Game {
         const loop = () => {
             const posA = this.rpsSprite.get("UserA").position.x;
 
-            this.rpsSprite.get("UserA").position.set(posA+0.005, yp, 0);
+            this.rpsSprite.get("UserA").position.set(posA+0.0075, yp, 0);
 
             if(this.rps_choiceMade)
                 this.removeText();
 
             if(posA < 0.75 ) {
-                requestAnimationFrame(loop);
+                this.animationLoop = requestAnimationFrame(loop);
             }
             else{
+                console.log("RPS Choice Animation Ended");
                 this.overlayScene.remove(this.rpsSprite.get("UserA"));
                 this.overlayScene.remove(this.rpsSprite.get("Beam"));
                 this.removeText();
+                //this.solutionRPSAnimation();
+
+                this.socket.emit("update", {
+                    type: "rps_invalid",
+                });
                 
-                this.solutionRPSAnimation();
             }
         };
         loop();       
@@ -180,6 +190,9 @@ export class RPS_Game {
 
     async solutionRPSAnimation() {
 
+        //this.removeText();
+        console.log("RPS Solution Animation Start");
+        
         this.overlayScene.add(this.rpsSprite.get("UserA"));
         this.overlayScene.add(this.rpsSprite.get("UserB"));
         this.overlayScene.add(this.rpsSprite.get("Beam"));
@@ -190,8 +203,10 @@ export class RPS_Game {
 
         this.verifyRPSWinner();
 
-        this.addText("You chose: " + this.yourChoice, -0.3, -0.1, 75);
-        this.addText("Opponent chose: " + this.opponentChoice, 0.3, -0.35, 75);
+        if(this.yourChoice !== "" && this.opponentChoice !== ""){
+            this.addText("You chose: " + this.yourChoice, -0.3, -0.1, 75);
+            this.addText("Opponent chose: " + this.opponentChoice, 0.3, -0.35, 75);
+        }
 
         const loop = () => {
             const posA = this.rpsSprite.get("UserA").position.x;
@@ -209,8 +224,11 @@ export class RPS_Game {
                 this.overlayScene.remove(this.rpsSprite.get("Beam"));
                 
                 this.removeText();
-
                 this.resetRPSGame();
+
+                this.socket.emit("update", {
+                    type: "game_reset",
+                });
             }
         };
         loop(); 
@@ -218,9 +236,9 @@ export class RPS_Game {
 
     verifyRPSWinner() {
 
-        if(this.yourChoice == null || this.opponentChoice == null){
+        if(this.yourChoice == "" || this.opponentChoice == ""){
             this.addText("Invalid Round...", 0, -0.225, 125);
-            console.log("Choices not made yet!");
+            console.log("No Winner. Choices not made yet!");
             return;
         }
 

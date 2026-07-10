@@ -10,18 +10,19 @@ export class TTT_Game {
         this.renderer.autoClear = false;
         this.player = player;
         this.players = [];
-        this.state = [  "", "", "",
+        /* this.state = [  "", "", "",
                         "", "", "",
-                        "", "", "" ];
+                        "", "", "" ]; */
 
-        this.gameStarted = false;
-        this.gameEnded = false;
+        //this.gameStarted = false;
+        //this.gameEnded = false;
+
         this.tttCamera = false;
 
         this.vsAnimationStart = false;
 
-        this.currentMark = "O";
-        
+        //this.currentMark = "O";
+
         this.spritePlayer1 = null;
         this.spritePlayer2 = null;
         this.spritePlayer1_Name = null;
@@ -32,7 +33,8 @@ export class TTT_Game {
         this.spriteGameText = null;
         this.spriteGameCount = null;
 
-        this.currentTextState = null;
+        //this.currentTextState = null;
+        this.currentTextState = [];
 
         this.texX = new THREE.TextureLoader().load('textures/X.jpg');
         this.texO = new THREE.TextureLoader().load('textures/O.jpg');
@@ -56,6 +58,45 @@ export class TTT_Game {
         //this.startVSAnimation();
         //this.addText("Tic Tac Toe", -0.5);
         this.initSpriteText();
+        console.log("TTT Game initialized.");
+    }
+
+    initGame(data){
+
+        if(data.players[0]){
+            this.updateSpriteText(this.spriteGameCount, "1/2", 50);
+            this.players[0] = data.players[0];
+        }
+        if(data.players[1]){
+            this.updateSpriteText(this.spriteGameCount, "2/2", 50);
+            this.updateSpriteText(this.spriteGameText, "IN GAME", 50);
+            this.players[1] = data.players[1];
+        }
+
+        this.waitforInitMesh(data);
+
+    }
+
+    async waitforInitMesh(data) {
+        const loop = () => {
+            //console.log("Waiting for board to be ready...");
+            this.wait(10);
+            if(!this.board[0]) {
+                requestAnimationFrame(loop);
+            }
+            else{
+                let index = 0;
+                for(const box of data.board) {
+                    if(box == "X")
+                        this.board[index].material.map = this.texX;
+                    else if(box == "O")
+                        this.board[index].material.map = this.texO;
+                    index++;
+                    //console.log("# Initializing board: " + box);
+                }
+            }
+        };
+        loop();    
     }
 
     addVSSprite(path, x, y) {
@@ -87,7 +128,7 @@ export class TTT_Game {
         this.renderer.setSize(window.innerWidth, window.innerHeight);
     }
 
-    addText(text, py) {
+    /* addText(text, py) {
         this.currentTextState = this.makeSprite(text, 50);
         const scaleFactor = 0.2;
         this.currentTextState.scale.set(this.currentTextState.scale.x * scaleFactor, this.currentTextState.scale.y * scaleFactor, 1);
@@ -101,7 +142,7 @@ export class TTT_Game {
             this.overlayScene.remove(this.currentTextState);
             this.currentTextState = null;
         }
-    }
+    } */
 
 
     async startVSAnimation() {
@@ -136,10 +177,10 @@ export class TTT_Game {
 
                 this.removeText();
                 if(this.player.id === this.players[0]){
-                    this.addText("You are \"X\". You go first", -0.5);
+                    this.addText("You are \"X\". You go first", 0, -0.5, 75);
                 }
                 else{
-                    this.addText("You are \"O\". You go second", -0.5);
+                    this.addText("You are \"O\". You go second", 0, -0.5, 75);
                 }
 
                 this.tttCamera = true;
@@ -177,7 +218,7 @@ export class TTT_Game {
 
                 this.overlayScene.remove(this.spriteGameText);
 
-                this.endGame();
+                //this.endGame();
                 this.tttCamera = false;
             }
         };
@@ -213,12 +254,11 @@ export class TTT_Game {
                 this.overlayScene.remove(this.spriteGameText);
 
                 this.tttCamera = false;
-                this.endGame();
+                //this.endGame();
             }
         };
         loop();       
     }
-
 
     render() {
 
@@ -240,7 +280,7 @@ export class TTT_Game {
         this.renderer.render(this.overlayScene, this.overlayCamera);
     }
 
-    makeSpriteImage(img, sx, sy) {
+    /* makeSpriteImage(img, sx, sy) {
 
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
@@ -263,9 +303,9 @@ export class TTT_Game {
         this.scene.add(sprite);
 
         return sprite;
-    }
+    } */
 
-    makeSprite(text, size) {
+    /* makeSprite(text, size) {
 
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
@@ -291,12 +331,16 @@ export class TTT_Game {
         const sprite = new THREE.Sprite(material);
         sprite.scale.set((canvas.width / canvas.height), 1, 1);
 
+        //sprite.renderOrder = 999;
+        //material.depthTest = false;
+        //material.depthWrite = false;
+
         this.scene.add(sprite);
 
         return sprite;
-    }
+    } */
 
-    updateSpriteText(sprite, text, size) {
+    /* updateSpriteText(sprite, text, size) {
         const canvas = sprite.material.map.image;
         const ctx = canvas.getContext('2d');
 
@@ -313,7 +357,7 @@ export class TTT_Game {
         ctx.fillText(text, canvas.width / 2, canvas.height / 2);
 
         sprite.material.map.needsUpdate = true;
-    }
+    } */
 
     initSpriteText() {
 
@@ -324,8 +368,8 @@ export class TTT_Game {
         };
         img.src = 'textures/X.jpg'; */
 
-        this.spriteGameText = this.makeSprite("Click to Join", 25);
-        this.spriteGameCount = this.makeSprite("0/2", 25);
+        this.spriteGameText = this.makeSprite("Click to Join", 50);
+        this.spriteGameCount = this.makeSprite("0/2", 50);
         this.spriteGameText.position.set(24.25, 5.5, -16.13);
         this.spriteGameCount.position.set(24.25, 5.2, -16.13);
 
@@ -346,9 +390,40 @@ export class TTT_Game {
 
     }
 
-    startGame(playerID) {
+    setPlayerOne(playerID){
+        this.players[0] = playerID;
+        console.log("First Player added to game." + playerID);
+        this.updateSpriteText(this.spriteGameCount, "1/2", 50);
+        if(this.player.id === playerID)
+            this.addText("You joined the game. Waiting for another player...", 0, -0.5, 75);
+    }
 
-        if(this.gameStarted)
+    setPlayerTwo(playerID){
+        console.log("Second Player added to game." + playerID);
+        this.players[1] = playerID;
+    }
+
+    startGame(playerOne, playerTwo) {
+
+        if(playerOne !== this.players[0] || playerTwo !== this.players[1]){
+            console.log("Player IDs do not match. Cannot start game.");
+            return;
+        }
+
+        this.clearBoard();
+        console.log("TTT GAME START!!!");
+        console.log("Player 1: " + this.players[0]);
+        console.log("Player 2: " + this.players[1]);
+        this.updateSpriteText(this.spriteGameCount, "2/2", 50);
+        this.updateSpriteText(this.spriteGameText, "IN GAME", 50);
+        //this.gameStarted = true;
+
+        if(this.player.id !== playerOne && this.player.id !== playerTwo)
+            return;
+
+        this.startVSAnimation();
+
+/*         if(this.gameStarted)
             return;
 
         if(this.players.length == 0) {
@@ -372,18 +447,12 @@ export class TTT_Game {
                 console.log("Player already in the game." + playerID);
                 return;
             }
-        }
+        } */
 
-        this.clearBoard();
-        console.log("GAME START!!!");
-        this.updateSpriteText(this.spriteGameText, "IN GAME", 25);
-        console.log("Player 1: " + this.players[0]);
-        console.log("Player 2: " + this.players[1]);
+
         /* this.updateSpriteText(this.spritePlayer1_Text, "Click to Start", 30);
         this.updateSpriteText(this.spritePlayer2_Text, "Click to Start", 30); */
-        this.gameStarted = true;
-
-        this.startVSAnimation();
+        
     }
 
     wait(ms) {
@@ -391,15 +460,23 @@ export class TTT_Game {
     }
 
     async endGame() {
-        //await this.wait(3000);
+        await this.wait(2000);
         this.clearBoard();
-        this.players = [];
-        this.gameStarted = false;
-        this.gameEnded = false;
-        this.currentMark = "O";
-        this.updateSpriteText(this.spriteGameText, "Click to Join", 25);
-        this.updateSpriteText(this.spriteGameCount, "0/2", 25);
+        
+        console.log("TTT GAME END!!!");
+        
+        //this.gameStarted = false;
+        //this.gameEnded = false;
+        
+        this.tttCamera = false;
 
+        this.currentMark = "O";
+        this.updateSpriteText(this.spriteGameText, "Click to Join", 50);
+        this.updateSpriteText(this.spriteGameCount, "0/2", 50);
+
+        if(this.players.includes(this.player.id))
+            this.removeText();
+        this.players = [];
         for (const box of this.board) 
             box.material.color = new THREE.Color(0xffffff);
         
@@ -422,68 +499,74 @@ export class TTT_Game {
                         "", "", "" ];
     }
 
-    winner() {
-    }
-
-    loser() {
-    }   
-
-    verifyWin() {
-        if(this.state[0] === this.state[1] && this.state[1] === this.state[2] && this.state[0] !== ""){
+    drawWin(winner) {
+        if(winner == 1){
             this.board[0].material.color = new THREE.Color(0xff0000);
             this.board[1].material.color = new THREE.Color(0xff0000);
             this.board[2].material.color = new THREE.Color(0xff0000);
-            return this.state[0];
         }
-        if(this.state[3] === this.state[4] && this.state[4] === this.state[5] && this.state[3] !== ""){
+        else if(winner == 2){
             this.board[3].material.color = new THREE.Color(0xff0000);
             this.board[4].material.color = new THREE.Color(0xff0000);
             this.board[5].material.color = new THREE.Color(0xff0000);
-            return this.state[3];
         }
-        if(this.state[6] === this.state[7] && this.state[7] === this.state[8] && this.state[6] !== ""){
+        else if(winner == 3){
             this.board[6].material.color = new THREE.Color(0xff0000);
             this.board[7].material.color = new THREE.Color(0xff0000);
             this.board[8].material.color = new THREE.Color(0xff0000);
-            return this.state[6];
         }
-
-        if(this.state[0] === this.state[3] && this.state[3] === this.state[6] && this.state[0] !== ""){
+        else if(winner == 4){
             this.board[0].material.color = new THREE.Color(0xff0000);
             this.board[3].material.color = new THREE.Color(0xff0000);
             this.board[6].material.color = new THREE.Color(0xff0000);
-            return this.state[0];
         }
-        if(this.state[1] === this.state[4] && this.state[4] === this.state[7] && this.state[1] !== ""){
+        else if(winner == 5){
             this.board[1].material.color = new THREE.Color(0xff0000);
             this.board[4].material.color = new THREE.Color(0xff0000);
             this.board[7].material.color = new THREE.Color(0xff0000);
-            return this.state[1];
         }
-        if(this.state[2] === this.state[5] && this.state[5] === this.state[8] && this.state[2] !== ""){
+        else if(winner == 6){
             this.board[2].material.color = new THREE.Color(0xff0000);
             this.board[5].material.color = new THREE.Color(0xff0000);
             this.board[8].material.color = new THREE.Color(0xff0000);
-            return this.state[2];
         }
-
-        if(this.state[0] === this.state[4] && this.state[4] === this.state[8] && this.state[0] !== ""){
+        else if(winner == 7){
             this.board[0].material.color = new THREE.Color(0xff0000);
             this.board[4].material.color = new THREE.Color(0xff0000);
             this.board[8].material.color = new THREE.Color(0xff0000);
-            return this.state[0];
         }
-        if(this.state[2] === this.state[4] && this.state[4] === this.state[6] && this.state[2] !== ""){
+        else if(winner == 8){
             this.board[2].material.color = new THREE.Color(0xff0000);
             this.board[4].material.color = new THREE.Color(0xff0000);
             this.board[6].material.color = new THREE.Color(0xff0000);
-            return this.state[2];
         }
-
-        return null;
     }
 
-    checkNoWinner() {
+    winner(playerID) {
+        if(this.players.includes(this.player.id)){
+            this.removeText();
+            this.updateSpriteText(this.spriteGameText, "FINISH", 50);
+
+            if(this.player.id === playerID){
+                this.winAnimation("UserA");
+                this.addText("You Win!", 0, -0.5, 75);
+            }
+            else{
+                this.winAnimation("UserB");
+                this.addText("Player " + playerID + " is the winner...", 0, -0.5, 75);
+            }
+            
+            console.log("Player 1 wins!");
+        }
+    }
+
+    draw() {
+        this.removeText();
+        this.drawAnimation();
+        this.updateSpriteText(this.spriteGameText, "FINISH", 50); 
+    }
+
+    checkDraw() {
         for (const field of this.state) {
             if(field === "")
             {
@@ -496,7 +579,158 @@ export class TTT_Game {
         return true;
     }
 
-    markField(obj, playerID) {
+    markField(fieldName, playerID, mark) {
+
+        console.log("In Marking: " + fieldName + " by player: " + playerID);
+        /* if(!this.gameStarted){
+            console.log("Game not started yet.");
+            return;
+        } */
+
+        if(this.players.includes(this.player.id)){
+            this.removeText();
+
+            if(this.player.id === this.players[0] && mark === "X")
+                this.addText("Waiting...", 0, -0.5, 75);
+            else if(this.player.id === this.players[0] && mark === "O")
+                this.addText("Your Turn with X!", 0, -0.5, 75);
+
+            if(this.player.id === this.players[1] && mark === "O")
+                this.addText("Waiting...", 0, -0.5, 75);
+            else if(this.player.id === this.players[1] && mark === "X")
+                this.addText("Your Turn with O!", 0, -0.5, 75);
+        }
+
+        for(const box of this.board) {
+            if(box.name === fieldName) {
+                //console.log("Marking now:" + fieldName);
+                if(mark === "O")
+                    box.material.map = this.texO;
+                else
+                    box.material.map = this.texX;
+                box.material.needsUpdate = true;
+            }
+        }
+    }
+
+
+/*     markField(obj, playerID) {
+
+        if(!this.gameStarted){
+            console.log("Game not started yet." + playerID);
+            return;
+        }
+
+        if(!this.players.includes(playerID)){
+            console.log("Player not in the game." + playerID);
+            return;
+        }
+
+        for(const box of this.board) {
+            if(box.name === obj) {
+                console.log("Marking now:" + obj);
+
+                const num = obj.split("TTT_Board_")[1][0] - 1;
+
+                if(this.state[num] !== "") {
+                    console.log("Field already marked.");
+                    return;
+                }
+
+                if(playerID === this.players[0]){
+
+                    if(this.currentMark === "X"){
+                        console.log("Not your turn.");
+                        return;
+                    }
+
+                    this.currentMark = "X";
+                    this.state[num] = "X";
+                    box.material.map = this.texX;
+
+                    this.removeText();
+                    if(this.player.id === playerID)
+                        this.addText("Waiting...", -0.5);
+                    else
+                        this.addText("Your Turn with O!", -0.5);
+                
+                    const checkWin = this.verifyWin();
+                    if(checkWin !== null) {
+
+                        //this.gameEnded = true;
+
+                        this.removeText();
+                        this.updateSpriteText(this.spriteGameText, "FINISH", 25);
+
+                        if(this.player.id === playerID){
+                            this.winAnimation("UserA");
+                            this.addText("You Win!", -0.5);
+                        }
+                        else{
+                            this.winAnimation("UserB");
+                            this.addText("Player " + playerID + " is the winner...", -0.5);
+                        }
+                        
+                        console.log("Player 1 wins!");
+                        return;
+                    }
+
+                }
+                else{
+
+                    if(this.currentMark === "O"){
+                        console.log("Not your turn.");
+                        return;
+                    }
+
+                    this.currentMark = "O";
+                    this.state[num] = "O";
+                    box.material.map = this.texO;
+                    
+                    this.removeText();
+                    if(this.player.id === playerID)
+                        this.addText("Waiting...", -0.5);
+                    else
+                        this.addText("Your Turn with X!", -0.5);
+
+                    const checkWin = this.verifyWin();
+                    if(checkWin !== null) {
+
+                        //this.gameEnded = true;
+
+                        this.removeText();
+                        this.updateSpriteText(this.spriteGameText, "FINISH", 25);
+                        
+                        if(this.player.id === playerID){
+                            this.winAnimation("UserA");
+                            this.addText("You Win!", -0.5);
+                        }
+                        else{
+                            this.winAnimation("UserB");
+                            this.addText("Player " + playerID + " is the winner...", -0.5);
+                        }
+
+                        console.log("Player 2 wins!");
+                        return;
+                    }
+
+                }
+
+                box.material.needsUpdate = true;
+
+                if(this.checkDraw()){
+                    this.removeText();
+                    this.drawAnimation();
+                    this.updateSpriteText(this.spriteGameText, "FINISH", 25);
+                }
+
+                return;
+            }
+        }
+    } */
+
+
+/*     markField(obj, playerID) {
 
         if(!this.gameStarted) 
             return;
@@ -505,27 +739,27 @@ export class TTT_Game {
             return;
 
         if(!this.players.includes(playerID)){
-            //console.log("Player not in the game." + playerID);
+            console.log("Player not in the game." + playerID);
             return;
         }
 
-        //console.log("In Marking: " + obj + " by player: " + playerID);
+        console.log("In Marking: " + obj + " by player: " + playerID);
 
         for(const box of this.board) {
             if(box.name === obj) {
-                //console.log("Marking now:" + obj);
+                console.log("Marking now:" + obj);
 
                 const num = obj.split("TTT_Board_")[1][0] - 1;
 
                 if(this.state[num] !== "") {
-                    //console.log("Field already marked.");
+                    console.log("Field already marked.");
                     return;
                 }
 
                 if(playerID === this.players[0]){
 
                     if(this.currentMark === "X"){
-                        //console.log("Not your turn.");
+                        console.log("Not your turn.");
                         return;
                     }
 
@@ -558,22 +792,22 @@ export class TTT_Game {
                         
                         //
                         console.log("Player 1 wins!");
-                        /* this.updateSpriteText(this.spritePlayer1_Text, "You Win!", 30);
-                        this.updateSpriteText(this.spritePlayer2_Text, "You Lose!", 30); */
+                        //this.updateSpriteText(this.spritePlayer1_Text, "You Win!", 30);
+                        //this.updateSpriteText(this.spritePlayer2_Text, "You Lose!", 30);
                         
 
                         //this.endGame();
                         return;
                     }
 
-                    /* this.updateSpriteText(this.spritePlayer1_Text, "Waiting...", 30);
-                    this.updateSpriteText(this.spritePlayer2_Text, "Your Turn!", 30); */
+                    //this.updateSpriteText(this.spritePlayer1_Text, "Waiting...", 30);
+                    //this.updateSpriteText(this.spritePlayer2_Text, "Your Turn!", 30);
 
                 }
                 else{
 
                     if(this.currentMark === "O"){
-                        //console.log("Not your turn.");
+                        console.log("Not your turn.");
                         return;
                     }
 
@@ -606,28 +840,28 @@ export class TTT_Game {
 
                         //this.gameEnded = true;
                         console.log("Player 2 wins!");
-                        /* this.updateSpriteText(this.spritePlayer1_Text, "You Lose!", 30);
-                        this.updateSpriteText(this.spritePlayer2_Text, "You Win!", 30); */
+                        //this.updateSpriteText(this.spritePlayer1_Text, "You Lose!", 30);
+                        //this.updateSpriteText(this.spritePlayer2_Text, "You Win!", 30); 
                         
                         
                         //this.endGame();
                         return;
                     }
                     
-                    /* this.updateSpriteText(this.spritePlayer1_Text, "Your Turn!", 30);
-                    this.updateSpriteText(this.spritePlayer2_Text, "Waiting...", 30); */
+                    //this.updateSpriteText(this.spritePlayer1_Text, "Your Turn!", 30);
+                    this.updateSpriteText(this.spritePlayer2_Text, "Waiting...", 30); 
 
                 }
 
                 box.material.needsUpdate = true;
 
                 //box.material.color.set(0xff0000);
-                if(this.checkNoWinner()){
+                if(this.checkDraw()){
                     this.removeText();
                     this.drawAnimation();
                     this.updateSpriteText(this.spriteGameText, "FINISH", 25);
-                    /* this.updateSpriteText(this.spritePlayer1_Text, "DRAW", 30);
-                    this.updateSpriteText(this.spritePlayer2_Text, "DRAW", 30); */
+                    //this.updateSpriteText(this.spritePlayer1_Text, "DRAW", 30);
+                    //this.updateSpriteText(this.spritePlayer2_Text, "DRAW", 30);
 
                     //this.endGame();
                 }
@@ -635,5 +869,79 @@ export class TTT_Game {
                 return;
             }
         }
+    } */
+
+
+    addText(text, px, py, size) {
+        this.currentTextState.push(this.makeSprite(text, size));
+        const scaleFactor = 0.2;
+        this.currentTextState[this.currentTextState.length - 1].scale.set(this.currentTextState[this.currentTextState.length - 1].scale.x * scaleFactor, this.currentTextState[this.currentTextState.length - 1].scale.y * scaleFactor, 1);
+        this.currentTextState[this.currentTextState.length - 1].position.set(px, py, 0);
+        //console.log("Adding text: " + this.currentTextState[this.currentTextState.length - 1].scale.x + ", " + this.currentTextState[this.currentTextState.length - 1].scale.y + ", " + this.currentTextState[this.currentTextState.length - 1].scale.z);
+        this.overlayScene.add(this.currentTextState[this.currentTextState.length - 1]);
     }
+
+    removeText() {
+        if(this.currentTextState) {
+            this.currentTextState.forEach((textSprite) => {
+                this.overlayScene.remove(textSprite);
+            });
+            this.currentTextState = [];
+        }
+    }
+
+    makeSprite(text, size) {
+
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+
+        canvas.width = 2048;
+        canvas.height = 256;
+        
+
+        ctx.font = size+'px Segoe UI Black';
+        ctx.fillStyle = 'white';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+
+        ctx.lineWidth = 8;          // outline thickness
+        ctx.strokeStyle = 'black';  // outline color
+        ctx.strokeText(text, canvas.width / 2, canvas.height / 2);
+
+        ctx.fillStyle = 'white';
+        ctx.fillText(text, canvas.width / 2, canvas.height / 2);
+
+        const texture = new THREE.CanvasTexture(canvas);
+        const material = new THREE.SpriteMaterial({ map: texture });
+        material.transparent = true;
+        material.depthWrite = false;
+        material.depthTest = true;
+        const sprite = new THREE.Sprite(material);
+        sprite.scale.set((canvas.width / canvas.height), 1, 1);
+
+
+        this.scene.add(sprite);
+
+        return sprite;
+    }
+
+    updateSpriteText(sprite, text, size) {
+        const canvas = sprite.material.map.image;
+        const ctx = canvas.getContext('2d');
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.font = size+'px Segoe UI Black';
+        ctx.fillStyle = 'white';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+
+        ctx.lineWidth = 8;          // outline thickness
+        ctx.strokeStyle = 'black';  // outline color
+        ctx.strokeText(text, canvas.width / 2, canvas.height / 2);
+
+        ctx.fillText(text, canvas.width / 2, canvas.height / 2);
+
+        sprite.material.map.needsUpdate = true;
+    }
+
 }

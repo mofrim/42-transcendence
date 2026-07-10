@@ -41,7 +41,7 @@ export class Remote_Player {
         if(this.startSpawn){
             return;
         }
-        console.log("Animating spawn " + this.id);
+        //console.log("Animating spawn " + this.id);
         this.startSpawn = true;
         
         let spawnY = 1.5 + startY;
