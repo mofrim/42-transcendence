@@ -17,7 +17,9 @@ const CHARACTER_PREVIEW_MODELS = {
 function normalizeCharacter(character) {
     if (typeof character === 'string') {
         const normalizedCharacter = character.toLowerCase();
-        return normalizedCharacter !== 'false' && normalizedCharacter !== 'female';
+        return (
+            normalizedCharacter !== 'false' && normalizedCharacter !== 'female'
+        );
     }
 
     return character !== false;
@@ -137,8 +139,10 @@ export function createCharacterPreview({ canvas, label }) {
 
         const fov = THREE.MathUtils.degToRad(camera.fov);
         const fitHeightDistance = size.y / (2 * Math.tan(fov / 2));
-        const fitWidthDistance = size.x / (2 * Math.tan(fov / 2) * camera.aspect);
-        const distance = Math.max(fitHeightDistance, fitWidthDistance, size.z) * 1.3;
+        const fitWidthDistance =
+            size.x / (2 * Math.tan(fov / 2) * camera.aspect);
+        const distance =
+            Math.max(fitHeightDistance, fitWidthDistance, size.z) * 1.3;
 
         camera.near = Math.max(0.01, distance / 100);
         camera.far = distance * 100;
@@ -197,7 +201,7 @@ export function createCharacterPreview({ canvas, label }) {
             undefined,
             (error) => {
                 console.error('Character preview failed to load:', error);
-            },
+            }
         );
     }
 
@@ -233,6 +237,8 @@ export function createCharacterPreview({ canvas, label }) {
             window.removeEventListener('resize', resizeRenderer);
             clearCurrentModel();
             renderer.dispose();
+            // Release the character preview immediately after disposing the renderer
+            renderer.forceContextLoss?.();
         },
     };
 }
