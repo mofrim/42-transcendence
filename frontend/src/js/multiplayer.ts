@@ -3,38 +3,54 @@ import * as THREE from 'three';
 // import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { Remote_Player } from './remote_player.js';
 
+import { PlayerState, CharacterModel } from "./sharedTypes.ts";
+
 /** all both gender */
 const PLAYER_CHARACTER_MODELS = {
-    true: '/glb/Male_Test.glb',
-    false: '/glb/Female_Test.glb',
+    'male': '/glb/Male_Test.glb',
+    'female': '/glb/Female_Test.glb',
 };
 
-function normalizeCharacter(character) {
+function normalizeCharacter(character: string | boolean): CharacterModel {
     if (typeof character === 'string') {
         const normalizedCharacter = character.toLowerCase();
-        return normalizedCharacter !== 'false' && normalizedCharacter !== 'female';
+        if (normalizedCharacter === 'male') {
+            return CharacterModel.male;
+        }
+        return CharacterModel.female;
+
     }
 
-    return character !== false;
+    return character ? CharacterModel.male: CharacterModel.female;
 }
 
-function getRemotePlayerModelPath(character) {
+function getRemotePlayerModelPath(character: string | boolean) {
     return PLAYER_CHARACTER_MODELS[normalizeCharacter(character)];
 }
 
 export class MultiplayerManager {
+    scene: THREE.Scene;
+    mesh_RP: THREE.Mesh;
+    players: Map<string, Remote_Player>;
+    count: number;
+    desired: THREE.Vector3;
+    old: THREE.Vector3;
+    nx: number;
+    ny: number;
+    nz: number;
+    step: number;
 
-    constructor(scene, mesh_RP) {
+    constructor(scene: THREE.Scene, mesh_RP: THREE.Mesh) {
 
         this.scene = scene;
         this.mesh_RP = mesh_RP;
 
-        this.players = new Map();
+        this.players = new Map<string, Remote_Player>();
 
         this.count = 0;
 
-        this.desired = new THREE.Vector3(0,0,0);
-        this.old = new THREE.Vector3(0,0,0);
+        this.desired = new THREE.Vector3(0, 0, 0);
+        this.old = new THREE.Vector3(0, 0, 0);
         this.nx = 0;
         this.ny = 0;
         this.nz = 0;
@@ -42,7 +58,7 @@ export class MultiplayerManager {
 
     }
 
-    initMultiplayerTest(){
+    initMultiplayerTest() {
 
         //const player1 = new Remote_Player('src/glb/MainCharacterTest.glb', 1, this.scene);
         /* const player2 = new Remote_Player('src/glb/SpidermanMeme.glb', 2, this.scene, 1);
@@ -72,11 +88,11 @@ export class MultiplayerManager {
 
     }
 
-    multiplayerMovement(player, x, y, z, state) {
+    multiplayerMovement(player: Remote_Player, x: number, y: number, z: number, state: PlayerState) {
         //console.log("ID 1 " + player.id + " to position: " + player.group.position.y.toFixed(4));
         player.animateSpawn(x, y, z);
 
-        if(player.isSpawned){
+        if (player.isSpawned) {
             const pos = player.group.position;
 
             this.old = new THREE.Vector3(pos.x, pos.y, pos.z);
@@ -87,36 +103,36 @@ export class MultiplayerManager {
             this.ny = (this.old.y - this.desired.y) / 1;
             this.nz = (this.old.z - this.desired.z) / 1;
 
-            if(state === 'Run')
+            if (state === PlayerState.Run)
                 player.rotateCharacter(this.desired, pos);
 
-            pos.set(pos.x-this.nx, pos.y-this.ny, pos.z-this.nz);
+            pos.set(pos.x - this.nx, pos.y - this.ny, pos.z - this.nz);
         }
     }
 
-    updateMultiplayerID(id, x, y, z, state) {
+    // FIXME is this function obsolete?
+    updateMultiplayerID(id: string, x: number, y: number, z: number, state: PlayerState) {
 
         const playe = this.players.get(id);
         //console.log("ID 1 " + playe.id + " to position: " + playe.group.position.y.toFixed(4) + " , y: " + y.toFixed(4));
 
-        if(playe){
+        if (playe) {
             this.multiplayerMovement(playe, x, y, z, state);
         }
     }
 
-    multiplayerMovementTest(player) {
+    multiplayerMovementTest(player: Remote_Player) {
 
         let updateHZ = 50;
         this.count++;
 
         const pos = player.group.position;
 
-        if (this.count % updateHZ == 0)
-        {
+        if (this.count % updateHZ == 0) {
 
             this.old = new THREE.Vector3(pos.x, pos.y, pos.z);
 
-            if (this.step === 0){
+            if (this.step === 0) {
                 this.desired = new THREE.Vector3(pos.x - 1.5, pos.y, pos.z);
                 player.state = 'Run';
             }
@@ -124,22 +140,22 @@ export class MultiplayerManager {
             if (this.step === 1)
                 this.desired = new THREE.Vector3(pos.x, pos.y, pos.z - 1.5);
 
-            if (this.step === 2){
+            if (this.step === 2) {
                 player.state = 'Idle';
                 this.desired = new THREE.Vector3(pos.x, pos.y, pos.z);
             }
 
-            if (this.step === 3){
+            if (this.step === 3) {
                 player.state = 'Run';
                 this.desired = new THREE.Vector3(pos.x + 1.5, pos.y, pos.z);
             }
 
-            if (this.step === 4){
+            if (this.step === 4) {
                 this.desired = new THREE.Vector3(pos.x, pos.y, pos.z + 1.5);
             }
 
 
-            if(this.count % 100== 0)
+            if (this.count % 100 == 0)
                 this.step = (this.step + 1) % 5;
 
             this.nx = (this.old.x - this.desired.x) / updateHZ;
@@ -149,32 +165,32 @@ export class MultiplayerManager {
             player.rotateCharacter(this.desired, pos);
         }
 
-        pos.set(pos.x-this.nx, pos.y-this.ny, pos.z-this.nz);
+        pos.set(pos.x - this.nx, pos.y - this.ny, pos.z - this.nz);
     }
 
-    updateMultiplayer(delta) {
+    updateMultiplayer(delta: number) {
 
-        for(const [id, player] of this.players) {
-            if(player.mixer != null)
+        for (const [id, player] of this.players) {
+            if (player.mixer != null)
                 player.updateAnimation(delta);
             //if(player.id == 1)
             //    this.multiplayerMovementTest(player);
-            if(player && player.id === -1){
+            if (player && player.id === -1) {
                 player.destroy();
                 this.players.delete(id);
             }
         }
     }
 
-    spawnPlayer(id, character = true){
-        if(this.players.get(id))
+    spawnPlayer(id: string, character = true) {
+        if (this.players.get(id))
             return;
 
         //const newPlayer = new Remote_Player('src/glb/MainCharacterTest.glb', id, this.scene);
         //const newPlayer = new Remote_Player('glb/Male_Test.glb', id, this.scene);
         const newPlayer = new Remote_Player(getRemotePlayerModelPath(character), id, this.scene, 0, this.mesh_RP);
         this.players.set(newPlayer.id, newPlayer);
-        this.scene.add(newPlayer.group );
+        this.scene.add(newPlayer.group);
     }
 
 }

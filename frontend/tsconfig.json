@@ -17,7 +17,10 @@
     /* linting */
     "noUnusedLocals": true,
     "noUnusedParameters": true,
-    "erasableSyntaxOnly": true,
+
+    // this would not allow us to declare enums for example
+    "erasableSyntaxOnly": false,
+
     "noFallthroughCasesInSwitch": true,
 
     /* hybrid JS/TS */
