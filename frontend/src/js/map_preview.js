@@ -217,7 +217,10 @@ export function createMapPreview({ canvas } = {}) {
             0.01,
             Math.min(verticalFov, horizontalFov) / 2
         );
-        const distance = (modelRadius / Math.sin(limitingHalfFov)) * 1.05;
+        /** die Map etwas näher reingezoomt wird,
+         * weil man das Map Objekt hauptsächlich verdeckt hinter dem Loginformular sieht
+         * Aber an den Bildschirmrändern noch sehr viel ungenutzter Raum ist */
+        const distance = (modelRadius / Math.sin(limitingHalfFov)) * 0.42;
 
         camera.position.copy(cameraDirection).multiplyScalar(distance);
         camera.near = Math.max(0.01, distance - modelRadius * 1.25);
