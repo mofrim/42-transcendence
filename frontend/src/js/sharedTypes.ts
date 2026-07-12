@@ -10,3 +10,8 @@ export enum CharacterModel {
     male = 'male',
     female = 'female',
 }
+
+// types
+
+/** all both gender */
+export type Character = boolean;

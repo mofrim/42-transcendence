@@ -1,6 +1,17 @@
 import * as THREE from 'three';
 
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import type { Character } from './sharedTypes.ts';
+
+interface CharacterPreviewOptions {
+    canvas?: HTMLCanvasElement | null;
+    label?: HTMLElement | null;
+}
+
+interface CharacterPreview {
+    setCharacter(character: Character): void;
+    dispose(): void;
+}
 
 /** all both gender */
 const CHARACTER_PREVIEW_MODELS = {
@@ -14,20 +25,22 @@ const CHARACTER_PREVIEW_MODELS = {
     },
 };
 
-function normalizeCharacter(character) {
-    if (typeof character === 'string') {
-        const normalizedCharacter = character.toLowerCase();
-        return (
-            normalizedCharacter !== 'false' && normalizedCharacter !== 'female'
-        );
-    }
-
-    return character !== false;
+function isTexture(value: unknown): value is THREE.Texture {
+    return (
+        typeof value === 'object' &&
+        value !== null &&
+        'isTexture' in value &&
+        value.isTexture === true
+    );
 }
 
-function disposeMaterial(material) {
+function isMesh(object: THREE.Object3D): object is THREE.Mesh {
+    return 'isMesh' in object && object.isMesh === true;
+}
+
+function disposeMaterial(material: THREE.Material): void {
     for (const value of Object.values(material)) {
-        if (value && value.isTexture) {
+        if (isTexture(value)) {
             value.dispose();
         }
     }
@@ -35,9 +48,9 @@ function disposeMaterial(material) {
     material.dispose();
 }
 
-function disposeObject(object) {
+function disposeObject(object: THREE.Object3D): void {
     object.traverse((child) => {
-        if (!child.isMesh) {
+        if (!isMesh(child)) {
             return;
         }
 
@@ -51,7 +64,10 @@ function disposeObject(object) {
     });
 }
 
-export function createCharacterPreview({ canvas, label }) {
+export function createCharacterPreview({
+    canvas,
+    label,
+}: CharacterPreviewOptions): CharacterPreview {
     if (!canvas) {
         return {
             setCharacter() {},
@@ -59,8 +75,10 @@ export function createCharacterPreview({ canvas, label }) {
         };
     }
 
+    const previewCanvas = canvas;
+
     const renderer = new THREE.WebGLRenderer({
-        canvas,
+        canvas: previewCanvas,
         antialias: true,
         alpha: true,
     });
@@ -89,16 +107,16 @@ export function createCharacterPreview({ canvas, label }) {
     const center = new THREE.Vector3();
     const size = new THREE.Vector3();
 
-    let currentModel = null;
-    let currentCharacter = null;
+    let currentModel: THREE.Group | null = null;
+    let currentCharacter: boolean | null = null;
     let disposed = false;
-    let frameId = null;
+    let frameId: number | null = null;
     let loadSerial = 0;
     let rendererWidth = 0;
     let rendererHeight = 0;
 
-    function resizeRenderer() {
-        const rect = canvas.getBoundingClientRect();
+    function resizeRenderer(): void {
+        const rect = previewCanvas.getBoundingClientRect();
         const width = Math.max(1, Math.round(rect.width));
         const height = Math.max(1, Math.round(rect.height));
 
@@ -113,7 +131,7 @@ export function createCharacterPreview({ canvas, label }) {
         camera.updateProjectionMatrix();
     }
 
-    function clearCurrentModel() {
+    function clearCurrentModel(): void {
         if (!currentModel) {
             return;
         }
@@ -123,7 +141,7 @@ export function createCharacterPreview({ canvas, label }) {
         currentModel = null;
     }
 
-    function centerAndFrameModel(model) {
+    function centerAndFrameModel(model: THREE.Object3D): void {
         box.setFromObject(model);
 
         if (box.isEmpty()) {
@@ -151,15 +169,16 @@ export function createCharacterPreview({ canvas, label }) {
         camera.updateProjectionMatrix();
     }
 
-    function setCharacter(character) {
-        const normalizedCharacter = normalizeCharacter(character);
-        const preview = CHARACTER_PREVIEW_MODELS[normalizedCharacter];
+    function setCharacter(character: Character): void {
+        const preview = character
+            ? CHARACTER_PREVIEW_MODELS.true
+            : CHARACTER_PREVIEW_MODELS.false;
 
-        if (currentCharacter === normalizedCharacter) {
+        if (currentCharacter === character) {
             return;
         }
 
-        currentCharacter = normalizedCharacter;
+        currentCharacter = character;
 
         if (label) {
             label.textContent = preview.label;
@@ -180,14 +199,17 @@ export function createCharacterPreview({ canvas, label }) {
                 const pivot = new THREE.Group();
 
                 model.traverse((object) => {
-                    if (!object.isMesh) {
+                    if (!isMesh(object)) {
                         return;
                     }
 
                     object.castShadow = false;
                     object.receiveShadow = false;
 
-                    if (object.material?.name === 'Outline') {
+                    if (
+                        !Array.isArray(object.material) &&
+                        object.material.name === 'Outline'
+                    ) {
                         object.visible = false;
                     }
                 });
@@ -205,7 +227,7 @@ export function createCharacterPreview({ canvas, label }) {
         );
     }
 
-    function render() {
+    function render(): void {
         if (disposed) {
             return;
         }
@@ -230,8 +252,9 @@ export function createCharacterPreview({ canvas, label }) {
             disposed = true;
             loadSerial++;
 
-            if (frameId) {
+            if (frameId !== null) {
                 cancelAnimationFrame(frameId);
+                frameId = null;
             }
 
             window.removeEventListener('resize', resizeRenderer);

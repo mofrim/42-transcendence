@@ -105,7 +105,7 @@
     import { startGame } from './src/js/main.js';
     import { createCharacterPreview } from './src/js/character_preview.js';
 
-    const selectedCharacter = () => document.querySelector('input[name="player-character"]:checked')?.value ?? "true";
+    const selectedCharacter = () => document.querySelector('input[name="player-character"]:checked')?.value !== "false";
     const serverAddressInput = document.getElementById("server-address");
     const serverPortInput = document.getElementById("server-port");
     const defaultServerAddress = "localhost";
@@ -171,7 +171,7 @@
     document.querySelectorAll('input[name="player-character"]').forEach((input) => {
       input.addEventListener("change", () => {
         if (input.checked) {
-          characterPreview.setCharacter(input.value);
+          characterPreview.setCharacter(selectedCharacter());
         }
       });
     });
@@ -193,7 +193,7 @@
         return;
       }
 
-      const character = selectedCharacter() === "true";
+      const character = selectedCharacter();
 
       document.getElementById("login-ui").style.display = "none";
       document.getElementById("game").style.display = "block";
