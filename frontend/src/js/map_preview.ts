@@ -6,17 +6,39 @@ const MAP_MODEL_PATH = '/glb/42WOB_v3.glb';
 const MAX_PIXEL_RATIO = 1.5;
 const ROTATION_SPEED = THREE.MathUtils.degToRad(1.25);
 
-function createSafePreview() {
+interface MapPreview {
+    dispose(): void;
+}
+
+interface MapPreviewOptions {
+    canvas?: HTMLCanvasElement | null;
+}
+
+interface ClosableImageBitmap {
+    close(): void;
+}
+
+type DisposableMaterial = THREE.Material & {
+    uniforms?: Record<string, { value?: unknown } | null | undefined>;
+};
+
+type DisposableObject3D = THREE.Object3D & {
+    geometry?: THREE.BufferGeometry | null;
+    material?: DisposableMaterial | DisposableMaterial[] | null;
+    skeleton?: THREE.Skeleton | null;
+};
+
+function createSafePreview(): MapPreview {
     return {
         dispose() {},
     };
 }
 
-function isImageBitmap(value) {
+function isImageBitmap(value: unknown): value is ClosableImageBitmap {
     if (
         !value ||
         typeof value !== 'object' ||
-        typeof value.close !== 'function'
+        typeof (value as Partial<ClosableImageBitmap>).close !== 'function'
     ) {
         return false;
     }
@@ -29,7 +51,18 @@ function isImageBitmap(value) {
     );
 }
 
-function closeImageBitmapValue(value, disposedImageBitmaps) {
+function isTexture(value: unknown): value is THREE.Texture {
+    return Boolean(
+        typeof value === 'object' &&
+        value !== null &&
+        (value as Partial<THREE.Texture>).isTexture
+    );
+}
+
+function closeImageBitmapValue(
+    value: unknown,
+    disposedImageBitmaps: Set<ClosableImageBitmap>
+): void {
     if (!value) {
         return;
     }
@@ -54,12 +87,16 @@ function closeImageBitmapValue(value, disposedImageBitmaps) {
     }
 }
 
-function disposeTextureValue(value, disposedTextures, disposedImageBitmaps) {
+function disposeTextureValue(
+    value: unknown,
+    disposedTextures: Set<THREE.Texture>,
+    disposedImageBitmaps: Set<ClosableImageBitmap>
+): void {
     if (!value) {
         return;
     }
 
-    if (value.isTexture) {
+    if (isTexture(value)) {
         if (!disposedTextures.has(value)) {
             disposedTextures.add(value);
             closeImageBitmapValue(value.source?.data, disposedImageBitmaps);
@@ -77,11 +114,11 @@ function disposeTextureValue(value, disposedTextures, disposedImageBitmaps) {
 }
 
 function disposeMaterial(
-    material,
-    disposedMaterials,
-    disposedTextures,
-    disposedImageBitmaps
-) {
+    material: DisposableMaterial | null | undefined,
+    disposedMaterials: Set<THREE.Material>,
+    disposedTextures: Set<THREE.Texture>,
+    disposedImageBitmaps: Set<ClosableImageBitmap>
+): void {
     if (!material || disposedMaterials.has(material)) {
         return;
     }
@@ -105,14 +142,14 @@ function disposeMaterial(
     material.dispose();
 }
 
-function disposeObject(object) {
-    const disposedGeometries = new Set();
-    const disposedMaterials = new Set();
-    const disposedTextures = new Set();
-    const disposedImageBitmaps = new Set();
-    const disposedSkeletons = new Set();
+function disposeObject(object: THREE.Object3D): void {
+    const disposedGeometries = new Set<THREE.BufferGeometry>();
+    const disposedMaterials = new Set<THREE.Material>();
+    const disposedTextures = new Set<THREE.Texture>();
+    const disposedImageBitmaps = new Set<ClosableImageBitmap>();
+    const disposedSkeletons = new Set<THREE.Skeleton>();
 
-    object.traverse((child) => {
+    object.traverse((child: DisposableObject3D) => {
         if (child.geometry && !disposedGeometries.has(child.geometry)) {
             disposedGeometries.add(child.geometry);
             child.geometry.dispose();
@@ -138,7 +175,9 @@ function disposeObject(object) {
     });
 }
 
-export function createMapPreview({ canvas } = {}) {
+export function createMapPreview({
+    canvas,
+}: MapPreviewOptions = {}): MapPreview {
     if (
         !canvas ||
         typeof window === 'undefined' ||
@@ -147,15 +186,17 @@ export function createMapPreview({ canvas } = {}) {
         return createSafePreview();
     }
 
-    let renderer;
+    const previewCanvas = canvas;
+
+    let renderer: THREE.WebGLRenderer;
 
     try {
         renderer = new THREE.WebGLRenderer({
-            canvas,
+            canvas: previewCanvas,
             antialias: true,
             alpha: true,
         });
-    } catch (error) {
+    } catch (error: unknown) {
         console.error('Map preview renderer initialization failed:', error);
         return createSafePreview();
     }
@@ -188,19 +229,19 @@ export function createMapPreview({ canvas } = {}) {
             ? window.matchMedia('(prefers-reduced-motion: reduce)')
             : null;
 
-    let pivot = null;
+    let pivot: THREE.Group | null = null;
     let modelRadius = 0;
     let disposed = false;
-    let frameId = null;
-    let previousFrameTime = null;
+    let frameId: number | null = null;
+    let previousFrameTime: DOMHighResTimeStamp | null = null;
     let loadGeneration = 0;
     let rendererWidth = 0;
     let rendererHeight = 0;
     let rendererPixelRatio = 0;
     let prefersReducedMotion = reducedMotionQuery?.matches ?? false;
-    let resizeObserver = null;
+    let resizeObserver: ResizeObserver | null = null;
 
-    function frameCamera() {
+    function frameCamera(): void {
         if (!Number.isFinite(modelRadius) || modelRadius <= 0) {
             camera.near = 0.01;
             camera.far = 1000;
@@ -229,18 +270,18 @@ export function createMapPreview({ canvas } = {}) {
         camera.updateProjectionMatrix();
     }
 
-    function resizeRenderer() {
+    function resizeRenderer(): boolean {
         const rect =
-            typeof canvas.getBoundingClientRect === 'function'
-                ? canvas.getBoundingClientRect()
+            typeof previewCanvas.getBoundingClientRect === 'function'
+                ? previewCanvas.getBoundingClientRect()
                 : null;
         const width = Math.max(
             1,
-            Math.round(rect?.width ?? canvas.clientWidth ?? 1)
+            Math.round(rect?.width ?? previewCanvas.clientWidth ?? 1)
         );
         const height = Math.max(
             1,
-            Math.round(rect?.height ?? canvas.clientHeight ?? 1)
+            Math.round(rect?.height ?? previewCanvas.clientHeight ?? 1)
         );
         const pixelRatio = Math.min(
             window.devicePixelRatio || 1,
@@ -271,7 +312,7 @@ export function createMapPreview({ canvas } = {}) {
         return sizeChanged || pixelRatioChanged || aspectChanged;
     }
 
-    function centerAndFrameModel(model) {
+    function centerAndFrameModel(model: THREE.Object3D): void {
         model.updateMatrixWorld(true);
         bounds.setFromObject(model);
 
@@ -299,7 +340,7 @@ export function createMapPreview({ canvas } = {}) {
         frameCamera();
     }
 
-    function stopAnimation() {
+    function stopAnimation(): void {
         if (frameId !== null) {
             window.cancelAnimationFrame(frameId);
             frameId = null;
@@ -308,7 +349,7 @@ export function createMapPreview({ canvas } = {}) {
         previousFrameTime = null;
     }
 
-    function canAnimate() {
+    function canAnimate(): boolean {
         return (
             !disposed &&
             !document.hidden &&
@@ -318,7 +359,7 @@ export function createMapPreview({ canvas } = {}) {
         );
     }
 
-    function renderOnce() {
+    function renderOnce(): void {
         if (disposed || document.hidden) {
             return;
         }
@@ -327,10 +368,10 @@ export function createMapPreview({ canvas } = {}) {
         renderer.render(scene, camera);
     }
 
-    function animate(time) {
+    function animate(time: DOMHighResTimeStamp): void {
         frameId = null;
 
-        if (!canAnimate()) {
+        if (!canAnimate() || pivot === null) {
             previousFrameTime = null;
             return;
         }
@@ -348,7 +389,7 @@ export function createMapPreview({ canvas } = {}) {
         frameId = window.requestAnimationFrame(animate);
     }
 
-    function startAnimation() {
+    function startAnimation(): void {
         if (!canAnimate() || frameId !== null) {
             return;
         }
@@ -357,12 +398,12 @@ export function createMapPreview({ canvas } = {}) {
         frameId = window.requestAnimationFrame(animate);
     }
 
-    function onResize() {
+    function onResize(): void {
         renderOnce();
         startAnimation();
     }
 
-    function onVisibilityChange() {
+    function onVisibilityChange(): void {
         if (document.hidden) {
             stopAnimation();
             return;
@@ -372,7 +413,7 @@ export function createMapPreview({ canvas } = {}) {
         startAnimation();
     }
 
-    function onReducedMotionChange(event) {
+    function onReducedMotionChange(event: MediaQueryListEvent): void {
         prefersReducedMotion = event.matches;
 
         if (prefersReducedMotion) {
@@ -390,7 +431,7 @@ export function createMapPreview({ canvas } = {}) {
 
     if (typeof window.ResizeObserver === 'function') {
         resizeObserver = new window.ResizeObserver(onResize);
-        resizeObserver.observe(canvas);
+        resizeObserver.observe(previewCanvas);
     }
 
     if (typeof reducedMotionQuery?.addEventListener === 'function') {
@@ -424,14 +465,14 @@ export function createMapPreview({ canvas } = {}) {
                 startAnimation();
             },
             undefined,
-            (error) => {
+            (error: unknown) => {
                 if (!disposed && generation === loadGeneration) {
                     console.error('Map preview failed to load:', error);
                     renderOnce();
                 }
             }
         );
-    } catch (error) {
+    } catch (error: unknown) {
         console.error('Map preview failed to load:', error);
     }
 
