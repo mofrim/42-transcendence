@@ -1,4 +1,5 @@
-import type { AnimationAction, AnimationClip, AnimationMixer } from 'three';
+import { AnimationClip } from 'three';
+import type { AnimationAction, AnimationMixer } from 'three';
 
 /** Es gibt noch kein Jump. */
 const PLAYER_ANIMATION_STATE = Object.freeze({
@@ -14,16 +15,11 @@ type PlayerAnimationActions = Record<PlayerAnimationState, AnimationAction>;
  * beim weiblichen Modell Breathing (Index 0, Hände seitlich) der gewünschte Stillstand,
  * nicht der zusätzliche Clip Idle (Index 1, Hände hinten)
  */
-const CLIP_NAME_CANDIDATES: Readonly<
-    Record<PlayerAnimationState, readonly string[]>
-> = Object.freeze({
-    [PLAYER_ANIMATION_STATE.Idle]: Object.freeze(['Breathing', 'Idle']),
-    [PLAYER_ANIMATION_STATE.Run]: Object.freeze(['Running', 'Run']),
-});
-
-function normalizeClipName(name: unknown): string {
-    return typeof name === 'string' ? name.trim().toLowerCase() : '';
-}
+const CLIP_NAME_BY_STATE: Readonly<Record<PlayerAnimationState, string>> =
+    Object.freeze({
+        [PLAYER_ANIMATION_STATE.Idle]: 'Breathing',
+        [PLAYER_ANIMATION_STATE.Run]: 'Running',
+    });
 
 export function normalizePlayerAnimationState(
     state: unknown
@@ -38,28 +34,15 @@ export function resolvePlayerAnimationClip(
     requestedState: unknown,
     modelPath: string = 'character'
 ): AnimationClip {
-    const clips: readonly AnimationClip[] = Array.isArray(animations)
-        ? animations
+    const clips: AnimationClip[] = Array.isArray(animations)
+        ? [...animations]
         : [];
     const state = normalizePlayerAnimationState(requestedState);
-    const candidates = CLIP_NAME_CANDIDATES[state];
+    const expectedName = CLIP_NAME_BY_STATE[state];
+    const clip = AnimationClip.findByName(clips, expectedName);
 
-    for (const candidate of candidates) {
-        const normalizedCandidate = normalizeClipName(candidate);
-        const matches = clips.filter(
-            (clip) => normalizeClipName(clip?.name) === normalizedCandidate
-        );
-
-        if (matches.length > 1) {
-            throw new Error(
-                // ani dupe
-                `Ambiguous ${state} animation for "${modelPath}": multiple clips match "${candidate}".`
-            );
-        }
-
-        if (matches.length === 1) {
-            return matches[0];
-        }
+    if (clip) {
+        return clip;
     }
 
     const availableNames = clips.length
@@ -67,8 +50,7 @@ export function resolvePlayerAnimationClip(
         : '<none>';
 
     throw new Error(
-        // ani fail
-        `Missing ${state} animation for "${modelPath}". Tried: ${candidates.join(', ')}. Available: ${availableNames}.`
+        `Missing ${state} animation "${expectedName}" for "${modelPath}". Available: ${availableNames}.`
     );
 }
 
