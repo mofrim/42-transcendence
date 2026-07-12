@@ -1,4 +1,5 @@
 // in this file we collect types that are shared at least among multiple files.
+import * as THREE from "three";
 
 export enum PlayerState {
     Idle = 'Idle',
@@ -11,7 +12,108 @@ export enum CharacterModel {
     female = 'female',
 }
 
-// types
 
 /** all both gender */
 export type Character = boolean;
+
+export enum RPSChoice {
+    None = '',
+    Rock = 'rock',
+    Paper = 'paper',
+    Scissors = 'scissors',
+}
+
+// TODO: Important for main.ts (tttBox)
+export type GLBMesh = THREE.Mesh<
+    THREE.BufferGeometry,
+    THREE.MeshStandardMaterial | THREE.MeshToonMaterial
+>;
+
+
+export type PlayerData = {
+    id: string,
+    position: { x: 0, y: 0, z: 0 },
+    state: PlayerState,
+    gameID: string | null,
+    inGame: boolean,
+}
+
+
+// ================================================
+// RPS Game
+// ================================================
+
+export enum RPSGameState {
+    Requested = 0,
+    InGame = 1,
+}
+
+export type RPSGame = {
+    gameID: string,
+    playerOne: string,
+    playerTwo: string,
+    playerOneChoice: RPSChoice,
+    playerTwoChoice: RPSChoice,
+    state: RPSGameState;
+}
+
+// ================================================
+// TTT Game
+// ================================================
+
+export type PlayerSlot = string | null;
+
+export enum TTTMark {
+    Empty = '',
+    X = 'X',
+    O = 'O'
+}
+
+// tuple type for the board state
+export type TTTBoard = [
+    TTTMark, TTTMark, TTTMark,
+    TTTMark, TTTMark, TTTMark,
+    TTTMark, TTTMark, TTTMark
+]
+
+export enum TTTGameState {
+    WaitingForFirstPlayer = 0,
+    WaitingForSecondPlayer = 1,
+    InGame = 2,
+    Finished = 3
+}
+
+type TTTBoardNames = [
+    string, string, string,
+    string, string, string,
+    string, string, string
+]
+
+export type TTTGame = {
+    players: [PlayerSlot, PlayerSlot];
+    // Names need to match the names of the board objects in the scene (Blender file)
+    boardNames: TTTBoardNames;
+    board: TTTBoard;
+    currentMark: TTTMark;
+    state: TTTGameState;
+}
+
+// ================================================
+// SOCKET.IO messages types
+// ================================================
+
+export type RPSBattleChoicePayload = {
+    type: 'rps_choice';
+    id: string;
+    choice: RPSChoice;
+}
+
+export type RPSRequestDataPayload = {
+    type: 'rps_accept' | 'rps_decline' | 'rps_request';
+    id: string;
+    requestedPlayerID: string;
+}
+
+export type TTTInitGamePayload = {
+    game: TTTGame;
+}

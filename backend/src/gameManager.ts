@@ -1,63 +1,102 @@
+// ====================================================================================================
+// TODO: better create a new folder for sharedTypes for front and backend?
+// ====================================================================================================
+import { TTTMark } from '../../frontend/src/js/sharedTypes.js';
+
+import { TTTGameState } from '../../frontend/src/js/sharedTypes.js';
+import { RPSChoice } from '../../frontend/src/js/sharedTypes.js';
+import { RPSGameState } from '../../frontend/src/js/sharedTypes.js';
+import { PlayerState } from '../../frontend/src/js/sharedTypes.js';
+import { PlayerData } from '../../frontend/src/js/sharedTypes.js';
+
+import { RPSRequestDataPayload } from '../../frontend/src/js/sharedTypes.js';
+import { RPSBattleChoicePayload } from '../../frontend/src/js/sharedTypes.js';
+
+import type { RPSGame } from '../../frontend/src/js/sharedTypes.js';
+import type { TTTGame } from '../../frontend/src/js/sharedTypes.js';
+
 
 export class GameManager {
     
+    players: Map<string, PlayerData>;
+    tttGame: TTTGame;
+    rpsGame: Map<string, RPSGame>;
+
     constructor() {
         this.players = new Map();
         this.tttGame = this.createTTTGame();
         this.rpsGame = new Map();
-
-
     }
 
-    createPlayer(id){
+    createPlayer(id: string): PlayerData {
         return {
             id: id,
             position: { x:0, y:0, z:0 },
-            state: 'idle',
-            gameID: 'none',
+            state: PlayerState.Idle,
+            gameID: null,
             inGame: false,
         };
     }
 
-    removePlayer(id){
+    removePlayer(id: string): void {
         if(this.players.has(id))
             this.players.delete(id);
     }
 
-    getMapData(){
+    getMapData(): TTTGame {
         return this.tttGame;
     }
 
-    updatePlayer(id, x, y, z, state){
-
+    updatePlayer(id: string, x: number, y: number, z: number, state: PlayerState): void{
+        void(id);
+        void(x);
+        void(y);
+        void(z);
+        void(state);
     }
 
-    // Rock Paper Scissors Game ---------------------------------------------------------------------------
+    // ====================================================================================================
+    // Rock Paper Scissors Game 
+    // ====================================================================================================
 
-    createRPSGame(gameID, playerOne, playerTwo){
+    createRPSGame(gameID: string, playerOne: string, playerTwo: string): RPSGame {
         return{
             gameID: gameID,
             playerOne: playerOne,
             playerTwo: playerTwo,
-            playerOneChoice: "",
-            playerTwoChoice: "",
-            state: "requested", // requested, inGame
+            playerOneChoice: RPSChoice.None,
+            playerTwoChoice: RPSChoice.None,
+            state: RPSGameState.Requested, // requested, inGame
         }
     }
 
-    removeRPSGame(gameID){
-        if(!this.rpsGame.has(gameID))
-            return;
+    removeRPSGame(gameID: string): void {
+        const rpsGame = this.rpsGame.get(gameID);
 
-        this.players.get(this.rpsGame.get(gameID).playerOne).gameID = "none";
-        this.players.get(this.rpsGame.get(gameID).playerOne).inGame = false;
-        this.players.get(this.rpsGame.get(gameID).playerTwo).gameID = "none";
-        this.players.get(this.rpsGame.get(gameID).playerTwo).inGame = false;
+        if(!rpsGame)
+            return;
+         
+        const playerOne = rpsGame.playerOne;
+        if(playerOne){
+            const player = this.players.get(playerOne);
+            if(player){
+                player.gameID = null;
+                player.inGame = false;
+            }
+        }
+        const playerTwo = rpsGame.playerTwo;
+        if(playerTwo){
+            const player = this.players.get(playerTwo);
+            if(player){
+                player.gameID = null;
+                player.inGame = false;
+            }
+        }
 
         this.rpsGame.delete(gameID);
     }
 
-    rpsRequested(data) {
+    rpsRequested(data: RPSRequestDataPayload): number {
     
         const playerRequested   = this.players.get(data.requestedPlayerID);
         const playerThis        = this.players.get(data.id);
@@ -85,22 +124,9 @@ export class GameManager {
 
         // RPS Game Requested
         return 1;
-
-        /* //console.log("Marking 2: " + data.board);
-        if(data.requestedPlayerID !== player.id)
-            return 0;
-
-        if(player.battleRequested){
-            console.log("Player already in Request state, ignoring new request.");
-            return 0;
-        }
-
-        player.battleRequested = true;
-        rpsGame.BattleRequest(data.id);
-        //console.log("You accepted a battle with player " + rpsGame.playerInRange.id); */
     }
 
-    rpsDeclined(data){
+    rpsDeclined(data: RPSRequestDataPayload): number {
         const playerThis = this.players.get(data.id);
 
         if(!playerThis)
@@ -120,16 +146,20 @@ export class GameManager {
         if(!rpsGame)
             return 0;
 
-        rpsGame.delete(playerThis.gameID)
+        this.rpsGame.delete(playerThis.gameID)
 
+        // RPS Game Declined
         return 1;
     }
 
-    rpsAccept(data){
+    rpsAccept(data: RPSRequestDataPayload): number {
         const playerThis = this.players.get(data.id);
         const playerOther   = this.players.get(data.requestedPlayerID);
     
         if(!playerThis || !playerOther)
+            return 0;
+
+        if(!playerThis.gameID)
             return 0;
 
         const rpsGame = this.rpsGame.get(playerThis.gameID);
@@ -137,17 +167,20 @@ export class GameManager {
         if(!rpsGame)
             return 0;
 
-        rpsGame.state = "inGame";
+        rpsGame.state = RPSGameState.InGame;
         return 1;
     }
 
-    rpsChoice(data){
+    rpsChoice(data: RPSBattleChoicePayload){
         const player = this.players.get(data.id);
 
         if(!player){
             console.log("Player not found for RPS choice.");
             return 0;
         }
+
+        if(!player.gameID)
+            return;
 
         const rpsGame = this.rpsGame.get(player.gameID);
         //console.log("RPS GAMEID: " + player.gameID + "  Choice made : " + data.choice);
@@ -170,22 +203,22 @@ export class GameManager {
         return 1;
     }
 
-    resultInvalid(playerOne, playerTwo){
+    /* resultInvalid(playerOne, playerTwo){
         return {
             playerOne: playerOne,
             playerTwo: playerTwo,
         };
-    }
+    } */
 
-    resultDraw(playerOne, playerTwo, choice){
+    resultDraw(playerOneID: string, playerTwoID: string, choice: string) {
         return {
-            playerOne: playerOne,
-            playerTwo: playerTwo,
+            playerOne: playerOneID,
+            playerTwo: playerTwoID,
             choice: choice,
         };
     }
 
-    resultWinner(winner, winnerChoice, loser, loserChoice){
+    resultWinner(winner: string, winnerChoice: RPSChoice, loser: string, loserChoice: RPSChoice){
         return {
             winner: winner,
             winnerChoice: winnerChoice,
@@ -194,7 +227,7 @@ export class GameManager {
         };
     }
 
-    verifyRPSGame(gameID){
+    verifyRPSGame(gameID: string){
 
         const rpsGame = this.rpsGame.get(gameID);
 
@@ -203,7 +236,7 @@ export class GameManager {
             return 0;
         }
 
-        if(rpsGame.playerOneChoice == null || rpsGame.playerTwoChoice == null){
+        if(rpsGame.playerOneChoice == RPSChoice.None || rpsGame.playerTwoChoice == RPSChoice.None){
             //console.log("Invalid Round. Choices not made yet!");
             return 1;
         }
@@ -211,78 +244,68 @@ export class GameManager {
             //console.log("DRAW!");
             return 2;
         }
-        else if((rpsGame.playerOneChoice === "rock" && rpsGame.playerTwoChoice === "scissors") ||
-                (rpsGame.playerOneChoice === "paper" && rpsGame.playerTwoChoice === "rock") ||
-                (rpsGame.playerOneChoice === "scissors" && rpsGame.playerTwoChoice === "paper")){
+        else if((rpsGame.playerOneChoice === RPSChoice.Rock && rpsGame.playerTwoChoice === RPSChoice.Scissors) ||
+                (rpsGame.playerOneChoice === RPSChoice.Paper && rpsGame.playerTwoChoice === RPSChoice.Rock) ||
+                (rpsGame.playerOneChoice === RPSChoice.Scissors && rpsGame.playerTwoChoice === RPSChoice.Paper)){
             //console.log("WINNER PLAYER ONE!");
             return 3;
         }
-        else if((rpsGame.playerTwoChoice === "rock" && rpsGame.playerOneChoice === "scissors") ||
-                (rpsGame.playerTwoChoice === "paper" && rpsGame.playerOneChoice === "rock") ||
-                (rpsGame.playerTwoChoice === "scissors" && rpsGame.playerOneChoice === "paper")){
+        else if((rpsGame.playerTwoChoice === RPSChoice.Rock && rpsGame.playerOneChoice === RPSChoice.Scissors) ||
+                (rpsGame.playerTwoChoice === RPSChoice.Paper && rpsGame.playerOneChoice === RPSChoice.Rock) ||
+                (rpsGame.playerTwoChoice === RPSChoice.Scissors && rpsGame.playerOneChoice === RPSChoice.Paper)){
             //console.log("WINNER PLAYER TWO!");
             return 4;
         }
 
         return 0;
-        /* if(PlayerOne.choice == null || PlayerTwo.choice == null){
-            console.log("No Winner. Choices not made yet!");
-            return 0;
-        }
-        if(rpsGame.playerOneChoice === rpsGame.playerTwoChoice)
-            return this.resultDraw(PlayerOne, PlayerTwo, rpsGame.playerOneChoice);
-        else if((rpsGame.playerOneChoice === "rock" && rpsGame.playerTwoChoice === "scissors") ||
-                (rpsGame.playerOneChoice === "paper" && rpsGame.playerTwoChoice === "rock") ||
-                (rpsGame.playerOneChoice === "scissors" && rpsGame.playerTwoChoice === "paper"))
-                console.log("You win!"); */
-                
-
     }
 
-    // Tic Tac Toe Game -----------------------------------------------------------------------------------
+    // ====================================================================================================
+    // Tic Tac Toe Game 
+    // ====================================================================================================
 
-    createTTTGame(){
+    createTTTGame(): TTTGame {
         console.log("Creating new TTTGame.");
         return {
-            players: [],
+            players: [null, null],
 
             // Names need to match the names of the board objects in the scene (Blender file)
             boardNames: [   "TTT_Board_1001", "TTT_Board_2001", "TTT_Board_3001",
                             "TTT_Board_4001", "TTT_Board_5001", "TTT_Board_6001",
-                            "TTT_Board_7001", "TTT_Board_8001", "TTT_Board_9001" ],
+                            "TTT_Board_7001", "TTT_Board_8001", "TTT_Board_9001"],
 
-            board: [    "", "", "",
-                        "", "", "",
-                        "", "", "" ],
+            board: [    TTTMark.Empty, TTTMark.Empty, TTTMark.Empty,
+                        TTTMark.Empty, TTTMark.Empty, TTTMark.Empty,
+                        TTTMark.Empty, TTTMark.Empty, TTTMark.Empty ],
 
-            currentMark: "O",
+            currentMark: TTTMark.O,
 
             // 0: waiting for first player
             // 1: waiting for second player
             // 2: in game
             // 3: finished
-            state: 0,
+            state: TTTGameState.WaitingForFirstPlayer,
         };
     }
 
-    startTTTGame(playerID){
+    startTTTGame(playerID: string): number {
         //console.log("Starting TTTGame for player: " + playerID);
 
-        if(this.tttGame.state == 0 && this.tttGame.players.length == 0){
+        if(this.tttGame.state == TTTGameState.WaitingForFirstPlayer && !this.tttGame.players[0]){
             console.log("Player 1 joined the game: " + playerID);
             this.tttGame.players.push(playerID);
-            this.tttGame.state = 1;
+            this.tttGame.state = TTTGameState.WaitingForSecondPlayer;
             return 1;
         }
-        else if(this.tttGame.state == 1 && this.tttGame.players.length == 1){
+        else if(this.tttGame.state == TTTGameState.WaitingForSecondPlayer && !this.tttGame.players[1]){
             if(this.tttGame.players[0] === playerID)
                 return 0;
             console.log("Player 2 joined the game: " + playerID);
             this.tttGame.players.push(playerID);
-            this.tttGame.state = 2;
+            this.tttGame.state = TTTGameState.InGame;
             return 2;
         }
-        else if(this.tttGame.state == 2 || this.tttGame.state == 3){
+        else if(this.tttGame.state == TTTGameState.InGame || this.tttGame.state == TTTGameState.Finished){
             //console.log("Game already in progress or finished. Player: " + playerID + " cannot join.");
             return 0;
         }
@@ -292,60 +315,59 @@ export class GameManager {
         return -1;
     }
 
-    tttMarkField(playerID, field){
+    tttMarkField(playerID: string, field: string): TTTMark {
         //console.log("Current Mark: " + this.tttGame.currentMark);
-        if(this.tttGame.state !== 2) 
+        if(this.tttGame.state !== TTTGameState.InGame) 
         {
             //console.log("Game not in progress. Cannot mark field.");
-            return "none 1";
+            return TTTMark.Empty;
         }
 
         if(!this.tttGame.players.includes(playerID)){
             //console.log("Player not in the game." + playerID);
-            return "none 2";
+            return TTTMark.Empty;
         }
 
         //console.log("In Marking: " + field + " by player: " + playerID);
-
         for(const box of this.tttGame.boardNames) {
             if(box === field) {
                 //console.log("Marking now:" + field);
 
-                const num = field.split("TTT_Board_")[1][0] - 1;
+                const num = Number(field.split("TTT_Board_")[1][0]) - 1;
 
-                if(this.tttGame.board[num] !== "") {
+                if(this.tttGame.board[num] !== TTTMark.Empty) {
                     //console.log("Field already marked.");
-                    return "none 3";
+                    return TTTMark.Empty;
                 }
 
                 if(playerID === this.tttGame.players[0]){
 
-                    if(this.tttGame.currentMark === "X"){
+                    if(this.tttGame.currentMark === TTTMark.X){
                         //console.log("Not your turn.");
-                        return "none 4";
+                        return TTTMark.Empty;
                     }
 
-                    this.tttGame.currentMark = "X";
-                    this.tttGame.board[num] = "X";
+                    this.tttGame.currentMark = TTTMark.X;
+                    this.tttGame.board[num] = TTTMark.X;
 
-                    return "X";
+                    return TTTMark.X;
                 }
                 else{
 
-                    if(this.tttGame.currentMark === "O"){
-                        return "none 5";
+                    if(this.tttGame.currentMark === TTTMark.O){
+                        return TTTMark.Empty;
                     }
 
-                    this.tttGame.currentMark = "O";
-                    this.tttGame.board[num] = "O";
+                    this.tttGame.currentMark = TTTMark.O;
+                    this.tttGame.board[num] = TTTMark.O;
                     
-                    return "O";
+                    return TTTMark.O;
                 }
             }
         }
 
         //console.log("Field not found.");
-        return "none 6";
+        return TTTMark.Empty;
     }
 
     checkWin() {
@@ -379,16 +401,15 @@ export class GameManager {
         return 0;
     }
 
-    checkDraw() {
+    checkDraw(): boolean {
         for (const field of this.tttGame.board) {
             if(field === "")
             {
-                //console.log("Not finished yet");
+                // Game still in progress.
                 return false;
             }
         }
-        console.log("No Winner :(");
-        //this.updateSpriteText(this.spriteGameText, "No Winner");
+        // Draw. No Winner
         return true;
     }
 
