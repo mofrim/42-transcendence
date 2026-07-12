@@ -7,9 +7,32 @@ import {
     normalizePlayerAnimationState,
     transitionPlayerAnimation,
 } from './player_animation.js';
+import type { PlayerState } from './sharedTypes.ts';
 
-export class Remote_Player {
-    static gradientTexture = (() => {
+type PlayerAnimationState = ReturnType<typeof normalizePlayerAnimationState>;
+type RemotePlayerState = PlayerState | PlayerAnimationState;
+type PlayerAnimationActions = Record<
+    PlayerAnimationState,
+    THREE.AnimationAction
+>;
+
+function isMesh(object: THREE.Object3D): object is THREE.Mesh {
+    return (object as THREE.Mesh).isMesh === true;
+}
+
+function getMaterials(mesh: THREE.Mesh): THREE.Material[] {
+    return Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+}
+
+function getMaterialColor(material: THREE.Material): THREE.Color {
+    const color = (material as THREE.Material & { color?: unknown }).color;
+    return color instanceof THREE.Color
+        ? color.clone()
+        : new THREE.Color(0xffffff);
+}
+
+const RemotePlayerImplementation = class Remote_Player {
+    static gradientTexture: THREE.Texture = (() => {
         const texture = new THREE.TextureLoader().load(
             '/textures/gradientMaps/twoTone2.jpg'
         );
@@ -18,8 +41,28 @@ export class Remote_Player {
         return texture;
     })();
 
-    constructor(path, id, scene, defaultAnim = 0, mesh_RP) {
-        this.colAr = mesh_RP;
+    private colAr: THREE.Mesh[];
+    scene: THREE.Scene;
+    id: string | -1;
+    model: THREE.Group | null;
+    group: THREE.Group;
+    state: RemotePlayerState;
+    stateCurrent: PlayerAnimationState;
+    mixer: THREE.AnimationMixer | null;
+    actions: Partial<PlayerAnimationActions> | null;
+    isLoaded: boolean;
+    startSpawn: boolean;
+    isSpawned: boolean;
+    battleRequested: boolean;
+
+    constructor(
+        path: string,
+        id: string,
+        scene: THREE.Scene,
+        _defaultAnim: number,
+        mesh_RP: THREE.Mesh | THREE.Mesh[]
+    ) {
+        this.colAr = mesh_RP as unknown as THREE.Mesh[];
 
         this.scene = scene;
         this.id = id;
@@ -36,10 +79,10 @@ export class Remote_Player {
 
         this.battleRequested = false;
 
-        this.loadEnemyCharacter(path, defaultAnim);
+        this.loadEnemyCharacter(path);
     }
 
-    async animateSpawn(x, startY, z) {
+    async animateSpawn(x: number, startY: number, z: number): Promise<void> {
         if (this.startSpawn) {
             return;
         }
@@ -55,9 +98,10 @@ export class Remote_Player {
         let sv = 0;
         let av = 0;
         //console.log("Animating spawn...");
-        const loop = () => {
+        const loop = (): void => {
             if (spawnY > 0.14) {
-                if (!this.isLoaded || !this.model) {
+                const model = this.model;
+                if (!this.isLoaded || !model) {
                     requestAnimationFrame(loop);
                     return;
                 }
@@ -69,18 +113,22 @@ export class Remote_Player {
                 av += 0.05;
                 this.group.scale.set(sv, 1, sv);
 
-                this.model.traverse((child) => {
-                    if (child.isMesh) {
-                        child.material.transparent = true;
-                        child.material.opacity = av;
+                model.traverse((child: THREE.Object3D) => {
+                    if (isMesh(child)) {
+                        getMaterials(child).forEach((material) => {
+                            material.transparent = true;
+                            material.opacity = av;
+                        });
                     }
                 });
                 requestAnimationFrame(loop);
             } else {
-                this.model.traverse((child) => {
-                    if (child.isMesh) {
-                        child.material.transparent = true;
-                        child.material.opacity = 1;
+                this.model!.traverse((child: THREE.Object3D) => {
+                    if (isMesh(child)) {
+                        getMaterials(child).forEach((material) => {
+                            material.transparent = true;
+                            material.opacity = 1;
+                        });
                     }
                 });
                 this.group.position.y = startY;
@@ -91,12 +139,13 @@ export class Remote_Player {
         loop();
     }
 
-    async animateDeSpawn() {
+    async animateDeSpawn(): Promise<void> {
         let sv = 1;
         let av = 1;
-        const loop = () => {
+        const loop = (): void => {
             if (sv > 0) {
-                if (!this.isLoaded || !this.model) {
+                const model = this.model;
+                if (!this.isLoaded || !model) {
                     requestAnimationFrame(loop);
                     return;
                 }
@@ -106,10 +155,12 @@ export class Remote_Player {
                 av -= 0.005;
                 //console.log("group spawnY: " + this.group.position.y);
                 this.group.scale.set(sv, 1, sv);
-                this.model.traverse((child) => {
-                    if (child.isMesh) {
-                        child.material.transparent = true;
-                        child.material.opacity = av;
+                model.traverse((child: THREE.Object3D) => {
+                    if (isMesh(child)) {
+                        getMaterials(child).forEach((material) => {
+                            material.transparent = true;
+                            material.opacity = av;
+                        });
                     }
                 });
                 requestAnimationFrame(loop);
@@ -127,16 +178,12 @@ export class Remote_Player {
                 if (this.mixer) this.mixer.stopAllAction();
 
                 if (this.group) {
-                    this.group.traverse((obj) => {
-                        if (obj.isMesh) {
+                    this.group.traverse((obj: THREE.Object3D) => {
+                        if (isMesh(obj)) {
                             obj.geometry?.dispose();
-                            if (obj.material) {
-                                if (Array.isArray(obj.material)) {
-                                    obj.material.forEach((m) => m.dispose());
-                                } else {
-                                    obj.material.dispose();
-                                }
-                            }
+                            getMaterials(obj).forEach((material) =>
+                                material.dispose()
+                            );
                         }
                     });
                 }
@@ -146,48 +193,54 @@ export class Remote_Player {
                 this.actions = {};
                 this.mixer = null;
                 this.model = null;
-                this.group = null;
             }
         };
         loop();
     }
 
-    loadEnemyCharacter(path, defaultAnim) {
+    loadEnemyCharacter(path: string): void {
         const loader = new GLTFLoader();
         //console.log("Enemy character loading...");
 
         loader.load(path, (gltf) => {
-            this.model = gltf.scene;
+            const model = gltf.scene;
+            this.model = model;
 
-            this.group.add(this.model);
+            this.group.add(model);
 
             this.group.scale.set(0, 1, 0);
 
             //model.position.set(x, y, z);
             //model.rotation.y = rot;
-            this.model.rotation.y = Math.PI;
+            model.rotation.y = Math.PI;
             //this.colAr.push(this.model);
-            this.model.traverse((object) => {
-                if (object.isMesh) {
+            model.traverse((object: THREE.Object3D) => {
+                if (isMesh(object)) {
                     this.colAr.push(object);
 
                     object.castShadow = true;
                     object.receiveShadow = true;
 
-                    if (object.material.name === 'Outline') {
-                        object.material = new THREE.MeshBasicMaterial({
-                            color: 0x000000,
-                            transparent: true,
-                            opacity: 0,
-                        });
-                        object.castShadow = false;
-                        return;
-                    } else {
-                        object.material = new THREE.MeshToonMaterial({
-                            color: object.material.color.clone(),
+                    const sourceMaterial = object.material;
+                    const materials = getMaterials(object).map((material) => {
+                        if (material.name === 'Outline') {
+                            object.castShadow = false;
+                            return new THREE.MeshBasicMaterial({
+                                color: 0x000000,
+                                transparent: true,
+                                opacity: 0,
+                            });
+                        }
+
+                        return new THREE.MeshToonMaterial({
+                            color: getMaterialColor(material),
                             gradientMap: Remote_Player.gradientTexture,
                         });
-                    }
+                    });
+
+                    object.material = Array.isArray(sourceMaterial)
+                        ? materials
+                        : materials[0];
 
                     /* object.material = new THREE.MeshToonMaterial({
                         color: object.material.color.clone(),
@@ -205,7 +258,7 @@ export class Remote_Player {
                 }
             });
 
-            const mixer = new THREE.AnimationMixer(this.model);
+            const mixer = new THREE.AnimationMixer(model);
             // starts Idle as the active action after initialization
             try {
                 const actions = createPlayerAnimationActions(
@@ -229,7 +282,7 @@ export class Remote_Player {
         });
     }
 
-    rotateCharacter(startPos, endPos) {
+    rotateCharacter(startPos: THREE.Vector3, endPos: THREE.Vector3): void {
         const rotate = new THREE.Quaternion();
         const up = new THREE.Vector3(0, 1, 0);
 
@@ -249,7 +302,7 @@ export class Remote_Player {
         this.group.quaternion.copy(rotate);
     } */
 
-    updateAnimation(delta) {
+    updateAnimation(delta: number): void {
         if (!this.isLoaded || !this.mixer || !this.actions) {
             return;
         }
@@ -271,11 +324,11 @@ export class Remote_Player {
         this.mixer.update(delta);
     }
 
-    removePlayer() {
+    removePlayer(): void {
         this.id = -1;
     }
 
-    destroy() {
+    destroy(): void {
         // console.log("DESTROY");
 
         this.animateDeSpawn();
@@ -306,4 +359,21 @@ export class Remote_Player {
         this.model = null;
         this.group = null; */
     }
+};
+
+type RemotePlayerInstance = InstanceType<typeof RemotePlayerImplementation>;
+
+interface RemotePlayerConstructor {
+    readonly gradientTexture: THREE.Texture;
+    new (
+        path: string,
+        id: string,
+        scene: THREE.Scene,
+        defaultAnim: number,
+        mesh_RP: THREE.Mesh | THREE.Mesh[]
+    ): RemotePlayerInstance & { id: string };
 }
+
+export type Remote_Player = RemotePlayerInstance;
+export const Remote_Player =
+    RemotePlayerImplementation as RemotePlayerConstructor;
