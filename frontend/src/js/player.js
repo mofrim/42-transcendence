@@ -239,7 +239,7 @@ export class Player {
         const key = this.controls.key;
         const up = this.controls.up;
         const rotate = this.controls.rotate;
-        const active = key[0] === 0 && key[1] === 0 ? false : true;
+        const active = key[0] !== 0 || key[1] !== 0;
         const play = active ? 'Run' : 'Idle';
         // Zustandsübergänge können den Renderloop abbrechen
         this.controls.current = play;
@@ -324,7 +324,7 @@ export class Player {
 
             // calculate camera direction and rotate input into world
             const dir = deltaPosition.normalize();
-            const angle = this.unwrapRad(Math.atan2(dir.x, dir.z));
+            const angle = Math.atan2(dir.x, dir.z);
             rotate.setFromAxisAngle(up, angle);
 
             // smooth rotation toward camera/movement direction using slerp
@@ -352,9 +352,5 @@ export class Player {
             Math.min(this.playerCollider.start.y, this.playerCollider.end.y) -
             this.playerCollider.radius;
         //console.log("Lowest Y 4: " + this.lowestY.toFixed(4));
-    }
-
-    unwrapRad(r) {
-        return Math.atan2(Math.sin(r), Math.cos(r));
     }
 }

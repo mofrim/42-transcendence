@@ -137,7 +137,6 @@ export function transitionPlayerAnimation(
         Number.isFinite(fadeDuration) && fadeDuration > 0 ? fadeDuration : 0;
 
     fromAction.stopFading();
-    toAction.stopFading();
     toAction.reset().setEffectiveTimeScale(1).setEffectiveWeight(1).play();
 
     if (duration === 0) {

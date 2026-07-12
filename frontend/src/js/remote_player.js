@@ -229,10 +229,6 @@ export class Remote_Player {
         });
     }
 
-    unwrapRad(r) {
-        return Math.atan2(Math.sin(r), Math.cos(r));
-    }
-
     rotateCharacter(startPos, endPos) {
         const rotate = new THREE.Quaternion();
         const up = new THREE.Vector3(0, 1, 0);
@@ -240,7 +236,7 @@ export class Remote_Player {
         const dir = new THREE.Vector3();
         dir.subVectors(endPos, startPos).normalize();
 
-        const angle = this.unwrapRad(Math.atan2(dir.x, dir.z));
+        const angle = Math.atan2(dir.x, dir.z);
         rotate.setFromAxisAngle(up, angle);
 
         this.group.quaternion.copy(rotate);
