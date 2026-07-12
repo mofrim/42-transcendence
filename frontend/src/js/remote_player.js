@@ -2,6 +2,12 @@ import * as THREE from 'three';
 
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
+import {
+    createPlayerAnimationActions,
+    normalizePlayerAnimationState,
+    transitionPlayerAnimation,
+} from './player_animation.js';
+
 export class Remote_Player {
     static gradientTexture = (() => {
         const texture = new THREE.TextureLoader().load(
@@ -199,30 +205,28 @@ export class Remote_Player {
                 }
             });
 
-            const mix = new THREE.AnimationMixer(this.model);
+            const mixer = new THREE.AnimationMixer(this.model);
+            // starts Idle as the active action after initialization
+            try {
+                const actions = createPlayerAnimationActions(
+                    mixer,
+                    gltf.animations,
+                    path
+                );
 
-            this.actions = {
-                Idle: mix.clipAction(gltf.animations[1]),
-                Run: mix.clipAction(gltf.animations[2]),
-            };
-
-            for (const m in this.actions) {
-                this.actions[m].enabled = true;
-                this.actions[m].setEffectiveTimeScale(1);
-                if (m !== 'Idle') this.actions[m].setEffectiveWeight(0);
+                this.mixer = mixer;
+                this.actions = actions;
+                this.state = normalizePlayerAnimationState(this.state);
+                // Der erste Zustand und Updates während des Spawns werden verworfen
+                this.stateCurrent = 'Idle';
+                this.isLoaded = true;
+            } catch (error) {
+                console.error(
+                    `Remote player animation initialization failed for "${path}":`,
+                    error
+                );
             }
-
-            this.actions.Idle.play();
-
-            //const action = mix.clipAction(gltf.animations[defaultAnim]);
-            //action.play();
-
-            // console.log("animations:", gltf.animations);
-
-            this.mixer = mix;
-            //this.model = model;
         });
-        this.isLoaded = true;
     }
 
     unwrapRad(r) {
@@ -250,30 +254,22 @@ export class Remote_Player {
     } */
 
     updateAnimation(delta) {
+        if (!this.isLoaded || !this.mixer || !this.actions) {
+            return;
+        }
+
         const fadeDuration = 0.3;
+        const nextState = normalizePlayerAnimationState(this.state);
+        this.state = nextState;
 
         // smooth start <-> stop animation
-        if (this.stateCurrent != this.state) {
-            const current = this.actions[this.state];
-            const old = this.actions[this.stateCurrent];
-            this.stateCurrent = this.state;
-
-            current.reset();
-            current.weight = 1.0;
-            current.stopFading();
-            old.stopFading();
-
-            if (this.state !== 'Idle')
-                current.time =
-                    old.time *
-                    (current.getClip().duration / old.getClip().duration);
-            old._scheduleFading(fadeDuration, old.getEffectiveWeight(), 0);
-            current._scheduleFading(
-                fadeDuration,
-                current.getEffectiveWeight(),
-                1
+        if (this.stateCurrent !== nextState) {
+            this.stateCurrent = transitionPlayerAnimation(
+                this.actions,
+                this.stateCurrent,
+                nextState,
+                fadeDuration
             );
-            current.play();
         }
 
         this.mixer.update(delta);

@@ -3,6 +3,11 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { Capsule } from 'three/addons/math/Capsule.js';
 
+import {
+    createPlayerAnimationActions,
+    transitionPlayerAnimation,
+} from './player_animation.js';
+
 export class Player {
     static gradientTexture = (() => {
         const texture = new THREE.TextureLoader().load(
@@ -168,24 +173,26 @@ export class Player {
                 }
             });
 
-            const animations = gltf.animations;
+            const mixer = new THREE.AnimationMixer(this.model);
 
-            this.mixer = new THREE.AnimationMixer(this.model);
+            try {
+                const actions = createPlayerAnimationActions(
+                    mixer,
+                    gltf.animations,
+                    path
+                );
 
-            this.actions = {
-                Idle: this.mixer.clipAction(animations[0]),
-                Run: this.mixer.clipAction(animations[1]),
-            };
-
-            for (const m in this.actions) {
-                this.actions[m].enabled = true;
-                this.actions[m].setEffectiveTimeScale(1);
-                if (m !== 'Idle') this.actions[m].setEffectiveWeight(0);
+                this.mixer = mixer;
+                this.actions = actions;
+                this.stateCurrent = 'Idle';
+                this.isLoaded = true;
+            } catch (error) {
+                console.error(
+                    `Player animation initialization failed for "${path}":`,
+                    error
+                );
             }
-
-            this.actions.Idle.play();
         });
-        this.isLoaded = true;
     }
 
     getForwardVector(camera) {
@@ -234,27 +241,22 @@ export class Player {
         const rotate = this.controls.rotate;
         const active = key[0] === 0 && key[1] === 0 ? false : true;
         const play = active ? 'Run' : 'Idle';
+        // Zustandsübergänge können den Renderloop abbrechen
+        this.controls.current = play;
 
         // change animation
-        if (this.controls.current != play) {
-            //console.log("In Change");
-
-            const current = this.actions[play];
-            const old = this.actions[this.controls.current];
-            this.controls.current = play;
-
-            current.reset();
-            current.weight = 1.0;
-            current.stopFading();
-            old.stopFading();
-            // synchro if not idle
-            if (play !== 'Idle')
-                current.time =
-                    old.time *
-                    (current.getClip().duration / old.getClip().duration);
-            old._scheduleFading(fade, old.getEffectiveWeight(), 0);
-            current._scheduleFading(fade, current.getEffectiveWeight(), 1);
-            current.play();
+        if (
+            this.isLoaded &&
+            this.mixer !== null &&
+            this.actions !== null &&
+            this.stateCurrent !== play
+        ) {
+            this.stateCurrent = transitionPlayerAnimation(
+                this.actions,
+                this.stateCurrent,
+                play,
+                fade
+            );
         }
 
         let damping = Math.exp(-4 * delta) - 1;
@@ -342,7 +344,9 @@ export class Player {
             }
         }
         //console.log(this.group.position);
-        if (this.mixer) this.mixer.update(delta);
+        if (this.isLoaded && this.mixer && this.actions) {
+            this.mixer.update(delta);
+        }
 
         this.lowestY =
             Math.min(this.playerCollider.start.y, this.playerCollider.end.y) -
