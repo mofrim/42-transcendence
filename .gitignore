@@ -1,3 +1,4 @@
 node_modules
 .vite
 /.idea/
+frontend/tsconfig.tsbuildinfo
