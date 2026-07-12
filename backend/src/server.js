@@ -314,6 +314,8 @@ function handlePlayerUpdate(socket, data) {
     y: data.y,
     z: data.z,
     state: data.state,
+    // Das Backend entfernte character aus normalen Positionsupdates
+    character: socket.data.character,
   });
 }
 
