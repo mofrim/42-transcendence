@@ -4,9 +4,8 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { Capsule } from 'three/addons/math/Capsule.js';
 
 export class Player {
-
     static gradientTexture = (() => {
-            const texture = new THREE.TextureLoader().load(
+        const texture = new THREE.TextureLoader().load(
             '/textures/gradientMaps/twoTone2.jpg'
         );
         texture.minFilter = THREE.NearestFilter;
@@ -31,7 +30,7 @@ export class Player {
         this.mixer = null;
         this.actions = null;
 
-        this.scene.add( this.group );
+        this.scene.add(this.group);
         this.worldOctree = worldOctree;
         this.playerVelocity = new THREE.Vector3();
         this.playerDirection = new THREE.Vector3();
@@ -42,26 +41,34 @@ export class Player {
         this.spawnY = 1.5;
         this.isLoaded = false;
         this.isSpawned = false;
-        
+
         this.battleRequested = false;
         this.inRPSBattleMode = false;
         this.youSendRPGRequest = false;
-        
-        this.playerCollider = new Capsule( new THREE.Vector3( 14.2, Player.colStartY, -9.2 ), new THREE.Vector3( 14.2, Player.colEndY, -9.2 ), Player.colRad );
 
-        this.lowestY = Math.min(this.playerCollider.start.y, this.playerCollider.end.y) - this.playerCollider.radius;
+        this.playerCollider = new Capsule(
+            new THREE.Vector3(14.2, Player.colStartY, -9.2),
+            new THREE.Vector3(14.2, Player.colEndY, -9.2),
+            Player.colRad
+        );
+
+        this.lowestY =
+            Math.min(this.playerCollider.start.y, this.playerCollider.end.y) -
+            this.playerCollider.radius;
         //console.log("Lowest Y 1: " + this.lowestY.toFixed(4));
 
-        Player.offset = ((Player.colEndY - Player.colStartY) / 2) + Player.colRad;
+        Player.offset = (Player.colEndY - Player.colStartY) / 2 + Player.colRad;
         // apply lift
         //this.playerCollider.translate(new THREE.Vector3(0, Player.offset, 0));
 
-        this.lowestY = Math.min(this.playerCollider.start.y, this.playerCollider.end.y) - this.playerCollider.radius;
+        this.lowestY =
+            Math.min(this.playerCollider.start.y, this.playerCollider.end.y) -
+            this.playerCollider.radius;
         //console.log("Lowest Y 2: " + this.lowestY.toFixed(4));
 
         this.controls = {
-            key: [ 0, 0 ],
-            up: new THREE.Vector3( 0, 1, 0 ),
+            key: [0, 0],
+            up: new THREE.Vector3(0, 1, 0),
             rotate: new THREE.Quaternion(),
             current: 'Idle',
             fadeDuration: 0.5,
@@ -84,17 +91,17 @@ export class Player {
         let av = 0;
         const loop = () => {
             if (this.spawnY > 0) {
-                if (!this.isLoaded || !this.model){
+                if (!this.isLoaded || !this.model) {
                     requestAnimationFrame(loop);
                     return;
                 }
 
                 //if(sv > 0.2)
-                    this.spawnY -= 0.1;
+                this.spawnY -= 0.1;
                 //if(sv < 0.9)
-                    sv += 0.07;
-                    av += 0.005;
-                //else                    
+                sv += 0.07;
+                av += 0.005;
+                //else
                 //    sv = 1;
                 this.group.scale.set(sv, 1, sv);
                 this.model.traverse((child) => {
@@ -122,38 +129,33 @@ export class Player {
 
     static loader = new GLTFLoader();
 
-    loadModel(path, defaultAnim = 0)  {
-
+    loadModel(path, defaultAnim = 0) {
         //const loader = new GLTFLoader();
-        Player.loader.load( path, ( gltf ) => {
-
+        Player.loader.load(path, (gltf) => {
             this.model = gltf.scene;
-            
-            this.group.add( this.model );
+
+            this.group.add(this.model);
             //this.model.rotation.y = Math.PI;
             this.group.rotation.y = Math.PI;
-            
-            this.model.traverse( function ( object ) {
-                
-                if ( object.isMesh ) {
-                    
+
+            this.model.traverse(function (object) {
+                if (object.isMesh) {
                     object.castShadow = true;
                     object.receiveShadow = true;
-                    
-                    if (object.material.name === "Outline") {
+
+                    if (object.material.name === 'Outline') {
                         //console.log("OUTLINE MESH FOUND");
                         object.material = new THREE.MeshBasicMaterial({
                             color: 0x000000,
                             transparent: true,
-                            opacity: 0
+                            opacity: 0,
                         });
                         object.castShadow = false; // important: prevents shadow artifacts
                         return;
-                    } 
-                    else{
+                    } else {
                         object.material = new THREE.MeshToonMaterial({
                             color: object.material.color.clone(),
-                            gradientMap: Player.gradientTexture
+                            gradientMap: Player.gradientTexture,
                         });
 
                         /* object.material = new THREE.MeshToonMaterial({
@@ -164,82 +166,81 @@ export class Player {
                         }); */
                     }
                 }
-
-            } );
+            });
 
             const animations = gltf.animations;
 
-            this.mixer = new THREE.AnimationMixer( this.model );
+            this.mixer = new THREE.AnimationMixer(this.model);
 
             this.actions = {
-                Idle: this.mixer.clipAction( animations[ 0 ] ),
-                Run: this.mixer.clipAction( animations[ 1 ] )
+                Idle: this.mixer.clipAction(animations[0]),
+                Run: this.mixer.clipAction(animations[1]),
             };
 
-            for ( const m in this.actions ) {
-                this.actions[ m ].enabled = true;
-                this.actions[ m ].setEffectiveTimeScale( 1 );
-                if ( m !== 'Idle' ) 
-                    this.actions[ m ].setEffectiveWeight( 0 );
+            for (const m in this.actions) {
+                this.actions[m].enabled = true;
+                this.actions[m].setEffectiveTimeScale(1);
+                if (m !== 'Idle') this.actions[m].setEffectiveWeight(0);
             }
 
             this.actions.Idle.play();
-        } );
+        });
         this.isLoaded = true;
     }
 
-
     getForwardVector(camera) {
-        camera.getWorldDirection( this.playerDirection );
+        camera.getWorldDirection(this.playerDirection);
         this.playerDirection.y = 0;
         this.playerDirection.normalize();
         return this.playerDirection;
     }
 
     getSideVector(camera) {
-        camera.getWorldDirection( this.playerDirection );
+        camera.getWorldDirection(this.playerDirection);
         this.playerDirection.y = 0;
         this.playerDirection.normalize();
-        this.playerDirection.cross( camera.up );
+        this.playerDirection.cross(camera.up);
 
         return this.playerDirection;
     }
 
     playerCollisions() {
-        const result = this.worldOctree.capsuleIntersect( this.playerCollider );
+        const result = this.worldOctree.capsuleIntersect(this.playerCollider);
         this.playerOnFloor = false;
-        if ( result ) {
+        if (result) {
             // determine if the surface we bumped into is something we can stand on
             this.playerOnFloor = result.normal.y >= 0.15; // allow slopes up to ~81° but ignore sheer vertical walls
-            if ( ! this.playerOnFloor ) {
+            if (!this.playerOnFloor) {
                 //console.log("WALL COLLISION");
-                this.playerVelocity.addScaledVector( result.normal, - result.normal.dot( this.playerVelocity ) );
+                this.playerVelocity.addScaledVector(
+                    result.normal,
+                    -result.normal.dot(this.playerVelocity)
+                );
             }
-            if ( result.depth >= 1e-10 ) {
+            if (result.depth >= 1e-10) {
                 //console.log("FLOOR COLLISION " + result.depth);
-                this.playerCollider.translate( result.normal.multiplyScalar( result.depth ) );
+                this.playerCollider.translate(
+                    result.normal.multiplyScalar(result.depth)
+                );
             }
         }
     }
 
-
     //let count = 0;
-    updateCharacter( delta ) {
-
+    updateCharacter(delta) {
         const fade = this.controls.fadeDuration;
         const key = this.controls.key;
         const up = this.controls.up;
         const rotate = this.controls.rotate;
-        const active = key[ 0 ] === 0 && key[ 1 ] === 0 ? false : true;
+        const active = key[0] === 0 && key[1] === 0 ? false : true;
         const play = active ? 'Run' : 'Idle';
 
         // change animation
-        if ( this.controls.current != play ) {
-
+        if (this.controls.current != play) {
             //console.log("In Change");
 
-            const current = this.actions[ play ];
-            const old = this.actions[ this.controls.current ];
+            const current = this.actions[play];
+            const old = this.actions[this.controls.current];
             this.controls.current = play;
 
             current.reset();
@@ -247,50 +248,61 @@ export class Player {
             current.stopFading();
             old.stopFading();
             // synchro if not idle
-            if ( play !== 'Idle' ) 
-                current.time = old.time * ( current.getClip().duration / old.getClip().duration );
-            old._scheduleFading( fade, old.getEffectiveWeight(), 0 );
-            current._scheduleFading( fade, current.getEffectiveWeight(), 1 );
+            if (play !== 'Idle')
+                current.time =
+                    old.time *
+                    (current.getClip().duration / old.getClip().duration);
+            old._scheduleFading(fade, old.getEffectiveWeight(), 0);
+            current._scheduleFading(fade, current.getEffectiveWeight(), 1);
             current.play();
         }
 
-        
-
-        let damping = Math.exp( - 4 * delta ) - 1;
-        if ( ! this.playerOnFloor) {
+        let damping = Math.exp(-4 * delta) - 1;
+        if (!this.playerOnFloor) {
             this.playerVelocity.y -= this.GRAVITY * delta;
             // small air resistance
             damping *= 0.01;
         }
-        this.playerVelocity.addScaledVector( this.playerVelocity, damping );
-        const deltaPosition = this.playerVelocity.clone().multiplyScalar( delta );
-        this.playerCollider.translate( deltaPosition );
+        this.playerVelocity.addScaledVector(this.playerVelocity, damping);
+        const deltaPosition = this.playerVelocity.clone().multiplyScalar(delta);
+        this.playerCollider.translate(deltaPosition);
         this.playerCollisions();
         const newPos = new THREE.Vector3()
             .addVectors(this.playerCollider.start, this.playerCollider.end)
-            .multiplyScalar(0.5) ;
+            .multiplyScalar(0.5);
         newPos.y -= Player.offset;
-        
-        //camera.position.add( newPos.clone().sub(this.group.position) );
-        this.group.position.copy( newPos );
 
-        if(this.group.position.y < -0.01){
-            this.group.position.set(this.group.position.x, 0, this.group.position.z);
-            this.playerCollider.start.set(this.group.position.x, this.group.position.y + Player.colStartY, this.group.position.z);
-            this.playerCollider.end.set(this.group.position.x, this.group.position.y + Player.colEndY, this.group.position.z);
+        //camera.position.add( newPos.clone().sub(this.group.position) );
+        this.group.position.copy(newPos);
+
+        if (this.group.position.y < -0.01) {
+            this.group.position.set(
+                this.group.position.x,
+                0,
+                this.group.position.z
+            );
+            this.playerCollider.start.set(
+                this.group.position.x,
+                this.group.position.y + Player.colStartY,
+                this.group.position.z
+            );
+            this.playerCollider.end.set(
+                this.group.position.x,
+                this.group.position.y + Player.colEndY,
+                this.group.position.z
+            );
             this.playerVelocity.set(0, 0, 0);
-        } 
-        if (this.controls.current === 'Idle' ) {
+        }
+        if (this.controls.current === 'Idle') {
             this.playerVelocity.set(0, this.playerVelocity.y, 0);
         }
-
 
         // value just for spawn animation
         this.group.position.y += this.spawnY;
 
         // move object
-        if ( this.controls.current !== 'Idle' ) {
-/*             let damping = Math.exp( - 4 * delta ) - 1;
+        if (this.controls.current !== 'Idle') {
+            /*             let damping = Math.exp( - 4 * delta ) - 1;
             if ( ! this.playerOnFloor ) {
                 this.playerVelocity.y -= this.GRAVITY * delta;
                 // small air resistance
@@ -304,38 +316,41 @@ export class Player {
                 .addVectors(this.playerCollider.start, this.playerCollider.end)
                 .multiplyScalar(0.5) ;
             newPos.y -= Player.offset;
-            
+
             //camera.position.add( newPos.clone().sub(this.group.position) );
             this.group.position.copy( newPos ); */
 
             // calculate camera direction and rotate input into world
             const dir = deltaPosition.normalize();
-            const angle = this.unwrapRad( Math.atan2( dir.x, dir.z ) );
-            rotate.setFromAxisAngle( up, angle );
+            const angle = this.unwrapRad(Math.atan2(dir.x, dir.z));
+            rotate.setFromAxisAngle(up, angle);
 
             // smooth rotation toward camera/movement direction using slerp
-            const t = 1 - Math.exp( -this.controls.turnSmoothness * delta );
-            if ( isFinite( rotate.x ) && isFinite( rotate.y ) && isFinite( rotate.z ) && isFinite( rotate.w ) ) {
+            const t = 1 - Math.exp(-this.controls.turnSmoothness * delta);
+            if (
+                isFinite(rotate.x) &&
+                isFinite(rotate.y) &&
+                isFinite(rotate.z) &&
+                isFinite(rotate.w)
+            ) {
                 rotate.normalize();
                 this.group.quaternion.normalize();
-                this.group.quaternion.slerp( rotate, t );
-            } 
-            else {
-                console.log("ROTATE");
-                this.group.quaternion.copy( rotate );
+                this.group.quaternion.slerp(rotate, t);
+            } else {
+                console.log('ROTATE');
+                this.group.quaternion.copy(rotate);
             }
         }
         //console.log(this.group.position);
-        if ( this.mixer ) 
-            this.mixer.update( delta );
+        if (this.mixer) this.mixer.update(delta);
 
-        this.lowestY = Math.min(this.playerCollider.start.y, this.playerCollider.end.y) - this.playerCollider.radius;
+        this.lowestY =
+            Math.min(this.playerCollider.start.y, this.playerCollider.end.y) -
+            this.playerCollider.radius;
         //console.log("Lowest Y 4: " + this.lowestY.toFixed(4));
-
     }
 
-    unwrapRad( r ) {
-        return Math.atan2( Math.sin( r ), Math.cos( r ) );
+    unwrapRad(r) {
+        return Math.atan2(Math.sin(r), Math.cos(r));
     }
-
 }
