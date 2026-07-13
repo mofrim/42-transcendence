@@ -1,19 +1,21 @@
 // ====================================================================================================
 // TODO: better create a new folder for sharedTypes for front and backend?
 // ====================================================================================================
-import { TTTMark } from '../../frontend/src/js/sharedTypes.js';
+import {
+    TTTGameState,
+    RPSChoice,
+    RPSGameState,
+    PlayerState,
+    TTTMark
+} from '@common/types';
 
-import { TTTGameState } from '../../frontend/src/js/sharedTypes.js';
-import { RPSChoice } from '../../frontend/src/js/sharedTypes.js';
-import { RPSGameState } from '../../frontend/src/js/sharedTypes.js';
-import { PlayerState } from '../../frontend/src/js/sharedTypes.js';
-import { PlayerData } from '../../frontend/src/js/sharedTypes.js';
-
-import { RPSRequestDataPayload } from '../../frontend/src/js/sharedTypes.js';
-import { RPSBattleChoicePayload } from '../../frontend/src/js/sharedTypes.js';
-
-import type { RPSGame } from '../../frontend/src/js/sharedTypes.js';
-import type { TTTGame } from '../../frontend/src/js/sharedTypes.js';
+import type {
+    RPSGame,
+    TTTGame,
+    PlayerData,
+    RPSRequestDataPayload,
+    RPSBattleChoicePayload,
+} from '@common/types';
 
 
 export class GameManager {
