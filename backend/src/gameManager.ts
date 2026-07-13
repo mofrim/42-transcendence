@@ -334,7 +334,13 @@ export class GameManager {
             if (box === field) {
                 //console.log("Marking now:" + field);
 
-                const num = Number(field.split("TTT_Board_")[1][0]) - 1;
+                const parts = field.split("TTT_Board_");
+
+                let num: number = 0;
+
+                if (parts.length >= 2 && parts[1] != undefined && parts[1].length > 0) {
+                    num = Number(parts[1][0]) - 1;
+                }
 
                 if (this.tttGame.board[num] !== TTTMark.Empty) {
                     //console.log("Field already marked.");

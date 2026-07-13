@@ -1,6 +1,6 @@
 import http from 'http';
 import { Server } from 'socket.io';
-import { GameManager } from './gameManager.js';
+import { GameManager } from './gameManager.ts';
 
 const server = http.createServer();
 const gameManager = new GameManager();

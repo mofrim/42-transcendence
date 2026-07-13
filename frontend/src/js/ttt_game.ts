@@ -1,12 +1,10 @@
 import * as THREE from 'three';
 import { Player } from "./player";
-import { TTTMark } from './sharedTypes';
+import { TTTMark } from '@common/types';
 
 // Type-only import: exists only during TypeScript compilation, not at runtime.
 // The type is removed after compilation, so it must be imported using `import type`.
-import type { TTTBoard, PlayerSlot } from './sharedTypes';
-import type { TTTInitGamePayload } from './sharedTypes';
-import type { GLBMesh } from './sharedTypes';
+import type { TTTBoard, PlayerSlot, TTTInitGamePayload, GLBMesh } from '@common/types';
 
 export class TTT_Game {
 
@@ -35,7 +33,7 @@ export class TTT_Game {
 
     vsSprite: Map<string, THREE.Mesh>;
 
-    constructor (scene: THREE.Scene, player: Player, board: GLBMesh[], button: THREE.Mesh, renderer: THREE.WebGLRenderer) {
+    constructor(scene: THREE.Scene, player: Player, board: GLBMesh[], button: THREE.Mesh, renderer: THREE.WebGLRenderer) {
         this.board = board;
         this.scene = scene;
         this.button = button;
@@ -46,9 +44,9 @@ export class TTT_Game {
 
         this.tttCamera = false;
 
-        this.state = [  TTTMark.Empty, TTTMark.Empty, TTTMark.Empty,
-                        TTTMark.Empty, TTTMark.Empty, TTTMark.Empty,
-                        TTTMark.Empty, TTTMark.Empty, TTTMark.Empty];
+        this.state = [TTTMark.Empty, TTTMark.Empty, TTTMark.Empty,
+        TTTMark.Empty, TTTMark.Empty, TTTMark.Empty,
+        TTTMark.Empty, TTTMark.Empty, TTTMark.Empty];
 
         this.vsAnimationStart = false;
 
@@ -82,11 +80,11 @@ export class TTT_Game {
 
     initGame(data: TTTInitGamePayload): void {
 
-        if(data.game.players[0]){
+        if (data.game.players[0]) {
             this.updateSpriteText(this.spriteGameCount, "1/2", 50);
             this.players[0] = data.game.players[0];
         }
-        if(data.game.players[1]){
+        if (data.game.players[1]) {
             this.updateSpriteText(this.spriteGameCount, "2/2", 50);
             this.updateSpriteText(this.spriteGameText, "IN GAME", 50);
             this.players[1] = data.game.players[1];
@@ -99,22 +97,22 @@ export class TTT_Game {
         const loop = () => {
             //console.log("Waiting for board to be ready...");
             this.wait(10);
-            if(!this.board[0]) {
+            if (!this.board[0]) {
                 requestAnimationFrame(loop);
             }
-            else{
+            else {
                 let index = 0;
-                for(const box of data.game.board) {
-                    if(box === TTTMark.X)
+                for (const box of data.game.board) {
+                    if (box === TTTMark.X)
                         this.board[index].material.map = this.texX;
-                    else if(box === TTTMark.O)
+                    else if (box === TTTMark.O)
                         this.board[index].material.map = this.texO;
                     index++;
                     //console.log("# Initializing board: " + box);
                 }
             }
         };
-        loop();    
+        loop();
     }
 
     addVSSprite(path: string, x: number, y: number): THREE.Mesh {
@@ -128,7 +126,7 @@ export class TTT_Game {
         const geometry = new THREE.PlaneGeometry(x, y);
         let mesh = new THREE.Mesh(geometry, material);
         //this.overlayScene.add(mesh);
-        
+
         return mesh;
     }
 
@@ -147,7 +145,7 @@ export class TTT_Game {
     }
 
     async startVSAnimation(): Promise<void> {
-        
+
         this.removeText();
         this.vsAnimationStart = false;
 
@@ -156,7 +154,7 @@ export class TTT_Game {
         const vsSprite = this.vsSprite.get("VS");
         const beamSprite = this.vsSprite.get("Beam");
 
-        if(!userASprite || !userBSprite || !vsSprite || !beamSprite)
+        if (!userASprite || !userBSprite || !vsSprite || !beamSprite)
             return;
 
         this.overlayScene.add(userASprite);
@@ -172,23 +170,23 @@ export class TTT_Game {
             const posA = userASprite.position.x;
             const posB = userBSprite.position.x;
 
-            userASprite.position.set(posA+0.005, yp, 0);
-            userBSprite.position.set(posB-0.005, yp, 0);
+            userASprite.position.set(posA + 0.005, yp, 0);
+            userBSprite.position.set(posB - 0.005, yp, 0);
 
-            if(posA < 0.75 && posB > -0.75) {
+            if (posA < 0.75 && posB > -0.75) {
                 requestAnimationFrame(loop);
             }
-            else{
+            else {
                 this.overlayScene.remove(userASprite);
                 this.overlayScene.remove(userBSprite);
                 this.overlayScene.remove(vsSprite);
                 this.overlayScene.remove(beamSprite);
 
                 this.removeText();
-                if(this.player.id === this.players[0]){
+                if (this.player.id === this.players[0]) {
                     this.addText("You are \"X\". You go first", 0, -0.5, 75);
                 }
-                else{
+                else {
                     this.addText("You are \"O\". You go second", 0, -0.5, 75);
                 }
 
@@ -196,18 +194,18 @@ export class TTT_Game {
 
             }
         };
-        loop();       
+        loop();
     }
 
     async winAnimation(user: string): Promise<void> {
-        
+
         this.vsAnimationStart = false;
         console.log("Animating win...");
 
         const userSprite = this.vsSprite.get(user);
         const beamSprite = this.vsSprite.get("Beam");
-        
-        if(!userSprite || !beamSprite)
+
+        if (!userSprite || !beamSprite)
             return;
 
         this.overlayScene.add(userSprite);
@@ -219,12 +217,12 @@ export class TTT_Game {
         const loop = () => {
             const posA = userSprite.position.x;
 
-            userSprite.position.set(posA+0.003, yp, 0);
+            userSprite.position.set(posA + 0.003, yp, 0);
 
-            if(posA < 0) {
+            if (posA < 0) {
                 requestAnimationFrame(loop);
             }
-            else{
+            else {
                 this.removeText();
 
                 //console.log("Animation finished.");
@@ -237,34 +235,34 @@ export class TTT_Game {
                 this.tttCamera = false;
             }
         };
-        loop();       
+        loop();
     }
 
     async drawAnimation(): Promise<void> {
-        
+
         this.vsAnimationStart = false;
         console.log("Animating Draw...");
 
         const drawSprite = this.vsSprite.get("Draw");
         const beamSprite = this.vsSprite.get("Beam");
 
-        if(!drawSprite || !beamSprite)
+        if (!drawSprite || !beamSprite)
             return;
 
         this.overlayScene.add(drawSprite);
         this.overlayScene.add(beamSprite);
 
         drawSprite.scale.set(0.5, 0.5, 0);
-        drawSprite.position.set(0,-0.2, 0);
+        drawSprite.position.set(0, -0.2, 0);
 
         const loop = () => {
             const scaleX = drawSprite.scale.x;
-            drawSprite.scale.set(scaleX+0.015, scaleX+0.015, 1);
+            drawSprite.scale.set(scaleX + 0.015, scaleX + 0.015, 1);
 
-            if(scaleX < 2) {
+            if (scaleX < 2) {
                 requestAnimationFrame(loop);
             }
-            else{
+            else {
                 this.removeText();
 
                 //console.log("Animation finished.");
@@ -277,14 +275,14 @@ export class TTT_Game {
                 //this.endGame();
             }
         };
-        loop();       
+        loop();
     }
 
     render(): void {
 
         this.onResize();
 
-        if(this.vsAnimationStart){
+        if (this.vsAnimationStart) {
             this.startVSAnimation();
         }
 
@@ -300,22 +298,22 @@ export class TTT_Game {
         this.spriteGameCount.position.set(24.25, 5.2, -16.13);
     } */
 
-    setPlayerOne(playerID: string): void{
+    setPlayerOne(playerID: string): void {
         this.players[0] = playerID;
         console.log("First Player added to game." + playerID);
         this.updateSpriteText(this.spriteGameCount, "1/2", 50);
-        if(this.player.id === playerID)
+        if (this.player.id === playerID)
             this.addText("You joined the game. Waiting for another player...", 0, -0.5, 75);
     }
 
-    setPlayerTwo(playerID : string): void{
+    setPlayerTwo(playerID: string): void {
         console.log("Second Player added to game." + playerID);
         this.players[1] = playerID;
     }
 
     startGame(playerOne: string, playerTwo: string): void {
 
-        if(playerOne !== this.players[0] || playerTwo !== this.players[1]){
+        if (playerOne !== this.players[0] || playerTwo !== this.players[1]) {
             console.log("Player IDs do not match. Cannot start game.");
             return;
         }
@@ -327,11 +325,11 @@ export class TTT_Game {
         this.updateSpriteText(this.spriteGameCount, "2/2", 50);
         this.updateSpriteText(this.spriteGameText, "IN GAME", 50);
 
-        if(this.player.id !== playerOne && this.player.id !== playerTwo)
+        if (this.player.id !== playerOne && this.player.id !== playerTwo)
             return;
 
         this.startVSAnimation();
-        
+
     }
 
     wait(ms: number): Promise<void> {
@@ -341,70 +339,70 @@ export class TTT_Game {
     async endGame(): Promise<void> {
         await this.wait(2000);
         this.clearBoard();
-        
+
         console.log("TTT GAME END!!!");
-        
+
         this.tttCamera = false;
 
         this.updateSpriteText(this.spriteGameText, "Click to Join", 50);
         this.updateSpriteText(this.spriteGameCount, "0/2", 50);
 
-        if(this.players.includes(this.player.id))
+        if (this.players.includes(this.player.id))
             this.removeText();
         this.players = [null, null];
-        for (const box of this.board) 
+        for (const box of this.board)
             box.material.color = new THREE.Color(0xffffff);
-        
+
     }
 
     clearBoard() {
-        for(const box of this.board) {
+        for (const box of this.board) {
             box.material.map = this.texEmpty;
             box.material.needsUpdate = true;
         }
 
-        this.state = [  TTTMark.Empty, TTTMark.Empty, TTTMark.Empty,
-                        TTTMark.Empty, TTTMark.Empty, TTTMark.Empty,
-                        TTTMark.Empty, TTTMark.Empty, TTTMark.Empty];
+        this.state = [TTTMark.Empty, TTTMark.Empty, TTTMark.Empty,
+        TTTMark.Empty, TTTMark.Empty, TTTMark.Empty,
+        TTTMark.Empty, TTTMark.Empty, TTTMark.Empty];
     }
 
     drawWin(winnerID: number): void {
-        if(winnerID == 1){
+        if (winnerID == 1) {
             this.board[0].material.color = new THREE.Color(0xff0000);
             this.board[1].material.color = new THREE.Color(0xff0000);
             this.board[2].material.color = new THREE.Color(0xff0000);
         }
-        else if(winnerID == 2){
+        else if (winnerID == 2) {
             this.board[3].material.color = new THREE.Color(0xff0000);
             this.board[4].material.color = new THREE.Color(0xff0000);
             this.board[5].material.color = new THREE.Color(0xff0000);
         }
-        else if(winnerID == 3){
+        else if (winnerID == 3) {
             this.board[6].material.color = new THREE.Color(0xff0000);
             this.board[7].material.color = new THREE.Color(0xff0000);
             this.board[8].material.color = new THREE.Color(0xff0000);
         }
-        else if(winnerID == 4){
+        else if (winnerID == 4) {
             this.board[0].material.color = new THREE.Color(0xff0000);
             this.board[3].material.color = new THREE.Color(0xff0000);
             this.board[6].material.color = new THREE.Color(0xff0000);
         }
-        else if(winnerID == 5){
+        else if (winnerID == 5) {
             this.board[1].material.color = new THREE.Color(0xff0000);
             this.board[4].material.color = new THREE.Color(0xff0000);
             this.board[7].material.color = new THREE.Color(0xff0000);
         }
-        else if(winnerID == 6){
+        else if (winnerID == 6) {
             this.board[2].material.color = new THREE.Color(0xff0000);
             this.board[5].material.color = new THREE.Color(0xff0000);
             this.board[8].material.color = new THREE.Color(0xff0000);
         }
-        else if(winnerID == 7){
+        else if (winnerID == 7) {
             this.board[0].material.color = new THREE.Color(0xff0000);
             this.board[4].material.color = new THREE.Color(0xff0000);
             this.board[8].material.color = new THREE.Color(0xff0000);
         }
-        else if(winnerID == 8){
+        else if (winnerID == 8) {
             this.board[2].material.color = new THREE.Color(0xff0000);
             this.board[4].material.color = new THREE.Color(0xff0000);
             this.board[6].material.color = new THREE.Color(0xff0000);
@@ -412,19 +410,19 @@ export class TTT_Game {
     }
 
     winner(playerID: number): void {
-        if(this.players.includes(this.player.id)){
+        if (this.players.includes(this.player.id)) {
             this.removeText();
             this.updateSpriteText(this.spriteGameText, "FINISH", 50);
 
-            if(this.player.id === playerID){
+            if (this.player.id === playerID) {
                 this.winAnimation("UserA");
                 this.addText("You Win!", 0, -0.5, 75);
             }
-            else{
+            else {
                 this.winAnimation("UserB");
                 this.addText("Player " + playerID + " is the winner...", 0, -0.5, 75);
             }
-            
+
             console.log("Player 1 wins!");
         }
     }
@@ -432,13 +430,12 @@ export class TTT_Game {
     draw(): void {
         this.removeText();
         this.drawAnimation();
-        this.updateSpriteText(this.spriteGameText, "FINISH", 50); 
+        this.updateSpriteText(this.spriteGameText, "FINISH", 50);
     }
 
     checkDraw(): boolean {
         for (const field of this.state) {
-            if(field === "")
-            {
+            if (field === "") {
                 //console.log("Not finished yet");
                 return false;
             }
@@ -451,24 +448,24 @@ export class TTT_Game {
 
         console.log("In Marking: " + fieldName + " by player: " + playerID);
 
-        if(this.players.includes(this.player.id)){
+        if (this.players.includes(this.player.id)) {
             this.removeText();
 
-            if(this.player.id === this.players[0] && mark === TTTMark.X)
+            if (this.player.id === this.players[0] && mark === TTTMark.X)
                 this.addText("Waiting...", 0, -0.5, 75);
-            else if(this.player.id === this.players[0] && mark === TTTMark.O)
+            else if (this.player.id === this.players[0] && mark === TTTMark.O)
                 this.addText("Your Turn with X!", 0, -0.5, 75);
 
-            if(this.player.id === this.players[1] && mark === TTTMark.O)
+            if (this.player.id === this.players[1] && mark === TTTMark.O)
                 this.addText("Waiting...", 0, -0.5, 75);
-            else if(this.player.id === this.players[1] && mark === TTTMark.X)
+            else if (this.player.id === this.players[1] && mark === TTTMark.X)
                 this.addText("Your Turn with O!", 0, -0.5, 75);
         }
 
-        for(const box of this.board) {
-            if(box.name === fieldName) {
+        for (const box of this.board) {
+            if (box.name === fieldName) {
                 //console.log("Marking now:" + fieldName);
-                if(mark === TTTMark.O)
+                if (mark === TTTMark.O)
                     box.material.map = this.texO;
                 else
                     box.material.map = this.texX;
@@ -480,7 +477,7 @@ export class TTT_Game {
 
     // TODO: better create a sprite class ---------------------------------------
 
-        makeSprite(text: string, size: number): THREE.Sprite {
+    makeSprite(text: string, size: number): THREE.Sprite {
 
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
@@ -488,11 +485,11 @@ export class TTT_Game {
         if (!ctx) {
             throw new Error("Failed to get 2D canvas context");
         }
-        
+
         canvas.width = 2048;
         canvas.height = 256;
-        
-        ctx.font = size+'px Segoe UI Black';
+
+        ctx.font = size + 'px Segoe UI Black';
         ctx.fillStyle = 'white';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
@@ -521,11 +518,11 @@ export class TTT_Game {
         const canvas = sprite.material.map?.image as HTMLCanvasElement;
         const ctx = canvas.getContext('2d');
 
-        if(!ctx)
+        if (!ctx)
             return;
 
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.font = size+'px Segoe UI Black';
+        ctx.font = size + 'px Segoe UI Black';
         ctx.fillStyle = 'white';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
@@ -540,7 +537,7 @@ export class TTT_Game {
     }
 
     removeText(): void {
-        if(this.currentTextState) {
+        if (this.currentTextState) {
             this.currentTextState.forEach((textSprite) => {
                 this.overlayScene.remove(textSprite);
             });

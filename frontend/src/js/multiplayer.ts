@@ -3,8 +3,8 @@ import * as THREE from 'three';
 // import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { Remote_Player } from './remote_player.js';
 
-import { PlayerState, CharacterModel } from './sharedTypes.ts';
-import type { Character } from './sharedTypes.ts';
+import { PlayerState, CharacterModel } from '@common/types';
+import type { Character } from '@common/types';
 
 /** all both gender */
 const PLAYER_CHARACTER_MODELS = {
