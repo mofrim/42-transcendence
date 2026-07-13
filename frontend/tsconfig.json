@@ -1,12 +1,14 @@
 {
   "compilerOptions": {
+    "rootDir": ".",
+    "outDir": "./dist",
     "target": "ES2023",
     "lib": ["ES2023", "DOM"],
     "module": "ESNext",
     "types": ["vite/client", "node"],
     "skipLibCheck": true,
 
-    /* bundler mode */
+    // bundler mode
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": true,
@@ -14,7 +16,7 @@
     "noEmit": true,
     "jsx": "react-jsx",
 
-    /* linting */
+    // linting
     "noUnusedLocals": true,
     "noUnusedParameters": true,
 
@@ -23,7 +25,7 @@
 
     "noFallthroughCasesInSwitch": true,
 
-    /* hybrid JS/TS */
+    // hybrid JS/TS
     "allowJs": true,
     "checkJs": false,
     "esModuleInterop": true,
