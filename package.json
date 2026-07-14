@@ -2,6 +2,11 @@
   "name": "ft_transcendence",
   "private": true,
   "workspaces": ["backend", "frontend", "common"],
+  "scripts": {
+      "dev:backend": "npm run dev -w backend",
+      "dev:frontend": "npm run dev -w frontend",
+      "build": "npm run build -w common && npm run build -w backend && npm run build -w frontend"
+  },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@types/node": "^24.12.3",
