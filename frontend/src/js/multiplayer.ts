@@ -6,10 +6,13 @@ import { Remote_Player } from './remote_player.js';
 import { PlayerState, CharacterModel } from '@common/types';
 import type { Character } from '@common/types';
 
-/** all both gender */
-const PLAYER_CHARACTER_MODELS = {
-    male: '/glb/Male_Test.glb',
-    female: '/glb/Female_Test.glb',
+/**
+ * all both gender
+ * Typisiert die Modellpfade vollständig nach CharacterModel und behebt TS7053.
+*/
+const PLAYER_CHARACTER_MODELS: Readonly<Record<CharacterModel, string>> = {
+    [CharacterModel.male]: '/glb/Male_Test.glb',
+    [CharacterModel.female]: '/glb/Female_Test.glb',
 };
 
 function normalizeCharacter(character: Character): CharacterModel {
