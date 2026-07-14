@@ -9,10 +9,19 @@ COPY package.json package-lock.json ./
 COPY backend/package.json backend/
 COPY common/package.json common/
 
+
 RUN npm ci;
-COPY backend/src ./src
+COPY backend/src backend/src
+COPY backend/tsconfig.json backend/
+COPY common common
+
+RUN npm run build --workspace=@common/types
+
+WORKDIR /app/backend
+
+RUN npm run build
 
 EXPOSE 3000
 
 # CMD ["tail", "-f"]
-CMD ["npm", "run", "server"]
+CMD ["node", "dist/server.js"]
