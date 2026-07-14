@@ -5,7 +5,8 @@ import { Octree } from 'three/addons/math/Octree.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
 import { MultiplayerManager } from './multiplayer.js';
-import { NPC } from './npc.js';
+// 'NPC' is defined but never used.
+// import { NPC } from './npc.js';
 import { Player } from './player.js';
 import { Camera } from './camera.js';
 import { TTT_Game } from './ttt_game.js';
@@ -737,10 +738,13 @@ export function startGame(
 
     //tttGame.board = tttBox;
 
+    /** error TS6133: 'initNPC' is declared but its value is never read.
     function initNPC(): void {
+
         const npc1 = new NPC('glb/SpidermanMeme.glb', 2, scene, 1);
         const npc2 = new NPC('glb/SpidermanMeme.glb', 3, scene, 1);
         const npc3 = new NPC('glb/SpidermanMeme.glb', 4, scene, 1);
+
 
         npc1.group.position.set(5.5, -0.1, 5);
         npc2.group.position.set(7, -0.1, 6.5);
@@ -756,6 +760,7 @@ export function startGame(
         npcs.set(npc2.id, npc2);
         npcs.set(npc3.id, npc3);
     }
+    */
 
     // Test function fo spawn and delete
     /* function onDeleteCollision(): void {
