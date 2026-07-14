@@ -1051,7 +1051,8 @@ export function startGame(character = true, serverUrl = null) {
     function animate() {
 
         timer.update();
-        const delta = timer.getDelta();
+        /** begrenze Frame-Zeit */
+        const delta = Math.min(timer.getDelta(), 0.05);
 
         keyControls(delta);
 
