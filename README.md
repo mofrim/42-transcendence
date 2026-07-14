@@ -58,6 +58,8 @@ specifying for which tasks and which parts of the project.
 
 - The Three.JS Reference - <https://threejs.org/docs/>
 
+- A brand new article describing exactly our backend tech-stack - <https://www.xjavascript.com/blog/socket-io-typescript-express/>
+
 ## Team Information
 
     For each team member mentioned at the top of the README.md, you must provide:
