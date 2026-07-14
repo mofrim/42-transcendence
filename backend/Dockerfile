@@ -6,8 +6,11 @@ WORKDIR /app
 RUN apk update && apk upgrade && apk add --no-cache curl bash iproute2-ss;
 
 COPY package.json package-lock.json ./
+COPY backend/package.json backend/
+COPY common/package.json common/
+
 RUN npm ci;
-COPY ./src ./src
+COPY backend/src ./src
 
 EXPOSE 3000
 

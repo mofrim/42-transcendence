@@ -1,11 +1,17 @@
 {
   "name": "@common/types",
   "version": "1.0.0",
-  "main": "./dist/sharedTypes.js",
-  "types": "./dist/sharedTypes.d.ts",
   "private": true,
   "type": "module",
+  "scripts": {
+	  "build": "tsc"
+	},
+  "main": "./dist/sharedTypes.js",
+  "types": "./dist/sharedTypes.d.ts",
   "exports": {
-    ".": "./dist/sharedTypes.js"
+    ".": {
+      "types": "./dist/sharedTypes.d.ts",
+      "import": "./dist/sharedTypes.js"
+    }
   }
 }

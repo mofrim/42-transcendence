@@ -8,7 +8,7 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
-    "@common/types": "^1.0.0",
+    "@common/types": "1.0.0",
     "socket.io": "^4.8.3"
   }
 }
