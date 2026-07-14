@@ -11,22 +11,33 @@ import { Camera } from './camera.js';
 import { TTT_Game } from './ttt_game.js';
 import { RPS_Game } from './rps_game.js';
 
-import { io } from "socket.io-client";
+import { io } from 'socket.io-client';
 
 import { PlayerState, RPSChoice } from '@common/sharedTypes';
 import type { GLBMesh } from '@common/sharedTypes';
-import type { RPSInvalidPayload, RPSDrawPayload, RPSWinnerPayload, RPSAcceptDeclinePayload, RPSRequestDataPayload } from '@common/sharedTypes';
-import type { TTTMarkPayload, TTTStartPayload, TTTWinPayload, TTTDrawPayload } from '@common/sharedTypes';
+import type {
+    RPSInvalidPayload,
+    RPSDrawPayload,
+    RPSWinnerPayload,
+    RPSAcceptDeclinePayload,
+    RPSRequestDataPayload,
+} from '@common/sharedTypes';
+import type {
+    TTTMarkPayload,
+    TTTStartPayload,
+    TTTWinPayload,
+    TTTDrawPayload,
+} from '@common/sharedTypes';
 import type { PlayerUpdatePayload } from '@common/sharedTypes';
 
 /** all both gender */
 
 function whichCharacterModelPath(character: boolean): string {
-    if(character === true) {
+    if (character === true) {
         return '/glb/Male_Test.glb';
     }
     return '/glb/Female_Test.glb';
-} 
+}
 
 /* const PLAYER_CHARACTER_MODELS = {
     true: '/glb/Male_Test.glb',
@@ -42,22 +53,27 @@ function normalizeCharacter(character: boolean): boolean {
     return character !== false;
 } */
 
-
-export function startGame(whichCharacter: boolean = true, serverUrl: string | null = null) {
-
+export function startGame(
+    whichCharacter: boolean = true,
+    serverUrl: string | null = null
+) {
     // ============================================================================
     // SERVER CONNECTION
     // ============================================================================
 
-    console.log("character: " + whichCharacter);
+    console.log('character: ' + whichCharacter);
 
     /* const character = normalizeCharacter(whichCharacter);
     const playerModelPath = PLAYER_CHARACTER_MODELS[character]; */
     const character = whichCharacter;
     const playerModelPath = whichCharacterModelPath(whichCharacter);
-    const selectedSocketServerUrl = typeof serverUrl === 'string' ? serverUrl.trim() : '';
+    const selectedSocketServerUrl =
+        typeof serverUrl === 'string' ? serverUrl.trim() : '';
 
-    const socketServerUrl = selectedSocketServerUrl || import.meta.env.VITE_SOCKET_SERVER_URL || "http://localhost:3000";
+    const socketServerUrl =
+        selectedSocketServerUrl ||
+        import.meta.env.VITE_SOCKET_SERVER_URL ||
+        'http://localhost:3000';
 
     const socket = io(socketServerUrl, {
         auth: { character },
@@ -69,117 +85,105 @@ export function startGame(whichCharacter: boolean = true, serverUrl: string | nu
     let tttGame: TTT_Game | null = null;
     let rpsGame: RPS_Game | null = null;
 
-    socket.on("connect", () => {
-        console.log("Your Player ID: " + socket.id);
+    socket.on('connect', () => {
+        console.log('Your Player ID: ' + socket.id);
         if (player) {
             player.id = socket.id;
             //tttGame.playerID = socket.id;
         }
     });
 
-    socket.on("player_connected", (data) => {
+    socket.on('player_connected', (data) => {
         const id = typeof data === 'string' ? data : data.id;
         //const character = typeof data === 'string' ? true : normalizeCharacter(data.character);
         const character = data.character;
 
-        console.log("someone joined:", id);
+        console.log('someone joined:', id);
         if (id && multiplayer && !multiplayer.players.get(id))
             multiplayer.spawnPlayer(id, character);
     });
 
-    socket.on("player_disconnected", (id) => {
-        console.log("someone left:", id);
-        if(!multiplayer)
-            return;
+    socket.on('player_disconnected', (id) => {
+        console.log('someone left:', id);
+        if (!multiplayer) return;
         const disconnectedPlayer = multiplayer.players.get(id);
-        if (disconnectedPlayer)
-            disconnectedPlayer.removePlayer()
+        if (disconnectedPlayer) disconnectedPlayer.removePlayer();
     });
 
-    socket.on("disconnect", (reason) => {
-        if(!multiplayer)
-            return;
-        for (const [id, _player] of multiplayer.players){
+    socket.on('disconnect', (reason) => {
+        if (!multiplayer) return;
+        for (const [id, _player] of multiplayer.players) {
             _player;
             const disconnectedPlayer = multiplayer.players.get(id);
-            if(disconnectedPlayer)
-                disconnectedPlayer.removePlayer()
+            if (disconnectedPlayer) disconnectedPlayer.removePlayer();
         }
-        if(!tttGame)
-            return;
+        if (!tttGame) return;
         tttGame.endGame();
-        console.log("Server Disconnect:", reason);
+        console.log('Server Disconnect:', reason);
     });
 
-
-    socket.on("initData", (data) => {
-        console.log("Received initData from server.");
-        if(!tttGame)
-            return;
+    socket.on('initData', (data) => {
+        console.log('Received initData from server.');
+        if (!tttGame) return;
         tttGame.initGame(data);
     });
 
-    socket.on("update", (data) => {
+    socket.on('update', (data) => {
         //console.log("Received data:" + data.type + ":", data.state);
         //console.log("Received data:" + data.type);
         switch (data.type) {
-
-            case "player_update":
+            case 'player_update':
                 //console.log("Received player update:");
                 handlePlayer(data);
                 break;
 
-            case "ttt_playerOne":
-                if(tttGame)
-                    tttGame.setPlayerOne(data.id);
+            case 'ttt_playerOne':
+                if (tttGame) tttGame.setPlayerOne(data.id);
                 break;
-            case "ttt_playerTwo":
-                if(tttGame)
-                    tttGame.setPlayerTwo(data.id);
+            case 'ttt_playerTwo':
+                if (tttGame) tttGame.setPlayerTwo(data.id);
                 break;
-            case "ttt_start":
+            case 'ttt_start':
                 handleTTTstart(data);
                 break;
-            case "ttt_reset":
-                if(tttGame)
-                    tttGame.endGame();
+            case 'ttt_reset':
+                if (tttGame) tttGame.endGame();
                 break;
-            case "ttt_mark":
+            case 'ttt_mark':
                 //console.log("Marking: " + data.board);
                 handleTTTupdate(data);
                 break;
-            case "ttt_win":
+            case 'ttt_win':
                 //console.log("Marking: " + data.board);
                 handleTTTwin(data);
                 break;
-            case "ttt_draw":
+            case 'ttt_draw':
                 //console.log("Marking: " + data.board);
                 handleTTTdraw(data);
                 break;
 
-
-            case "rps_request":
+            case 'rps_request':
                 //console.log("RPS UPDATE");
                 handleRPSRequest(data);
                 break;
-            case "rps_accept":
+            case 'rps_accept':
                 //console.log("RPS UPDATE");
                 handleRPSAccept(data);
                 break;
-            case "rps_decline":
+            case 'rps_decline':
                 //console.log("RPS UPDATE");
                 handleRPSDecline(data);
                 break;
 
-            case "rps_winner":
+            case 'rps_winner':
                 //console.log("RPS Winner: " + data.winner);
                 handleRPSWinner(data);
                 break;
-            case "rps_draw":
+            case 'rps_draw':
                 //console.log("RPS Draw: " + data.playerOne + " and " + data.playerTwo);
                 handleRPSDraw(data);
                 break;
-            case "rps_invalid":
+            case 'rps_invalid':
                 //console.log("RPS Invalid: " + data.playerOne + " and " + data.playerTwo);
                 handleRPSInvalid(data);
                 break;
@@ -188,7 +192,6 @@ export function startGame(whichCharacter: boolean = true, serverUrl: string | nu
                 //console.log("RPS UPDATE");
                 handleChoice(data);
                 break; */
-
         }
     });
 
@@ -201,10 +204,16 @@ export function startGame(whichCharacter: boolean = true, serverUrl: string | nu
         });
     } */
 
-    function emitPosition(x: number, y: number, z: number, state: PlayerState, character: boolean) {
+    function emitPosition(
+        x: number,
+        y: number,
+        z: number,
+        state: PlayerState,
+        character: boolean
+    ) {
         //console.log("Received data:" + type);
-        socket.emit("update", {
-            type: "player_update",
+        socket.emit('update', {
+            type: 'player_update',
             x,
             y,
             z,
@@ -215,8 +224,8 @@ export function startGame(whichCharacter: boolean = true, serverUrl: string | nu
 
     function emitBattleRequest(reqID: string) {
         //console.log("Received data:" + type);
-        socket.emit("update", {
-            type: "rps_request",
+        socket.emit('update', {
+            type: 'rps_request',
             id: socket.id,
             requestedPlayerID: reqID,
         });
@@ -224,8 +233,8 @@ export function startGame(whichCharacter: boolean = true, serverUrl: string | nu
 
     function emitBattleAccept(reqID: string) {
         //console.log("Received data:" + type);
-        socket.emit("update", {
-            type: "rps_accept",
+        socket.emit('update', {
+            type: 'rps_accept',
             id: socket.id,
             requestedPlayerID: reqID,
         });
@@ -233,8 +242,8 @@ export function startGame(whichCharacter: boolean = true, serverUrl: string | nu
 
     function emitBattleDecline(reqID: string) {
         //console.log("Received data:" + type);
-        socket.emit("update", {
-            type: "rps_decline",
+        socket.emit('update', {
+            type: 'rps_decline',
             id: socket.id,
             requestedPlayerID: reqID,
         });
@@ -257,8 +266,8 @@ export function startGame(whichCharacter: boolean = true, serverUrl: string | nu
     } */
     function emitBattleChoice(choice: RPSChoice) {
         //console.log("Received data:" + type);
-        socket.emit("update", {
-            type: "rps_choice",
+        socket.emit('update', {
+            type: 'rps_choice',
             id: socket.id,
             choice: choice,
         });
@@ -266,52 +275,46 @@ export function startGame(whichCharacter: boolean = true, serverUrl: string | nu
 
     function emitTTTmark(obj: string) {
         //console.log("Received data:" + type);
-        socket.emit("update", {
-            type: "ttt_mark",
+        socket.emit('update', {
+            type: 'ttt_mark',
             fieldName: obj,
         });
     }
 
     function emitTTTstart() {
         //console.log("Received data:" + type);
-        socket.emit("update", {
-            type: "ttt_start",
+        socket.emit('update', {
+            type: 'ttt_start',
         });
     }
 
     function handleRPSInvalid(data: RPSInvalidPayload) {
-        if(!player)
-            return;
+        if (!player) return;
         if (data.playerOne === player.id || data.playerTwo === player.id) {
-            console.log("Invalid RPS choice received.");
-            if(!rpsGame)
-                return;
+            console.log('Invalid RPS choice received.');
+            if (!rpsGame) return;
             rpsGame.yourChoice = RPSChoice.None;
             rpsGame.opponentChoice = RPSChoice.None;
 
             //rpsGame.playChoiceAnimation = false;
             //rpsGame.solutionRPSAnimation();
-            if(!rpsGame.animationLoop)
-                return;
+            if (!rpsGame.animationLoop) return;
             cancelAnimationFrame(rpsGame.animationLoop);
             rpsGame.solutionRPSAnimation();
         }
     }
 
     function handleRPSDraw(data: RPSDrawPayload) {
-        console.log("RPS Draw: " + data.playerOne + " and " + data.playerTwo);
-        if(!player)
-            return;
+        console.log('RPS Draw: ' + data.playerOne + ' and ' + data.playerTwo);
+        if (!player) return;
 
         if (data.playerOne === player.id || data.playerTwo === player.id) {
-            console.log("The RPS game ended in a draw!");
-            if(!rpsGame)
-                return;
+            console.log('The RPS game ended in a draw!');
+            if (!rpsGame) return;
             rpsGame.yourChoice = data.choice;
             rpsGame.opponentChoice = data.choice;
 
-            if(!rpsGame.animationLoop)
-                return;
+            if (!rpsGame.animationLoop) return;
             cancelAnimationFrame(rpsGame.animationLoop);
             rpsGame.solutionRPSAnimation();
             /* if(rpsGame.playChoiceAnimation == false)
@@ -322,28 +325,24 @@ export function startGame(whichCharacter: boolean = true, serverUrl: string | nu
     }
 
     function handleRPSWinner(data: RPSWinnerPayload) {
-        if(!player || !rpsGame)
-            return;
+        if (!player || !rpsGame) return;
         if (data.winner === player.id) {
-            console.log("You won the RPS game!");
+            console.log('You won the RPS game!');
             rpsGame.yourChoice = data.winnerChoice;
             rpsGame.opponentChoice = data.loserChoice;
 
-            if(!rpsGame.animationLoop)
-                return;
+            if (!rpsGame.animationLoop) return;
             cancelAnimationFrame(rpsGame.animationLoop);
             rpsGame.solutionRPSAnimation();
             /* rpsGame.playChoiceAnimation = false;
             rpsGame.solutionRPSAnimation(); */
-        }
-        else if (data.loser === player.id) {
-            console.log("You lost the RPS game!");
-            
+        } else if (data.loser === player.id) {
+            console.log('You lost the RPS game!');
+
             rpsGame.yourChoice = data.loserChoice;
             rpsGame.opponentChoice = data.winnerChoice;
 
-            if(!rpsGame.animationLoop)
-                return;
+            if (!rpsGame.animationLoop) return;
             cancelAnimationFrame(rpsGame.animationLoop);
             rpsGame.solutionRPSAnimation();
             /* rpsGame.playChoiceAnimation = false;
@@ -359,57 +358,44 @@ export function startGame(whichCharacter: boolean = true, serverUrl: string | nu
     } */
 
     function handleRPSAccept(data: RPSAcceptDeclinePayload) {
-        if(!player)
-            return;
-        if (data.requestedPlayerID !== player.id)
-            return;
-        if(!rpsGame)
-            return;
+        if (!player) return;
+        if (data.requestedPlayerID !== player.id) return;
+        if (!rpsGame) return;
         rpsGame.readyForRequest = true;
 
         player.battleRequested = false;
-        if(!multiplayer)
-            return;
+        if (!multiplayer) return;
         const opponentPlayer = multiplayer.players.get(data.id);
-        if(!opponentPlayer)
-            return; 
+        if (!opponentPlayer) return;
         opponentPlayer.battleRequested = false;
-        console.log("Battle accepted from player " + data.id);
+        console.log('Battle accepted from player ' + data.id);
         rpsGame.startRPSAnimation();
     }
 
     function handleRPSDecline(data: RPSAcceptDeclinePayload) {
-        if(!player)
-            return;
+        if (!player) return;
 
-        if (data.requestedPlayerID !== player.id)
-            return;
+        if (data.requestedPlayerID !== player.id) return;
 
-        if(!rpsGame)
-            return;
+        if (!rpsGame) return;
         rpsGame.readyForRequest = true;
         player.battleRequested = false;
         player.youSendRPGRequest = false;
-        if(!multiplayer)
-            return;
+        if (!multiplayer) return;
         const opponentPlayer = multiplayer.players.get(data.id);
-        if(!opponentPlayer)
-            return; 
+        if (!opponentPlayer) return;
         opponentPlayer.battleRequested = false;
-        console.log("Battle declined from player " + data.id);
+        console.log('Battle declined from player ' + data.id);
     }
 
     function handleRPSRequest(data: RPSRequestDataPayload) {
         //console.log("Marking 2: " + data.board);
-        if(!player)
-            return;
-        if (data.requestedPlayerID !== player.id)
-            return;
+        if (!player) return;
+        if (data.requestedPlayerID !== player.id) return;
 
         player.battleRequested = true;
 
-        if(!rpsGame)
-            return;
+        if (!rpsGame) return;
 
         rpsGame.BattleRequest(data.id);
         //console.log("You accepted a battle with player " + rpsGame.playerInRange.id);
@@ -417,58 +403,57 @@ export function startGame(whichCharacter: boolean = true, serverUrl: string | nu
 
     function handleTTTupdate(data: TTTMarkPayload) {
         //console.log("Marking 2: " + data.board);
-        if(!tttGame)
-            return;
+        if (!tttGame) return;
         tttGame.markField(data.fieldName, data.id, data.mark);
     }
 
     function handleTTTstart(data: TTTStartPayload) {
-        if(!tttGame)
-            return;
+        if (!tttGame) return;
         tttGame.startGame(data.playerOne, data.playerTwo);
     }
 
     function handleTTTwin(data: TTTWinPayload) {
-        if(!tttGame)
-            return;
+        if (!tttGame) return;
         tttGame.drawWin(data.winner);
         tttGame.winner(data.id);
         tttGame.endGame();
     }
 
     function handleTTTdraw(data: TTTDrawPayload) {
-        if(!tttGame)
-            return;
+        if (!tttGame) return;
         data;
         tttGame.draw();
         tttGame.endGame();
     }
 
     function handlePlayer(data: PlayerUpdatePayload) {
-        if(!multiplayer)
-            return;
+        if (!multiplayer) return;
         // check if existing player/client, if not spawn new player
         if (multiplayer.players.get(data.id)) {
             //console.log("other player:", data.id, data.x.toFixed(4), data.y.toFixed(4), data.z.toFixed(4), data.state);
-            multiplayer.updateMultiplayerID(data.id, data.x, data.y, data.z, data.state);
-        }
-        else {
-            console.log("new player joined:", data.id);
+            multiplayer.updateMultiplayerID(
+                data.id,
+                data.x,
+                data.y,
+                data.z,
+                data.state
+            );
+        } else {
+            console.log('new player joined:', data.id);
             //multiplayer.spawnPlayer(data.id, normalizeCharacter(data.character));
             multiplayer.spawnPlayer(data.id, data.character);
         }
     }
 
-
     // ============================================================================
     // GAME SETUP
     // ============================================================================
 
-    let scene       = new THREE.Scene();
-    let renderer    = new THREE.WebGLRenderer({ antialias: true });
+    let scene = new THREE.Scene();
+    let renderer = new THREE.WebGLRenderer({ antialias: true });
     let followGroup = new THREE.Group();
-    let timer       = new THREE.Timer();
-    let dirLight    = new THREE.DirectionalLight(0xffffff, 2.5);
+    let timer = new THREE.Timer();
+    let dirLight = new THREE.DirectionalLight(0xffffff, 2.5);
 
     let npcs = new Map();
 
@@ -483,7 +468,7 @@ export function startGame(whichCharacter: boolean = true, serverUrl: string | nu
     //const octreeDelete = new Octree();
     //const OctreeSpawn = new Octree();
 
-    let mesh_col: GLBMesh [] = [];
+    let mesh_col: GLBMesh[] = [];
     let mesh_RP: GLBMesh[] = [];
     let tttBox: GLBMesh[] = [];
     let tttStart: GLBMesh;
@@ -493,7 +478,6 @@ export function startGame(whichCharacter: boolean = true, serverUrl: string | nu
     init();
 
     function init() {
-
         //timer = new THREE.Timer();
         timer.connect(document);
 
@@ -507,7 +491,7 @@ export function startGame(whichCharacter: boolean = true, serverUrl: string | nu
         //dirLight = new THREE.DirectionalLight(0xffffff, 2.5);
         // initial position (local to followGroup) - matches previous values
         //dirLight.position.set( - 2, 5, - 3 );
-        dirLight.position.set(- 25, 15, - 15);
+        dirLight.position.set(-25, 15, -15);
         dirLight.castShadow = true;
         const cam = dirLight.shadow.camera;
         cam.top = cam.right = 115;
@@ -528,9 +512,8 @@ export function startGame(whichCharacter: boolean = true, serverUrl: string | nu
         scene.add(ambientLight);
 
         //player = new Player('glb/MainCharacterTest.glb', socket.id, scene, worldOctree);
-        console.log("Player model path: " + playerModelPath);
-        fetch(playerModelPath)
-            .then(res => console.log("exists:", res.ok));
+        console.log('Player model path: ' + playerModelPath);
+        fetch(playerModelPath).then((res) => console.log('exists:', res.ok));
         player = new Player(playerModelPath, socket.id, scene, worldOctree, 2);
         multiplayer = new MultiplayerManager(scene, mesh_RP);
         multiplayer.initMultiplayerTest();
@@ -562,7 +545,10 @@ export function startGame(whichCharacter: boolean = true, serverUrl: string | nu
 
         //initNPC();
 
-        const plane = new THREE.Mesh(new THREE.BoxGeometry(35, 0.05, 35), new THREE.MeshStandardMaterial({ color: 0xffffff }));
+        const plane = new THREE.Mesh(
+            new THREE.BoxGeometry(35, 0.05, 35),
+            new THREE.MeshStandardMaterial({ color: 0xffffff })
+        );
         plane.position.set(0, -0.025, 0);
 
         plane.receiveShadow = true;
@@ -570,8 +556,13 @@ export function startGame(whichCharacter: boolean = true, serverUrl: string | nu
         worldOctree.fromGraphNode(plane);
 
         tttGame = new TTT_Game(scene, player, tttBox, tttStart, renderer);
-        rpsGame = new RPS_Game(scene, socket, player, multiplayer.players, renderer);
-
+        rpsGame = new RPS_Game(
+            scene,
+            socket,
+            player,
+            multiplayer.players,
+            renderer
+        );
 
         /* const testCube = new THREE.Mesh(
             new THREE.BoxGeometry(1, 1, 1),
@@ -584,10 +575,9 @@ export function startGame(whichCharacter: boolean = true, serverUrl: string | nu
         scene.add(new THREE.AmbientLight(0xffffff, 12)); */
     }
 
-
-
-
-    const texture = new THREE.TextureLoader().load('textures/gradientMaps/twoTone2.jpg');
+    const texture = new THREE.TextureLoader().load(
+        'textures/gradientMaps/twoTone2.jpg'
+    );
     const loader = new GLTFLoader();
 
     loadMesh('glb/42WOB_v3.glb', [0, 0, 0]);
@@ -604,53 +594,48 @@ export function startGame(whichCharacter: boolean = true, serverUrl: string | nu
 
             obj.position.set(...pos);
             obj.traverse((child) => {
-                if (child instanceof THREE.Mesh){
+                if (child instanceof THREE.Mesh) {
                     if (child.isMesh) {
-                        if (!child.name.includes("NOCOL")) {
+                        if (!child.name.includes('NOCOL')) {
                             //console.log("Adding collider for: " + child.name);
                             mesh_col.push(child);
                         }
 
-                        if (child.name.includes("TTT_Board"))
+                        if (child.name.includes('TTT_Board'))
                             tttBox.push(child);
-                        if (child.name.includes("TTT_Start"))
-                            tttStart = child;
+                        if (child.name.includes('TTT_Start')) tttStart = child;
 
                         child.scale.set(1.15, 1.15, 1.15);
 
-
-                        if (child.material.name === "Glass_mtl") {
+                        if (child.material.name === 'Glass_mtl') {
                             child.material = new THREE.MeshToonMaterial({
                                 color: 0xaaddff,
                                 transparent: true,
-                                opacity: 0.3
+                                opacity: 0.3,
                             });
                             child.castShadow = false;
                             child.receiveShadow = false;
-
-                        }
-                        else if (child.material.name === "Glass_outside") {
+                        } else if (child.material.name === 'Glass_outside') {
                             child.material = new THREE.MeshToonMaterial({
                                 color: 0xaaddff,
                                 transparent: true,
-                                opacity: 0.8
+                                opacity: 0.8,
                             });
                             child.castShadow = false;
                             child.receiveShadow = false;
-
-                        }
-                        else if (child.material.name === "Glass_block") {
+                        } else if (child.material.name === 'Glass_block') {
                             child.material = new THREE.MeshToonMaterial({
                                 color: 0xaaddff,
-                                transparent: false
+                                transparent: false,
                             });
                             child.castShadow = false;
                             child.receiveShadow = false;
-
-                        }
-                        else {
+                        } else {
                             // outline
-                            const edges = new THREE.EdgesGeometry(child.geometry, 50);
+                            const edges = new THREE.EdgesGeometry(
+                                child.geometry,
+                                50
+                            );
                             const line = new THREE.LineSegments(
                                 edges,
                                 new THREE.LineBasicMaterial({ color: 0x000000 })
@@ -660,13 +645,12 @@ export function startGame(whichCharacter: boolean = true, serverUrl: string | nu
                             child.material = new THREE.MeshToonMaterial({
                                 color: child.material.color,
                                 map: child.material.map || null,
-                                gradientMap: texture
+                                gradientMap: texture,
                             });
 
                             child.castShadow = true;
                             child.receiveShadow = true;
                         }
-
                     }
                 }
             });
@@ -754,11 +738,9 @@ export function startGame(whichCharacter: boolean = true, serverUrl: string | nu
     //tttGame.board = tttBox;
 
     function initNPC(): void {
-
         const npc1 = new NPC('glb/SpidermanMeme.glb', 2, scene, 1);
         const npc2 = new NPC('glb/SpidermanMeme.glb', 3, scene, 1);
         const npc3 = new NPC('glb/SpidermanMeme.glb', 4, scene, 1);
-
 
         npc1.group.position.set(5.5, -0.1, 5);
         npc2.group.position.set(7, -0.1, 6.5);
@@ -798,24 +780,34 @@ export function startGame(whichCharacter: boolean = true, serverUrl: string | nu
         }
     } */
 
-
     function keyControls(deltaTime: number): void {
-        if(!player || !camera) 
-            return;
-        
+        if (!player || !camera) return;
+
         // gives a bit of air control
         const speedDelta = deltaTime * player.controls.runVelocity;
         if (keyStates['KeyW'] || keyStates['ArrowUp']) {
-            player.playerVelocity.add(player.getForwardVector(camera.camera).multiplyScalar(speedDelta));
+            player.playerVelocity.add(
+                player
+                    .getForwardVector(camera.camera)
+                    .multiplyScalar(speedDelta)
+            );
         }
         if (keyStates['KeyS'] || keyStates['ArrowDown']) {
-            player.playerVelocity.add(player.getForwardVector(camera.camera).multiplyScalar(- speedDelta));
+            player.playerVelocity.add(
+                player
+                    .getForwardVector(camera.camera)
+                    .multiplyScalar(-speedDelta)
+            );
         }
         if (keyStates['KeyA'] || keyStates['ArrowLeft']) {
-            player.playerVelocity.add(player.getSideVector(camera.camera).multiplyScalar(- speedDelta));
+            player.playerVelocity.add(
+                player.getSideVector(camera.camera).multiplyScalar(-speedDelta)
+            );
         }
         if (keyStates['KeyD'] || keyStates['ArrowRight']) {
-            player.playerVelocity.add(player.getSideVector(camera.camera).multiplyScalar(speedDelta));
+            player.playerVelocity.add(
+                player.getSideVector(camera.camera).multiplyScalar(speedDelta)
+            );
         }
     }
 
@@ -823,151 +815,128 @@ export function startGame(whichCharacter: boolean = true, serverUrl: string | nu
         let mousePosition = new THREE.Vector2();
 
         mousePosition.x = (event.clientX / window.innerWidth) * 2 - 1;
-        mousePosition.y = - (event.clientY / window.innerHeight) * 2 + 1;
+        mousePosition.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
-        return mousePosition
+        return mousePosition;
     }
 
     function onPressAccept(event: KeyboardEvent) {
         event;
 
-        if(!player || !rpsGame)
-            return;
+        if (!player || !rpsGame) return;
 
         if (player.battleRequested) {
-
             player.battleRequested = false;
-            if(rpsGame.playerInRange)
+            if (rpsGame.playerInRange)
                 rpsGame.playerInRange.battleRequested = false;
             rpsGame.removeText();
             if (rpsGame.battleRequestedPlayer) {
-                console.log("Sending accept request to player " + rpsGame.battleRequestedPlayer);
-                console.log("BATTLE START!");
+                console.log(
+                    'Sending accept request to player ' +
+                        rpsGame.battleRequestedPlayer
+                );
+                console.log('BATTLE START!');
                 emitBattleAccept(rpsGame.battleRequestedPlayer);
                 rpsGame.startRPSAnimation();
-            }
-            else
-                console.log("Player ID empty, cannot send accept request.");
-        }
-        else {
-            console.log("No battle request to accept.");
+            } else console.log('Player ID empty, cannot send accept request.');
+        } else {
+            console.log('No battle request to accept.');
         }
     }
 
     function onPressDecline(event: KeyboardEvent) {
         event;
 
-        if(!player || !rpsGame)
-            return;
+        if (!player || !rpsGame) return;
 
         if (player.battleRequested) {
-
             player.battleRequested = false;
-            if(rpsGame.playerInRange)
+            if (rpsGame.playerInRange)
                 rpsGame.playerInRange.battleRequested = false;
             rpsGame.removeText();
             if (rpsGame.battleRequestedPlayer) {
-                console.log("Sending decline request to player " + rpsGame.battleRequestedPlayer);
-                console.log("BATTLE DECLINED!");
+                console.log(
+                    'Sending decline request to player ' +
+                        rpsGame.battleRequestedPlayer
+                );
+                console.log('BATTLE DECLINED!');
                 emitBattleDecline(rpsGame.battleRequestedPlayer);
-            }
-            else
-                console.log("Player ID empty, cannot send decline request.");
-        }
-        else {
-            console.log("No battle request to decline.");
+            } else console.log('Player ID empty, cannot send decline request.');
+        } else {
+            console.log('No battle request to decline.');
         }
     }
-
 
     function rockKey(event: KeyboardEvent) {
         event;
 
-        if(!player || !rpsGame)
-            return;
+        if (!player || !rpsGame) return;
 
-        if (rpsGame.rps_choiceMade)
-            return;
-        if (!player.inRPSBattleMode)
-            return;
-        if (!rpsGame.inBattleChooseMode)
-            return;
+        if (rpsGame.rps_choiceMade) return;
+        if (!player.inRPSBattleMode) return;
+        if (!rpsGame.inBattleChooseMode) return;
 
-        console.log("Rock key pressed");
+        console.log('Rock key pressed');
 
         rpsGame.rps_choiceMade = true;
         //rpsGame.yourChoice = "rock";
         emitBattleChoice(RPSChoice.Rock);
-
     }
 
     function paperKey(event: KeyboardEvent) {
         event;
 
-        if(!player || !rpsGame)
-            return;
+        if (!player || !rpsGame) return;
 
-        if (rpsGame.rps_choiceMade)
-            return;
-        if (!player.inRPSBattleMode)
-            return;
-        if (!rpsGame.inBattleChooseMode)
-            return;
+        if (rpsGame.rps_choiceMade) return;
+        if (!player.inRPSBattleMode) return;
+        if (!rpsGame.inBattleChooseMode) return;
 
-        console.log("Paper key pressed");
+        console.log('Paper key pressed');
 
         rpsGame.rps_choiceMade = true;
         //rpsGame.yourChoice = "paper";
         emitBattleChoice(RPSChoice.Paper);
-
     }
 
     function scissorsKey(event: KeyboardEvent) {
         event;
 
-        if(!player || !rpsGame)
-            return;
+        if (!player || !rpsGame) return;
 
-        if (rpsGame.rps_choiceMade)
-            return;
-        if (!player.inRPSBattleMode)
-            return;
-        if (!rpsGame.inBattleChooseMode)
-            return;
+        if (rpsGame.rps_choiceMade) return;
+        if (!player.inRPSBattleMode) return;
+        if (!rpsGame.inBattleChooseMode) return;
 
-        console.log("Scissors key pressed");
+        console.log('Scissors key pressed');
 
         rpsGame.rps_choiceMade = true;
         //rpsGame.yourChoice = "scissors";
         emitBattleChoice(RPSChoice.Scissors);
     }
 
-
     function onPressB(event: KeyboardEvent) {
         event;
 
-        if(!rpsGame)
-            return;
+        if (!rpsGame) return;
 
         if (!rpsGame.inRange) {
-            console.log("No player in range to interact with.");
+            console.log('No player in range to interact with.');
             return;
         }
 
-        if(rpsGame.playerInRange) {
+        if (rpsGame.playerInRange) {
             emitBattleRequest(rpsGame.playerInRange.id);
         }
     }
 
     function onClick(event: MouseEvent): void {
-
         let mousePosition = getTTTField(event);
 
         const raycaster = new THREE.Raycaster();
         raycaster.far = 50.0;
 
-        if(!camera)
-            return;
+        if (!camera) return;
 
         raycaster.setFromCamera(mousePosition, camera.camera);
         const hits = raycaster.intersectObjects(mesh_col, false);
@@ -975,15 +944,13 @@ export function startGame(whichCharacter: boolean = true, serverUrl: string | nu
         //console.log("hits.length: " + hits.length );
 
         if (hits.length > 0) {
-
             //console.log("Clicked on TTT box:" + hits[0].object.name);
             //console.log("Clicked on: " + hits[0].object.name );
-            if (hits[0].object.name.includes("TTT_Board")) {
+            if (hits[0].object.name.includes('TTT_Board')) {
                 //tttGame.markField(hits[0].object.name, socket.id);
                 emitTTTmark(hits[0].object.name);
                 //console.log("Clicked on TTT box:" + hits[0].object.name);
-            }
-            else if (hits[0].object.name.includes("TTT_Start")) {
+            } else if (hits[0].object.name.includes('TTT_Start')) {
                 //tttGame.startGame(socket.id);
                 emitTTTstart();
                 //console.log("Clicked on TTT box:" + hits[0].object.name);
@@ -995,7 +962,7 @@ export function startGame(whichCharacter: boolean = true, serverUrl: string | nu
         // const hitsRP = raycaster.intersectObjects(mesh_RP, true);
         // console.log("hitsRP.length: " + hitsRP.length , " , mesh_RP length: " + mesh_RP.length);
 
-        mesh_RP.forEach(o => {
+        mesh_RP.forEach((o) => {
             console.log(o.name, o.isMesh);
         });
 
@@ -1006,8 +973,7 @@ export function startGame(whichCharacter: boolean = true, serverUrl: string | nu
     }
 
     function onKeyDown(event: KeyboardEvent) {
-        if(!player)
-            return;
+        if (!player) return;
 
         keyStates[event.code] = true;
         const key = controls.key;
@@ -1015,50 +981,95 @@ export function startGame(whichCharacter: boolean = true, serverUrl: string | nu
         //console.log("Key pressed: " + event.code);
         switch (event.code) {
             // movement keys
-            case 'ArrowUp': case 'KeyW': key[0] = - 1; break;
-            case 'ArrowDown': case 'KeyS': key[0] = 1; break;
-            case 'ArrowLeft': case 'KeyA': key[1] = - 1; break;
-            case 'ArrowRight': case 'KeyD': key[1] = 1; break;
+            case 'ArrowUp':
+            case 'KeyW':
+                key[0] = -1;
+                break;
+            case 'ArrowDown':
+            case 'KeyS':
+                key[0] = 1;
+                break;
+            case 'ArrowLeft':
+            case 'KeyA':
+                key[1] = -1;
+                break;
+            case 'ArrowRight':
+            case 'KeyD':
+                key[1] = 1;
+                break;
         }
     }
 
     function onKeyUp(event: KeyboardEvent) {
-        if(!player)
-            return;
+        if (!player) return;
 
         keyStates[event.code] = false;
         const key = controls.key;
         player.controls.key = key;
         switch (event.code) {
             // movement keys
-            case 'ArrowUp': case 'KeyW': key[0] = key[0] < 0 ? 0 : key[0]; break;
-            case 'ArrowDown': case 'KeyS': key[0] = key[0] > 0 ? 0 : key[0]; break;
-            case 'ArrowLeft': case 'KeyA': key[1] = key[1] < 0 ? 0 : key[1]; break;
-            case 'ArrowRight': case 'KeyD': key[1] = key[1] > 0 ? 0 : key[1]; break;
+            case 'ArrowUp':
+            case 'KeyW':
+                key[0] = key[0] < 0 ? 0 : key[0];
+                break;
+            case 'ArrowDown':
+            case 'KeyS':
+                key[0] = key[0] > 0 ? 0 : key[0];
+                break;
+            case 'ArrowLeft':
+            case 'KeyA':
+                key[1] = key[1] < 0 ? 0 : key[1];
+                break;
+            case 'ArrowRight':
+            case 'KeyD':
+                key[1] = key[1] > 0 ? 0 : key[1];
+                break;
 
             // battle request keys
-            case 'KeyB': onPressB(event); break;
-            case 'KeyZ': case 'KeyY': onPressAccept(event); break;
-            case 'KeyX': onPressDecline(event); break;
+            case 'KeyB':
+                onPressB(event);
+                break;
+            case 'KeyZ':
+            case 'KeyY':
+                onPressAccept(event);
+                break;
+            case 'KeyX':
+                onPressDecline(event);
+                break;
 
-            case 'Numpad1': case 'Digit1': rockKey(event); break;
-            case 'Numpad2': case 'Digit2': paperKey(event); break;
-            case 'Numpad3': case 'Digit3': scissorsKey(event); break;
+            case 'Numpad1':
+            case 'Digit1':
+                rockKey(event);
+                break;
+            case 'Numpad2':
+            case 'Digit2':
+                paperKey(event);
+                break;
+            case 'Numpad3':
+            case 'Digit3':
+                scissorsKey(event);
+                break;
         }
     }
 
     function onWindowResize() {
-        if(!camera)
-            return;
+        if (!camera) return;
 
         camera.camera.aspect = window.innerWidth / window.innerHeight;
         camera.camera.updateProjectionMatrix();
         renderer.setSize(window.innerWidth, window.innerHeight);
-
     }
 
     function animate() {
-        if(!player || !camera || !renderer || !scene || !tttGame || !rpsGame || !multiplayer)
+        if (
+            !player ||
+            !camera ||
+            !renderer ||
+            !scene ||
+            !tttGame ||
+            !rpsGame ||
+            !multiplayer
+        )
             return;
 
         timer.update();
@@ -1076,9 +1087,13 @@ export function startGame(whichCharacter: boolean = true, serverUrl: string | nu
         camera.camera.position.add(deltaC);
 
         if (tttGame.tttCamera)
-            camera.orbitControls.target.copy(player.group.position).add({ x: 0, y: 1.75, z: 0 });
+            camera.orbitControls.target
+                .copy(player.group.position)
+                .add({ x: 0, y: 1.75, z: 0 });
         else
-            camera.orbitControls.target.copy(player.group.position).add({ x: 0, y: 1, z: 0 });
+            camera.orbitControls.target
+                .copy(player.group.position)
+                .add({ x: 0, y: 1, z: 0 });
         followGroup.position.copy(player.group.position);
         camera.orbitControls.update();
 
@@ -1095,9 +1110,15 @@ export function startGame(whichCharacter: boolean = true, serverUrl: string | nu
         multiplayer.updateMultiplayer(delta);
 
         // TODO !!! player.controls.current needs to be PlayerState
-        if (player.isSpawned){
+        if (player.isSpawned) {
             const state = player.controls.current as PlayerState;
-            emitPosition(player.group.position.x, player.group.position.y, player.group.position.z, state, character);
+            emitPosition(
+                player.group.position.x,
+                player.group.position.y,
+                player.group.position.z,
+                state,
+                character
+            );
         }
 
         rpsGame.updateCheck();
@@ -1106,6 +1127,5 @@ export function startGame(whichCharacter: boolean = true, serverUrl: string | nu
             id;
             player.updateAnimation(delta);
         }
-
     }
 }
