@@ -18,7 +18,6 @@ export class NPC {
     group: THREE.Group;
     mixer: THREE.AnimationMixer | null;
     actions: NPCAnimationActions | null;
-    isLoaded: boolean;
 
     constructor(path: string, id: number, scene: THREE.Scene, defaultAnim: number = 0){
         this.scene = scene;
@@ -27,8 +26,6 @@ export class NPC {
         this.group = new THREE.Group();
         this.mixer = null;
         this.actions = null;
-
-        this.isLoaded = false;
 
         this.loadEnemyCharacter(path, defaultAnim);
     }
@@ -88,11 +85,6 @@ export class NPC {
 
             this.mixer = mix;
         });
-        this.isLoaded = true;
-    }
-
-    unwrapRad( r: number ): number {
-        return Math.atan2( Math.sin( r ), Math.cos( r ) );
     }
 
     rotateCharacter(startPos: THREE.Vector3, endPos: THREE.Vector3): void {
@@ -103,15 +95,13 @@ export class NPC {
         const dir = new THREE.Vector3();
         dir.subVectors(endPos, startPos).normalize();
 
-        const angle = this.unwrapRad( Math.atan2( dir.x, dir.z ) );
+        const angle = Math.atan2( dir.x, dir.z );
         rotate.setFromAxisAngle( up, angle );
 
         this.group.quaternion.copy(rotate);
     }
 
     updateAnimation( delta: number ): void {
-
-        if(this.isLoaded && this.mixer != null && this.model != null)
-            this.mixer.update(delta);
+        this.mixer?.update(delta);
     }
 }
