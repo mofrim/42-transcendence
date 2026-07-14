@@ -75,12 +75,6 @@ export function createPlayerAnimationActions(
         [PLAYER_ANIMATION_STATE.Run]: mixer.clipAction(runClip),
     };
 
-    if (!actions.Idle || !actions.Run) {
-        throw new Error(
-            `Animation action initialization failed for "${modelPath}".`
-        );
-    }
-
     for (const [state, action] of Object.entries(actions)) {
         action.enabled = true;
         action.setEffectiveTimeScale(1);
@@ -89,7 +83,7 @@ export function createPlayerAnimationActions(
         );
     }
 
-    actions.Idle.reset().setEffectiveWeight(1).play();
+    actions.Idle.reset().play();
 
     return actions;
 }
