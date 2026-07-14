@@ -347,7 +347,7 @@ export class TTT_Game {
         this.updateSpriteText(this.spriteGameText, "Click to Join", 50);
         this.updateSpriteText(this.spriteGameCount, "0/2", 50);
 
-        if (this.players.includes(this.player.id))
+        if (this.player.id !== undefined && this.players.includes(this.player.id))
             this.removeText();
         this.players = [null, null];
         for (const box of this.board)
@@ -409,8 +409,8 @@ export class TTT_Game {
         }
     }
 
-    winner(playerID: number): void {
-        if (this.players.includes(this.player.id)) {
+    winner(playerID: string): void {
+        if (this.player.id !== undefined && this.players.includes(this.player.id)) {
             this.removeText();
             this.updateSpriteText(this.spriteGameText, "FINISH", 50);
 
@@ -444,11 +444,11 @@ export class TTT_Game {
         return true;
     }
 
-    markField(fieldName: string, playerID: number, mark: TTTMark): void {
+    markField(fieldName: string, playerID: string, mark: TTTMark): void {
 
         console.log("In Marking: " + fieldName + " by player: " + playerID);
 
-        if (this.players.includes(this.player.id)) {
+        if (this.player.id !== undefined && this.players.includes(this.player.id)) {
             this.removeText();
 
             if (this.player.id === this.players[0] && mark === TTTMark.X)
