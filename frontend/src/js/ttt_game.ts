@@ -124,7 +124,7 @@ export class TTT_Game {
             depthWrite: false
         });
         const geometry = new THREE.PlaneGeometry(x, y);
-        let mesh = new THREE.Mesh(geometry, material);
+        const mesh = new THREE.Mesh(geometry, material);
         //this.overlayScene.add(mesh);
 
         return mesh;
