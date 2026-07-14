@@ -70,8 +70,8 @@ export function createCharacterPreview({
 }: CharacterPreviewOptions): CharacterPreview {
     if (!canvas) {
         return {
-            setCharacter() { },
-            dispose() { },
+            setCharacter() {},
+            dispose() {},
         };
     }
 
