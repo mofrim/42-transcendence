@@ -6,7 +6,7 @@ import {
     RPSChoice,
     RPSGameState,
     PlayerState,
-    TTTMark
+    TTTMark,
 } from '@common/types';
 
 import type {
@@ -194,7 +194,7 @@ export class GameManager {
             return 0;
         }
 
-        if (!player.gameID) return;
+        if (!player.gameID) return 0;
 
         const rpsGame = this.rpsGame.get(player.gameID);
         //console.log("RPS GAMEID: " + player.gameID + "  Choice made : " + data.choice);
@@ -339,7 +339,8 @@ export class GameManager {
             !this.tttGame.players[0]
         ) {
             console.log('Player 1 joined the game: ' + playerID);
-            this.tttGame.players.push(playerID);
+            //this.tttGame.players.push(playerID);
+            this.tttGame.players[0] = playerID;
             this.tttGame.state = TTTGameState.WaitingForSecondPlayer;
             return 1;
         } else if (
@@ -348,7 +349,8 @@ export class GameManager {
         ) {
             if (this.tttGame.players[0] === playerID) return 0;
             console.log('Player 2 joined the game: ' + playerID);
-            this.tttGame.players.push(playerID);
+            //this.tttGame.players.push(playerID);
+            this.tttGame.players[1] = playerID;
             this.tttGame.state = TTTGameState.InGame;
             return 2;
         } else if (
