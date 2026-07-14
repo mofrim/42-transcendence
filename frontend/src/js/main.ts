@@ -240,11 +240,11 @@ export function startGame(whichCharacter: boolean = true, serverUrl: string | nu
         });
     }
 
-    function emitRPSInvalid() {
+    /* function emitRPSInvalid() {
         socket.emit("update", {
             type: "rps_invalid",
         });
-    }
+    } */
 
     /* function emitBattleChoice(reqID, choice) {
         //console.log("Received data:" + type);
@@ -488,7 +488,7 @@ export function startGame(whichCharacter: boolean = true, serverUrl: string | nu
     let tttBox: GLBMesh[] = [];
     let tttStart: GLBMesh;
 
-    let camDistance = 0;
+    //let camDistance = 0;
 
     init();
 
@@ -549,8 +549,8 @@ export function startGame(whichCharacter: boolean = true, serverUrl: string | nu
         camera = new Camera(window, renderer, mesh_col);
         renderer.setAnimationLoop(animate);
 
-        const startV = new THREE.Vector3(0, 1, 0);
-        camDistance = startV.distanceTo(camera.camera.position);
+        //const startV = new THREE.Vector3(0, 1, 0);
+        //camDistance = startV.distanceTo(camera.camera.position);
         //console.log("Distance " + camDistance);
 
         // EVENTS
@@ -976,7 +976,6 @@ export function startGame(whichCharacter: boolean = true, serverUrl: string | nu
 
         if (hits.length > 0) {
 
-            const hit = hits[0];
             //console.log("Clicked on TTT box:" + hits[0].object.name);
             //console.log("Clicked on: " + hits[0].object.name );
             if (hits[0].object.name.includes("TTT_Board")) {
