@@ -282,6 +282,7 @@ export class Player {
         }
         this.playerVelocity.addScaledVector(this.playerVelocity, damping);
         const deltaPosition = this.playerVelocity.clone().multiplyScalar(delta);
+        /** Mehrstufige Treppe */
         const maxCollisionStep =
             this.playerCollider.radius * COLLISION_STEP_RADIUS_FACTOR;
         const collisionSteps = Math.max(

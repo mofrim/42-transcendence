@@ -7,7 +7,7 @@ import {
     normalizePlayerAnimationState,
     transitionPlayerAnimation,
 } from './player_animation.js';
-import type { PlayerState } from './sharedTypes.ts';
+import type { PlayerState } from '@common/types';
 
 type PlayerAnimationState = ReturnType<typeof normalizePlayerAnimationState>;
 type RemotePlayerState = PlayerState | PlayerAnimationState;
@@ -15,10 +15,8 @@ type PlayerAnimationActions = Record<
     PlayerAnimationState,
     THREE.AnimationAction
 >;
-
-function isMesh(object: THREE.Object3D): object is THREE.Mesh {
-    return (object as THREE.Mesh).isMesh === true;
-}
+const PLAYER_FORWARD = new THREE.Vector3(0, 0, 1);
+const rotationDirection = new THREE.Vector3();
 
 function getMaterials(mesh: THREE.Mesh): THREE.Material[] {
     return Array.isArray(mesh.material) ? mesh.material : [mesh.material];
@@ -115,7 +113,7 @@ const RemotePlayerImplementation = class Remote_Player {
                 this.group.scale.set(sv, 1, sv);
 
                 model.traverse((child: THREE.Object3D) => {
-                    if (isMesh(child)) {
+                    if (child instanceof THREE.Mesh) {
                         getMaterials(child).forEach((material) => {
                             material.transparent = true;
                             material.opacity = av;
@@ -125,7 +123,7 @@ const RemotePlayerImplementation = class Remote_Player {
                 requestAnimationFrame(loop);
             } else {
                 this.model!.traverse((child: THREE.Object3D) => {
-                    if (isMesh(child)) {
+                    if (child instanceof THREE.Mesh) {
                         getMaterials(child).forEach((material) => {
                             material.transparent = true;
                             material.opacity = 1;
@@ -157,7 +155,7 @@ const RemotePlayerImplementation = class Remote_Player {
                 //console.log("group spawnY: " + this.group.position.y);
                 this.group.scale.set(sv, 1, sv);
                 model.traverse((child: THREE.Object3D) => {
-                    if (isMesh(child)) {
+                    if (child instanceof THREE.Mesh) {
                         getMaterials(child).forEach((material) => {
                             material.transparent = true;
                             material.opacity = av;
@@ -180,7 +178,7 @@ const RemotePlayerImplementation = class Remote_Player {
 
                 if (this.group) {
                     this.group.traverse((obj: THREE.Object3D) => {
-                        if (isMesh(obj)) {
+                        if (obj instanceof THREE.Mesh) {
                             obj.geometry?.dispose();
                             getMaterials(obj).forEach((material) =>
                                 material.dispose()
@@ -216,7 +214,7 @@ const RemotePlayerImplementation = class Remote_Player {
             model.rotation.y = Math.PI;
             //this.colAr.push(this.model);
             model.traverse((object: THREE.Object3D) => {
-                if (isMesh(object)) {
+                if (object instanceof THREE.Mesh) {
                     this.colAr.push(object);
 
                     object.castShadow = true;
@@ -284,24 +282,17 @@ const RemotePlayerImplementation = class Remote_Player {
     }
 
     rotateCharacter(startPos: THREE.Vector3, endPos: THREE.Vector3): void {
-        const rotate = new THREE.Quaternion();
-        const up = new THREE.Vector3(0, 1, 0);
+        rotationDirection.subVectors(endPos, startPos).setY(0);
+        if (rotationDirection.lengthSq() === 0) {
+            this.group.quaternion.identity();
+            return;
+        }
 
-        const dir = new THREE.Vector3();
-        dir.subVectors(endPos, startPos).normalize();
-
-        const angle = Math.atan2(dir.x, dir.z);
-        rotate.setFromAxisAngle(up, angle);
-
-        this.group.quaternion.copy(rotate);
+        this.group.quaternion.setFromUnitVectors(
+            PLAYER_FORWARD,
+            rotationDirection.normalize()
+        );
     }
-
-    /* rotateCharacter(dir){
-        const angle = this.unwrapRad( Math.atan2( dir.x, dir.z ) );
-        rotate.setFromAxisAngle( up, angle );
-
-        this.group.quaternion.copy(rotate);
-    } */
 
     updateAnimation(delta: number): void {
         if (!this.isLoaded || !this.mixer || !this.actions) {
