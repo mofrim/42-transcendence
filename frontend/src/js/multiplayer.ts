@@ -3,8 +3,9 @@ import * as THREE from 'three';
 // import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { Remote_Player } from './remote_player.js';
 
-import { PlayerState, CharacterModel } from '@common/types';
-import type { Character } from '@common/types';
+import { PlayerState, CharacterModel } from '@common/sharedTypes';
+import type { Character } from '@common/sharedTypes';
+import type { GLBMesh } from '@common/sharedTypes';
 
 /** all both gender */
 const PLAYER_CHARACTER_MODELS = {
@@ -22,7 +23,7 @@ function getRemotePlayerModelPath(character: Character): string {
 
 export class MultiplayerManager {
     scene: THREE.Scene;
-    mesh_RP: THREE.Mesh;
+    mesh_RP: GLBMesh[];
     players: Map<string, Remote_Player>;
     count: number;
     desired: THREE.Vector3;
@@ -32,7 +33,7 @@ export class MultiplayerManager {
     nz: number;
     step: number;
 
-    constructor(scene: THREE.Scene, mesh_RP: THREE.Mesh) {
+    constructor(scene: THREE.Scene, mesh_RP: GLBMesh[]) {
         this.scene = scene;
         this.mesh_RP = mesh_RP;
 

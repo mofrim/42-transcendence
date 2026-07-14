@@ -38,6 +38,16 @@ export type PlayerData = {
     inGame: boolean,
 }
 
+export type PlayerUpdatePayload = {
+    type: 'player_update';
+    id: string;
+    x: number;
+    y: number;
+    z: number;
+    state: PlayerState;
+    character: Character;
+}
+
 
 // ================================================
 // RPS Game
@@ -102,6 +112,8 @@ export type TTTGame = {
 // SOCKET.IO messages types
 // ================================================
 
+// RPS Game ---------------------------------------
+
 export type RPSBattleChoicePayload = {
     type: 'rps_choice';
     id: string;
@@ -116,4 +128,61 @@ export type RPSRequestDataPayload = {
 
 export type TTTInitGamePayload = {
     game: TTTGame;
+}
+
+export type RPSInvalidPayload = {
+    type: 'rps_invalid';
+    playerOne: string;
+    playerTwo: string;
+}
+
+export type RPSDrawPayload = {
+    type: 'rps_draw';
+    playerOne: string;
+    playerTwo: string;
+    choice: RPSChoice;
+}
+
+export type RPSWinnerPayload = {
+    type: 'rps_winner';
+    winner: string;
+    winnerChoice: RPSChoice;
+    loser: string,
+    loserChoice: RPSChoice,
+}
+
+export type RPSAcceptDeclinePayload = {
+    type: 'rps_accept' | 'rps_decline';
+    id: string;
+    requestedPlayerID: string;
+}
+
+// TTT Game ---------------------------------------
+
+export type TTTMarkPayload = {
+    type: 'ttt_mark';
+    id: string;
+    fieldName: string;
+    mark: TTTMark;
+}
+
+export type TTTPlayerPayload = {
+    type: 'ttt_playerOne' | 'ttt_playerTwo';
+    id: string;
+}
+
+export type TTTStartPayload = {
+    type: 'ttt_start';
+    playerOne: string;
+    playerTwo: string;
+}
+
+export type TTTWinPayload = {
+    type: 'ttt_win';
+    id: string;
+    winner: number;
+}
+
+export type TTTDrawPayload = {
+    type: 'ttt_draw';
 }

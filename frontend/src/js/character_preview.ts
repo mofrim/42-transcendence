@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import type { Character } from '@common/types';
+import type { Character } from '@common/sharedTypes';
 
 interface CharacterPreviewOptions {
     canvas?: HTMLCanvasElement | null;

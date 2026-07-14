@@ -1,12 +1,16 @@
 {
   "compilerOptions": {
-    "rootDir": ".",
+    "rootDir": "../",
     "outDir": "./dist",
     "target": "ES2023",
     "lib": ["ES2023", "DOM"],
     "module": "ESNext",
     "types": ["vite/client", "node"],
     "skipLibCheck": true,
+
+    "paths": {
+      "@common/*": ["../common/src/*"]
+    },
 
     // bundler mode
     "moduleResolution": "bundler",
