@@ -4,12 +4,18 @@
   "description": "ft_transcendence backend",
   "type": "module",
   "scripts": {
-    "dev": "tsc --build && node src/server.js",
+    "//": "tsx watch src/server.js",
+    "dev": "node src/server.js",
+    "build": "tsc --build",
     "type-check": "tsc -b ../common/tsconfig.json && tsc --noEmit",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node dist/server.js"
   },
   "dependencies": {
     "@common/types": "^1.0.0",
+    "express": "^5.2.1",
     "socket.io": "^4.8.3"
+  },
+  "devDependencies": {
+    "tsx": "^4.23.1"
   }
 }
