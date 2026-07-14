@@ -4,7 +4,8 @@
   "description": "ft_transcendence backend",
   "type": "module",
   "scripts": {
-    "dev": "tsc --build && node src/server.js",
+	"build": "tsc --build",
+    "dev": "tsc --build && node dist/server.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
