@@ -289,7 +289,9 @@ export class Player {
             1,
             Math.ceil(deltaPosition.length() / maxCollisionStep)
         );
-        const collisionStep = deltaPosition.clone().divideScalar(collisionSteps);
+        const collisionStep = deltaPosition
+            .clone()
+            .divideScalar(collisionSteps);
 
         for (let step = 0; step < collisionSteps; step += 1) {
             this.playerCollider.translate(collisionStep);
