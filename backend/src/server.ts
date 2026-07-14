@@ -207,7 +207,11 @@ function handleRPSChoice(socket: Socket, data: RPSBattleChoicePayload): void {
 
     if (gameResultCheck < 2 || gameResultCheck > 4) return;
 
-    let gameResult = null;
+    /**
+     * The value assigned to 'gameResult' is not used in subsequent statements.
+     * eslint(no-useless-assignment)
+     * let gameResult = null;
+     */
 
     const rpsGame = gameManager.rpsGame.get(gameID);
 
