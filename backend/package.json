@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsc --build && node src/server.js",
+    "type-check": "tsc -b ../common/tsconfig.json && tsc --noEmit",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
