@@ -9,8 +9,9 @@ type NPCAnimationActions = {
 };
 
 export class NPC {
-
-    static gradientTexture = new THREE.TextureLoader().load('src/textures/gradientMaps/twoTone2.jpg');
+    static gradientTexture = new THREE.TextureLoader().load(
+        'src/textures/gradientMaps/twoTone2.jpg'
+    );
 
     scene: THREE.Scene;
     id: number;
@@ -19,7 +20,12 @@ export class NPC {
     mixer: THREE.AnimationMixer | null;
     actions: NPCAnimationActions | null;
 
-    constructor(path: string, id: number, scene: THREE.Scene, defaultAnim: number = 0){
+    constructor(
+        path: string,
+        id: number,
+        scene: THREE.Scene,
+        defaultAnim: number = 0
+    ) {
         this.scene = scene;
         this.id = id;
         this.model = null;
@@ -31,12 +37,10 @@ export class NPC {
     }
 
     loadEnemyCharacter(path: string, defaultAnim: number): void {
-
         const loader = new GLTFLoader();
         //console.log("Enemy character loading...");
 
         loader.load(path, (gltf) => {
-
             this.model = gltf.scene;
 
             this.group.add(this.model);
@@ -45,15 +49,16 @@ export class NPC {
             //model.rotation.y = rot;
 
             this.model.traverse((object) => {
-
                 if (object instanceof THREE.Mesh) {
-
                     object.castShadow = true;
                     object.receiveShadow = true;
 
-                    if (!Array.isArray(object.material) && object.material.name === "Outline") {
+                    if (
+                        !Array.isArray(object.material) &&
+                        object.material.name === 'Outline'
+                    ) {
                         object.material = new THREE.MeshBasicMaterial({
-                            color: 0x000000
+                            color: 0x000000,
                         });
                         object.castShadow = false;
                         return;
@@ -61,7 +66,7 @@ export class NPC {
 
                     object.material = new THREE.MeshToonMaterial({
                         color: 0xffffff,
-                        gradientMap: NPC.gradientTexture
+                        gradientMap: NPC.gradientTexture,
                     });
                 }
             });
@@ -69,16 +74,15 @@ export class NPC {
             const mix = new THREE.AnimationMixer(this.model);
 
             const actions: NPCAnimationActions = {
-                Idle: mix.clipAction( gltf.animations[ defaultAnim ] ),
-                Run: mix.clipAction( gltf.animations[ 2 ] )
+                Idle: mix.clipAction(gltf.animations[defaultAnim]),
+                Run: mix.clipAction(gltf.animations[2]),
             };
             this.actions = actions;
 
-            for ( const [ m, action ] of Object.entries(actions) ) {
+            for (const [m, action] of Object.entries(actions)) {
                 action.enabled = true;
-                action.setEffectiveTimeScale( 1 );
-                if ( m !== 'Idle' )
-                    action.setEffectiveWeight( 0 );
+                action.setEffectiveTimeScale(1);
+                if (m !== 'Idle') action.setEffectiveWeight(0);
             }
 
             actions.Idle.play();
@@ -88,20 +92,19 @@ export class NPC {
     }
 
     rotateCharacter(startPos: THREE.Vector3, endPos: THREE.Vector3): void {
-
         const rotate = new THREE.Quaternion();
-        const up = new THREE.Vector3( 0, 1, 0 );
+        const up = new THREE.Vector3(0, 1, 0);
 
         const dir = new THREE.Vector3();
         dir.subVectors(endPos, startPos).normalize();
 
-        const angle = Math.atan2( dir.x, dir.z );
-        rotate.setFromAxisAngle( up, angle );
+        const angle = Math.atan2(dir.x, dir.z);
+        rotate.setFromAxisAngle(up, angle);
 
         this.group.quaternion.copy(rotate);
     }
 
-    updateAnimation( delta: number ): void {
+    updateAnimation(delta: number): void {
         this.mixer?.update(delta);
     }
 }
