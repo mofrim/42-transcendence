@@ -450,13 +450,13 @@ export function startGame(
     // GAME SETUP
     // ============================================================================
 
-    let scene = new THREE.Scene();
-    let renderer = new THREE.WebGLRenderer({ antialias: true });
-    let followGroup = new THREE.Group();
-    let timer = new THREE.Timer();
-    let dirLight = new THREE.DirectionalLight(0xffffff, 2.5);
+    const scene = new THREE.Scene();
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    const followGroup = new THREE.Group();
+    const timer = new THREE.Timer();
+    const dirLight = new THREE.DirectionalLight(0xffffff, 2.5);
 
-    let npcs = new Map();
+    const npcs = new Map();
 
     //const keyStates = {};
     const keyStates: Record<string, boolean> = {};
@@ -469,9 +469,9 @@ export function startGame(
     //const octreeDelete = new Octree();
     //const OctreeSpawn = new Octree();
 
-    let mesh_col: GLBMesh[] = [];
-    let mesh_RP: GLBMesh[] = [];
-    let tttBox: GLBMesh[] = [];
+    const mesh_col: GLBMesh[] = [];
+    const mesh_RP: GLBMesh[] = [];
+    const tttBox: GLBMesh[] = [];
     let tttStart: GLBMesh;
 
     //let camDistance = 0;
@@ -817,7 +817,7 @@ export function startGame(
     }
 
     function getTTTField(event: MouseEvent): THREE.Vector2 {
-        let mousePosition = new THREE.Vector2();
+        const mousePosition = new THREE.Vector2();
 
         mousePosition.x = (event.clientX / window.innerWidth) * 2 - 1;
         mousePosition.y = -(event.clientY / window.innerHeight) * 2 + 1;
@@ -936,7 +936,7 @@ export function startGame(
     }
 
     function onClick(event: MouseEvent): void {
-        let mousePosition = getTTTField(event);
+        const mousePosition = getTTTField(event);
 
         const raycaster = new THREE.Raycaster();
         raycaster.far = 50.0;
