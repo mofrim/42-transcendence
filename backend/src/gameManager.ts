@@ -186,7 +186,7 @@ export class GameManager {
         return 1;
     }
 
-    rpsChoice(data: RPSBattleChoicePayload) {
+    rpsChoice(data: RPSBattleChoicePayload): number {
         const player = this.players.get(data.id);
 
         if (!player) {

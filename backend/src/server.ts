@@ -1,6 +1,19 @@
 import http from 'http';
 import { Server } from 'socket.io';
+import type { Socket } from "socket.io";
 import { GameManager } from './gameManager.ts';
+import type {
+    RPSBattleChoicePayload,
+    RPSRequestDataPayload,
+    PlayerUpdatePayload,
+    TTTMarkPayload
+} from '@common/types';
+
+import {
+    TTTMark
+} from '@common/types';
+
+
 
 const server = http.createServer();
 const gameManager = new GameManager();
@@ -9,18 +22,21 @@ const io = new Server(server, {
     cors: { origin: '*' },
 });
 
-function normalizeCharacter(character) {
+/* function normalizeCharacter(character: boolean): Character {
     if (typeof character === 'string') {
         const normalizedCharacter = character.toLowerCase();
         return normalizedCharacter !== 'false' && normalizedCharacter !== 'female';
     }
 
     return character !== false;
-}
+} */
 
 io.on('connection', (socket) => {
-    const character = normalizeCharacter(socket.handshake.auth?.character);
+    //const character = normalizeCharacter(socket.handshake.auth?.character);
+    const character = socket.handshake.auth["character"];
     socket.data.character = character;
+
+    //console.log('Character IS:', character);
 
     console.log('Client connected:', socket.id);
     gameManager.players.set(socket.id, gameManager.createPlayer(socket.id));
@@ -39,16 +55,19 @@ io.on('connection', (socket) => {
         const playerOneID = gameManager.tttGame.players[0];
         const playerTwoID = gameManager.tttGame.players[1];
 
-        const playerOne = gameManager.players.get(playerOneID);
-        const playerTwo = gameManager.players.get(playerTwoID);
-
-        if (playerOne) {
-            playerOne.inGame = false;
-            playerOne.gameID = 'none';
+        if(playerOneID){
+            const playerOne = gameManager.players.get(playerOneID);
+            if (playerOne) {
+                playerOne.inGame = false;
+                playerOne.gameID = 'none';
+            }
         }
-        if (playerTwo) {
-            playerTwo.inGame = false;
-            playerTwo.gameID = 'none';
+        if(playerTwoID){
+            const playerTwo = gameManager.players.get(playerTwoID);
+            if (playerTwo) {
+                playerTwo.inGame = false;
+                playerTwo.gameID = 'none';
+            }        
         }
 
         console.log('Client disconnected:', socket.id);
@@ -77,7 +96,7 @@ io.on('connection', (socket) => {
 
             case 'ttt_mark':
                 handleTTTMark(socket, data);
-                socket.broadcast.emit('update', {
+                /* socket.broadcast.emit('update', {
                     type: 'player_update',
                     id: socket.id,
                     x: data.x,
@@ -87,7 +106,7 @@ io.on('connection', (socket) => {
                     character: normalizeCharacter(
                         data.character ?? socket.data.character
                     ),
-                });
+                }); */
                 break;
 
             case 'ttt_update':
@@ -98,7 +117,7 @@ io.on('connection', (socket) => {
                 });
                 break;
             case 'ttt_start':
-                handleTTTStart(socket, data);
+                handleTTTStart(socket);
                 break;
 
             case 'rps_request':
@@ -116,14 +135,6 @@ io.on('connection', (socket) => {
             case 'rps_invalid':
                 handleRPSInvalid(socket);
                 break;
-            case 'rps_choice':
-                socket.broadcast.emit('update', {
-                    type: 'rps_choice',
-                    id: socket.id,
-                    choice: data.choice,
-                    reqPlayerID: data.reqPlayerID,
-                });
-                break;
             case 'game_reset':
                 handleGameReset(socket);
                 break;
@@ -133,12 +144,15 @@ io.on('connection', (socket) => {
     });
 });
 
-function handleGameReset(socket) {
+function handleGameReset(socket: Socket) {
     playerGameReset(socket.id);
 }
 
-function playerGameReset(playerID) {
+function playerGameReset(playerID: string) {
     const player = gameManager.players.get(playerID);
+
+    if(!player) return;
+    
     const gameID = player.gameID;
 
     if (!gameID) return;
@@ -150,8 +164,11 @@ function playerGameReset(playerID) {
     gameManager.removeRPSGame(gameID);
 }
 
-function handleRPSInvalid(socket) {
+function handleRPSInvalid(socket: Socket) {
     const player = gameManager.players.get(socket.id);
+
+    if(!player) return;
+
     const gameID = player.gameID;
 
     if (!gameID) return;
@@ -172,7 +189,7 @@ function handleRPSInvalid(socket) {
     //gameManager.removeRPSGame(gameID);
 }
 
-function handleRPSChoice(socket, data) {
+function handleRPSChoice(socket: Socket, data: RPSBattleChoicePayload): void {
     const result = gameManager.rpsChoice(data);
 
     if (!result || result == 0) {
@@ -181,16 +198,25 @@ function handleRPSChoice(socket, data) {
     }
 
     const player = gameManager.players.get(socket.id);
+
+    if(!player) return;
+
     const gameID = player.gameID;
+
+    if(!gameID) return;
 
     const gameResultCheck = gameManager.verifyRPSGame(gameID);
 
     if (!gameResultCheck) return;
+
     if (gameResultCheck < 2 || gameResultCheck > 4) return;
 
     let gameResult = null;
 
     const rpsGame = gameManager.rpsGame.get(gameID);
+
+    if(!rpsGame) return;
+
     const PlayerOne = rpsGame.playerOne;
     const PlayerTwo = rpsGame.playerTwo;
 
@@ -254,7 +280,7 @@ function handleRPSChoice(socket, data) {
     //gameManager.removeRPSGame(gameID);
 }
 
-function handleRPSAccept(socket, data) {
+function handleRPSAccept(socket: Socket, data: RPSRequestDataPayload) {
     const result = gameManager.rpsAccept(data);
 
     if (result == 0) return;
@@ -271,7 +297,7 @@ function handleRPSAccept(socket, data) {
     }); */
 }
 
-function handleRPSDecline(socket, data) {
+function handleRPSDecline(socket: Socket, data: RPSRequestDataPayload) {
     const result = gameManager.rpsDeclined(data);
 
     if (result == 0) return;
@@ -283,7 +309,7 @@ function handleRPSDecline(socket, data) {
     });
 }
 
-function handleRPSRequest(socket, data) {
+function handleRPSRequest(socket: Socket, data: RPSRequestDataPayload) {
     //console.log("RPS REQUEST");
     const result = gameManager.rpsRequested(data);
     //console.log("RPS REQUEST result: " + result);
@@ -298,7 +324,7 @@ function handleRPSRequest(socket, data) {
     });
 }
 
-function handlePlayerUpdate(socket, data) {
+function handlePlayerUpdate(socket: Socket, data: PlayerUpdatePayload) {
     const player = gameManager.players.get(socket.id);
     if (!player) {
         console.log('Player not found for id: ' + socket.id);
@@ -319,10 +345,11 @@ function handlePlayerUpdate(socket, data) {
     });
 }
 
-function handleTTTStart(socket, data) {
+function handleTTTStart(socket: Socket) {
     const state = gameManager.startTTTGame(socket.id);
     const player = gameManager.players.get(socket.id);
 
+    if (!player) return;
     if (player.inGame) return;
 
     if (state == 0) return;
@@ -361,20 +388,20 @@ function handleTTTStart(socket, data) {
     });
 }
 
-function wait(ms) {
+function wait(ms: number) {
     return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-function handleTTTMark(socket, data) {
+function handleTTTMark(socket: Socket, data: TTTMarkPayload) {
     const result = gameManager.tttMarkField(socket.id, data.fieldName);
 
-    if (result == 'none') {
+    if (result == TTTMark.Empty) {
         console.log('Nothing marked: ' + socket.id);
         return;
     }
 
     //console.log("Marked field: " + result + " by player: " + socket.id);
-    if (result == 'X' || result == 'O') {
+    if (result == TTTMark.X || result == TTTMark.O) {
         io.emit('update', {
             type: 'ttt_mark',
             id: socket.id,
@@ -392,8 +419,15 @@ function handleTTTMark(socket, data) {
         });
 
         wait(3000).then(() => {
-            const playerOne = gameManager.players.get(gameManager.tttGame.players[0]);
-            const playerTwo = gameManager.players.get(gameManager.tttGame.players[1]);
+            const playerOneID = gameManager.tttGame.players[0];
+            const playerTwoID = gameManager.tttGame.players[1];
+
+            if(!playerOneID || !playerTwoID) return;
+
+            const playerOne = gameManager.players.get(playerOneID);
+            const playerTwo = gameManager.players.get(playerTwoID);
+
+            if(!playerOne || !playerTwo) return;
 
             playerOne.inGame = false;
             playerOne.gameID = 'none';
@@ -413,8 +447,16 @@ function handleTTTMark(socket, data) {
         });
 
         wait(3000).then(() => {
-            const playerOne = gameManager.players.get(gameManager.tttGame.players[0]);
-            const playerTwo = gameManager.players.get(gameManager.tttGame.players[1]);
+            
+            const playerOneID = gameManager.tttGame.players[0];
+            const playerTwoID = gameManager.tttGame.players[1];
+
+            if(!playerOneID || !playerTwoID) return;
+
+            const playerOne = gameManager.players.get(playerOneID);
+            const playerTwo = gameManager.players.get(playerTwoID);
+
+            if(!playerOne || !playerTwo) return;
 
             playerOne.inGame = false;
             playerOne.gameID = 'none';

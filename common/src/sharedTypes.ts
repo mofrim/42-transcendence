@@ -12,6 +12,9 @@ export enum CharacterModel {
     female = 'female',
 }
 
+export interface SocketAuth {
+    character: boolean;
+}
 
 /** all both gender */
 export type Character = boolean;

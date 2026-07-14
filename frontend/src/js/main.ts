@@ -77,7 +77,7 @@ export function startGame(
         'http://localhost:3000';
 
     const socket = io(socketServerUrl, {
-        auth: { character },
+        auth: { character: whichCharacter },
     });
 
     let player: Player | null = null;
@@ -967,9 +967,9 @@ export function startGame(
         // const hitsRP = raycaster.intersectObjects(mesh_RP, true);
         // console.log("hitsRP.length: " + hitsRP.length , " , mesh_RP length: " + mesh_RP.length);
 
-        mesh_RP.forEach((o) => {
+        /* mesh_RP.forEach((o) => {
             console.log(o.name, o.isMesh);
-        });
+        }); */
 
         /* if (hitsRP.length > 0) {
             const hit = hits[0];

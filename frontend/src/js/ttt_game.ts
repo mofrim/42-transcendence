@@ -133,13 +133,15 @@ export class TTT_Game {
                 requestAnimationFrame(loop);
             } else {
                 let index = 0;
-                for (const box of data.game.board) {
-                    if (box === TTTMark.X)
-                        this.board[index].material.map = this.texX;
-                    else if (box === TTTMark.O)
-                        this.board[index].material.map = this.texO;
-                    index++;
-                    //console.log("# Initializing board: " + box);
+                if(data.game) {
+                    for (const box of data.game.board) {
+                        if (box === TTTMark.X)
+                            this.board[index].material.map = this.texX;
+                        else if (box === TTTMark.O)
+                            this.board[index].material.map = this.texO;
+                        index++;
+                        //console.log("# Initializing board: " + box);
+                    }
                 }
             }
         };
@@ -334,6 +336,7 @@ export class TTT_Game {
     }
 
     startGame(playerOne: string, playerTwo: string): void {
+        console.log("Players: " + playerOne + ":" + this.players[0] + " and " + playerTwo + ":" + this.players[1]);
         if (playerOne !== this.players[0] || playerTwo !== this.players[1]) {
             console.log('Player IDs do not match. Cannot start game.');
             return;
