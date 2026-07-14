@@ -1,19 +1,15 @@
 import http from 'http';
 import { Server } from 'socket.io';
-import type { Socket } from "socket.io";
+import type { Socket } from 'socket.io';
 import { GameManager } from './gameManager.ts';
 import type {
     RPSBattleChoicePayload,
     RPSRequestDataPayload,
     PlayerUpdatePayload,
-    TTTMarkPayload
+    TTTMarkPayload,
 } from '@common/types';
 
-import {
-    TTTMark
-} from '@common/types';
-
-
+import { TTTMark } from '@common/types';
 
 const server = http.createServer();
 const gameManager = new GameManager();
@@ -33,7 +29,7 @@ const io = new Server(server, {
 
 io.on('connection', (socket) => {
     //const character = normalizeCharacter(socket.handshake.auth?.character);
-    const character = socket.handshake.auth["character"];
+    const character = socket.handshake.auth['character'];
     socket.data.character = character;
 
     //console.log('Character IS:', character);
@@ -55,19 +51,19 @@ io.on('connection', (socket) => {
         const playerOneID = gameManager.tttGame.players[0];
         const playerTwoID = gameManager.tttGame.players[1];
 
-        if(playerOneID){
+        if (playerOneID) {
             const playerOne = gameManager.players.get(playerOneID);
             if (playerOne) {
                 playerOne.inGame = false;
                 playerOne.gameID = 'none';
             }
         }
-        if(playerTwoID){
+        if (playerTwoID) {
             const playerTwo = gameManager.players.get(playerTwoID);
             if (playerTwo) {
                 playerTwo.inGame = false;
                 playerTwo.gameID = 'none';
-            }        
+            }
         }
 
         console.log('Client disconnected:', socket.id);
@@ -151,8 +147,8 @@ function handleGameReset(socket: Socket) {
 function playerGameReset(playerID: string) {
     const player = gameManager.players.get(playerID);
 
-    if(!player) return;
-    
+    if (!player) return;
+
     const gameID = player.gameID;
 
     if (!gameID) return;
@@ -167,7 +163,7 @@ function playerGameReset(playerID: string) {
 function handleRPSInvalid(socket: Socket) {
     const player = gameManager.players.get(socket.id);
 
-    if(!player) return;
+    if (!player) return;
 
     const gameID = player.gameID;
 
@@ -199,11 +195,11 @@ function handleRPSChoice(socket: Socket, data: RPSBattleChoicePayload): void {
 
     const player = gameManager.players.get(socket.id);
 
-    if(!player) return;
+    if (!player) return;
 
     const gameID = player.gameID;
 
-    if(!gameID) return;
+    if (!gameID) return;
 
     const gameResultCheck = gameManager.verifyRPSGame(gameID);
 
@@ -215,7 +211,7 @@ function handleRPSChoice(socket: Socket, data: RPSBattleChoicePayload): void {
 
     const rpsGame = gameManager.rpsGame.get(gameID);
 
-    if(!rpsGame) return;
+    if (!rpsGame) return;
 
     const PlayerOne = rpsGame.playerOne;
     const PlayerTwo = rpsGame.playerTwo;
@@ -422,12 +418,12 @@ function handleTTTMark(socket: Socket, data: TTTMarkPayload) {
             const playerOneID = gameManager.tttGame.players[0];
             const playerTwoID = gameManager.tttGame.players[1];
 
-            if(!playerOneID || !playerTwoID) return;
+            if (!playerOneID || !playerTwoID) return;
 
             const playerOne = gameManager.players.get(playerOneID);
             const playerTwo = gameManager.players.get(playerTwoID);
 
-            if(!playerOne || !playerTwo) return;
+            if (!playerOne || !playerTwo) return;
 
             playerOne.inGame = false;
             playerOne.gameID = 'none';
@@ -447,16 +443,15 @@ function handleTTTMark(socket: Socket, data: TTTMarkPayload) {
         });
 
         wait(3000).then(() => {
-            
             const playerOneID = gameManager.tttGame.players[0];
             const playerTwoID = gameManager.tttGame.players[1];
 
-            if(!playerOneID || !playerTwoID) return;
+            if (!playerOneID || !playerTwoID) return;
 
             const playerOne = gameManager.players.get(playerOneID);
             const playerTwo = gameManager.players.get(playerTwoID);
 
-            if(!playerOne || !playerTwo) return;
+            if (!playerOne || !playerTwo) return;
 
             playerOne.inGame = false;
             playerOne.gameID = 'none';
