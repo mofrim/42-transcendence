@@ -182,7 +182,6 @@ export class MultiplayerManager {
             getRemotePlayerModelPath(character),
             id,
             this.scene,
-            0,
             this.mesh_RP
         );
         this.players.set(newPlayer.id, newPlayer);

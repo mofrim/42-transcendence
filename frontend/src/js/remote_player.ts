@@ -26,9 +26,11 @@ function getMaterials(mesh: THREE.Mesh): THREE.Material[] {
 
 function getMaterialColor(material: THREE.Material): THREE.Color {
     const color = (material as THREE.Material & { color?: unknown }).color;
-    return color instanceof THREE.Color
-        ? color.clone()
-        : new THREE.Color(0xffffff);
+    if (color instanceof THREE.Color) {
+        return color.clone();
+    } else {
+        return new THREE.Color(0xffffff);
+    }
 }
 
 const RemotePlayerImplementation = class Remote_Player {
@@ -59,7 +61,6 @@ const RemotePlayerImplementation = class Remote_Player {
         path: string,
         id: string,
         scene: THREE.Scene,
-        _defaultAnim: number,
         mesh_RP: THREE.Mesh | THREE.Mesh[]
     ) {
         this.colAr = mesh_RP as unknown as THREE.Mesh[];
@@ -369,7 +370,6 @@ interface RemotePlayerConstructor {
         path: string,
         id: string,
         scene: THREE.Scene,
-        defaultAnim: number,
         mesh_RP: THREE.Mesh | THREE.Mesh[]
     ): RemotePlayerInstance & { id: string };
 }
