@@ -1,0 +1,17 @@
+{
+  "name": "@common/types",
+  "version": "1.0.0",
+  "main": "./dist/sharedTypes.js",
+  "types": "./dist/sharedTypes.d.ts",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./dist/sharedTypes.js"
+  },
+  "scripts": {
+    "build": "tsc -b"
+  },
+  "dependencies": {
+    "three": "^0.184.0"
+  }
+}

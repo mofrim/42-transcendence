@@ -1,0 +1,9 @@
+node_modules
+.git
+.editorconfig
+.gitignore
+.prettierrc
+Dockerfile*
+compose.yaml
+dist
+.env*

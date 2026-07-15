@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import type { Character } from './sharedTypes.ts';
+import type { Character } from '@common/types';
 
 interface CharacterPreviewOptions {
     canvas?: HTMLCanvasElement | null;
@@ -70,8 +70,8 @@ export function createCharacterPreview({
 }: CharacterPreviewOptions): CharacterPreview {
     if (!canvas) {
         return {
-            setCharacter() {},
-            dispose() {},
+            setCharacter() { },
+            dispose() { },
         };
     }
 

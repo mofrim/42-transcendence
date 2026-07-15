@@ -2,54 +2,84 @@ import * as THREE from 'three';
 
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-export class Camera {
+type FirstHitRaycaster = THREE.Raycaster & { firstHitOnly: boolean };
 
-    constructor(window, renderer, colliders) {
-        this.camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 0.1, 100 );
-        this.camera.position.set( 0, 2, -5 );
+export class Camera {
+    camera: THREE.PerspectiveCamera;
+    colliders: THREE.Object3D[];
+    orbitControls: OrbitControls;
+    raycaster: FirstHitRaycaster;
+    dir: THREE.Vector3;
+    rayPos: THREE.Vector3;
+
+    constructor(
+        window: Window,
+        renderer: THREE.WebGLRenderer,
+        colliders: THREE.Object3D[]
+    ) {
+        this.camera = new THREE.PerspectiveCamera(
+            60,
+            window.innerWidth / window.innerHeight,
+            0.1,
+            100
+        );
+        this.camera.position.set(0, 2, -5);
 
         this.colliders = colliders;
-        this.orbitControls = new OrbitControls( this.camera, renderer.domElement );
-        this.orbitControls.target.set( 0, 1, 0 );
+        this.orbitControls = new OrbitControls(
+            this.camera,
+            renderer.domElement
+        );
+        this.orbitControls.target.set(0, 1, 0);
         this.orbitControls.enableDamping = true;
         this.orbitControls.enablePan = false;
         this.orbitControls.enableZoom = true;
-        this.orbitControls.maxPolarAngle =  (Math.PI / 2) + 0.15//PI90 - .05;
+        this.orbitControls.maxPolarAngle = Math.PI / 2 + 0.15; //PI90 - .05;
         this.orbitControls.update();
 
-        this.raycaster = new THREE.Raycaster();
+        this.raycaster = new THREE.Raycaster() as FirstHitRaycaster;
         this.dir = new THREE.Vector3();
         this.rayPos = new THREE.Vector3();
-        this.raycaster.far = 3.0; 
+        this.raycaster.far = 3.0;
     }
 
-    CamColisionReset(delta, start, end, direction){
+    CamColisionReset(
+        delta: number,
+        start: THREE.Vector3,
+        end: THREE.Vector3,
+        direction: THREE.Vector3
+    ): void {
         const dist = start.distanceTo(end);
         const camDistance = 3.0;
 
         //console.log("Colliders RESET" );
 
         const epsilon = 0.05;
-        if (Math.abs(dist - camDistance) > epsilon) 
-        {
+        if (Math.abs(dist - camDistance) > epsilon) {
             if (dist < camDistance) {
                 //console.log("RESET 1");
-                this.camera.position.addScaledVector(direction, delta*2);
+                this.camera.position.addScaledVector(direction, delta * 2);
             }
             if (dist > camDistance) {
                 //console.log("RESET 2");
-                this.camera.position.addScaledVector(direction, -delta*2);
+                this.camera.position.addScaledVector(direction, -delta * 2);
             }
         }
     }
 
-    CamCollisionAdjust(delta, start, end, direction){
+    CamCollisionAdjust(
+        start: THREE.Vector3,
+        end: THREE.Vector3,
+        direction: THREE.Vector3
+    ): void {
         const distHit = start.distanceTo(end);
-        const newPos = start.clone().addScaledVector(direction.normalize(), distHit-0.1);
+        const newPos = start
+            .clone()
+            .addScaledVector(direction.normalize(), distHit - 0.1);
         this.camera.position.copy(newPos);
     }
 
-    cameraCollisionRaycast(delta, group) {
+    cameraCollisionRaycast(delta: number, group: THREE.Object3D): void {
         this.rayPos.copy(group.position);
         this.rayPos.y += 1;
 
@@ -57,20 +87,24 @@ export class Camera {
         this.dir.subVectors(this.camera.position, this.rayPos).normalize();
         this.raycaster.set(this.rayPos, this.dir);
         this.raycaster.firstHitOnly = true;
-        
-        if(this.colliders.length === 0)
-            return;
-        
+
+        if (this.colliders.length === 0) return;
+
         const hits = this.raycaster.intersectObjects(this.colliders, false);
-        
+
         if (hits.length === 0)
-            this.CamColisionReset(delta, this.rayPos, this.camera.position, this.dir);
-        else{
-            this.CamCollisionAdjust(delta, this.rayPos, hits[0].point, this.dir);
+            this.CamColisionReset(
+                delta,
+                this.rayPos,
+                this.camera.position,
+                this.dir
+            );
+        else {
+            // FIXME silenced noUncheckedIndexedAccess here
+            this.CamCollisionAdjust(this.rayPos, hits[0]!.point, this.dir);
             //this.testDirect(this.rayPos, hits[0].point, this.camera.position);
         }
-        
-    } 
+    }
 
     /* const capsuleMaterial = new THREE.MeshBasicMaterial({color: 0xff0000, wireframe: true});
     const C1 = new THREE.Mesh(new THREE.SphereGeometry(0.10, 8, 8), capsuleMaterial);
