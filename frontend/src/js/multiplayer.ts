@@ -169,7 +169,7 @@ export class MultiplayerManager {
             if (player.mixer != null) player.updateAnimation(delta);
             //if(player.id == 1)
             //    this.multiplayerMovementTest(player);
-            if (player && player.id === -1) {
+            if (player && player.id === "-1") {
                 player.destroy();
                 this.players.delete(id);
             }

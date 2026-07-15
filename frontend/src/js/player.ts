@@ -11,7 +11,6 @@ import {
 
 type PlayerAnimationState = ReturnType<typeof transitionPlayerAnimation>;
 
-type PlayerId = string | undefined;
 const WORLD_UP = new THREE.Vector3(0, 1, 0);
 const PLAYER_FORWARD = new THREE.Vector3(0, 0, 1);
 const COLLISION_STEP_RADIUS_FACTOR = 0.5;
@@ -32,7 +31,7 @@ export class Player {
     static offset: number = 0;
 
     /** ugly random Socket ID strings */
-    id: PlayerId;
+    id: string | undefined;
     model: THREE.Group | null;
     group: THREE.Group;
     /** running idle? */
@@ -62,11 +61,17 @@ export class Player {
 
     constructor(
         path: string,
-        id: PlayerId,
+        id: string | undefined,
         scene: THREE.Scene,
         worldOctree: Octree
     ) {
+
+        // we never want this to happen so this would be an exceptional error.
+        // we might even throw here...
+        if (id === undefined)
+            console.warn("Player ctor called with undefined socket.id");
         this.id = id;
+
         this.model = null;
         this.group = new THREE.Group();
         this.stateCurrent = 'Idle';

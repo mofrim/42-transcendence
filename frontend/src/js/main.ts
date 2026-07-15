@@ -87,7 +87,15 @@ export function startGame(
     socket.on('connect', () => {
         console.log('Your Player ID: ' + socket.id);
         if (player) {
-            player.id = socket.id;
+            // FIXME thing about cases where socket.id could be undefined and
+            // add error logging + more sophisticated handling here
+            if (socket.id === undefined) {
+                console.error('socket connect: undefined socket.id!');
+            }
+            else {
+                console.log(`socket connect: setting player.id to ${socket.id}`);
+                    player.id = socket.id;
+                }
             //tttGame.playerID = socket.id;
         }
     });

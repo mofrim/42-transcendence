@@ -43,7 +43,7 @@ const RemotePlayerImplementation = class Remote_Player {
 
     private colAr: THREE.Mesh[];
     scene: THREE.Scene;
-    id: string | -1;
+    id: string;
     model: THREE.Group | null;
     group: THREE.Group;
     state: RemotePlayerState;
@@ -317,7 +317,7 @@ const RemotePlayerImplementation = class Remote_Player {
     }
 
     removePlayer(): void {
-        this.id = -1;
+        this.id = "-1";
     }
 
     destroy(): void {
