@@ -3,8 +3,8 @@ services:
     container_name: ftr-backend
     image: ftr-backend
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: Dockerfile.backend
     ports:
       - "3000:3000"
     networks:
@@ -14,8 +14,8 @@ services:
     container_name: ftr-frontend
     image: ftr-frontend
     build:
-      context: ./frontend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: Dockerfile.frontend
     depends_on:
       backend:
         condition: service_started

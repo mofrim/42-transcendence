@@ -1,12 +1,13 @@
 {
-  "name": "backend",
-  "version": "0.0.0",
+  "name": "ftr-backend",
   "description": "ft_transcendence backend",
+  "private": true,
+  "version": "0.0.0",
   "type": "module",
   "scripts": {
     "//": "tsx watch src/server.js",
     "dev": "node src/server.js",
-    "build": "tsc --build",
+    "build": "tsc -b",
     "type-check": "tsc -b ../common/tsconfig.json && tsc --noEmit",
     "start": "node dist/server.js"
   },
