@@ -513,7 +513,7 @@ export function startGame(
         //player = new Player('glb/MainCharacterTest.glb', socket.id, scene, worldOctree);
         console.log('Player model path: ' + playerModelPath);
         fetch(playerModelPath).then((res) => console.log('exists:', res.ok));
-        player = new Player(playerModelPath, socket.id, scene, worldOctree, 2);
+        player = new Player(playerModelPath, socket.id, scene, worldOctree);
         multiplayer = new MultiplayerManager(scene, mesh_RP);
         multiplayer.initMultiplayerTest();
 
