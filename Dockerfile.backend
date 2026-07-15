@@ -31,4 +31,6 @@ RUN npm ci --omit=dev --workspace=backend --workspace=common
 COPY --from=builder /app/backend/dist ./backend/dist
 COPY --from=builder /app/common/dist ./common/dist
 
-CMD ["node", "backend/dist/server.js"]
+WORKDIR /app/backend
+
+CMD ["npm", "run", "server"]
