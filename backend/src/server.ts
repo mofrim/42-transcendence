@@ -207,12 +207,6 @@ function handleRPSChoice(socket: Socket, data: RPSBattleChoicePayload): void {
 
     if (gameResultCheck < 2 || gameResultCheck > 4) return;
 
-    /**
-     * The value assigned to 'gameResult' is not used in subsequent statements.
-     * eslint(no-useless-assignment)
-     * let gameResult = null;
-     */
-
     const rpsGame = gameManager.rpsGame.get(gameID);
 
     if (!rpsGame) return;
@@ -220,6 +214,7 @@ function handleRPSChoice(socket: Socket, data: RPSBattleChoicePayload): void {
     const PlayerOne = rpsGame.playerOne;
     const PlayerTwo = rpsGame.playerTwo;
 
+    // FIXME what about this code?
     /* if(gameResultCheck == 1){
       gameResult = gameManager.resultInvalid(PlayerOne, PlayerTwo);
 
@@ -230,8 +225,9 @@ function handleRPSChoice(socket: Socket, data: RPSBattleChoicePayload): void {
       });
 
     } */
+
     if (gameResultCheck == 2) {
-        gameResult = gameManager.resultDraw(
+        const { playerOne, playerTwo, choice } = gameManager.resultDraw(
             PlayerOne,
             PlayerTwo,
             rpsGame.playerOneChoice
@@ -239,43 +235,30 @@ function handleRPSChoice(socket: Socket, data: RPSBattleChoicePayload): void {
 
         io.emit('update', {
             type: 'rps_draw',
-            playerOne: gameResult.playerOne,
-            playerTwo: gameResult.playerTwo,
-            choice: gameResult.choice,
-        });
-    } else if (gameResultCheck == 3) {
-        gameResult = gameManager.resultWinner(
-            PlayerOne,
-            rpsGame.playerOneChoice,
-            PlayerTwo,
-            rpsGame.playerTwoChoice
-        );
-
-        io.emit('update', {
-            type: 'rps_winner',
-            winner: gameResult.winner,
-            winnerChoice: gameResult.winnerChoice,
-            loser: gameResult.loser,
-            loserChoice: gameResult.loserChoice,
+            playerOne: playerOne,
+            playerTwo: playerTwo,
+            choice: choice,
         });
     } else {
-        gameResult = gameManager.resultWinner(
-            PlayerTwo,
-            rpsGame.playerTwoChoice,
-            PlayerOne,
-            rpsGame.playerOneChoice
-        );
+        const { winner, winnerChoice, loser, loserChoice } =
+            gameManager.resultWinner(
+                PlayerOne,
+                rpsGame.playerOneChoice,
+                PlayerTwo,
+                rpsGame.playerTwoChoice
+            );
 
         io.emit('update', {
             type: 'rps_winner',
-            winner: gameResult.winner,
-            winnerChoice: gameResult.winnerChoice,
-            loser: gameResult.loser,
-            loserChoice: gameResult.loserChoice,
+            winner: winner,
+            winnerChoice: winnerChoice,
+            loser: loser,
+            loserChoice: loserChoice,
         });
     }
 
-    //console.log("RPS Game ended. GameID: " + gameID + " PlayerOne: " + PlayerOne + " PlayerTwo: " + PlayerTwo);
+    //console.log("RPS Game ended. GameID: " + gameID + " PlayerOne: " +
+    //PlayerOne + " PlayerTwo: " + PlayerTwo);
 
     //gameManager.removeRPSGame(gameID);
 }
