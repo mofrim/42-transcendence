@@ -100,7 +100,8 @@ export class Camera {
                 this.dir
             );
         else {
-            this.CamCollisionAdjust(this.rayPos, hits[0].point, this.dir);
+            // FIXME silenced noUncheckedIndexedAccess here
+            this.CamCollisionAdjust(this.rayPos, hits[0]!.point, this.dir);
             //this.testDirect(this.rayPos, hits[0].point, this.camera.position);
         }
     }

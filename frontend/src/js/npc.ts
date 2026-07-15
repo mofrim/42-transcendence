@@ -73,9 +73,11 @@ export class NPC {
 
             const mix = new THREE.AnimationMixer(this.model);
 
+
+            // FIXME silenced noUncheckedIndexedAccess here
             const actions: NPCAnimationActions = {
-                Idle: mix.clipAction(gltf.animations[defaultAnim]),
-                Run: mix.clipAction(gltf.animations[2]),
+                Idle: mix.clipAction(gltf.animations[defaultAnim]!),
+                Run: mix.clipAction(gltf.animations[2]!),
             };
             this.actions = actions;
 

@@ -14,22 +14,20 @@ import { RPS_Game } from './rps_game.js';
 
 import { io } from 'socket.io-client';
 
-import { PlayerState, RPSChoice } from '@common/sharedTypes';
-import type { GLBMesh } from '@common/sharedTypes';
+import { PlayerState, RPSChoice, TTTMeshBoard } from '@common/types';
 import type {
+    GLBMesh,
     RPSInvalidPayload,
     RPSDrawPayload,
     RPSWinnerPayload,
     RPSAcceptDeclinePayload,
     RPSRequestDataPayload,
-} from '@common/sharedTypes';
-import type {
     TTTMarkPayload,
     TTTStartPayload,
     TTTWinPayload,
     TTTDrawPayload,
-} from '@common/sharedTypes';
-import type { PlayerUpdatePayload } from '@common/sharedTypes';
+    PlayerUpdatePayload
+} from '@common/types';
 
 /** all both gender */
 
@@ -73,7 +71,7 @@ export function startGame(
 
     const socketServerUrl =
         selectedSocketServerUrl ||
-        import.meta.env.VITE_SOCKET_SERVER_URL ||
+        import.meta.env['VITE_SOCKET_SERVER_URL'] ||
         'http://localhost:3000';
 
     const socket = io(socketServerUrl, {
@@ -405,7 +403,7 @@ export function startGame(
     function handleTTTupdate(data: TTTMarkPayload) {
         //console.log("Marking 2: " + data.board);
         if (!tttGame) return;
-        tttGame.markField(data.fieldName, data.id, data.mark);
+        tttGame.markField(data.fieldName, Number(data.id), data.mark);
     }
 
     function handleTTTstart(data: TTTStartPayload) {
@@ -462,7 +460,7 @@ export function startGame(
     const keyStates: Record<string, boolean> = {};
 
     const controls = {
-        key: [0, 0],
+        key: [0, 0] as [number, number]
     };
 
     const worldOctree = new Octree();
@@ -471,7 +469,7 @@ export function startGame(
 
     const mesh_col: GLBMesh[] = [];
     const mesh_RP: GLBMesh[] = [];
-    const tttBox: GLBMesh[] = [];
+    const tttBox: TTTMeshBoard = new TTTMeshBoard();
     let tttStart: GLBMesh;
 
     //let camDistance = 0;
@@ -602,8 +600,12 @@ export function startGame(
                             mesh_col.push(child);
                         }
 
-                        if (child.name.includes('TTT_Board'))
-                            tttBox.push(child);
+                        if (child.name.includes('TTT_Board')) {
+                            if (tttBox.cellCnt >= 9)
+                                throw new Error("ttt game can have only 9 cells!");
+                            tttBox.cells[tttBox.cellCnt] = child;
+                            tttBox.cellCnt++;
+                        }
                         if (child.name.includes('TTT_Start')) tttStart = child;
 
                         child.scale.set(1.15, 1.15, 1.15);
@@ -838,7 +840,7 @@ export function startGame(
             if (rpsGame.battleRequestedPlayer) {
                 console.log(
                     'Sending accept request to player ' +
-                        rpsGame.battleRequestedPlayer
+                    rpsGame.battleRequestedPlayer
                 );
                 console.log('BATTLE START!');
                 emitBattleAccept(rpsGame.battleRequestedPlayer);
@@ -862,7 +864,7 @@ export function startGame(
             if (rpsGame.battleRequestedPlayer) {
                 console.log(
                     'Sending decline request to player ' +
-                        rpsGame.battleRequestedPlayer
+                    rpsGame.battleRequestedPlayer
                 );
                 console.log('BATTLE DECLINED!');
                 emitBattleDecline(rpsGame.battleRequestedPlayer);
@@ -948,14 +950,15 @@ export function startGame(
 
         //console.log("hits.length: " + hits.length );
 
+        // FIXME silenced noUncheckedIndexedAccess here
         if (hits.length > 0) {
             //console.log("Clicked on TTT box:" + hits[0].object.name);
             //console.log("Clicked on: " + hits[0].object.name );
-            if (hits[0].object.name.includes('TTT_Board')) {
+            if (hits[0]!.object.name.includes('TTT_Board')) {
                 //tttGame.markField(hits[0].object.name, socket.id);
-                emitTTTmark(hits[0].object.name);
+                emitTTTmark(hits[0]!.object.name);
                 //console.log("Clicked on TTT box:" + hits[0].object.name);
-            } else if (hits[0].object.name.includes('TTT_Start')) {
+            } else if (hits[0]!.object.name.includes('TTT_Start')) {
                 //tttGame.startGame(socket.id);
                 emitTTTstart();
                 //console.log("Clicked on TTT box:" + hits[0].object.name);
@@ -981,7 +984,7 @@ export function startGame(
         if (!player) return;
 
         keyStates[event.code] = true;
-        const key = controls.key;
+        const key: number[] = controls.key;
         player.controls.key = key;
         //console.log("Key pressed: " + event.code);
         switch (event.code) {
@@ -1009,7 +1012,7 @@ export function startGame(
         if (!player) return;
 
         keyStates[event.code] = false;
-        const key = controls.key;
+        const key: [number, number] = controls.key;
         player.controls.key = key;
         switch (event.code) {
             // movement keys

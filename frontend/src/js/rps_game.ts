@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { Player } from './player';
 import { Remote_Player } from './remote_player';
 import type { Socket } from 'socket.io-client';
-import { RPSChoice } from '@common/sharedTypes';
+import { RPSChoice } from '@common/types';
 
 export class RPS_Game {
     scene: THREE.Scene;
@@ -410,23 +410,24 @@ export class RPS_Game {
         }
     }
 
+    // FIXME silenced noUncheckedIndexedAccess here
     addText(text: string, px: number, py: number, size: number): void {
         this.currentTextState.push(this.makeSprite(text, size));
         const scaleFactor = 0.2;
-        this.currentTextState[this.currentTextState.length - 1].scale.set(
-            this.currentTextState[this.currentTextState.length - 1].scale.x *
-                scaleFactor,
-            this.currentTextState[this.currentTextState.length - 1].scale.y *
-                scaleFactor,
+        this.currentTextState[this.currentTextState.length - 1]!.scale.set(
+            this.currentTextState[this.currentTextState.length - 1]!.scale.x *
+            scaleFactor,
+            this.currentTextState[this.currentTextState.length - 1]!.scale.y *
+            scaleFactor,
             1
         );
-        this.currentTextState[this.currentTextState.length - 1].position.set(
+        this.currentTextState[this.currentTextState.length - 1]!.position.set(
             px,
             py,
             0
         );
         this.overlayScene.add(
-            this.currentTextState[this.currentTextState.length - 1]
+            this.currentTextState[this.currentTextState.length - 1]!
         );
     }
 }

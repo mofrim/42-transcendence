@@ -189,3 +189,30 @@ export type TTTWinPayload = {
 export type TTTDrawPayload = {
     type: 'ttt_draw';
 }
+
+export class TTTMeshBoard {
+    cells: GLBMesh[];
+    size: number;
+    cellCnt: number;
+
+    constructor() {
+        this.cells = Array(9).fill(null).map(() => this.createGLBMesh());
+        this.size = 9;
+        this.cellCnt = 0;
+    };
+
+    private createGLBMesh(): GLBMesh {
+        const geometry = new THREE.BufferGeometry();
+        const material = new THREE.MeshStandardMaterial();
+        return new THREE.Mesh(geometry, material) as GLBMesh;
+    };
+
+    // method needed to wrap the array access because with
+    // `noUncheckedIndexedAccess` tsc is treating each array-acces as `... |
+    // undefined` -> this enforces implementing getters!
+    getCell(i: number): GLBMesh {
+        const cell = this.cells[i];
+        if (!cell) throw new Error(`TTTMeshBoard-cell ${i} not initialized!`);
+        return cell;
+    }
+}

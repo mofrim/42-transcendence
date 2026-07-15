@@ -1,18 +1,17 @@
 import * as THREE from 'three';
 import { Player } from './player';
-import { TTTMark } from '@common/types';
+import { TTTMark, TTTMeshBoard } from '@common/types';
 
 // Type-only import: exists only during TypeScript compilation, not at runtime.
 // The type is removed after compilation, so it must be imported using `import type`.
 import type {
     TTTBoard,
     PlayerSlot,
-    TTTInitGamePayload,
-    GLBMesh,
+    TTTInitGamePayload
 } from '@common/types';
 
 export class TTT_Game {
-    board: GLBMesh[];
+    board: TTTMeshBoard;
     scene: THREE.Scene;
     button: THREE.Mesh;
     renderer: THREE.WebGLRenderer;
@@ -40,11 +39,13 @@ export class TTT_Game {
     constructor(
         scene: THREE.Scene,
         player: Player,
-        board: GLBMesh[],
+        board: TTTMeshBoard,
         button: THREE.Mesh,
         renderer: THREE.WebGLRenderer
     ) {
+
         this.board = board;
+
         this.scene = scene;
         this.button = button;
         this.renderer = renderer;
@@ -129,16 +130,18 @@ export class TTT_Game {
         const loop = () => {
             //console.log("Waiting for board to be ready...");
             this.wait(10);
-            if (!this.board[0]) {
+            if (!this.board.cells[0]) {
                 requestAnimationFrame(loop);
             } else {
                 let index = 0;
-                if(data.game) {
-                    for (const box of data.game.board) {
-                        if (box === TTTMark.X)
-                            this.board[index].material.map = this.texX;
-                        else if (box === TTTMark.O)
-                            this.board[index].material.map = this.texO;
+                if (data.game) {
+                    if (index < this.board.size) {
+                        for (const box of data.game.board) {
+                            if (box === TTTMark.X)
+                                this.board.getCell(index).material.map = this.texX;
+                            else if (box === TTTMark.O)
+                                this.board.getCell(index).material.map = this.texO;
+                        }
                         index++;
                         //console.log("# Initializing board: " + box);
                     }
@@ -372,12 +375,12 @@ export class TTT_Game {
 
         if (this.players.includes(this.player.id)) this.removeText();
         this.players = [null, null];
-        for (const box of this.board)
+        for (const box of this.board.cells)
             box.material.color = new THREE.Color(0xffffff);
     }
 
     clearBoard() {
-        for (const box of this.board) {
+        for (const box of this.board.cells) {
             box.material.map = this.texEmpty;
             box.material.needsUpdate = true;
         }
@@ -397,37 +400,37 @@ export class TTT_Game {
 
     drawWin(winnerID: number): void {
         if (winnerID == 1) {
-            this.board[0].material.color = new THREE.Color(0xff0000);
-            this.board[1].material.color = new THREE.Color(0xff0000);
-            this.board[2].material.color = new THREE.Color(0xff0000);
+            this.board.getCell(0).material.color = new THREE.Color(0xff0000);
+            this.board.getCell(1).material.color = new THREE.Color(0xff0000);
+            this.board.getCell(2).material.color = new THREE.Color(0xff0000);
         } else if (winnerID == 2) {
-            this.board[3].material.color = new THREE.Color(0xff0000);
-            this.board[4].material.color = new THREE.Color(0xff0000);
-            this.board[5].material.color = new THREE.Color(0xff0000);
+            this.board.getCell(3).material.color = new THREE.Color(0xff0000);
+            this.board.getCell(4).material.color = new THREE.Color(0xff0000);
+            this.board.getCell(5).material.color = new THREE.Color(0xff0000);
         } else if (winnerID == 3) {
-            this.board[6].material.color = new THREE.Color(0xff0000);
-            this.board[7].material.color = new THREE.Color(0xff0000);
-            this.board[8].material.color = new THREE.Color(0xff0000);
+            this.board.getCell(6).material.color = new THREE.Color(0xff0000);
+            this.board.getCell(7).material.color = new THREE.Color(0xff0000);
+            this.board.getCell(8).material.color = new THREE.Color(0xff0000);
         } else if (winnerID == 4) {
-            this.board[0].material.color = new THREE.Color(0xff0000);
-            this.board[3].material.color = new THREE.Color(0xff0000);
-            this.board[6].material.color = new THREE.Color(0xff0000);
+            this.board.getCell(0).material.color = new THREE.Color(0xff0000);
+            this.board.getCell(3).material.color = new THREE.Color(0xff0000);
+            this.board.getCell(6).material.color = new THREE.Color(0xff0000);
         } else if (winnerID == 5) {
-            this.board[1].material.color = new THREE.Color(0xff0000);
-            this.board[4].material.color = new THREE.Color(0xff0000);
-            this.board[7].material.color = new THREE.Color(0xff0000);
+            this.board.getCell(1).material.color = new THREE.Color(0xff0000);
+            this.board.getCell(4).material.color = new THREE.Color(0xff0000);
+            this.board.getCell(7).material.color = new THREE.Color(0xff0000);
         } else if (winnerID == 6) {
-            this.board[2].material.color = new THREE.Color(0xff0000);
-            this.board[5].material.color = new THREE.Color(0xff0000);
-            this.board[8].material.color = new THREE.Color(0xff0000);
+            this.board.getCell(2).material.color = new THREE.Color(0xff0000);
+            this.board.getCell(5).material.color = new THREE.Color(0xff0000);
+            this.board.getCell(8).material.color = new THREE.Color(0xff0000);
         } else if (winnerID == 7) {
-            this.board[0].material.color = new THREE.Color(0xff0000);
-            this.board[4].material.color = new THREE.Color(0xff0000);
-            this.board[8].material.color = new THREE.Color(0xff0000);
+            this.board.getCell(0).material.color = new THREE.Color(0xff0000);
+            this.board.getCell(4).material.color = new THREE.Color(0xff0000);
+            this.board.getCell(8).material.color = new THREE.Color(0xff0000);
         } else if (winnerID == 8) {
-            this.board[2].material.color = new THREE.Color(0xff0000);
-            this.board[4].material.color = new THREE.Color(0xff0000);
-            this.board[6].material.color = new THREE.Color(0xff0000);
+            this.board.getCell(2).material.color = new THREE.Color(0xff0000);
+            this.board.getCell(4).material.color = new THREE.Color(0xff0000);
+            this.board.getCell(6).material.color = new THREE.Color(0xff0000);
         }
     }
 
@@ -487,7 +490,7 @@ export class TTT_Game {
                 this.addText('Your Turn with O!', 0, -0.5, 75);
         }
 
-        for (const box of this.board) {
+        for (const box of this.board.cells) {
             if (box.name === fieldName) {
                 //console.log("Marking now:" + fieldName);
                 if (mark === TTTMark.O) box.material.map = this.texO;
@@ -565,23 +568,24 @@ export class TTT_Game {
         }
     }
 
+    // FIXME silenced noUncheckedIndexedAccess here
     addText(text: string, px: number, py: number, size: number): void {
         this.currentTextState.push(this.makeSprite(text, size));
         const scaleFactor = 0.2;
-        this.currentTextState[this.currentTextState.length - 1].scale.set(
-            this.currentTextState[this.currentTextState.length - 1].scale.x *
+        this.currentTextState[this.currentTextState.length - 1]!.scale.set(
+            this.currentTextState[this.currentTextState.length - 1]!.scale.x *
             scaleFactor,
-            this.currentTextState[this.currentTextState.length - 1].scale.y *
+            this.currentTextState[this.currentTextState.length - 1]!.scale.y *
             scaleFactor,
             1
         );
-        this.currentTextState[this.currentTextState.length - 1].position.set(
+        this.currentTextState[this.currentTextState.length - 1]!.position.set(
             px,
             py,
             0
         );
         this.overlayScene.add(
-            this.currentTextState[this.currentTextState.length - 1]
+            this.currentTextState[this.currentTextState.length - 1]!
         );
     }
 }
