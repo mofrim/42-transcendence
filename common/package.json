@@ -1,6 +1,6 @@
 {
   "name": "@common/types",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "main": "./dist/sharedTypes.js",
   "types": "./dist/sharedTypes.d.ts",
   "private": true,

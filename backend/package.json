@@ -12,11 +12,11 @@
     "start": "node dist/server.js"
   },
   "dependencies": {
-    "@common/types": "^1.0.0",
     "express": "^5.2.1",
     "socket.io": "^4.8.3"
   },
   "devDependencies": {
+    "@common/types": "^1.0.0",
     "tsx": "^4.23.1"
   }
 }
