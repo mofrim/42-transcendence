@@ -9,6 +9,8 @@
     "dev": "node src/server.js",
     "build": "tsc -b",
     "type-check": "tsc -b ../common/tsconfig.json && tsc --noEmit",
+    "lint": "eslint .",
+    "lint-fix": "eslint . --fix",
     "start": "node dist/server.js"
   },
   "dependencies": {
