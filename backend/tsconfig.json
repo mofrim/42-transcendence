@@ -1,18 +1,22 @@
 {
-  "compilerOptions": {
-    "rootDir": "./src",
-    "outDir": "./dist",
+    "compilerOptions": {
+        "rootDir": "./src",
+        "outDir": "./dist",
 
-    "module": "nodenext",
-    "target": "esnext",
-    "lib": ["ES2023", "DOM"],
-    "types": ["node"],
+        "module": "nodenext",
+        "target": "esnext",
+        "lib": ["ES2023", "DOM"],
+        "types": ["node"],
 
-    // Stricter Typechecking Options
+    // linting
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+
+    // stricter Typechecking Options
     "noUncheckedIndexedAccess": true,
     "exactOptionalPropertyTypes": true,
 
-    // Style Options
+    // style Options
     "noImplicitReturns": true,
     "noImplicitOverride": true,
     "noUnusedLocals": true,
@@ -22,7 +26,7 @@
     "allowImportingTsExtensions": true,
     "rewriteRelativeImportExtensions": true,
 
-    // Recommended Options
+    // recommended Options
     "strict": true,
     "verbatimModuleSyntax": true,
     "isolatedModules": true,
@@ -31,16 +35,7 @@
     "skipLibCheck": true,
 
     "allowJs": true,
-    "checkJs": false,
-
-    "composite": true,
-
-    "paths": {
-        "@common/types": ["../common/dist/sharedTypes.d.ts"]
-    }
-  },
-  "include": ["./src/**/*"],
-  "references": [
-    { "path": "../common" }
-  ]
+    "checkJs": false
+    },
+    "include": ["./src/**/*"],
 }

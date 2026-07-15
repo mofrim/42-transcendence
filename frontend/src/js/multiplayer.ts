@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import { Remote_Player } from './remote_player.js';
 
 import { PlayerState, CharacterModel } from '@common/types';
-import type { Character } from '@common/types';
+import type { Character, GLBMesh } from '@common/types';
 
 /**
  * all both gender
@@ -25,7 +25,7 @@ function getRemotePlayerModelPath(character: Character): string {
 
 export class MultiplayerManager {
     scene: THREE.Scene;
-    mesh_RP: THREE.Mesh;
+    mesh_RP: GLBMesh[];
     players: Map<string, Remote_Player>;
     count: number;
     desired: THREE.Vector3;
@@ -35,7 +35,7 @@ export class MultiplayerManager {
     nz: number;
     step: number;
 
-    constructor(scene: THREE.Scene, mesh_RP: THREE.Mesh) {
+    constructor(scene: THREE.Scene, mesh_RP: GLBMesh[]) {
         this.scene = scene;
         this.mesh_RP = mesh_RP;
 

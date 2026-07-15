@@ -1,15 +1,23 @@
 {
-  "name": "backend",
-  "version": "0.0.0",
-  "description": "ft_transcendence backend",
-  "type": "module",
-  "scripts": {
-	"build": "tsc --build",
-    "dev": "tsc --build && node dist/server.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "dependencies": {
-    "@common/types": "1.0.0",
-    "socket.io": "^4.8.3"
-  }
+    "name": "ftr-backend",
+    "description": "ft_transcendence backend",
+    "private": true,
+    "version": "0.0.0",
+    "type": "module",
+    "scripts": {
+        "dev": "tsx watch src/server.ts",
+        "build": "tsc -b",
+        "type-check": "tsc -b ../common/tsconfig.json && tsc --noEmit",
+        "lint": "eslint .",
+        "lint-fix": "eslint . --fix",
+        "server": "node dist/server.js"
+    },
+    "dependencies": {
+        "@common/types": "*",
+        "express": "^5.2.1",
+        "socket.io": "^4.8.3"
+    },
+    "devDependencies": {
+        "tsx": "^4.23.1"
+    }
 }

@@ -1,15 +1,18 @@
 import * as THREE from 'three';
-import { Player } from "./player";
-import { TTTMark } from '@common/types';
+import { Player } from './player';
+import { TTTMark, TTTMeshBoard } from '@common/types';
 
 // Type-only import: exists only during TypeScript compilation, not at runtime.
 // The type is removed after compilation, so it must be imported using `import type`.
-import type { TTTBoard, PlayerSlot, TTTInitGamePayload, GLBMesh } from '@common/types';
+import type {
+    TTTBoard,
+    PlayerSlot,
+    TTTInitGamePayload
+} from '@common/types';
 
 export class TTT_Game {
-
-    board: GLBMesh[];
-    scene: THREE.Scene
+    board: TTTMeshBoard;
+    scene: THREE.Scene;
     button: THREE.Mesh;
     renderer: THREE.WebGLRenderer;
     player: Player;
@@ -25,7 +28,7 @@ export class TTT_Game {
     currentTextState: THREE.Sprite[];
 
     texX: THREE.Texture;
-    texO: THREE.Texture
+    texO: THREE.Texture;
     texEmpty: THREE.Texture;
 
     overlayScene: THREE.Scene;
@@ -33,8 +36,16 @@ export class TTT_Game {
 
     vsSprite: Map<string, THREE.Mesh>;
 
-    constructor(scene: THREE.Scene, player: Player, board: GLBMesh[], button: THREE.Mesh, renderer: THREE.WebGLRenderer) {
+    constructor(
+        scene: THREE.Scene,
+        player: Player,
+        board: TTTMeshBoard,
+        button: THREE.Mesh,
+        renderer: THREE.WebGLRenderer
+    ) {
+
         this.board = board;
+
         this.scene = scene;
         this.button = button;
         this.renderer = renderer;
@@ -44,14 +55,22 @@ export class TTT_Game {
 
         this.tttCamera = false;
 
-        this.state = [TTTMark.Empty, TTTMark.Empty, TTTMark.Empty,
-        TTTMark.Empty, TTTMark.Empty, TTTMark.Empty,
-        TTTMark.Empty, TTTMark.Empty, TTTMark.Empty];
+        this.state = [
+            TTTMark.Empty,
+            TTTMark.Empty,
+            TTTMark.Empty,
+            TTTMark.Empty,
+            TTTMark.Empty,
+            TTTMark.Empty,
+            TTTMark.Empty,
+            TTTMark.Empty,
+            TTTMark.Empty,
+        ];
 
         this.vsAnimationStart = false;
 
-        this.spriteGameText = this.makeSprite("Click to Join", 50);
-        this.spriteGameCount = this.makeSprite("0/2", 50);
+        this.spriteGameText = this.makeSprite('Click to Join', 50);
+        this.spriteGameCount = this.makeSprite('0/2', 50);
         this.spriteGameText.position.set(24.25, 5.5, -16.13);
         this.spriteGameCount.position.set(24.25, 5.2, -16.13);
 
@@ -67,26 +86,40 @@ export class TTT_Game {
         this.vsSprite = new Map();
 
         //this.vsSprite.set("A", this.addVSSprite('textures/X.jpg'));
-        this.vsSprite.set("Beam", this.addVSSprite('textures/VS_Beam2.jpg', 10, 0.5));
-        this.vsSprite.get("Beam")?.position.set(0, -0.25, 0);
+        this.vsSprite.set(
+            'Beam',
+            this.addVSSprite('textures/VS_Beam2.jpg', 10, 0.5)
+        );
+        this.vsSprite.get('Beam')?.position.set(0, -0.25, 0);
 
-        this.vsSprite.set("VS", this.addVSSprite('textures/VS_2.png', 0.5, 0.5));
-        this.vsSprite.set("Draw", this.addVSSprite('textures/Draw.png', 0.5, 0.5));
-        this.vsSprite.set("UserA", this.addVSSprite('textures/UserA.png', 1, 1));
-        this.vsSprite.set("UserB", this.addVSSprite('textures/UserB.png', 1, 1));
+        this.vsSprite.set(
+            'VS',
+            this.addVSSprite('textures/VS_2.png', 0.5, 0.5)
+        );
+        this.vsSprite.set(
+            'Draw',
+            this.addVSSprite('textures/Draw.png', 0.5, 0.5)
+        );
+        this.vsSprite.set(
+            'UserA',
+            this.addVSSprite('textures/UserA.png', 1, 1)
+        );
+        this.vsSprite.set(
+            'UserB',
+            this.addVSSprite('textures/UserB.png', 1, 1)
+        );
 
-        console.log("TTT Game initialized.");
+        console.log('TTT Game initialized.');
     }
 
     initGame(data: TTTInitGamePayload): void {
-
         if (data.game.players[0]) {
-            this.updateSpriteText(this.spriteGameCount, "1/2", 50);
+            this.updateSpriteText(this.spriteGameCount, '1/2', 50);
             this.players[0] = data.game.players[0];
         }
         if (data.game.players[1]) {
-            this.updateSpriteText(this.spriteGameCount, "2/2", 50);
-            this.updateSpriteText(this.spriteGameText, "IN GAME", 50);
+            this.updateSpriteText(this.spriteGameCount, '2/2', 50);
+            this.updateSpriteText(this.spriteGameText, 'IN GAME', 50);
             this.players[1] = data.game.players[1];
         }
 
@@ -97,18 +130,21 @@ export class TTT_Game {
         const loop = () => {
             //console.log("Waiting for board to be ready...");
             this.wait(10);
-            if (!this.board[0]) {
+            if (!this.board.cells[0]) {
                 requestAnimationFrame(loop);
-            }
-            else {
+            } else {
                 let index = 0;
-                for (const box of data.game.board) {
-                    if (box === TTTMark.X)
-                        this.board[index].material.map = this.texX;
-                    else if (box === TTTMark.O)
-                        this.board[index].material.map = this.texO;
-                    index++;
-                    //console.log("# Initializing board: " + box);
+                if (data.game) {
+                    if (index < this.board.size) {
+                        for (const box of data.game.board) {
+                            if (box === TTTMark.X)
+                                this.board.getCell(index).material.map = this.texX;
+                            else if (box === TTTMark.O)
+                                this.board.getCell(index).material.map = this.texO;
+                        }
+                        index++;
+                        //console.log("# Initializing board: " + box);
+                    }
                 }
             }
         };
@@ -121,17 +157,16 @@ export class TTT_Game {
             map: texture,
             transparent: true,
             depthTest: false,
-            depthWrite: false
+            depthWrite: false,
         });
         const geometry = new THREE.PlaneGeometry(x, y);
-        let mesh = new THREE.Mesh(geometry, material);
+        const mesh = new THREE.Mesh(geometry, material);
         //this.overlayScene.add(mesh);
 
         return mesh;
     }
 
     onResize(): void {
-
         const aspect = window.innerWidth / window.innerHeight;
 
         this.overlayCamera.left = -aspect;
@@ -145,17 +180,15 @@ export class TTT_Game {
     }
 
     async startVSAnimation(): Promise<void> {
-
         this.removeText();
         this.vsAnimationStart = false;
 
-        const userASprite = this.vsSprite.get("UserA");
-        const userBSprite = this.vsSprite.get("UserB");
-        const vsSprite = this.vsSprite.get("VS");
-        const beamSprite = this.vsSprite.get("Beam");
+        const userASprite = this.vsSprite.get('UserA');
+        const userBSprite = this.vsSprite.get('UserB');
+        const vsSprite = this.vsSprite.get('VS');
+        const beamSprite = this.vsSprite.get('Beam');
 
-        if (!userASprite || !userBSprite || !vsSprite || !beamSprite)
-            return;
+        if (!userASprite || !userBSprite || !vsSprite || !beamSprite) return;
 
         this.overlayScene.add(userASprite);
         this.overlayScene.add(userBSprite);
@@ -175,8 +208,7 @@ export class TTT_Game {
 
             if (posA < 0.75 && posB > -0.75) {
                 requestAnimationFrame(loop);
-            }
-            else {
+            } else {
                 this.overlayScene.remove(userASprite);
                 this.overlayScene.remove(userBSprite);
                 this.overlayScene.remove(vsSprite);
@@ -184,29 +216,25 @@ export class TTT_Game {
 
                 this.removeText();
                 if (this.player.id === this.players[0]) {
-                    this.addText("You are \"X\". You go first", 0, -0.5, 75);
-                }
-                else {
-                    this.addText("You are \"O\". You go second", 0, -0.5, 75);
+                    this.addText('You are "X". You go first', 0, -0.5, 75);
+                } else {
+                    this.addText('You are "O". You go second', 0, -0.5, 75);
                 }
 
                 this.tttCamera = true;
-
             }
         };
         loop();
     }
 
     async winAnimation(user: string): Promise<void> {
-
         this.vsAnimationStart = false;
-        console.log("Animating win...");
+        console.log('Animating win...');
 
         const userSprite = this.vsSprite.get(user);
-        const beamSprite = this.vsSprite.get("Beam");
+        const beamSprite = this.vsSprite.get('Beam');
 
-        if (!userSprite || !beamSprite)
-            return;
+        if (!userSprite || !beamSprite) return;
 
         this.overlayScene.add(userSprite);
         this.overlayScene.add(beamSprite);
@@ -221,8 +249,7 @@ export class TTT_Game {
 
             if (posA < 0) {
                 requestAnimationFrame(loop);
-            }
-            else {
+            } else {
                 this.removeText();
 
                 //console.log("Animation finished.");
@@ -239,15 +266,13 @@ export class TTT_Game {
     }
 
     async drawAnimation(): Promise<void> {
-
         this.vsAnimationStart = false;
-        console.log("Animating Draw...");
+        console.log('Animating Draw...');
 
-        const drawSprite = this.vsSprite.get("Draw");
-        const beamSprite = this.vsSprite.get("Beam");
+        const drawSprite = this.vsSprite.get('Draw');
+        const beamSprite = this.vsSprite.get('Beam');
 
-        if (!drawSprite || !beamSprite)
-            return;
+        if (!drawSprite || !beamSprite) return;
 
         this.overlayScene.add(drawSprite);
         this.overlayScene.add(beamSprite);
@@ -261,8 +286,7 @@ export class TTT_Game {
 
             if (scaleX < 2) {
                 requestAnimationFrame(loop);
-            }
-            else {
+            } else {
                 this.removeText();
 
                 //console.log("Animation finished.");
@@ -279,7 +303,6 @@ export class TTT_Game {
     }
 
     render(): void {
-
         this.onResize();
 
         if (this.vsAnimationStart) {
@@ -288,7 +311,6 @@ export class TTT_Game {
 
         this.renderer.render(this.overlayScene, this.overlayCamera);
     }
-
 
     /* initSpriteText() {
 
@@ -300,190 +322,192 @@ export class TTT_Game {
 
     setPlayerOne(playerID: string): void {
         this.players[0] = playerID;
-        console.log("First Player added to game." + playerID);
-        this.updateSpriteText(this.spriteGameCount, "1/2", 50);
+        console.log('First Player added to game.' + playerID);
+        this.updateSpriteText(this.spriteGameCount, '1/2', 50);
         if (this.player.id === playerID)
-            this.addText("You joined the game. Waiting for another player...", 0, -0.5, 75);
+            this.addText(
+                'You joined the game. Waiting for another player...',
+                0,
+                -0.5,
+                75
+            );
     }
 
     setPlayerTwo(playerID: string): void {
-        console.log("Second Player added to game." + playerID);
+        console.log('Second Player added to game.' + playerID);
         this.players[1] = playerID;
     }
 
     startGame(playerOne: string, playerTwo: string): void {
-
+        console.log("Players: " + playerOne + ":" + this.players[0] + " and " + playerTwo + ":" + this.players[1]);
         if (playerOne !== this.players[0] || playerTwo !== this.players[1]) {
-            console.log("Player IDs do not match. Cannot start game.");
+            console.log('Player IDs do not match. Cannot start game.');
             return;
         }
 
         this.clearBoard();
-        console.log("TTT GAME START!!!");
-        console.log("Player 1: " + this.players[0]);
-        console.log("Player 2: " + this.players[1]);
-        this.updateSpriteText(this.spriteGameCount, "2/2", 50);
-        this.updateSpriteText(this.spriteGameText, "IN GAME", 50);
+        console.log('TTT GAME START!!!');
+        console.log('Player 1: ' + this.players[0]);
+        console.log('Player 2: ' + this.players[1]);
+        this.updateSpriteText(this.spriteGameCount, '2/2', 50);
+        this.updateSpriteText(this.spriteGameText, 'IN GAME', 50);
 
         if (this.player.id !== playerOne && this.player.id !== playerTwo)
             return;
 
         this.startVSAnimation();
-
     }
 
     wait(ms: number): Promise<void> {
-        return new Promise(resolve => setTimeout(resolve, ms));
+        return new Promise((resolve) => setTimeout(resolve, ms));
     }
 
     async endGame(): Promise<void> {
         await this.wait(2000);
         this.clearBoard();
 
-        console.log("TTT GAME END!!!");
+        console.log('TTT GAME END!!!');
 
         this.tttCamera = false;
 
-        this.updateSpriteText(this.spriteGameText, "Click to Join", 50);
-        this.updateSpriteText(this.spriteGameCount, "0/2", 50);
+        this.updateSpriteText(this.spriteGameText, 'Click to Join', 50);
+        this.updateSpriteText(this.spriteGameCount, '0/2', 50);
 
-        if (this.player.id !== undefined && this.players.includes(this.player.id))
-            this.removeText();
+        if (this.players.includes(this.player.id)) this.removeText();
         this.players = [null, null];
-        for (const box of this.board)
+        for (const box of this.board.cells)
             box.material.color = new THREE.Color(0xffffff);
-
     }
 
     clearBoard() {
-        for (const box of this.board) {
+        for (const box of this.board.cells) {
             box.material.map = this.texEmpty;
             box.material.needsUpdate = true;
         }
 
-        this.state = [TTTMark.Empty, TTTMark.Empty, TTTMark.Empty,
-        TTTMark.Empty, TTTMark.Empty, TTTMark.Empty,
-        TTTMark.Empty, TTTMark.Empty, TTTMark.Empty];
+        this.state = [
+            TTTMark.Empty,
+            TTTMark.Empty,
+            TTTMark.Empty,
+            TTTMark.Empty,
+            TTTMark.Empty,
+            TTTMark.Empty,
+            TTTMark.Empty,
+            TTTMark.Empty,
+            TTTMark.Empty,
+        ];
     }
 
     drawWin(winnerID: number): void {
         if (winnerID == 1) {
-            this.board[0].material.color = new THREE.Color(0xff0000);
-            this.board[1].material.color = new THREE.Color(0xff0000);
-            this.board[2].material.color = new THREE.Color(0xff0000);
-        }
-        else if (winnerID == 2) {
-            this.board[3].material.color = new THREE.Color(0xff0000);
-            this.board[4].material.color = new THREE.Color(0xff0000);
-            this.board[5].material.color = new THREE.Color(0xff0000);
-        }
-        else if (winnerID == 3) {
-            this.board[6].material.color = new THREE.Color(0xff0000);
-            this.board[7].material.color = new THREE.Color(0xff0000);
-            this.board[8].material.color = new THREE.Color(0xff0000);
-        }
-        else if (winnerID == 4) {
-            this.board[0].material.color = new THREE.Color(0xff0000);
-            this.board[3].material.color = new THREE.Color(0xff0000);
-            this.board[6].material.color = new THREE.Color(0xff0000);
-        }
-        else if (winnerID == 5) {
-            this.board[1].material.color = new THREE.Color(0xff0000);
-            this.board[4].material.color = new THREE.Color(0xff0000);
-            this.board[7].material.color = new THREE.Color(0xff0000);
-        }
-        else if (winnerID == 6) {
-            this.board[2].material.color = new THREE.Color(0xff0000);
-            this.board[5].material.color = new THREE.Color(0xff0000);
-            this.board[8].material.color = new THREE.Color(0xff0000);
-        }
-        else if (winnerID == 7) {
-            this.board[0].material.color = new THREE.Color(0xff0000);
-            this.board[4].material.color = new THREE.Color(0xff0000);
-            this.board[8].material.color = new THREE.Color(0xff0000);
-        }
-        else if (winnerID == 8) {
-            this.board[2].material.color = new THREE.Color(0xff0000);
-            this.board[4].material.color = new THREE.Color(0xff0000);
-            this.board[6].material.color = new THREE.Color(0xff0000);
+            this.board.getCell(0).material.color = new THREE.Color(0xff0000);
+            this.board.getCell(1).material.color = new THREE.Color(0xff0000);
+            this.board.getCell(2).material.color = new THREE.Color(0xff0000);
+        } else if (winnerID == 2) {
+            this.board.getCell(3).material.color = new THREE.Color(0xff0000);
+            this.board.getCell(4).material.color = new THREE.Color(0xff0000);
+            this.board.getCell(5).material.color = new THREE.Color(0xff0000);
+        } else if (winnerID == 3) {
+            this.board.getCell(6).material.color = new THREE.Color(0xff0000);
+            this.board.getCell(7).material.color = new THREE.Color(0xff0000);
+            this.board.getCell(8).material.color = new THREE.Color(0xff0000);
+        } else if (winnerID == 4) {
+            this.board.getCell(0).material.color = new THREE.Color(0xff0000);
+            this.board.getCell(3).material.color = new THREE.Color(0xff0000);
+            this.board.getCell(6).material.color = new THREE.Color(0xff0000);
+        } else if (winnerID == 5) {
+            this.board.getCell(1).material.color = new THREE.Color(0xff0000);
+            this.board.getCell(4).material.color = new THREE.Color(0xff0000);
+            this.board.getCell(7).material.color = new THREE.Color(0xff0000);
+        } else if (winnerID == 6) {
+            this.board.getCell(2).material.color = new THREE.Color(0xff0000);
+            this.board.getCell(5).material.color = new THREE.Color(0xff0000);
+            this.board.getCell(8).material.color = new THREE.Color(0xff0000);
+        } else if (winnerID == 7) {
+            this.board.getCell(0).material.color = new THREE.Color(0xff0000);
+            this.board.getCell(4).material.color = new THREE.Color(0xff0000);
+            this.board.getCell(8).material.color = new THREE.Color(0xff0000);
+        } else if (winnerID == 8) {
+            this.board.getCell(2).material.color = new THREE.Color(0xff0000);
+            this.board.getCell(4).material.color = new THREE.Color(0xff0000);
+            this.board.getCell(6).material.color = new THREE.Color(0xff0000);
         }
     }
 
     winner(playerID: string): void {
-        if (this.player.id !== undefined && this.players.includes(this.player.id)) {
+        if (this.players.includes(this.player.id)) {
             this.removeText();
-            this.updateSpriteText(this.spriteGameText, "FINISH", 50);
+            this.updateSpriteText(this.spriteGameText, 'FINISH', 50);
 
             if (this.player.id === playerID) {
-                this.winAnimation("UserA");
-                this.addText("You Win!", 0, -0.5, 75);
-            }
-            else {
-                this.winAnimation("UserB");
-                this.addText("Player " + playerID + " is the winner...", 0, -0.5, 75);
+                this.winAnimation('UserA');
+                this.addText('You Win!', 0, -0.5, 75);
+            } else {
+                this.winAnimation('UserB');
+                this.addText(
+                    'Player ' + playerID + ' is the winner...',
+                    0,
+                    -0.5,
+                    75
+                );
             }
 
-            console.log("Player 1 wins!");
+            console.log('Player 1 wins!');
         }
     }
 
     draw(): void {
         this.removeText();
         this.drawAnimation();
-        this.updateSpriteText(this.spriteGameText, "FINISH", 50);
+        this.updateSpriteText(this.spriteGameText, 'FINISH', 50);
     }
 
     checkDraw(): boolean {
         for (const field of this.state) {
-            if (field === "") {
+            if (field === '') {
                 //console.log("Not finished yet");
                 return false;
             }
         }
-        console.log("No Winner :(");
+        console.log('No Winner :(');
         return true;
     }
 
-    markField(fieldName: string, playerID: string, mark: TTTMark): void {
+    markField(fieldName: string, playerID: number, mark: TTTMark): void {
+        console.log('In Marking: ' + fieldName + ' by player: ' + playerID);
 
-        console.log("In Marking: " + fieldName + " by player: " + playerID);
-
-        if (this.player.id !== undefined && this.players.includes(this.player.id)) {
+        if (this.players.includes(this.player.id)) {
             this.removeText();
 
             if (this.player.id === this.players[0] && mark === TTTMark.X)
-                this.addText("Waiting...", 0, -0.5, 75);
+                this.addText('Waiting...', 0, -0.5, 75);
             else if (this.player.id === this.players[0] && mark === TTTMark.O)
-                this.addText("Your Turn with X!", 0, -0.5, 75);
+                this.addText('Your Turn with X!', 0, -0.5, 75);
 
             if (this.player.id === this.players[1] && mark === TTTMark.O)
-                this.addText("Waiting...", 0, -0.5, 75);
+                this.addText('Waiting...', 0, -0.5, 75);
             else if (this.player.id === this.players[1] && mark === TTTMark.X)
-                this.addText("Your Turn with O!", 0, -0.5, 75);
+                this.addText('Your Turn with O!', 0, -0.5, 75);
         }
 
-        for (const box of this.board) {
+        for (const box of this.board.cells) {
             if (box.name === fieldName) {
                 //console.log("Marking now:" + fieldName);
-                if (mark === TTTMark.O)
-                    box.material.map = this.texO;
-                else
-                    box.material.map = this.texX;
+                if (mark === TTTMark.O) box.material.map = this.texO;
+                else box.material.map = this.texX;
                 box.material.needsUpdate = true;
             }
         }
     }
 
-
     // TODO: better create a sprite class ---------------------------------------
 
     makeSprite(text: string, size: number): THREE.Sprite {
-
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
 
         if (!ctx) {
-            throw new Error("Failed to get 2D canvas context");
+            throw new Error('Failed to get 2D canvas context');
         }
 
         canvas.width = 2048;
@@ -494,8 +518,8 @@ export class TTT_Game {
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
 
-        ctx.lineWidth = 8;          // outline thickness
-        ctx.strokeStyle = 'black';  // outline color
+        ctx.lineWidth = 8; // outline thickness
+        ctx.strokeStyle = 'black'; // outline color
         ctx.strokeText(text, canvas.width / 2, canvas.height / 2);
 
         ctx.fillStyle = 'white';
@@ -507,7 +531,7 @@ export class TTT_Game {
         material.depthWrite = false;
         material.depthTest = true;
         const sprite = new THREE.Sprite(material);
-        sprite.scale.set((canvas.width / canvas.height), 1, 1);
+        sprite.scale.set(canvas.width / canvas.height, 1, 1);
 
         this.scene.add(sprite);
 
@@ -518,8 +542,7 @@ export class TTT_Game {
         const canvas = sprite.material.map?.image as HTMLCanvasElement;
         const ctx = canvas.getContext('2d');
 
-        if (!ctx)
-            return;
+        if (!ctx) return;
 
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.font = size + 'px Segoe UI Black';
@@ -527,8 +550,8 @@ export class TTT_Game {
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
 
-        ctx.lineWidth = 8;          // outline thickness
-        ctx.strokeStyle = 'black';  // outline color
+        ctx.lineWidth = 8; // outline thickness
+        ctx.strokeStyle = 'black'; // outline color
         ctx.strokeText(text, canvas.width / 2, canvas.height / 2);
 
         ctx.fillText(text, canvas.width / 2, canvas.height / 2);
@@ -545,12 +568,24 @@ export class TTT_Game {
         }
     }
 
+    // FIXME silenced noUncheckedIndexedAccess here
     addText(text: string, px: number, py: number, size: number): void {
         this.currentTextState.push(this.makeSprite(text, size));
         const scaleFactor = 0.2;
-        this.currentTextState[this.currentTextState.length - 1].scale.set(this.currentTextState[this.currentTextState.length - 1].scale.x * scaleFactor, this.currentTextState[this.currentTextState.length - 1].scale.y * scaleFactor, 1);
-        this.currentTextState[this.currentTextState.length - 1].position.set(px, py, 0);
-        this.overlayScene.add(this.currentTextState[this.currentTextState.length - 1]);
+        this.currentTextState[this.currentTextState.length - 1]!.scale.set(
+            this.currentTextState[this.currentTextState.length - 1]!.scale.x *
+            scaleFactor,
+            this.currentTextState[this.currentTextState.length - 1]!.scale.y *
+            scaleFactor,
+            1
+        );
+        this.currentTextState[this.currentTextState.length - 1]!.position.set(
+            px,
+            py,
+            0
+        );
+        this.overlayScene.add(
+            this.currentTextState[this.currentTextState.length - 1]!
+        );
     }
-
 }
