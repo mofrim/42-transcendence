@@ -6,17 +6,10 @@
     "lib": ["ES2023", "DOM"],
     "module": "ESNext",
     "types": ["vite/client", "node"],
-    "skipLibCheck": true,
-
-    "paths": {
-      "@common/*": ["../common/src/*"]
-    },
 
     // bundler mode
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
-    "verbatimModuleSyntax": true,
-    "moduleDetection": "force",
     "noEmit": true,
     "jsx": "react-jsx",
 
@@ -24,16 +17,32 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
 
-    // this would not allow us to declare enums for example
-    "erasableSyntaxOnly": false,
+    // stricter Typechecking Options
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
 
+    // style Options
+    "noImplicitReturns": true,
+    "noImplicitOverride": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
+    "noPropertyAccessFromIndexSignature": true,
+    "allowImportingTsExtensions": true,
+    "rewriteRelativeImportExtensions": true,
+
+    // recommended Options
+    "strict": true,
+    "verbatimModuleSyntax": true,
+    "isolatedModules": true,
+    "noUncheckedSideEffectImports": true,
+    "moduleDetection": "force",
+    "skipLibCheck": true,
 
     // hybrid JS/TS
     "allowJs": true,
     "checkJs": false,
-    "esModuleInterop": true,
-    "strict": true
+    "esModuleInterop": true
   },
   "include": ["src", "vite.config.ts"]
 }
