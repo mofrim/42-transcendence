@@ -984,7 +984,7 @@ export function startGame(
         if (!player) return;
 
         keyStates[event.code] = true;
-        const key: number[] = controls.key;
+        const key: [number, number] = controls.key;
         player.controls.key = key;
         //console.log("Key pressed: " + event.code);
         switch (event.code) {
