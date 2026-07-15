@@ -113,15 +113,21 @@ export class TTT_Game {
     }
 
     initGame(data: TTTInitGamePayload): void {
-        if (data.game.players[0]) {
-            this.updateSpriteText(this.spriteGameCount, '1/2', 50);
-            this.players[0] = data.game.players[0];
-        }
-        if (data.game.players[1]) {
-            this.updateSpriteText(this.spriteGameCount, '2/2', 50);
-            this.updateSpriteText(this.spriteGameText, 'IN GAME', 50);
-            this.players[1] = data.game.players[1];
-        }
+        // `data.game != null` checks for !== null and !== undefined because
+        // null != undefined is false (but null === unedfined too)!
+        // it's the idiomatic way for checking external JSON-data (like from
+        // some API) for undefinedness
+        if (data.game != null) {
+                if (data.game.players[0]) {
+                    this.updateSpriteText(this.spriteGameCount, '1/2', 50);
+                    this.players[0] = data.game.players[0];
+                }
+                if (data.game.players[1]) {
+                    this.updateSpriteText(this.spriteGameCount, '2/2', 50);
+                    this.updateSpriteText(this.spriteGameText, 'IN GAME', 50);
+                    this.players[1] = data.game.players[1];
+                }
+            }
 
         this.waitforInitMesh(data);
     }
