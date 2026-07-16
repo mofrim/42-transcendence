@@ -3,3 +3,5 @@ dist/
 .vite
 /.idea/
 tsconfig.tsbuildinfo
+# ignore docker compose override file
+compose.override.yaml
