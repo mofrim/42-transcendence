@@ -94,8 +94,8 @@ export function startGame(
             }
             else {
                 console.log(`socket connect: setting player.id to ${socket.id}`);
-                    player.id = socket.id;
-                }
+                player.id = socket.id;
+            }
             //tttGame.playerID = socket.id;
         }
     });
@@ -602,66 +602,64 @@ export function startGame(
             obj.position.set(...pos);
             obj.traverse((child) => {
                 if (child instanceof THREE.Mesh) {
-                    if (child.isMesh) {
-                        if (!child.name.includes('NOCOL')) {
-                            //console.log("Adding collider for: " + child.name);
-                            mesh_col.push(child);
-                        }
+                    if (!child.name.includes('NOCOL')) {
+                        //console.log("Adding collider for: " + child.name);
+                        mesh_col.push(child);
+                    }
 
-                        if (child.name.includes('TTT_Board')) {
-                            if (tttBox.cellCnt >= 9)
-                                throw new Error("ttt game can have only 9 cells!");
-                            tttBox.cells[tttBox.cellCnt] = child;
-                            tttBox.cellCnt++;
-                        }
-                        if (child.name.includes('TTT_Start')) tttStart = child;
+                    if (child.name.includes('TTT_Board')) {
+                        if (tttBox.cellCnt >= 9)
+                            throw new Error("ttt game can have only 9 cells!");
+                        tttBox.cells[tttBox.cellCnt] = child;
+                        tttBox.cellCnt++;
+                    }
+                    if (child.name.includes('TTT_Start')) tttStart = child;
 
-                        child.scale.set(1.15, 1.15, 1.15);
+                    child.scale.set(1.15, 1.15, 1.15);
 
-                        if (child.material.name === 'Glass_mtl') {
-                            child.material = new THREE.MeshToonMaterial({
-                                color: 0xaaddff,
-                                transparent: true,
-                                opacity: 0.3,
-                            });
-                            child.castShadow = false;
-                            child.receiveShadow = false;
-                        } else if (child.material.name === 'Glass_outside') {
-                            child.material = new THREE.MeshToonMaterial({
-                                color: 0xaaddff,
-                                transparent: true,
-                                opacity: 0.8,
-                            });
-                            child.castShadow = false;
-                            child.receiveShadow = false;
-                        } else if (child.material.name === 'Glass_block') {
-                            child.material = new THREE.MeshToonMaterial({
-                                color: 0xaaddff,
-                                transparent: false,
-                            });
-                            child.castShadow = false;
-                            child.receiveShadow = false;
-                        } else {
-                            // outline
-                            const edges = new THREE.EdgesGeometry(
-                                child.geometry,
-                                50
-                            );
-                            const line = new THREE.LineSegments(
-                                edges,
-                                new THREE.LineBasicMaterial({ color: 0x000000 })
-                            );
-                            child.add(line);
+                    if (child.material.name === 'Glass_mtl') {
+                        child.material = new THREE.MeshToonMaterial({
+                            color: 0xaaddff,
+                            transparent: true,
+                            opacity: 0.3,
+                        });
+                        child.castShadow = false;
+                        child.receiveShadow = false;
+                    } else if (child.material.name === 'Glass_outside') {
+                        child.material = new THREE.MeshToonMaterial({
+                            color: 0xaaddff,
+                            transparent: true,
+                            opacity: 0.8,
+                        });
+                        child.castShadow = false;
+                        child.receiveShadow = false;
+                    } else if (child.material.name === 'Glass_block') {
+                        child.material = new THREE.MeshToonMaterial({
+                            color: 0xaaddff,
+                            transparent: false,
+                        });
+                        child.castShadow = false;
+                        child.receiveShadow = false;
+                    } else {
+                        // outline
+                        const edges = new THREE.EdgesGeometry(
+                            child.geometry,
+                            50
+                        );
+                        const line = new THREE.LineSegments(
+                            edges,
+                            new THREE.LineBasicMaterial({ color: 0x000000 })
+                        );
+                        child.add(line);
 
-                            child.material = new THREE.MeshToonMaterial({
-                                color: child.material.color,
-                                map: child.material.map || null,
-                                gradientMap: texture,
-                            });
+                        child.material = new THREE.MeshToonMaterial({
+                            color: child.material.color,
+                            map: child.material.map || null,
+                            gradientMap: texture,
+                        });
 
-                            child.castShadow = true;
-                            child.receiveShadow = true;
-                        }
+                        child.castShadow = true;
+                        child.receiveShadow = true;
                     }
                 }
             });
