@@ -26,7 +26,7 @@ import type {
     TTTStartPayload,
     TTTWinPayload,
     TTTDrawPayload,
-    PlayerUpdatePayload
+    PlayerUpdatePayload,
 } from '@common/types';
 
 /** all both gender */
@@ -91,9 +91,10 @@ export function startGame(
             // add error logging + more sophisticated handling here
             if (socket.id === undefined) {
                 console.error('socket connect: undefined socket.id!');
-            }
-            else {
-                console.log(`socket connect: setting player.id to ${socket.id}`);
+            } else {
+                console.log(
+                    `socket connect: setting player.id to ${socket.id}`
+                );
                 player.id = socket.id;
             }
             //tttGame.playerID = socket.id;
@@ -120,7 +121,7 @@ export function startGame(
     socket.on('disconnect', (reason) => {
         if (!multiplayer) return;
         for (const [id, _player] of multiplayer.players) {
-            _player;
+            void _player;
             const disconnectedPlayer = multiplayer.players.get(id);
             if (disconnectedPlayer) disconnectedPlayer.removePlayer();
         }
@@ -426,9 +427,9 @@ export function startGame(
         tttGame.endGame();
     }
 
-    function handleTTTdraw(data: TTTDrawPayload) {
+    function handleTTTdraw(_data: TTTDrawPayload) {
         if (!tttGame) return;
-        data;
+        void _data;
         tttGame.draw();
         tttGame.endGame();
     }
@@ -468,7 +469,7 @@ export function startGame(
     const keyStates: Record<string, boolean> = {};
 
     const controls = {
-        key: [0, 0] as [number, number]
+        key: [0, 0] as [number, number],
     };
 
     const worldOctree = new Octree();
@@ -609,7 +610,7 @@ export function startGame(
 
                     if (child.name.includes('TTT_Board')) {
                         if (tttBox.cellCnt >= 9)
-                            throw new Error("ttt game can have only 9 cells!");
+                            throw new Error('ttt game can have only 9 cells!');
                         tttBox.cells[tttBox.cellCnt] = child;
                         tttBox.cellCnt++;
                     }
@@ -833,8 +834,8 @@ export function startGame(
         return mousePosition;
     }
 
-    function onPressAccept(event: KeyboardEvent) {
-        event;
+    function onPressAccept(_event: KeyboardEvent) {
+        void _event;
 
         if (!player || !rpsGame) return;
 
@@ -846,7 +847,7 @@ export function startGame(
             if (rpsGame.battleRequestedPlayer) {
                 console.log(
                     'Sending accept request to player ' +
-                    rpsGame.battleRequestedPlayer
+                        rpsGame.battleRequestedPlayer
                 );
                 console.log('BATTLE START!');
                 emitBattleAccept(rpsGame.battleRequestedPlayer);
@@ -857,8 +858,8 @@ export function startGame(
         }
     }
 
-    function onPressDecline(event: KeyboardEvent) {
-        event;
+    function onPressDecline(_event: KeyboardEvent) {
+        void _event;
 
         if (!player || !rpsGame) return;
 
@@ -870,7 +871,7 @@ export function startGame(
             if (rpsGame.battleRequestedPlayer) {
                 console.log(
                     'Sending decline request to player ' +
-                    rpsGame.battleRequestedPlayer
+                        rpsGame.battleRequestedPlayer
                 );
                 console.log('BATTLE DECLINED!');
                 emitBattleDecline(rpsGame.battleRequestedPlayer);
@@ -880,8 +881,8 @@ export function startGame(
         }
     }
 
-    function rockKey(event: KeyboardEvent) {
-        event;
+    function rockKey(_event: KeyboardEvent) {
+        void _event;
 
         if (!player || !rpsGame) return;
 
@@ -896,8 +897,8 @@ export function startGame(
         emitBattleChoice(RPSChoice.Rock);
     }
 
-    function paperKey(event: KeyboardEvent) {
-        event;
+    function paperKey(_event: KeyboardEvent) {
+        void _event;
 
         if (!player || !rpsGame) return;
 
@@ -912,8 +913,8 @@ export function startGame(
         emitBattleChoice(RPSChoice.Paper);
     }
 
-    function scissorsKey(event: KeyboardEvent) {
-        event;
+    function scissorsKey(_event: KeyboardEvent) {
+        void _event;
 
         if (!player || !rpsGame) return;
 
@@ -928,8 +929,8 @@ export function startGame(
         emitBattleChoice(RPSChoice.Scissors);
     }
 
-    function onPressB(event: KeyboardEvent) {
-        event;
+    function onPressB(_event: KeyboardEvent) {
+        void _event;
 
         if (!rpsGame) return;
 
@@ -1137,8 +1138,8 @@ export function startGame(
 
         rpsGame.updateCheck();
 
-        for (const [id, player] of npcs) {
-            id;
+        for (const [_id, player] of npcs) {
+            void _id;
             player.updateAnimation(delta);
         }
     }
