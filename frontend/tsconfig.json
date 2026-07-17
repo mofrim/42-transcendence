@@ -1,48 +1,44 @@
 {
-  "compilerOptions": {
-    "rootDir": "../",
-    "outDir": "./dist",
-    "target": "ES2023",
-    "lib": ["ES2023", "DOM"],
-    "module": "ESNext",
-    "types": ["vite/client", "node"],
+    "compilerOptions": {
+        "rootDir": "../",
+        "outDir": "./dist",
+        "target": "ES2023",
+        "lib": ["ES2023", "DOM"],
+        "module": "ESNext",
+        "types": ["vite/client", "node"],
 
-    // bundler mode
-    "moduleResolution": "bundler",
-    "allowImportingTsExtensions": true,
-    "noEmit": true,
-    "jsx": "react-jsx",
+        // bundler mode
+        "moduleResolution": "bundler",
+        "allowImportingTsExtensions": true,
+        "noEmit": true,
+        "jsx": "react-jsx",
 
-    // linting
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
+        // linting
+        "noUnusedLocals": true,
+        "noUnusedParameters": true,
 
-    // stricter Typechecking Options
-    "noUncheckedIndexedAccess": true,
-    "exactOptionalPropertyTypes": true,
+        // stricter Typechecking Options
+        "noUncheckedIndexedAccess": true,
+        "exactOptionalPropertyTypes": true,
 
-    // style Options
-    "noImplicitReturns": true,
-    "noImplicitOverride": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "noFallthroughCasesInSwitch": true,
-    "noPropertyAccessFromIndexSignature": true,
-    "allowImportingTsExtensions": true,
-    "rewriteRelativeImportExtensions": true,
+        // style Options
+        "noImplicitReturns": true,
+        "noImplicitOverride": true,
+        "noFallthroughCasesInSwitch": true,
+        "noPropertyAccessFromIndexSignature": true,
+        "rewriteRelativeImportExtensions": true,
 
-    // recommended Options
-    "strict": true,
-    "verbatimModuleSyntax": true,
-    "isolatedModules": true,
-    "noUncheckedSideEffectImports": true,
-    "moduleDetection": "force",
-    "skipLibCheck": true,
+        // recommended Options
+        "strict": true,
+        "verbatimModuleSyntax": true,
+        "isolatedModules": true,
+        "noUncheckedSideEffectImports": true,
+        "moduleDetection": "force",
+        "skipLibCheck": true,
 
-    // hybrid JS/TS
-    "allowJs": true,
-    "checkJs": false,
-    "esModuleInterop": true
-  },
-  "include": ["src", "vite.config.ts"]
+        // hybrid JS/TS
+        "allowJs": true,
+        "checkJs": false,
+        "esModuleInterop": true
+    }
 }
