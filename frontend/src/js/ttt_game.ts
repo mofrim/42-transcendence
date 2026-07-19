@@ -113,15 +113,21 @@ export class TTT_Game {
     }
 
     initGame(data: TTTInitGamePayload): void {
-        if (data.game.players[0]) {
-            this.updateSpriteText(this.spriteGameCount, '1/2', 50);
-            this.players[0] = data.game.players[0];
-        }
-        if (data.game.players[1]) {
-            this.updateSpriteText(this.spriteGameCount, '2/2', 50);
-            this.updateSpriteText(this.spriteGameText, 'IN GAME', 50);
-            this.players[1] = data.game.players[1];
-        }
+        // `data.game != null` checks for !== null and !== undefined because
+        // null != undefined is false (but null === unedfined too)!
+        // it's the idiomatic way for checking external JSON-data (like from
+        // some API) for undefinedness
+        if (data.game != null) {
+                if (data.game.players[0]) {
+                    this.updateSpriteText(this.spriteGameCount, '1/2', 50);
+                    this.players[0] = data.game.players[0];
+                }
+                if (data.game.players[1]) {
+                    this.updateSpriteText(this.spriteGameCount, '2/2', 50);
+                    this.updateSpriteText(this.spriteGameText, 'IN GAME', 50);
+                    this.players[1] = data.game.players[1];
+                }
+            }
 
         this.waitforInitMesh(data);
     }
@@ -373,7 +379,8 @@ export class TTT_Game {
         this.updateSpriteText(this.spriteGameText, 'Click to Join', 50);
         this.updateSpriteText(this.spriteGameCount, '0/2', 50);
 
-        if (this.players.includes(this.player.id)) this.removeText();
+        if (this.player.id !== undefined && this.players.includes(this.player.id))
+            this.removeText();
         this.players = [null, null];
         for (const box of this.board.cells)
             box.material.color = new THREE.Color(0xffffff);
@@ -435,7 +442,7 @@ export class TTT_Game {
     }
 
     winner(playerID: string): void {
-        if (this.players.includes(this.player.id)) {
+        if (this.player.id !== undefined && this.players.includes(this.player.id)) {
             this.removeText();
             this.updateSpriteText(this.spriteGameText, 'FINISH', 50);
 
@@ -476,7 +483,7 @@ export class TTT_Game {
     markField(fieldName: string, playerID: number, mark: TTTMark): void {
         console.log('In Marking: ' + fieldName + ' by player: ' + playerID);
 
-        if (this.players.includes(this.player.id)) {
+        if (this.player.id !== undefined && this.players.includes(this.player.id)) {
             this.removeText();
 
             if (this.player.id === this.players[0] && mark === TTTMark.X)

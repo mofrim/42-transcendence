@@ -6,10 +6,13 @@ import { Remote_Player } from './remote_player.js';
 import { PlayerState, CharacterModel } from '@common/types';
 import type { Character, GLBMesh } from '@common/types';
 
-/** all both gender */
-const PLAYER_CHARACTER_MODELS = {
-    male: '/glb/Male_Test.glb',
-    female: '/glb/Female_Test.glb',
+/**
+ * all both gender
+ * Typisiert die Modellpfade vollständig nach CharacterModel und behebt TS7053.
+*/
+const PLAYER_CHARACTER_MODELS: Readonly<Record<CharacterModel, string>> = {
+    [CharacterModel.male]: '/glb/Male_Test.glb',
+    [CharacterModel.female]: '/glb/Female_Test.glb',
 };
 
 function normalizeCharacter(character: Character): CharacterModel {
@@ -166,7 +169,7 @@ export class MultiplayerManager {
             if (player.mixer != null) player.updateAnimation(delta);
             //if(player.id == 1)
             //    this.multiplayerMovementTest(player);
-            if (player && player.id === -1) {
+            if (player && player.id === "-1") {
                 player.destroy();
                 this.players.delete(id);
             }
@@ -182,7 +185,6 @@ export class MultiplayerManager {
             getRemotePlayerModelPath(character),
             id,
             this.scene,
-            0,
             this.mesh_RP
         );
         this.players.set(newPlayer.id, newPlayer);

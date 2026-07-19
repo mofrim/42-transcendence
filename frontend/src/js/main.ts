@@ -26,7 +26,7 @@ import type {
     TTTStartPayload,
     TTTWinPayload,
     TTTDrawPayload,
-    PlayerUpdatePayload
+    PlayerUpdatePayload,
 } from '@common/types';
 
 /** all both gender */
@@ -87,7 +87,16 @@ export function startGame(
     socket.on('connect', () => {
         console.log('Your Player ID: ' + socket.id);
         if (player) {
-            player.id = socket.id;
+            // FIXME thing about cases where socket.id could be undefined and
+            // add error logging + more sophisticated handling here
+            if (socket.id === undefined) {
+                console.error('socket connect: undefined socket.id!');
+            } else {
+                console.log(
+                    `socket connect: setting player.id to ${socket.id}`
+                );
+                player.id = socket.id;
+            }
             //tttGame.playerID = socket.id;
         }
     });
@@ -112,7 +121,7 @@ export function startGame(
     socket.on('disconnect', (reason) => {
         if (!multiplayer) return;
         for (const [id, _player] of multiplayer.players) {
-            _player;
+            void _player;
             const disconnectedPlayer = multiplayer.players.get(id);
             if (disconnectedPlayer) disconnectedPlayer.removePlayer();
         }
@@ -418,9 +427,9 @@ export function startGame(
         tttGame.endGame();
     }
 
-    function handleTTTdraw(data: TTTDrawPayload) {
+    function handleTTTdraw(_data: TTTDrawPayload) {
         if (!tttGame) return;
-        data;
+        void _data;
         tttGame.draw();
         tttGame.endGame();
     }
@@ -460,7 +469,7 @@ export function startGame(
     const keyStates: Record<string, boolean> = {};
 
     const controls = {
-        key: [0, 0] as [number, number]
+        key: [0, 0] as [number, number],
     };
 
     const worldOctree = new Octree();
@@ -513,7 +522,7 @@ export function startGame(
         //player = new Player('glb/MainCharacterTest.glb', socket.id, scene, worldOctree);
         console.log('Player model path: ' + playerModelPath);
         fetch(playerModelPath).then((res) => console.log('exists:', res.ok));
-        player = new Player(playerModelPath, socket.id, scene, worldOctree, 2);
+        player = new Player(playerModelPath, socket.id, scene, worldOctree);
         multiplayer = new MultiplayerManager(scene, mesh_RP);
         multiplayer.initMultiplayerTest();
 
@@ -594,66 +603,64 @@ export function startGame(
             obj.position.set(...pos);
             obj.traverse((child) => {
                 if (child instanceof THREE.Mesh) {
-                    if (child.isMesh) {
-                        if (!child.name.includes('NOCOL')) {
-                            //console.log("Adding collider for: " + child.name);
-                            mesh_col.push(child);
-                        }
+                    if (!child.name.includes('NOCOL')) {
+                        //console.log("Adding collider for: " + child.name);
+                        mesh_col.push(child);
+                    }
 
-                        if (child.name.includes('TTT_Board')) {
-                            if (tttBox.cellCnt >= 9)
-                                throw new Error("ttt game can have only 9 cells!");
-                            tttBox.cells[tttBox.cellCnt] = child;
-                            tttBox.cellCnt++;
-                        }
-                        if (child.name.includes('TTT_Start')) tttStart = child;
+                    if (child.name.includes('TTT_Board')) {
+                        if (tttBox.cellCnt >= 9)
+                            throw new Error('ttt game can have only 9 cells!');
+                        tttBox.cells[tttBox.cellCnt] = child;
+                        tttBox.cellCnt++;
+                    }
+                    if (child.name.includes('TTT_Start')) tttStart = child;
 
-                        child.scale.set(1.15, 1.15, 1.15);
+                    child.scale.set(1.15, 1.15, 1.15);
 
-                        if (child.material.name === 'Glass_mtl') {
-                            child.material = new THREE.MeshToonMaterial({
-                                color: 0xaaddff,
-                                transparent: true,
-                                opacity: 0.3,
-                            });
-                            child.castShadow = false;
-                            child.receiveShadow = false;
-                        } else if (child.material.name === 'Glass_outside') {
-                            child.material = new THREE.MeshToonMaterial({
-                                color: 0xaaddff,
-                                transparent: true,
-                                opacity: 0.8,
-                            });
-                            child.castShadow = false;
-                            child.receiveShadow = false;
-                        } else if (child.material.name === 'Glass_block') {
-                            child.material = new THREE.MeshToonMaterial({
-                                color: 0xaaddff,
-                                transparent: false,
-                            });
-                            child.castShadow = false;
-                            child.receiveShadow = false;
-                        } else {
-                            // outline
-                            const edges = new THREE.EdgesGeometry(
-                                child.geometry,
-                                50
-                            );
-                            const line = new THREE.LineSegments(
-                                edges,
-                                new THREE.LineBasicMaterial({ color: 0x000000 })
-                            );
-                            child.add(line);
+                    if (child.material.name === 'Glass_mtl') {
+                        child.material = new THREE.MeshToonMaterial({
+                            color: 0xaaddff,
+                            transparent: true,
+                            opacity: 0.3,
+                        });
+                        child.castShadow = false;
+                        child.receiveShadow = false;
+                    } else if (child.material.name === 'Glass_outside') {
+                        child.material = new THREE.MeshToonMaterial({
+                            color: 0xaaddff,
+                            transparent: true,
+                            opacity: 0.8,
+                        });
+                        child.castShadow = false;
+                        child.receiveShadow = false;
+                    } else if (child.material.name === 'Glass_block') {
+                        child.material = new THREE.MeshToonMaterial({
+                            color: 0xaaddff,
+                            transparent: false,
+                        });
+                        child.castShadow = false;
+                        child.receiveShadow = false;
+                    } else {
+                        // outline
+                        const edges = new THREE.EdgesGeometry(
+                            child.geometry,
+                            50
+                        );
+                        const line = new THREE.LineSegments(
+                            edges,
+                            new THREE.LineBasicMaterial({ color: 0x000000 })
+                        );
+                        child.add(line);
 
-                            child.material = new THREE.MeshToonMaterial({
-                                color: child.material.color,
-                                map: child.material.map || null,
-                                gradientMap: texture,
-                            });
+                        child.material = new THREE.MeshToonMaterial({
+                            color: child.material.color,
+                            map: child.material.map || null,
+                            gradientMap: texture,
+                        });
 
-                            child.castShadow = true;
-                            child.receiveShadow = true;
-                        }
+                        child.castShadow = true;
+                        child.receiveShadow = true;
                     }
                 }
             });
@@ -827,8 +834,8 @@ export function startGame(
         return mousePosition;
     }
 
-    function onPressAccept(event: KeyboardEvent) {
-        event;
+    function onPressAccept(_event: KeyboardEvent) {
+        void _event;
 
         if (!player || !rpsGame) return;
 
@@ -840,7 +847,7 @@ export function startGame(
             if (rpsGame.battleRequestedPlayer) {
                 console.log(
                     'Sending accept request to player ' +
-                    rpsGame.battleRequestedPlayer
+                        rpsGame.battleRequestedPlayer
                 );
                 console.log('BATTLE START!');
                 emitBattleAccept(rpsGame.battleRequestedPlayer);
@@ -851,8 +858,8 @@ export function startGame(
         }
     }
 
-    function onPressDecline(event: KeyboardEvent) {
-        event;
+    function onPressDecline(_event: KeyboardEvent) {
+        void _event;
 
         if (!player || !rpsGame) return;
 
@@ -864,7 +871,7 @@ export function startGame(
             if (rpsGame.battleRequestedPlayer) {
                 console.log(
                     'Sending decline request to player ' +
-                    rpsGame.battleRequestedPlayer
+                        rpsGame.battleRequestedPlayer
                 );
                 console.log('BATTLE DECLINED!');
                 emitBattleDecline(rpsGame.battleRequestedPlayer);
@@ -874,8 +881,8 @@ export function startGame(
         }
     }
 
-    function rockKey(event: KeyboardEvent) {
-        event;
+    function rockKey(_event: KeyboardEvent) {
+        void _event;
 
         if (!player || !rpsGame) return;
 
@@ -890,8 +897,8 @@ export function startGame(
         emitBattleChoice(RPSChoice.Rock);
     }
 
-    function paperKey(event: KeyboardEvent) {
-        event;
+    function paperKey(_event: KeyboardEvent) {
+        void _event;
 
         if (!player || !rpsGame) return;
 
@@ -906,8 +913,8 @@ export function startGame(
         emitBattleChoice(RPSChoice.Paper);
     }
 
-    function scissorsKey(event: KeyboardEvent) {
-        event;
+    function scissorsKey(_event: KeyboardEvent) {
+        void _event;
 
         if (!player || !rpsGame) return;
 
@@ -922,8 +929,8 @@ export function startGame(
         emitBattleChoice(RPSChoice.Scissors);
     }
 
-    function onPressB(event: KeyboardEvent) {
-        event;
+    function onPressB(_event: KeyboardEvent) {
+        void _event;
 
         if (!rpsGame) return;
 
@@ -984,7 +991,7 @@ export function startGame(
         if (!player) return;
 
         keyStates[event.code] = true;
-        const key: number[] = controls.key;
+        const key: [number, number] = controls.key;
         player.controls.key = key;
         //console.log("Key pressed: " + event.code);
         switch (event.code) {
@@ -1131,8 +1138,8 @@ export function startGame(
 
         rpsGame.updateCheck();
 
-        for (const [id, player] of npcs) {
-            id;
+        for (const [_id, player] of npcs) {
+            void _id;
             player.updateAnimation(delta);
         }
     }
