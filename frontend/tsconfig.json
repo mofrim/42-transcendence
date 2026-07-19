@@ -40,5 +40,7 @@
         "allowJs": true,
         "checkJs": false,
         "esModuleInterop": true
-    }
+    },
+    // TypeScript-Tests
+    "include": ["src", "test", "vite.config.ts"]
 }
