@@ -43,6 +43,8 @@ export const CharacterPreview: React.FC = () => {
 
         if (canvas && label) {
             const characterPreview = createCharacterPreview({
+                // FIXME think about the types here...
+                // @ts-ignore
                 canvas,
                 label,
             });
