@@ -1,6 +1,6 @@
 import React from 'react';
-import { useLoginContext } from '../hooks/useLoginContext';
-import { startGame } from '../game/main';
+import { useLoginContext } from '../../hooks/useLoginContext';
+import { startGame } from '../../game/main';
 import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 

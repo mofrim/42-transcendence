@@ -1,7 +1,8 @@
 import React from 'react';
-import { LoginFields, ServerSettings } from './ui/Login';
-import { PlayerSelect, CharacterPreview } from './ui/CharacterPreview';
-import { StartButton, Game } from './ui/StartGame';
+import { LoginFields, ServerSettings } from './ui/login/Login';
+import { CharacterPreview } from './ui/login/CharacterPreview';
+import { PlayerSelect } from './ui/login/PlayerSelect';
+import { StartButton, Game } from './ui/login/StartGame';
 import { useLoginContext } from './hooks/useLoginContext';
 
 import './App.css';

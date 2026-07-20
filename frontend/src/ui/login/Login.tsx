@@ -1,5 +1,5 @@
 import React from 'react';
-import { useLoginContext } from '../hooks/useLoginContext';
+import { useLoginContext } from '../../hooks/useLoginContext';
 
 // TODO add proper login / auth logic here
 export const LoginFields: React.FC = () => {
