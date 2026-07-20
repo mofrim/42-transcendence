@@ -6,40 +6,57 @@ export const PlayerSelect: React.FC = () => {
     const { avatar, setAvatar } = useLoginContext();
 
     const handleChange = (value: string) => {
-        console.log(`changing avatar to: ${value === "true" ? "Male" : "Female"}`);
+        console.log(
+            `changing avatar to: ${value === 'true' ? 'Male' : 'Female'}`
+        );
         setAvatar(value);
-    }
+    };
 
     return (
-        <div className="player-select" role="radiogroup" aria-label="Player character selection">
-            <label className="player-option">
-                <input type="radio" name="player-character" value="true" onChange={(e) => handleChange(e.target.value)} checked={avatar === "true"} />
+        <div
+            className='player-select'
+            role='radiogroup'
+            aria-label='Player character selection'
+        >
+            <label className='player-option'>
+                <input
+                    type='radio'
+                    name='player-character'
+                    value='true'
+                    onChange={(e) => handleChange(e.target.value)}
+                    checked={avatar === 'true'}
+                />
                 <span>
                     <strong>👨🏻‍💻 Male</strong>
                 </span>
             </label>
 
-            <label className="player-option">
-                <input type="radio" name="player-character" value="false" onChange={(e) => handleChange(e.target.value)} checked={avatar === "false"} />
+            <label className='player-option'>
+                <input
+                    type='radio'
+                    name='player-character'
+                    value='false'
+                    onChange={(e) => handleChange(e.target.value)}
+                    checked={avatar === 'false'}
+                />
                 <span>
                     <strong>👩🏻‍💻 Female</strong>
                 </span>
             </label>
         </div>
-    )
-}
-
+    );
+};
 
 export const CharacterPreview: React.FC = () => {
-
     const { avatar } = useLoginContext();
 
     // create char preview for the first time needs this in order to run after
     // the component has been rendered
     useEffect(() => {
-        // This runs after the component mounts and the DOM is updated
-        const canvas = document.getElementById("character-preview-canvas");
-        const label = document.getElementById("character-preview-label");
+        // this runs after the component mounts and the DOM is updated
+        // FIXME reactify this using Ref, maybe
+        const canvas = document.getElementById('character-preview-canvas');
+        const label = document.getElementById('character-preview-label');
 
         if (canvas && label) {
             const characterPreview = createCharacterPreview({
@@ -49,14 +66,19 @@ export const CharacterPreview: React.FC = () => {
                 label,
             });
             // FIXME maybe move away from boolean one day...
-            characterPreview.setCharacter(avatar === "true" ? true: false);
+            characterPreview.setCharacter(avatar === 'true' ? true : false);
         }
-    }, [avatar]); // depency: avatar state variable
+    }, [avatar]); // dependency: avatar state variable
 
     return (
-        <div id="character-preview" className="character-preview" role="img" aria-label="Selected player character 3D preview">
-            <canvas id="character-preview-canvas" aria-hidden="true"></canvas>
-            <div id="character-preview-label">Male_Test.glb</div>
+        <div
+            id='character-preview'
+            className='character-preview'
+            role='img'
+            aria-label='Selected player character 3D preview'
+        >
+            <canvas id='character-preview-canvas' aria-hidden='true'></canvas>
+            <div id='character-preview-label'>Male_Test.glb</div>
         </div>
-    )
+    );
 };

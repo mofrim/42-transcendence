@@ -17,19 +17,24 @@ interface LoginContextType {
     setCharPreviewCanvas: Dispatch<SetStateAction<HTMLElement | null>>;
     charPreviewLabel: HTMLElement | null;
     setCharPreviewLabel: Dispatch<SetStateAction<HTMLElement | null>>;
-};
+}
 
+export const LoginContext = createContext<LoginContextType | undefined>(
+    undefined
+);
 
-export const LoginContext = createContext<LoginContextType | undefined>(undefined);
-
-export const LoginProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const LoginProvider: React.FC<{ children: React.ReactNode }> = ({
+    children,
+}) => {
     const [gameRunning, setGameRunning] = useState(false);
     const [avatar, setAvatar] = useState('true');
     const [serverAddr, setServerAddr] = useState('localhost');
     const [port, setPort] = useState('3000');
     const [fullAddr, setFullAddr] = useState('http://localhost:3000');
-    const [charPreviewCanvas, setCharPreviewCanvas] = useState<HTMLElement | null>(null);
-    const [charPreviewLabel, setCharPreviewLabel] = useState<HTMLElement | null>(null);
+    const [charPreviewCanvas, setCharPreviewCanvas] =
+        useState<HTMLElement | null>(null);
+    const [charPreviewLabel, setCharPreviewLabel] =
+        useState<HTMLElement | null>(null);
 
     return (
         <LoginContext.Provider
@@ -47,7 +52,7 @@ export const LoginProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 charPreviewCanvas,
                 setCharPreviewCanvas,
                 charPreviewLabel,
-                setCharPreviewLabel
+                setCharPreviewLabel,
             }}
         >
             {children}
