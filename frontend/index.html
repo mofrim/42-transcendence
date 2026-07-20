@@ -9,6 +9,10 @@
   </head>
   <body>
 
+  <div id="map-preview" class="map-preview" aria-hidden="true">
+    <canvas id="map-preview-canvas" aria-hidden="true"></canvas>
+  </div>
+
   <!-- LOGIN -->
   <div id="login-ui">
     <div class="login-title">ft_transcendence</div>
@@ -56,18 +60,9 @@
     <!-- CHECKBOXES -->
     <label class="terms">
       <input type="checkbox" id="privacy-checkbox">
-      <span>
-        I agree to the
-        <a href="/privacy-policy.html" target="_blank">Privacy Policy</a>
-      </span>
-    </label>
-
-    <label class="terms">
+      <span>I agree to the <a href="/privacy-policy.html" target="_blank">Privacy Policy</a></span>
       <input type="checkbox" id="tos-checkbox">
-      <span>
-        I agree to the
-        <a href="/terms.html" target="_blank">Terms of Service</a>
-      </span>
+      <span>I agree to the <a href="/terms.html" target="_blank">Terms of Service</a></span>
     </label>
 
     <button id="start-btn">ENTER</button>
@@ -104,6 +99,7 @@
   <script type="module">
     import { startGame } from './src/js/main.js';
     import { createCharacterPreview } from './src/js/character_preview.js';
+    import { createMapPreview } from './src/js/map_preview.js';
 
     const selectedCharacter = () => document.querySelector('input[name="player-character"]:checked')?.value !== "false";
     const serverAddressInput = document.getElementById("server-address");
@@ -163,10 +159,27 @@
 
       return serverUrl.origin;
     };
+    const mapPreviewContainer = document.getElementById("map-preview");
+    const mapPreview = createMapPreview({
+      canvas: document.getElementById("map-preview-canvas"),
+    });
     const characterPreview = createCharacterPreview({
       canvas: document.getElementById("character-preview-canvas"),
       label: document.getElementById("character-preview-label"),
     });
+    let previewsDisposed = false;
+    let gameStarting = false;
+
+    const disposePreviews = () => {
+      if (previewsDisposed) {
+        return;
+      }
+
+      previewsDisposed = true;
+      characterPreview.dispose();
+      mapPreview.dispose();
+      mapPreviewContainer?.remove();
+    };
 
     document.querySelectorAll('input[name="player-character"]').forEach((input) => {
       input.addEventListener("change", () => {
@@ -178,7 +191,7 @@
 
     characterPreview.setCharacter(selectedCharacter());
 
-    document.getElementById("start-btn").addEventListener("click", () => {
+    document.getElementById("start-btn").addEventListener("click", (event) => {
       const privacyAccepted = document.getElementById("privacy-checkbox").checked;
       const tosAccepted = document.getElementById("tos-checkbox").checked;
 
@@ -198,7 +211,7 @@
       document.getElementById("login-ui").style.display = "none";
       document.getElementById("game").style.display = "block";
 
-      characterPreview.dispose();
+      disposePreviews();
 
       startGame(character, serverUrl);
     });
