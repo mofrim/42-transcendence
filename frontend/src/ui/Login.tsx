@@ -100,7 +100,7 @@ const sanitizeServerAddr = (addrInput: string, portInput: string) => {
 };
 
 export const ServerSettings: React.FC = () => {
-    const { serverAddr, setServerAddr, port, setPort, fullAddr, setFullAddr } =
+    const { serverAddr, port, fullAddr } =
         useLoginContext();
 
     // handles the blur event, which is the input field losing focus again. in
@@ -112,15 +112,16 @@ export const ServerSettings: React.FC = () => {
         addrInput?: string;
         portInput?: string;
     }) => {
-        if (addrInput) setServerAddr(addrInput);
-        if (portInput) setPort(portInput);
+        if (addrInput) serverAddr.current = addrInput;
+        if (portInput) port.current = portInput;
 
         const santizedFullAddr: string | null | undefined = sanitizeServerAddr(
-            addrInput ? addrInput : serverAddr,
-            portInput ? portInput : port
+            addrInput ? addrInput : serverAddr.current,
+            portInput ? portInput : port.current
         );
 
-        if (santizedFullAddr != null) setFullAddr(santizedFullAddr);
+        // santization was successful => set ref-var
+        if (santizedFullAddr != null) fullAddr.current = santizedFullAddr;
     };
 
     console.log(

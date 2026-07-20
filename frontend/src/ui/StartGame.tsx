@@ -36,7 +36,7 @@ export const Game = () => {
             mountRef.current.appendChild(renderer.domElement);
         }
 
-        startGame(avatar === 'true' ? true : false, fullAddr, renderer);
+        startGame(avatar === 'true' ? true : false, fullAddr.current, renderer);
 
         // cleanup... in case we want to support logging out againg one day
         // TODO test this! needs implementing some mechanism for unsetting gameRunning

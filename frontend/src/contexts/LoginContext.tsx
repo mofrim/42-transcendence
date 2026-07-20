@@ -1,18 +1,15 @@
 // src/context/LoginContext.js
-import React, { createContext, useState } from 'react';
-import type { Dispatch, SetStateAction } from 'react';
+import React, { createContext, useState, useRef } from 'react';
+import type { Dispatch, SetStateAction, RefObject } from 'react';
 
 interface LoginContextType {
     gameRunning: boolean;
     setGameRunning: Dispatch<SetStateAction<boolean>>;
     avatar: string;
     setAvatar: Dispatch<SetStateAction<string>>;
-    serverAddr: string;
-    setServerAddr: Dispatch<SetStateAction<string>>;
-    port: string;
-    setPort: Dispatch<SetStateAction<string>>;
-    fullAddr: string;
-    setFullAddr: Dispatch<SetStateAction<string>>;
+    serverAddr: RefObject<string>;
+    port: RefObject<string>;
+    fullAddr: RefObject<string>;
     charPreviewCanvas: HTMLElement | null;
     setCharPreviewCanvas: Dispatch<SetStateAction<HTMLElement | null>>;
     charPreviewLabel: HTMLElement | null;
@@ -26,15 +23,22 @@ export const LoginContext = createContext<LoginContextType | undefined>(
 export const LoginProvider: React.FC<{ children: React.ReactNode }> = ({
     children,
 }) => {
+
+    // these elements should clearly trigger a re-render
     const [gameRunning, setGameRunning] = useState(false);
+
+    // TODO clarify this
+    // QUESTION should these trigger re-render?
     const [avatar, setAvatar] = useState('true');
-    const [serverAddr, setServerAddr] = useState('localhost');
-    const [port, setPort] = useState('3000');
-    const [fullAddr, setFullAddr] = useState('http://localhost:3000');
     const [charPreviewCanvas, setCharPreviewCanvas] =
         useState<HTMLElement | null>(null);
     const [charPreviewLabel, setCharPreviewLabel] =
         useState<HTMLElement | null>(null);
+
+    // not these ones
+    const serverAddr = useRef<string>('localhost');
+    const port = useRef<string>('3000');
+    const fullAddr = useRef<string>('http://localhost:3000');
 
     return (
         <LoginContext.Provider
@@ -44,11 +48,8 @@ export const LoginProvider: React.FC<{ children: React.ReactNode }> = ({
                 avatar,
                 setAvatar,
                 serverAddr,
-                setServerAddr,
                 port,
-                setPort,
                 fullAddr,
-                setFullAddr,
                 charPreviewCanvas,
                 setCharPreviewCanvas,
                 charPreviewLabel,
