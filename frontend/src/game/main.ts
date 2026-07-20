@@ -54,7 +54,8 @@ function normalizeCharacter(character: boolean): boolean {
 
 export function startGame(
     whichCharacter: boolean = true,
-    serverUrl: string | null = null
+    serverUrl: string | null = null,
+    renderer: THREE.WebGLRenderer
 ) {
     // ============================================================================
     // SERVER CONNECTION
@@ -458,7 +459,7 @@ export function startGame(
     // ============================================================================
 
     const scene = new THREE.Scene();
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    // const renderer = new THREE.WebGLRenderer({ antialias: true });
     const followGroup = new THREE.Group();
     const timer = new THREE.Timer();
     const dirLight = new THREE.DirectionalLight(0xffffff, 2.5);
@@ -526,15 +527,25 @@ export function startGame(
         multiplayer = new MultiplayerManager(scene, mesh_RP);
         multiplayer.initMultiplayerTest();
 
+        // NOTE uncommented for React! we need the domElement
+        // THREE.WebGLRenderer returns for React to handle it.
+        //
         //renderer = new THREE.WebGLRenderer({ antialias: true });
+
         renderer.setPixelRatio(window.devicePixelRatio);
         renderer.setSize(window.innerWidth, window.innerHeight);
-        document.body.appendChild(renderer.domElement);
-        //renderer.setAnimationLoop( animate );
+
+        // NOTE uncommented for React!
+        //
+        // document.body.appendChild(renderer.domElement);
+
         renderer.toneMapping = THREE.ACESFilmicToneMapping;
         renderer.toneMappingExposure = 0.5;
         renderer.shadowMap.enabled = true;
         renderer.shadowMap.type = THREE.PCFShadowMap;
+
+        // NOTE uncommented for React!
+        //
         //container.appendChild(renderer.domElement);
 
         camera = new Camera(window, renderer, mesh_col);
@@ -545,6 +556,7 @@ export function startGame(
         //console.log("Distance " + camDistance);
 
         // EVENTS
+        // TODO React: handle them in React, maybe.
 
         window.addEventListener('resize', onWindowResize);
         document.addEventListener('keydown', onKeyDown);
@@ -847,7 +859,7 @@ export function startGame(
             if (rpsGame.battleRequestedPlayer) {
                 console.log(
                     'Sending accept request to player ' +
-                        rpsGame.battleRequestedPlayer
+                    rpsGame.battleRequestedPlayer
                 );
                 console.log('BATTLE START!');
                 emitBattleAccept(rpsGame.battleRequestedPlayer);
@@ -871,7 +883,7 @@ export function startGame(
             if (rpsGame.battleRequestedPlayer) {
                 console.log(
                     'Sending decline request to player ' +
-                        rpsGame.battleRequestedPlayer
+                    rpsGame.battleRequestedPlayer
                 );
                 console.log('BATTLE DECLINED!');
                 emitBattleDecline(rpsGame.battleRequestedPlayer);
