@@ -1,5 +1,6 @@
 import React from 'react';
-import { LoginFields, ServerSettings } from './ui/login/Login';
+import { AuthInputs } from './ui/login/Auth';
+import { ServerSettings } from './ui/login/ServerSettings';
 import { CharacterPreview } from './ui/login/CharacterPreview';
 import { PlayerSelect } from './ui/login/PlayerSelect';
 import { StartButton, Game } from './ui/login/StartGame';
@@ -30,7 +31,7 @@ const App: React.FC<AppProps> = (props: AppProps) => {
                     <br />
                     {props.version}
                 </div>
-                <LoginFields />
+                <AuthInputs />
                 <PlayerSelect />
                 <CharacterPreview />
                 <ServerSettings />

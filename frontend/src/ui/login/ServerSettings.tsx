@@ -1,16 +1,6 @@
 import React from 'react';
 import { useLoginContext } from '../../hooks/useLoginContext';
 
-// TODO add proper login / auth logic here
-export const LoginFields: React.FC = () => {
-    return (
-        <>
-            <input id='email' type='text' placeholder='Email' />
-            <input id='password' type='password' placeholder='Password' />
-        </>
-    );
-};
-
 const sanitizeServerAddr = (addrInput: string, portInput: string) => {
     const defaultServerAddress = 'localhost';
     const defaultServerPort = '3000';
