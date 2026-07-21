@@ -299,6 +299,7 @@ body {
 
 .character-preview {
   position: relative;
+  min-height: 200px;
   aspect-ratio: 9 / 16;
   margin: 0 auto;
   overflow: hidden;
