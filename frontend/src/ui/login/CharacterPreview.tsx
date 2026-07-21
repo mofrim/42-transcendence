@@ -13,17 +13,14 @@ export const CharacterPreview: React.FC = () => {
         // FIXME reactify this using Ref, maybe
         const canvas = document.getElementById('character-preview-canvas');
         const label = document.getElementById('character-preview-label');
+        if (!canvas || !label) return;
 
-        if (canvas && label) {
-            const characterPreview = createCharacterPreview({
-                // FIXME think about the types here...
-                // @ts-ignore
-                canvas,
-                label,
-            });
-            // FIXME maybe move away from boolean one day...
-            characterPreview.setCharacter(avatar === 'true' ? true : false);
-        }
+        const characterPreview = createCharacterPreview({ canvas: canvas as HTMLCanvasElement, label });
+        characterPreview.setCharacter(avatar === 'true');
+
+        // cleanup function
+        // FIXME does not play well together with react strict-mode
+        // return () => characterPreview.dispose();
     }, [avatar]); // dependency: avatar state variable
 
     return (
