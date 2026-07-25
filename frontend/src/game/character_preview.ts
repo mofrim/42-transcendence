@@ -262,6 +262,7 @@ export function createCharacterPreview({
             renderer.dispose();
             // Release the character preview immediately after disposing the renderer
             renderer.forceContextLoss?.();
+            console.log('characterPreview successfully disposed!');
         },
     };
 }

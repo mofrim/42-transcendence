@@ -494,6 +494,7 @@ export function createMapPreview({
             scene.clear();
             renderer.dispose();
             renderer.forceContextLoss();
+            console.log('mapPreview successfully disposed!');
         },
     };
 }
