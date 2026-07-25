@@ -144,9 +144,9 @@ export class TTT_Game {
                             else if (box === TTTMark.O)
                                 this.board.getCell(index).material.map =
                                     this.texO;
+                            index++;
+                            //console.log("# Initializing board: " + box);
                         }
-                        index++;
-                        //console.log("# Initializing board: " + box);
                     }
                 }
             }
