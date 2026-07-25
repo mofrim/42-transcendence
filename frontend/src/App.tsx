@@ -2,6 +2,7 @@ import React from 'react';
 import { AuthInputs } from './ui/login/Auth';
 import { ServerSettings } from './ui/login/ServerSettings';
 import { CharacterPreview } from './ui/login/CharacterPreview';
+import { MapPreview } from './ui/login/MapPreview';
 import { PlayerSelect } from './ui/login/PlayerSelect';
 import { StartButton, Game } from './ui/login/StartGame';
 import { useLoginContext } from './hooks/useLoginContext';
@@ -24,6 +25,7 @@ const App: React.FC<AppProps> = (props: AppProps) => {
 
     return (
         <>
+            <MapPreview />
             <div id='login-ui'>
                 <div className='login-title'>{props.title}</div>
                 <div className='login-subtitle'>
