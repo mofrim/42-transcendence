@@ -2,26 +2,36 @@ import { useLoginContext } from '../../hooks/useLoginContext';
 import { createCharacterPreview } from '../../game/character_preview';
 import React, { useEffect } from 'react';
 
-
 export const CharacterPreview: React.FC = () => {
-    const { avatar } = useLoginContext();
+    const { avatar, charPreviewRef } = useLoginContext();
 
-    // create char preview for the first time needs this in order to run after
-    // the component has been rendered
+    // using 2 effects here, because dispose should on be run on unmount not on
+    // avatar change!
     useEffect(() => {
-        // this runs after the component mounts and the DOM is updated
-        // FIXME reactify this using Ref, maybe
         const canvas = document.getElementById('character-preview-canvas');
         const label = document.getElementById('character-preview-label');
         if (!canvas || !label) return;
 
-        const characterPreview = createCharacterPreview({ canvas: canvas as HTMLCanvasElement, label });
-        characterPreview.setCharacter(avatar === 'true');
+        // initialize only once
+        if (charPreviewRef.current === null) {
+            charPreviewRef.current = createCharacterPreview({
+                canvas: canvas as HTMLCanvasElement,
+                label,
+            });
+        }
 
-        // cleanup function
-        // FIXME does not play well together with react strict-mode
-        // return () => characterPreview.dispose();
-    }, [avatar]); // dependency: avatar state variable
+        // cleanup only on unmount!
+        return () => charPreviewRef.current?.dispose();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []); // empty dependency array => runs once on mount!
+
+    // update avatar on radio change
+    useEffect(() => {
+        if (charPreviewRef.current) {
+            charPreviewRef.current.setCharacter(avatar === 'true');
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [avatar]); // runs when avatar changes
 
     return (
         <div

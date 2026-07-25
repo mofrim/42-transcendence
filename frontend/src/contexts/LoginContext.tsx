@@ -1,6 +1,7 @@
 // src/context/LoginContext.js
 import React, { createContext, useState, useRef } from 'react';
 import type { Dispatch, SetStateAction, RefObject } from 'react';
+import type { CreateCharPreviewReturnType } from '../game/character_preview';
 
 interface LoginContextType {
     gameRunning: boolean;
@@ -14,6 +15,7 @@ interface LoginContextType {
     setCharPreviewCanvas: Dispatch<SetStateAction<HTMLElement | null>>;
     charPreviewLabel: HTMLElement | null;
     setCharPreviewLabel: Dispatch<SetStateAction<HTMLElement | null>>;
+    charPreviewRef: RefObject<CreateCharPreviewReturnType | null>;
 }
 
 export const LoginContext = createContext<LoginContextType | undefined>(
@@ -23,7 +25,6 @@ export const LoginContext = createContext<LoginContextType | undefined>(
 export const LoginProvider: React.FC<{ children: React.ReactNode }> = ({
     children,
 }) => {
-
     // these elements should clearly trigger a re-render
     const [gameRunning, setGameRunning] = useState(false);
 
@@ -39,6 +40,7 @@ export const LoginProvider: React.FC<{ children: React.ReactNode }> = ({
     const serverAddr = useRef<string>('localhost');
     const port = useRef<string>('3000');
     const fullAddr = useRef<string>('http://localhost:3000');
+    const charPreviewRef = useRef<CreateCharPreviewReturnType>(null);
 
     return (
         <LoginContext.Provider
@@ -54,6 +56,7 @@ export const LoginProvider: React.FC<{ children: React.ReactNode }> = ({
                 setCharPreviewCanvas,
                 charPreviewLabel,
                 setCharPreviewLabel,
+                charPreviewRef,
             }}
         >
             {children}
