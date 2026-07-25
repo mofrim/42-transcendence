@@ -4,11 +4,7 @@ import { TTTMark, TTTMeshBoard } from '@common/types';
 
 // Type-only import: exists only during TypeScript compilation, not at runtime.
 // The type is removed after compilation, so it must be imported using `import type`.
-import type {
-    TTTBoard,
-    PlayerSlot,
-    TTTInitGamePayload
-} from '@common/types';
+import type { TTTBoard, PlayerSlot, TTTInitGamePayload } from '@common/types';
 
 export class TTT_Game {
     board: TTTMeshBoard;
@@ -43,7 +39,6 @@ export class TTT_Game {
         button: THREE.Mesh,
         renderer: THREE.WebGLRenderer
     ) {
-
         this.board = board;
 
         this.scene = scene;
@@ -118,16 +113,16 @@ export class TTT_Game {
         // it's the idiomatic way for checking external JSON-data (like from
         // some API) for undefinedness
         if (data.game != null) {
-                if (data.game.players[0]) {
-                    this.updateSpriteText(this.spriteGameCount, '1/2', 50);
-                    this.players[0] = data.game.players[0];
-                }
-                if (data.game.players[1]) {
-                    this.updateSpriteText(this.spriteGameCount, '2/2', 50);
-                    this.updateSpriteText(this.spriteGameText, 'IN GAME', 50);
-                    this.players[1] = data.game.players[1];
-                }
+            if (data.game.players[0]) {
+                this.updateSpriteText(this.spriteGameCount, '1/2', 50);
+                this.players[0] = data.game.players[0];
             }
+            if (data.game.players[1]) {
+                this.updateSpriteText(this.spriteGameCount, '2/2', 50);
+                this.updateSpriteText(this.spriteGameText, 'IN GAME', 50);
+                this.players[1] = data.game.players[1];
+            }
+        }
 
         this.waitforInitMesh(data);
     }
@@ -144,9 +139,11 @@ export class TTT_Game {
                     if (index < this.board.size) {
                         for (const box of data.game.board) {
                             if (box === TTTMark.X)
-                                this.board.getCell(index).material.map = this.texX;
+                                this.board.getCell(index).material.map =
+                                    this.texX;
                             else if (box === TTTMark.O)
-                                this.board.getCell(index).material.map = this.texO;
+                                this.board.getCell(index).material.map =
+                                    this.texO;
                         }
                         index++;
                         //console.log("# Initializing board: " + box);
@@ -345,7 +342,16 @@ export class TTT_Game {
     }
 
     startGame(playerOne: string, playerTwo: string): void {
-        console.log("Players: " + playerOne + ":" + this.players[0] + " and " + playerTwo + ":" + this.players[1]);
+        console.log(
+            'Players: ' +
+                playerOne +
+                ':' +
+                this.players[0] +
+                ' and ' +
+                playerTwo +
+                ':' +
+                this.players[1]
+        );
         if (playerOne !== this.players[0] || playerTwo !== this.players[1]) {
             console.log('Player IDs do not match. Cannot start game.');
             return;
@@ -379,7 +385,10 @@ export class TTT_Game {
         this.updateSpriteText(this.spriteGameText, 'Click to Join', 50);
         this.updateSpriteText(this.spriteGameCount, '0/2', 50);
 
-        if (this.player.id !== undefined && this.players.includes(this.player.id))
+        if (
+            this.player.id !== undefined &&
+            this.players.includes(this.player.id)
+        )
             this.removeText();
         this.players = [null, null];
         for (const box of this.board.cells)
@@ -442,7 +451,10 @@ export class TTT_Game {
     }
 
     winner(playerID: string): void {
-        if (this.player.id !== undefined && this.players.includes(this.player.id)) {
+        if (
+            this.player.id !== undefined &&
+            this.players.includes(this.player.id)
+        ) {
             this.removeText();
             this.updateSpriteText(this.spriteGameText, 'FINISH', 50);
 
@@ -483,7 +495,10 @@ export class TTT_Game {
     markField(fieldName: string, playerID: number, mark: TTTMark): void {
         console.log('In Marking: ' + fieldName + ' by player: ' + playerID);
 
-        if (this.player.id !== undefined && this.players.includes(this.player.id)) {
+        if (
+            this.player.id !== undefined &&
+            this.players.includes(this.player.id)
+        ) {
             this.removeText();
 
             if (this.player.id === this.players[0] && mark === TTTMark.X)
@@ -581,9 +596,9 @@ export class TTT_Game {
         const scaleFactor = 0.2;
         this.currentTextState[this.currentTextState.length - 1]!.scale.set(
             this.currentTextState[this.currentTextState.length - 1]!.scale.x *
-            scaleFactor,
+                scaleFactor,
             this.currentTextState[this.currentTextState.length - 1]!.scale.y *
-            scaleFactor,
+                scaleFactor,
             1
         );
         this.currentTextState[this.currentTextState.length - 1]!.position.set(

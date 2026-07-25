@@ -9,7 +9,7 @@ import type { Character, GLBMesh } from '@common/types';
 /**
  * all both gender
  * Typisiert die Modellpfade vollständig nach CharacterModel und behebt TS7053.
-*/
+ */
 const PLAYER_CHARACTER_MODELS: Readonly<Record<CharacterModel, string>> = {
     [CharacterModel.male]: '/glb/Male_Test.glb',
     [CharacterModel.female]: '/glb/Female_Test.glb',
@@ -169,7 +169,7 @@ export class MultiplayerManager {
             if (player.mixer != null) player.updateAnimation(delta);
             //if(player.id == 1)
             //    this.multiplayerMovementTest(player);
-            if (player && player.id === "-1") {
+            if (player && player.id === '-1') {
                 player.destroy();
                 this.players.delete(id);
             }

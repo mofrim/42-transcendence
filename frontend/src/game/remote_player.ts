@@ -317,7 +317,7 @@ const RemotePlayerImplementation = class Remote_Player {
     }
 
     removePlayer(): void {
-        this.id = "-1";
+        this.id = '-1';
     }
 
     destroy(): void {

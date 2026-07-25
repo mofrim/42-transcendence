@@ -859,7 +859,7 @@ export function startGame(
             if (rpsGame.battleRequestedPlayer) {
                 console.log(
                     'Sending accept request to player ' +
-                    rpsGame.battleRequestedPlayer
+                        rpsGame.battleRequestedPlayer
                 );
                 console.log('BATTLE START!');
                 emitBattleAccept(rpsGame.battleRequestedPlayer);
@@ -883,7 +883,7 @@ export function startGame(
             if (rpsGame.battleRequestedPlayer) {
                 console.log(
                     'Sending decline request to player ' +
-                    rpsGame.battleRequestedPlayer
+                        rpsGame.battleRequestedPlayer
                 );
                 console.log('BATTLE DECLINED!');
                 emitBattleDecline(rpsGame.battleRequestedPlayer);

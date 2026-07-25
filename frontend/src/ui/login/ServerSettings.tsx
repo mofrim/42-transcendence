@@ -90,8 +90,7 @@ const sanitizeServerAddr = (addrInput: string, portInput: string) => {
 };
 
 export const ServerSettings: React.FC = () => {
-    const { serverAddr, port, fullAddr } =
-        useLoginContext();
+    const { serverAddr, port, fullAddr } = useLoginContext();
 
     // handles the blur event, which is the input field losing focus again. in
     // this case we want the context's state variables to be updated

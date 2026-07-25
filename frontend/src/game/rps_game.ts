@@ -416,9 +416,9 @@ export class RPS_Game {
         const scaleFactor = 0.2;
         this.currentTextState[this.currentTextState.length - 1]!.scale.set(
             this.currentTextState[this.currentTextState.length - 1]!.scale.x *
-            scaleFactor,
+                scaleFactor,
             this.currentTextState[this.currentTextState.length - 1]!.scale.y *
-            scaleFactor,
+                scaleFactor,
             1
         );
         this.currentTextState[this.currentTextState.length - 1]!.position.set(
