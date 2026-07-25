@@ -8,7 +8,7 @@ interface CharacterPreviewOptions {
     label?: HTMLElement | null;
 }
 
-interface CharacterPreview {
+export interface CreateCharPreviewReturnType {
     setCharacter(character: Character): void;
     dispose(): void;
 }
@@ -67,11 +67,11 @@ function disposeObject(object: THREE.Object3D): void {
 export function createCharacterPreview({
     canvas,
     label,
-}: CharacterPreviewOptions): CharacterPreview {
+}: CharacterPreviewOptions): CreateCharPreviewReturnType {
     if (!canvas) {
         return {
-            setCharacter() { },
-            dispose() { },
+            setCharacter() {},
+            dispose() {},
         };
     }
 
