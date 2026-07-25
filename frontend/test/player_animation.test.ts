@@ -3,7 +3,7 @@ import test from 'node:test';
 
 import * as THREE from 'three';
 
-import { resolvePlayerAnimationClip } from '../src/js/player_animation.ts';
+import { resolvePlayerAnimationClip } from '../src/game/player_animation.ts';
 
 function clip(name: string): THREE.AnimationClip {
     return new THREE.AnimationClip(name, 1, []);
@@ -19,8 +19,7 @@ test('resolves clips by name for all both gender character models', () => {
         'Breathing'
     );
     assert.equal(
-        resolvePlayerAnimationClip(maleAnimations, 'Run', 'Male_Test.glb')
-            .name,
+        resolvePlayerAnimationClip(maleAnimations, 'Run', 'Male_Test.glb').name,
         'Running'
     );
     assert.equal(
