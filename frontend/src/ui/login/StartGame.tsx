@@ -16,7 +16,7 @@ export const StartButton: React.FC = () => {
 };
 
 export const Game = () => {
-    const { gameRunning, avatar, fullAddr } = useLoginContext();
+    const { gameRunning, avatar, fullAddrRef } = useLoginContext();
 
     // using ref here a lot because th
     const mountRef = useRef<HTMLDivElement>(null);
@@ -36,7 +36,11 @@ export const Game = () => {
             mountRef.current.appendChild(renderer.domElement);
         }
 
-        startGame(avatar === 'true' ? true : false, fullAddr.current, renderer);
+        startGame(
+            avatar === 'true' ? true : false,
+            fullAddrRef.current,
+            renderer
+        );
 
         // cleanup... in case we want to support logging out againg one day
         // TODO test this! needs implementing some mechanism for unsetting gameRunning
@@ -51,6 +55,7 @@ export const Game = () => {
                 isInitializedRef.current = false; // Reset on unmount
             }
         };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [gameRunning]);
 
     return <div ref={mountRef} style={{ width: '100vw', height: '100vh' }} />;

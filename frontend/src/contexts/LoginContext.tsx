@@ -8,9 +8,9 @@ interface LoginContextType {
     setGameRunning: Dispatch<SetStateAction<boolean>>;
     avatar: string;
     setAvatar: Dispatch<SetStateAction<string>>;
-    serverAddr: RefObject<string>;
-    port: RefObject<string>;
-    fullAddr: RefObject<string>;
+    serverAddrRef: RefObject<string>;
+    portRef: RefObject<string>;
+    fullAddrRef: RefObject<string>;
     charPreviewCanvas: HTMLElement | null;
     setCharPreviewCanvas: Dispatch<SetStateAction<HTMLElement | null>>;
     charPreviewLabel: HTMLElement | null;
@@ -37,9 +37,9 @@ export const LoginProvider: React.FC<{ children: React.ReactNode }> = ({
         useState<HTMLElement | null>(null);
 
     // not these ones
-    const serverAddr = useRef<string>('localhost');
-    const port = useRef<string>('3000');
-    const fullAddr = useRef<string>('http://localhost:3000');
+    const serverAddrRef = useRef<string>('localhost');
+    const portRef = useRef<string>('3000');
+    const fullAddrRef = useRef<string>('http://localhost:3000');
     const charPreviewRef = useRef<CreateCharPreviewReturnType>(null);
 
     return (
@@ -49,9 +49,9 @@ export const LoginProvider: React.FC<{ children: React.ReactNode }> = ({
                 setGameRunning,
                 avatar,
                 setAvatar,
-                serverAddr,
-                port,
-                fullAddr,
+                serverAddrRef,
+                portRef,
+                fullAddrRef,
                 charPreviewCanvas,
                 setCharPreviewCanvas,
                 charPreviewLabel,
