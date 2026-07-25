@@ -47,6 +47,8 @@ export const Game = () => {
         return () => {
             if (!gameRunning) {
                 if (mountRef.current && rendererRef.current) {
+                    // TODO think about this...
+                    // eslint-disable-next-line react-hooks/exhaustive-deps
                     mountRef.current.removeChild(
                         rendererRef.current.domElement
                     );
