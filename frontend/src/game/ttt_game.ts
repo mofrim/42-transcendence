@@ -329,7 +329,7 @@ export class TTT_Game {
         this.updateSpriteText(this.spriteGameCount, '1/2', 50);
         if (this.player.id === playerID)
             this.addText(
-                'You joined the game. Waiting for another player or press ⌨️ [ESC]ape',
+                'You joined the game.\nWaiting for another player…\nor press ⌨️ [ESC]ape',
                 0,
                 -0.5,
                 75
@@ -528,6 +528,7 @@ export class TTT_Game {
 
     // TODO: better create a sprite class ---------------------------------------
 
+    /** prevents text truncated by canvas boundaries. */
     makeSprite(text: string, size: number): THREE.Sprite {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
@@ -546,10 +547,18 @@ export class TTT_Game {
 
         ctx.lineWidth = 8; // outline thickness
         ctx.strokeStyle = 'black'; // outline color
-        ctx.strokeText(text, canvas.width / 2, canvas.height / 2);
 
-        ctx.fillStyle = 'white';
-        ctx.fillText(text, canvas.width / 2, canvas.height / 2);
+        /** newline characters aren't being rendered as separate canvas lines */
+        const lines = text.split('\n');
+        const lineHeight = size * 1.2;
+        const firstLineY =
+            canvas.height / 2 - ((lines.length - 1) * lineHeight) / 2;
+
+        lines.forEach((line, index) => {
+            const y = firstLineY + index * lineHeight;
+            ctx.strokeText(line, canvas.width / 2, y);
+            ctx.fillText(line, canvas.width / 2, y);
+        });
 
         const texture = new THREE.CanvasTexture(canvas);
         const material = new THREE.SpriteMaterial({ map: texture });
