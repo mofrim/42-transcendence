@@ -329,7 +329,7 @@ export class TTT_Game {
         this.updateSpriteText(this.spriteGameCount, '1/2', 50);
         if (this.player.id === playerID)
             this.addText(
-                'You joined the game. Waiting for another player...',
+                'You joined the game. Waiting for another player or press ⌨️ [ESC]ape',
                 0,
                 -0.5,
                 75
@@ -375,7 +375,11 @@ export class TTT_Game {
     }
 
     async endGame(): Promise<void> {
-        await this.wait(2000);
+        await this.wait(4242);
+        this.resetGame();
+    }
+
+    resetGame(): void {
         this.clearBoard();
 
         console.log('TTT GAME END!!!');

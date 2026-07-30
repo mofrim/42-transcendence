@@ -117,13 +117,13 @@ export class GameManager {
         if (playerRequested.inGame || playerThis.inGame) {
             console.log(
                 'One of the players is already in a game: ' +
-                playerRequested.inGame +
-                ' ' +
-                playerThis.inGame +
-                '  ' +
-                playerRequested.id +
-                ' ' +
-                playerThis.id
+                    playerRequested.inGame +
+                    ' ' +
+                    playerThis.inGame +
+                    '  ' +
+                    playerRequested.id +
+                    ' ' +
+                    playerThis.id
             );
             return 0;
         }
@@ -364,6 +364,20 @@ export class GameManager {
         console.log('Invalid TTTGame. Resetting game.');
         this.tttGame = this.createTTTGame();
         return -1;
+    }
+
+    /** Player left the Tic-Tac-Toe game by pressing ESC */
+    leaveTTTGame(playerID: string): boolean {
+        if (
+            this.tttGame.state !== TTTGameState.WaitingForSecondPlayer ||
+            this.tttGame.players[0] !== playerID ||
+            this.tttGame.players[1] !== null
+        ) {
+            return false;
+        }
+
+        this.tttGame = this.createTTTGame();
+        return true;
     }
 
     tttMarkField(playerID: string, field: string): TTTMark {
