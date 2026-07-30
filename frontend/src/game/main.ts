@@ -156,7 +156,10 @@ export function startGame(
                 handleTTTstart(data);
                 break;
             case 'ttt_reset':
-                if (tttGame) tttGame.endGame();
+                if (tttGame) void tttGame.endGame();
+                break;
+            case 'ttt_left': // pressed ESC
+                if (tttGame) tttGame.resetGame();
                 break;
             case 'ttt_mark':
                 //console.log("Marking: " + data.board);
@@ -294,6 +297,12 @@ export function startGame(
         //console.log("Received data:" + type);
         socket.emit('update', {
             type: 'ttt_start',
+        });
+    }
+
+    function emitTTTLeave() {
+        socket.emit('update', {
+            type: 'ttt_leave',
         });
     }
 
@@ -956,6 +965,19 @@ export function startGame(
         }
     }
 
+    /** player leave Tic-Tac-Toe game */
+    function onPressEscape(_event: KeyboardEvent) {
+        void _event;
+
+        if (!player || !tttGame) {
+            return;
+        }
+        if (tttGame.players[0] !== player.id || tttGame.players[1] !== null) {
+            return;
+        }
+        emitTTTLeave();
+    }
+
     function onClick(event: MouseEvent): void {
         const mousePosition = getTTTField(event);
 
@@ -1050,6 +1072,10 @@ export function startGame(
             case 'ArrowRight':
             case 'KeyD':
                 key[1] = key[1] > 0 ? 0 : key[1];
+                break;
+
+            case 'Escape':
+                onPressEscape(event);
                 break;
 
             // battle request keys

@@ -115,6 +115,9 @@ io.on('connection', (socket) => {
             case 'ttt_start':
                 handleTTTStart(socket);
                 break;
+            case 'ttt_leave':
+                handleTTTLeave(socket);
+                break;
 
             case 'rps_request':
                 handleRPSRequest(socket, data);
@@ -368,6 +371,20 @@ function handleTTTStart(socket: Socket) {
 
     io.emit('update', {
         type: 'ttt_reset',
+    });
+}
+
+/** Lobby canceln Tic-Tac-Toe-Reset */
+function handleTTTLeave(socket: Socket): void {
+    const player = gameManager.players.get(socket.id);
+
+    if (!player || !gameManager.leaveTTTGame(socket.id)) return;
+
+    player.inGame = false;
+    player.gameID = null;
+
+    io.emit('update', {
+        type: 'ttt_left',
     });
 }
 
