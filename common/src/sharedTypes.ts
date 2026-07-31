@@ -34,12 +34,13 @@ export type GLBMesh = THREE.Mesh<
 
 
 export type PlayerData = {
-    id: string,
-    position: { x: 0, y: 0, z: 0 },
-    state: PlayerState,
-    gameID: string | null,
-    inGame: boolean,
-}
+    id: string;
+    nickname: string;
+    position: { x: 0; y: 0; z: 0 };
+    state: PlayerState;
+    gameID: string | null;
+    inGame: boolean;
+};
 
 export type PlayerUpdatePayload = {
     type: 'player_update';

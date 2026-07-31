@@ -31,6 +31,7 @@ export class GameManager {
     createPlayer(id: string): PlayerData {
         return {
             id: id,
+            nickname: '',
             position: { x: 0, y: 0, z: 0 },
             state: PlayerState.Idle,
             gameID: null,
