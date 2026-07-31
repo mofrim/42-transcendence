@@ -9,7 +9,7 @@ import type {
     TTTMarkPayload,
 } from '@common/types';
 
-import { TTTMark } from '@common/types';
+import { TTTGameState, TTTMark } from '@common/types';
 
 const server = http.createServer();
 const gameManager = new GameManager();
@@ -54,29 +54,24 @@ io.on('connection', (socket) => {
     // send initial data to the connected client
     socket.emit('initData', gameManager.getMapData());
 
+    // TTT-Disconnect
     // dissconnect and remove player from gameManager
     socket.on('disconnect', () => {
-        const playerOneID = gameManager.tttGame.players[0];
-        const playerTwoID = gameManager.tttGame.players[1];
-
-        if (playerOneID) {
-            const playerOne = gameManager.players.get(playerOneID);
-            if (playerOne) {
-                playerOne.inGame = false;
-                playerOne.gameID = 'none';
-            }
-        }
-        if (playerTwoID) {
-            const playerTwo = gameManager.players.get(playerTwoID);
-            if (playerTwo) {
-                playerTwo.inGame = false;
-                playerTwo.gameID = 'none';
-            }
-        }
-
         console.log('Client disconnected:', socket.id);
         // Check if the player is still in the Tic Tac Toe game and reset if necessary
         if (gameManager.tttGame.players.includes(socket.id)) {
+            const [playerOneID, playerTwoID] = gameManager.tttGame.players;
+
+            for (const playerID of [playerOneID, playerTwoID]) {
+                if (!playerID) continue;
+
+                const tttPlayer = gameManager.players.get(playerID);
+                if (!tttPlayer) continue;
+
+                tttPlayer.inGame = false;
+                tttPlayer.gameID = null;
+            }
+
             console.log('Player still exists after disconnect: ' + socket.id);
             gameManager.tttGame = gameManager.createTTTGame();
             io.emit('update', {
@@ -197,7 +192,10 @@ function handleRPSInvalid(socket: Socket) {
 }
 
 function handleRPSChoice(socket: Socket, data: RPSBattleChoicePayload): void {
-    const result = gameManager.rpsChoice(data);
+    const result = gameManager.rpsChoice({
+        ...data,
+        id: socket.id,
+    });
 
     if (!result || result == 0) {
         console.log('RPS choice failed for player: ' + socket.id);
@@ -275,7 +273,10 @@ function handleRPSChoice(socket: Socket, data: RPSBattleChoicePayload): void {
 }
 
 function handleRPSAccept(socket: Socket, data: RPSRequestDataPayload) {
-    const result = gameManager.rpsAccept(data);
+    const result = gameManager.rpsAccept({
+        ...data,
+        id: socket.id,
+    });
 
     if (result == 0) return;
 
@@ -292,7 +293,10 @@ function handleRPSAccept(socket: Socket, data: RPSRequestDataPayload) {
 }
 
 function handleRPSDecline(socket: Socket, data: RPSRequestDataPayload) {
-    const result = gameManager.rpsDeclined(data);
+    const result = gameManager.rpsDeclined({
+        ...data,
+        id: socket.id,
+    });
 
     if (result == 0) return;
 
@@ -305,7 +309,10 @@ function handleRPSDecline(socket: Socket, data: RPSRequestDataPayload) {
 
 function handleRPSRequest(socket: Socket, data: RPSRequestDataPayload) {
     //console.log("RPS REQUEST");
-    const result = gameManager.rpsRequested(data);
+    const result = gameManager.rpsRequested({
+        ...data,
+        id: socket.id,
+    });
     //console.log("RPS REQUEST result: " + result);
     if (result == 0) {
         return;
@@ -447,6 +454,9 @@ function handleTTTMark(socket: Socket, data: TTTMarkPayload) {
             return;
         }
 
+        const finishedGame = gameManager.tttGame;
+        finishedGame.state = TTTGameState.Finished;
+
         io.emit('update', {
             type: 'ttt_win',
             id: socket.id,
@@ -455,8 +465,10 @@ function handleTTTMark(socket: Socket, data: TTTMarkPayload) {
         });
 
         wait(3000).then(() => {
-            const playerOneID = gameManager.tttGame.players[0];
-            const playerTwoID = gameManager.tttGame.players[1];
+            if (gameManager.tttGame !== finishedGame) return;
+
+            const playerOneID = finishedGame.players[0];
+            const playerTwoID = finishedGame.players[1];
 
             if (!playerOneID || !playerTwoID) return;
 
@@ -466,9 +478,9 @@ function handleTTTMark(socket: Socket, data: TTTMarkPayload) {
             if (!playerOne || !playerTwo) return;
 
             playerOne.inGame = false;
-            playerOne.gameID = 'none';
+            playerOne.gameID = null;
             playerTwo.inGame = false;
-            playerTwo.gameID = 'none';
+            playerTwo.gameID = null;
 
             gameManager.tttGame = gameManager.createTTTGame();
         });
@@ -477,14 +489,19 @@ function handleTTTMark(socket: Socket, data: TTTMarkPayload) {
 
     const checkDraw = gameManager.checkDraw();
     if (checkDraw) {
+        const finishedGame = gameManager.tttGame;
+        finishedGame.state = TTTGameState.Finished;
+
         console.log('Game is a draw.');
         io.emit('update', {
             type: 'ttt_draw',
         });
 
         wait(3000).then(() => {
-            const playerOneID = gameManager.tttGame.players[0];
-            const playerTwoID = gameManager.tttGame.players[1];
+            if (gameManager.tttGame !== finishedGame) return;
+
+            const playerOneID = finishedGame.players[0];
+            const playerTwoID = finishedGame.players[1];
 
             if (!playerOneID || !playerTwoID) return;
 
@@ -494,9 +511,9 @@ function handleTTTMark(socket: Socket, data: TTTMarkPayload) {
             if (!playerOne || !playerTwo) return;
 
             playerOne.inGame = false;
-            playerOne.gameID = 'none';
+            playerOne.gameID = null;
             playerTwo.inGame = false;
-            playerTwo.gameID = 'none';
+            playerTwo.gameID = null;
 
             gameManager.tttGame = gameManager.createTTTGame();
         });

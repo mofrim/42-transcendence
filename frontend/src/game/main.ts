@@ -430,7 +430,7 @@ export function startGame(
     function handleTTTupdate(data: TTTMarkPayload) {
         //console.log("Marking 2: " + data.board);
         if (!tttGame) return;
-        tttGame.markField(data.fieldName, Number(data.id), data.mark);
+        tttGame.markField(data.fieldName, data.id, data.mark);
     }
 
     function handleTTTstart(data: TTTStartPayload) {
@@ -506,7 +506,6 @@ export function startGame(
     const mesh_col: GLBMesh[] = [];
     const mesh_RP: GLBMesh[] = [];
     const tttBox: TTTMeshBoard = new TTTMeshBoard();
-    let tttStart: GLBMesh | undefined;
 
     //let camDistance = 0;
 
@@ -653,8 +652,6 @@ export function startGame(
                         tttBox.cells[tttBox.cellCnt] = child;
                         tttBox.cellCnt++;
                     }
-                    if (child.name.includes('TTT_Start')) tttStart = child;
-
                     child.scale.set(1.15, 1.15, 1.15);
 
                     if (child.material.name === 'Glass_mtl') {

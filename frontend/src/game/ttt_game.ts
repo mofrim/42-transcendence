@@ -509,6 +509,12 @@ export class TTT_Game {
     }
 
     markField(fieldName: string, playerID: string, mark: TTTMark): void {
+        const isExpectedPlayerMark =
+            (playerID === this.players[0] && mark === TTTMark.X) ||
+            (playerID === this.players[1] && mark === TTTMark.O);
+
+        if (!isExpectedPlayerMark) return;
+
         console.log('In Marking: ' + fieldName + ' by player: ' + playerID);
 
         if (

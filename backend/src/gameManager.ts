@@ -106,6 +106,10 @@ export class GameManager {
     }
 
     rpsRequested(data: RPSRequestDataPayload): number {
+        if (data.id === data.requestedPlayerID) {
+            return 0;
+        }
+
         const playerRequested = this.players.get(data.requestedPlayerID);
         const playerThis = this.players.get(data.id);
 
@@ -149,23 +153,36 @@ export class GameManager {
 
     rpsDeclined(data: RPSRequestDataPayload): number {
         const playerThis = this.players.get(data.id);
-
-        if (!playerThis) return 0;
-
-        playerThis.gameID = 'none';
-        playerThis.inGame = false;
-
         const playerOther = this.players.get(data.requestedPlayerID);
-        if (playerOther) {
-            playerOther.gameID = 'none';
-            playerOther.inGame = false;
+
+        if (!playerThis || !playerOther || !playerThis.gameID) {
+            return 0;
         }
 
-        const rpsGame = this.rpsGame.get(playerThis.gameID);
+        const gameID = playerThis.gameID;
+        const rpsGame = this.rpsGame.get(gameID);
 
-        if (!rpsGame) return 0;
+        if (!rpsGame) {
+            return 0;
+        }
+        if (rpsGame.state !== RPSGameState.Requested) {
+            return 0;
+        }
+        if (playerOther.gameID !== gameID) {
+            return 0;
+        }
 
-        this.rpsGame.delete(playerThis.gameID);
+        const playersMatch =
+            (rpsGame.playerOne === data.id &&
+                rpsGame.playerTwo === data.requestedPlayerID) ||
+            (rpsGame.playerTwo === data.id &&
+                rpsGame.playerOne === data.requestedPlayerID);
+
+        if (!playersMatch) {
+            return 0;
+        }
+
+        this.removeRPSGame(gameID);
 
         // RPS Game Declined
         return 1;
@@ -179,10 +196,26 @@ export class GameManager {
 
         if (!playerThis.gameID) return 0;
 
-        const rpsGame = this.rpsGame.get(playerThis.gameID);
+        const gameID = playerThis.gameID;
+        const rpsGame = this.rpsGame.get(gameID);
 
         if (!rpsGame) return 0;
+        if (rpsGame.state !== RPSGameState.Requested) {
+            return 0;
+        }
+        if (playerOther.gameID !== gameID) {
+            return 0;
+        }
 
+        const playersMatch =
+            (rpsGame.playerOne === data.id &&
+                rpsGame.playerTwo === data.requestedPlayerID) ||
+            (rpsGame.playerTwo === data.id &&
+                rpsGame.playerOne === data.requestedPlayerID);
+
+        if (!playersMatch) {
+            return 0;
+        }
         rpsGame.state = RPSGameState.InGame;
         return 1;
     }
@@ -201,6 +234,9 @@ export class GameManager {
         //console.log("RPS GAMEID: " + player.gameID + "  Choice made : " + data.choice);
         if (!rpsGame) {
             console.log('RPS game not found for player: ' + player.id);
+            return 0;
+        }
+        if (rpsGame.state !== RPSGameState.InGame) {
             return 0;
         }
 
@@ -388,58 +424,44 @@ export class GameManager {
             return TTTMark.Empty;
         }
 
-        if (!this.tttGame.players.includes(playerID)) {
+        const isPlayerOne = playerID === this.tttGame.players[0];
+        const isPlayerTwo = playerID === this.tttGame.players[1];
+
+        if (!isPlayerOne && !isPlayerTwo) {
             //console.log("Player not in the game." + playerID);
             return TTTMark.Empty;
         }
 
         //console.log("In Marking: " + field + " by player: " + playerID);
-        for (const box of this.tttGame.boardNames) {
-            if (box === field) {
-                //console.log("Marking now:" + field);
+        const fieldIndex = this.tttGame.boardNames.indexOf(field);
 
-                const parts = field.split('TTT_Board_');
-
-                let num: number = 0;
-
-                if (
-                    parts.length >= 2 &&
-                    parts[1] != undefined &&
-                    parts[1].length > 0
-                ) {
-                    num = Number(parts[1][0]) - 1;
-                }
-
-                if (this.tttGame.board[num] !== TTTMark.Empty) {
-                    //console.log("Field already marked.");
-                    return TTTMark.Empty;
-                }
-
-                if (playerID === this.tttGame.players[0]) {
-                    if (this.tttGame.currentMark === TTTMark.X) {
-                        //console.log("Not your turn.");
-                        return TTTMark.Empty;
-                    }
-
-                    this.tttGame.currentMark = TTTMark.X;
-                    this.tttGame.board[num] = TTTMark.X;
-
-                    return TTTMark.X;
-                } else {
-                    if (this.tttGame.currentMark === TTTMark.O) {
-                        return TTTMark.Empty;
-                    }
-
-                    this.tttGame.currentMark = TTTMark.O;
-                    this.tttGame.board[num] = TTTMark.O;
-
-                    return TTTMark.O;
-                }
-            }
+        //console.log("Marking now:" + field);
+        if (
+            fieldIndex === -1 ||
+            this.tttGame.board[fieldIndex] !== TTTMark.Empty
+        ) {
+            //console.log("Field already marked.");
+            return TTTMark.Empty;
         }
 
-        //console.log("Field not found.");
-        return TTTMark.Empty;
+        if (isPlayerOne) {
+            if (this.tttGame.currentMark === TTTMark.X) {
+                //console.log("Not your turn.");
+                return TTTMark.Empty;
+            }
+
+            this.tttGame.currentMark = TTTMark.X;
+            this.tttGame.board[fieldIndex] = TTTMark.X;
+            return TTTMark.X;
+        }
+
+        if (this.tttGame.currentMark === TTTMark.O) {
+            return TTTMark.Empty;
+        }
+
+        this.tttGame.currentMark = TTTMark.O;
+        this.tttGame.board[fieldIndex] = TTTMark.O;
+        return TTTMark.O;
     }
 
     checkWin() {
