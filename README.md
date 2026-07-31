@@ -52,13 +52,19 @@ installation, and/or execution.
 tation, articles, tutorials, etc.), as well as a description of how AI was used —
 specifying for which tasks and which parts of the project.
 
-- A very nice & concise refresher about JS - <https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Language_overview>
+- [A concise JavaScript language overview](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Language_overview)
 
-- The Three.JS manual - <https://threejs.org/manual/#en/installation>
+- [Three.js manual](https://threejs.org/manual/#en/installation)
 
-- The Three.JS Reference - <https://threejs.org/docs/>
+- [Three.js reference](https://threejs.org/docs/)
 
-- A brand new article describing exactly our backend tech-stack - <https://www.xjavascript.com/blog/socket-io-typescript-express/>
+- [Socket.IO, TypeScript, and Express backend article](https://www.xjavascript.com/blog/socket-io-typescript-express/)
+
+- [React Three Fiber documentation](https://r3f.docs.pmnd.rs/getting-started/your-first-scene)
+
+- [React Context documentation](https://react.dev/learn/passing-data-deeply-with-context)
+
+- [Express microservices article](https://codezup.com/building-microservices-with-node-and-express/)
 
 ## Team Information
 
@@ -109,4 +115,3 @@ specifying for which tasks and which parts of the project.
     - Any challenges faced and how they were overcome.
     Any other useful or relevant information is welcome (usage documentation, known
     limitations, license, credits, etc.).
-
