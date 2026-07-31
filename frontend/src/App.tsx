@@ -11,7 +11,7 @@ import './App.css';
 
 type AppProps = {
     title: string;
-    subtitle: string;
+    subtitle: React.ReactNode;
     // version: string;
 };
 
