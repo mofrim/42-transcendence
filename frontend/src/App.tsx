@@ -12,7 +12,7 @@ import './App.css';
 type AppProps = {
     title: string;
     subtitle: string;
-    version: string;
+    // version: string;
 };
 
 const App: React.FC<AppProps> = (props: AppProps) => {
@@ -30,8 +30,8 @@ const App: React.FC<AppProps> = (props: AppProps) => {
                 <div className='login-title'>{props.title}</div>
                 <div className='login-subtitle'>
                     {props.subtitle}
-                    <br />
-                    {props.version}
+                    {/* <br /> */}
+                    {/* {props.version} */}
                 </div>
                 <AuthInputs />
                 <PlayerSelect />

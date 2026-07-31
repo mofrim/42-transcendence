@@ -9,7 +9,7 @@ createRoot(document.getElementById('root')!).render(
         <App
             title='ft_transcendence'
             subtitle='42 Wolfsburg Project'
-            version='v0.0.0'
+            // version='v0.0.0'
         />
     </LoginProvider>
     // </StrictMode>
