@@ -14,6 +14,7 @@ export enum CharacterModel {
 
 export interface SocketAuth {
     character: boolean;
+    nickname: string;
 }
 
 /** all both gender */

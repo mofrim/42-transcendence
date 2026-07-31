@@ -28,10 +28,10 @@ export class GameManager {
         this.rpsGame = new Map();
     }
 
-    createPlayer(id: string): PlayerData {
+    createPlayer(id: string, nickname: string): PlayerData {
         return {
             id: id,
-            nickname: '',
+            nickname: nickname,
             position: { x: 0, y: 0, z: 0 },
             state: PlayerState.Idle,
             gameID: null,

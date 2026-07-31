@@ -30,12 +30,20 @@ const io = new Server(server, {
 io.on('connection', (socket) => {
     //const character = normalizeCharacter(socket.handshake.auth?.character);
     const character = socket.handshake.auth['character'];
+    const nickname = socket.handshake.auth['nickname'];
     socket.data.character = character;
 
     //console.log('Character IS:', character);
 
     console.log('Client connected:', socket.id);
-    gameManager.players.set(socket.id, gameManager.createPlayer(socket.id));
+    gameManager.players.set(
+        socket.id,
+        gameManager.createPlayer(
+            socket.id,
+            // Übernimmt den Login-Nickname aus dem Socket.IO-Handshake in die serverseitigen PlayerData.
+            nickname
+        )
+    );
 
     // notify others
     socket.broadcast.emit('player_connected', {
