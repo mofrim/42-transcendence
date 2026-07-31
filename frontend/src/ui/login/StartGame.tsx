@@ -16,7 +16,7 @@ export const StartButton: React.FC = () => {
 };
 
 export const Game = () => {
-    const { gameRunning, avatar, fullAddrRef } = useLoginContext();
+    const { gameRunning, avatar, nicknameRef, fullAddrRef } = useLoginContext();
 
     // using ref here a lot because th
     const mountRef = useRef<HTMLDivElement>(null);
@@ -38,6 +38,7 @@ export const Game = () => {
 
         startGame(
             avatar === 'true' ? true : false,
+            nicknameRef.current,
             fullAddrRef.current,
             renderer
         );

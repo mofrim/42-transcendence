@@ -54,6 +54,7 @@ function normalizeCharacter(character: boolean): boolean {
 
 export function startGame(
     whichCharacter: boolean = true,
+    nickname: string,
     serverUrl: string | null = null,
     renderer: THREE.WebGLRenderer
 ) {
@@ -76,7 +77,11 @@ export function startGame(
         'http://localhost:3000';
 
     const socket = io(socketServerUrl, {
-        auth: { character: whichCharacter },
+        auth: {
+            character: whichCharacter,
+            // Login-Nickname Socket.IO-Handshake
+            nickname,
+        },
     });
 
     let player: Player | null = null;
