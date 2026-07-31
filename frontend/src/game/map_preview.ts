@@ -190,6 +190,8 @@ export function createMapPreview({
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 0.9;
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(38, 1, 0.01, 1000);
@@ -199,7 +201,11 @@ export function createMapPreview({
 
     const keyLight = new THREE.DirectionalLight(0xffffff, 2.6);
     keyLight.position.set(4, 7, 6);
+    keyLight.castShadow = true;
+    /** Shadow map size is set to balance between quality and performance. */
+    keyLight.shadow.mapSize.set(1024, 1024);
     scene.add(keyLight);
+    scene.add(keyLight.target);
 
     const fillLight = new THREE.DirectionalLight(0xbfd8ff, 1.2);
     fillLight.position.set(-5, 3, -2);
@@ -210,6 +216,7 @@ export function createMapPreview({
     const boundingSphere = new THREE.Sphere();
     const rendererSize = new THREE.Vector2();
     const cameraDirection = new THREE.Vector3(0.75, 0.55, 1).normalize();
+    const keyLightDirection = keyLight.position.clone().normalize();
 
     let reducedMotionQuery: MediaQueryList | null = null;
     if (typeof window.matchMedia === 'function') {
@@ -315,6 +322,32 @@ export function createMapPreview({
         bounds.getBoundingSphere(boundingSphere);
         modelRadius = boundingSphere.radius;
         frameCamera();
+        frameShadowCamera();
+    }
+
+    function frameShadowCamera(): void {
+        if (!Number.isFinite(modelRadius) || modelRadius <= 0) {
+            return;
+        }
+
+        const shadowCamera = keyLight.shadow.camera;
+        const shadowExtent = modelRadius * 1.25;
+
+        keyLight.position
+            .copy(keyLightDirection)
+            .multiplyScalar(modelRadius * 2.5);
+        keyLight.target.position.set(0, 0, 0);
+
+        shadowCamera.left = -shadowExtent;
+        shadowCamera.right = shadowExtent;
+        shadowCamera.top = shadowExtent;
+        shadowCamera.bottom = -shadowExtent;
+        shadowCamera.near = Math.max(0.01, modelRadius * 0.1);
+        shadowCamera.far = modelRadius * 4;
+        shadowCamera.updateProjectionMatrix();
+
+        keyLight.shadow.normalBias = modelRadius * 0.002;
+        keyLight.shadow.needsUpdate = true;
     }
 
     function stopAnimation(): void {
@@ -436,6 +469,13 @@ export function createMapPreview({
                     disposeObject(gltf.scene);
                     return;
                 }
+
+                gltf.scene.traverse((child) => {
+                    if (child instanceof THREE.Mesh) {
+                        child.castShadow = true;
+                        child.receiveShadow = true;
+                    }
+                });
 
                 pivot = new THREE.Group();
                 pivot.add(gltf.scene);
