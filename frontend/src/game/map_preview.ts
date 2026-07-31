@@ -4,7 +4,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
 const MAP_MODEL_PATH = '/glb/42WOB_v3.glb';
 const MAX_PIXEL_RATIO = 1.5;
-const ROTATION_SPEED = THREE.MathUtils.degToRad(1.25);
+const ROTATION_SPEED = THREE.MathUtils.degToRad(1.15);
 
 interface MapPreview {
     dispose(): void;
@@ -160,6 +160,35 @@ function disposeObject(object: THREE.Object3D): void {
     });
 }
 
+/** Applies the main game's glass. */
+function configureMapPreviewMesh(mesh: THREE.Mesh): void {
+    let materials: THREE.Material[];
+
+    if (Array.isArray(mesh.material)) {
+        materials = mesh.material;
+    } else {
+        materials = [mesh.material];
+    }
+    let usesGlassMaterial = false;
+
+    for (const material of materials) {
+        if (
+            material.name === 'Glass_mtl' ||
+            material.name === 'Glass_outside' ||
+            material.name === 'Glass_block'
+        ) {
+            material.transparent = true;
+            material.opacity = 0.3;
+            material.depthWrite = false;
+            material.needsUpdate = true;
+            usesGlassMaterial = true;
+        }
+    }
+
+    mesh.castShadow = !usesGlassMaterial;
+    mesh.receiveShadow = !usesGlassMaterial;
+}
+
 export function createMapPreview({
     canvas,
 }: MapPreviewOptions = {}): MapPreview {
@@ -194,7 +223,7 @@ export function createMapPreview({
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(38, 1, 0.01, 1000);
+    const camera = new THREE.PerspectiveCamera(38, 1, 0.01, 1_000);
 
     const hemisphereLight = new THREE.HemisphereLight(0xffffff, 0x536579, 1.8);
     scene.add(hemisphereLight);
@@ -215,7 +244,7 @@ export function createMapPreview({
     const center = new THREE.Vector3();
     const boundingSphere = new THREE.Sphere();
     const rendererSize = new THREE.Vector2();
-    const cameraDirection = new THREE.Vector3(0.75, 0.55, 1).normalize();
+    const cameraDirection = new THREE.Vector3(0.75, 0.37, 1).normalize();
     const keyLightDirection = keyLight.position.clone().normalize();
 
     let reducedMotionQuery: MediaQueryList | null = null;
@@ -243,7 +272,7 @@ export function createMapPreview({
     function frameCamera(): void {
         if (!Number.isFinite(modelRadius) || modelRadius <= 0) {
             camera.near = 0.01;
-            camera.far = 1000;
+            camera.far = 1_000;
             camera.position.set(0, 2, 5);
             camera.lookAt(0, 0, 0);
             camera.updateProjectionMatrix();
@@ -325,6 +354,7 @@ export function createMapPreview({
         frameShadowCamera();
     }
 
+    /** add Map-Preview Shadow Map */
     function frameShadowCamera(): void {
         if (!Number.isFinite(modelRadius) || modelRadius <= 0) {
             return;
@@ -472,8 +502,7 @@ export function createMapPreview({
 
                 gltf.scene.traverse((child) => {
                     if (child instanceof THREE.Mesh) {
-                        child.castShadow = true;
-                        child.receiveShadow = true;
+                        configureMapPreviewMesh(child);
                     }
                 });
 
