@@ -17,6 +17,7 @@ export const LoginProvider: React.FC<{ children: React.ReactNode }> = ({
         useState<HTMLElement | null>(null);
 
     // not these ones
+    const nicknameRef = useRef<string>('');
     const serverAddrRef = useRef<string>('localhost');
     const portRef = useRef<string>('3000');
     const fullAddrRef = useRef<string>('http://localhost:3000');
@@ -29,6 +30,7 @@ export const LoginProvider: React.FC<{ children: React.ReactNode }> = ({
                 setGameRunning,
                 avatar,
                 setAvatar,
+                nicknameRef,
                 serverAddrRef,
                 portRef,
                 fullAddrRef,

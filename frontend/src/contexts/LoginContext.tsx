@@ -8,6 +8,7 @@ interface LoginContextType {
     setGameRunning: Dispatch<SetStateAction<boolean>>;
     avatar: string;
     setAvatar: Dispatch<SetStateAction<string>>;
+    nicknameRef: RefObject<string>;
     serverAddrRef: RefObject<string>;
     portRef: RefObject<string>;
     fullAddrRef: RefObject<string>;

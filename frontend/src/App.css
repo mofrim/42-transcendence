@@ -237,6 +237,23 @@ body {
   opacity: 1;
 }
 
+#login-ui .nickname-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: #3c3c3c;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: left;
+}
+
+#login-ui .nickname-input {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
 /* SERVER SETTINGS */
 #login-ui :is(#server-settings, .server-settings) {
   display: flex;
