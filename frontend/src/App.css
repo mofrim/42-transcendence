@@ -248,10 +248,54 @@ body {
   text-align: left;
 }
 
+#login-ui .nickname-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 44px;
+  gap: 8px;
+  align-items: stretch;
+}
+
 #login-ui .nickname-input {
   width: 100%;
   min-width: 0;
   box-sizing: border-box;
+}
+
+#login-ui .nickname-randomize {
+  display: grid;
+  place-items: center;
+  min-width: 44px;
+  padding: 0;
+  border: none;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: inset 0 0 0 1px rgba(60, 60, 60, 0.12);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+#login-ui .nickname-randomize:hover {
+  background: rgba(255, 255, 255, 0.96);
+}
+
+#login-ui .nickname-randomize-icon {
+  display: inline-grid;
+  place-items: center;
+  transform-origin: center;
+  transition: transform 0.2s;
+}
+
+#login-ui .nickname-randomize:hover .nickname-randomize-icon {
+  transform: rotate(270deg);
+}
+
+#login-ui .nickname-randomize:focus-visible {
+  outline: none;
+  box-shadow:
+    inset 0 0 0 1px rgba(60, 125, 125, 0.62),
+    0 0 0 3px rgba(60, 125, 125, 0.16);
 }
 
 /* SERVER SETTINGS */
