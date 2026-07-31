@@ -533,7 +533,8 @@ export function startGame(
         cam.near = 1;
         cam.far = 50;
 
-        dirLight.shadow.mapSize.set(16348, 16348);
+        /** Shadow map size is set to balance between quality and performance. */
+        dirLight.shadow.mapSize.set(6144, 6144);
         scene.add(dirLight);
         scene.add(dirLight.target);
 
