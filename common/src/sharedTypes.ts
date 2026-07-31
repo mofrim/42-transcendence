@@ -129,7 +129,8 @@ export type RPSRequestDataPayload = {
     type: 'rps_accept' | 'rps_decline' | 'rps_request';
     id: string;
     requestedPlayerID: string;
-}
+    nickname?: string;
+};
 
 export type TTTInitGamePayload = {
     game: TTTGame;
@@ -180,13 +181,16 @@ export type TTTStartPayload = {
     type: 'ttt_start';
     playerOne: string;
     playerTwo: string;
-}
+    playerOneNickname: string;
+    playerTwoNickname: string;
+};
 
 export type TTTWinPayload = {
     type: 'ttt_win';
     id: string;
     winner: number;
-}
+    nickname?: string;
+};
 
 export type TTTDrawPayload = {
     type: 'ttt_draw';

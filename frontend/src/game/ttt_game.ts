@@ -9,7 +9,6 @@ import type { TTTBoard, PlayerSlot, TTTInitGamePayload } from '@common/types';
 export class TTT_Game {
     board: TTTMeshBoard;
     scene: THREE.Scene;
-    button: THREE.Mesh;
     renderer: THREE.WebGLRenderer;
     player: Player;
     players: [PlayerSlot, PlayerSlot];
@@ -36,13 +35,11 @@ export class TTT_Game {
         scene: THREE.Scene,
         player: Player,
         board: TTTMeshBoard,
-        button: THREE.Mesh,
         renderer: THREE.WebGLRenderer
     ) {
         this.board = board;
 
         this.scene = scene;
-        this.button = button;
         this.renderer = renderer;
         this.renderer.autoClear = false;
         this.player = player;
@@ -219,9 +216,9 @@ export class TTT_Game {
 
                 this.removeText();
                 if (this.player.id === this.players[0]) {
-                    this.addText('You are "X". You go first', 0, -0.5, 75);
+                    this.addText('You are ❌. You go first', 0, -0.5, 75);
                 } else {
-                    this.addText('You are "O". You go second', 0, -0.5, 75);
+                    this.addText('You are ⭕. You go second', 0, -0.5, 75);
                 }
 
                 this.tttCamera = true;
@@ -341,16 +338,23 @@ export class TTT_Game {
         this.players[1] = playerID;
     }
 
-    startGame(playerOne: string, playerTwo: string): void {
+    startGame(
+        playerOne: string,
+        playerTwo: string,
+        playerOneNickname: string,
+        playerTwoNickname: string
+    ): void {
         console.log(
             'Players: ' +
+                playerOneNickname +
+                ' (' +
                 playerOne +
-                ':' +
-                this.players[0] +
+                ')' +
                 ' and ' +
+                playerTwoNickname +
+                ' (' +
                 playerTwo +
-                ':' +
-                this.players[1]
+                ')'
         );
         if (playerOne !== this.players[0] || playerTwo !== this.players[1]) {
             console.log('Player IDs do not match. Cannot start game.');
@@ -358,11 +362,19 @@ export class TTT_Game {
         }
 
         this.clearBoard();
-        console.log('TTT GAME START!!!');
-        console.log('Player 1: ' + this.players[0]);
-        console.log('Player 2: ' + this.players[1]);
+        console.log('TTT GAME START!');
+        console.log(
+            'Player 1: ' + playerOneNickname + ' (' + this.players[0] + ')'
+        );
+        console.log(
+            'Player 2: ' + playerTwoNickname + ' (' + this.players[1] + ')'
+        );
         this.updateSpriteText(this.spriteGameCount, '2/2', 50);
-        this.updateSpriteText(this.spriteGameText, 'IN GAME', 50);
+        this.updateSpriteText(
+            this.spriteGameText,
+            'IN GAME\n' + playerOneNickname + ' VS ' + playerTwoNickname,
+            50
+        );
 
         if (this.player.id !== playerOne && this.player.id !== playerTwo)
             return;
@@ -454,7 +466,7 @@ export class TTT_Game {
         }
     }
 
-    winner(playerID: string): void {
+    winner(playerID: string, playerNickname?: string): void {
         if (
             this.player.id !== undefined &&
             this.players.includes(this.player.id)
@@ -464,11 +476,11 @@ export class TTT_Game {
 
             if (this.player.id === playerID) {
                 this.winAnimation('UserA');
-                this.addText('You Win!', 0, -0.5, 75);
+                this.addText('🏆 You Win!', 0, -0.5, 75);
             } else {
                 this.winAnimation('UserB');
                 this.addText(
-                    'Player ' + playerID + ' is the winner...',
+                    (playerNickname || playerID) + ' is the winner…',
                     0,
                     -0.5,
                     75
@@ -496,7 +508,7 @@ export class TTT_Game {
         return true;
     }
 
-    markField(fieldName: string, playerID: number, mark: TTTMark): void {
+    markField(fieldName: string, playerID: string, mark: TTTMark): void {
         console.log('In Marking: ' + fieldName + ' by player: ' + playerID);
 
         if (
@@ -506,14 +518,14 @@ export class TTT_Game {
             this.removeText();
 
             if (this.player.id === this.players[0] && mark === TTTMark.X)
-                this.addText('Waiting...', 0, -0.5, 75);
+                this.addText('Waiting…', 0, -0.5, 75);
             else if (this.player.id === this.players[0] && mark === TTTMark.O)
-                this.addText('Your Turn with X!', 0, -0.5, 75);
+                this.addText('Your Turn with ❌ !', 0, -0.5, 75);
 
             if (this.player.id === this.players[1] && mark === TTTMark.O)
-                this.addText('Waiting...', 0, -0.5, 75);
+                this.addText('Waiting…', 0, -0.5, 75);
             else if (this.player.id === this.players[1] && mark === TTTMark.X)
-                this.addText('Your Turn with O!', 0, -0.5, 75);
+                this.addText('Your Turn with ⭕ !', 0, -0.5, 75);
         }
 
         for (const box of this.board.cells) {
@@ -587,9 +599,18 @@ export class TTT_Game {
 
         ctx.lineWidth = 8; // outline thickness
         ctx.strokeStyle = 'black'; // outline color
-        ctx.strokeText(text, canvas.width / 2, canvas.height / 2);
 
-        ctx.fillText(text, canvas.width / 2, canvas.height / 2);
+        // multiline split the text into lines and render each line separately
+        const lines = text.split('\n');
+        const lineHeight = size * 1.2;
+        const firstLineY =
+            canvas.height / 2 - ((lines.length - 1) * lineHeight) / 2;
+
+        lines.forEach((line, index) => {
+            const y = firstLineY + index * lineHeight;
+            ctx.strokeText(line, canvas.width / 2, y);
+            ctx.fillText(line, canvas.width / 2, y);
+        });
 
         sprite.material.map!.needsUpdate = true;
     }

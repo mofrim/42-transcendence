@@ -419,8 +419,11 @@ export function startGame(
         player.battleRequested = true;
 
         if (!rpsGame) return;
-
-        rpsGame.BattleRequest(data.id);
+        rpsGame.BattleRequest(
+            data.id,
+            // Send server-stored nicknames to the minigame event
+            data.nickname
+        );
         //console.log("You accepted a battle with player " + rpsGame.playerInRange.id);
     }
 
@@ -432,13 +435,22 @@ export function startGame(
 
     function handleTTTstart(data: TTTStartPayload) {
         if (!tttGame) return;
-        tttGame.startGame(data.playerOne, data.playerTwo);
+        tttGame.startGame(
+            data.playerOne,
+            data.playerTwo,
+            data.playerOneNickname,
+            data.playerTwoNickname
+        );
     }
 
     function handleTTTwin(data: TTTWinPayload) {
         if (!tttGame) return;
         tttGame.drawWin(data.winner);
-        tttGame.winner(data.id);
+        tttGame.winner(
+            data.id,
+            // Send server-stored nicknames to the minigame event
+            data.nickname
+        );
         tttGame.endGame();
     }
 
@@ -494,7 +506,7 @@ export function startGame(
     const mesh_col: GLBMesh[] = [];
     const mesh_RP: GLBMesh[] = [];
     const tttBox: TTTMeshBoard = new TTTMeshBoard();
-    let tttStart: GLBMesh;
+    let tttStart: GLBMesh | undefined;
 
     //let camDistance = 0;
 
@@ -589,7 +601,8 @@ export function startGame(
         //scene.add(plane);
         worldOctree.fromGraphNode(plane);
 
-        tttGame = new TTT_Game(scene, player, tttBox, tttStart, renderer);
+        // Removed the unused TTT button constructor argument
+        tttGame = new TTT_Game(scene, player, tttBox, renderer);
         rpsGame = new RPS_Game(
             scene,
             socket,

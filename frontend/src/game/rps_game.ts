@@ -121,20 +121,38 @@ export class RPS_Game {
         } else {
             const pos = this.playerInRange!.group.position;
 
-            this.updateSpriteText(this.spritePlayer, 'Press B', 20);
+            this.updateSpriteText(
+                this.spritePlayer,
+                'Press ⌨️ [B] Battle Challenge',
+                20
+            );
             this.spritePlayer.position.set(pos.x, pos.y + 1.6, pos.z);
         }
     }
 
-    BattleRequest(requestedPlayerID: string): void {
+    BattleRequest(
+        requestedPlayerID: string,
+        requestedPlayerNickname?: string
+    ): void {
         if (!this.player.youSendRPGRequest) {
             this.removeText();
-            this.addText(requestedPlayerID, 0, -0.2, 50);
-            this.addText('Rock Paper Scissors Battle Requested!', 0, -0.3, 100);
-            this.addText('Y - Accept ', 0, -0.5, 100);
-            this.addText('X - Decline', 0, -0.6, 100);
+            this.addText(
+                requestedPlayerNickname || requestedPlayerID,
+                0,
+                -0.2,
+                50
+            );
+            this.addText('🪨 Rock 📜 Paper ✂️ Scissors', 0, -0.3, 100);
+            this.addText(
+                ' challenged by: ' + requestedPlayerNickname,
+                0,
+                -0.4,
+                100
+            );
+            this.addText('✅ Press ⌨️ [Y] to Accept', 0, -0.5, 100);
+            this.addText('❌ Press ⌨️ [X] to Decline', 0, -0.6, 100);
             this.battleRequestedPlayer = requestedPlayerID;
-            console.log('Battle requested: ' + requestedPlayerID);
+            console.log('Challenged by ' + requestedPlayerID);
         }
     }
 
@@ -186,9 +204,9 @@ export class RPS_Game {
         if (userASprite) this.overlayScene.add(userASprite);
         if (beamSprite) this.overlayScene.add(beamSprite);
 
-        this.addText('1 - Rock!    ', -0.2, -0.1, 100);
-        this.addText('2 - Paper!   ', 0, -0.25, 100);
-        this.addText('3 - Scissors!', 0.2, -0.4, 100);
+        this.addText('Press ⌨️ [1] - 🪨 Rock    ', -0.2, -0.1, 100);
+        this.addText('Press ⌨️ [2] - 📜 Paper   ', 0, -0.25, 100);
+        this.addText('Press ⌨️ [3] - ✂️ Scissors', 0.2, -0.4, 100);
 
         const yp = 0.025;
         this.rpsSprite.get('UserA')!.position.set(-0.75, yp, 0);
@@ -284,7 +302,7 @@ export class RPS_Game {
         }
 
         if (this.yourChoice === this.opponentChoice)
-            this.addText("It's a draw!", 0, -0.225, 125);
+            this.addText("🤝 It's a draw!", 0, -0.225, 125);
         else if (
             (this.yourChoice === RPSChoice.Rock &&
                 this.opponentChoice === RPSChoice.Scissors) ||
@@ -293,7 +311,7 @@ export class RPS_Game {
             (this.yourChoice === RPSChoice.Scissors &&
                 this.opponentChoice === RPSChoice.Paper)
         )
-            this.addText('You win!', 0, -0.225, 100);
+            this.addText('🏆 You win!', 0, -0.225, 100);
         else this.addText('You lose!', 0, -0.225, 100);
     }
 

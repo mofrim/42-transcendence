@@ -311,10 +311,17 @@ function handleRPSRequest(socket: Socket, data: RPSRequestDataPayload) {
         return;
     }
 
+    // use server-stored nicknames only for visible RPS text while retaining socket IDs for game logic.
+    const requestingPlayer = gameManager.players.get(socket.id);
+
+    if (!requestingPlayer) {
+        return;
+    }
     socket.broadcast.emit('update', {
         type: 'rps_request',
         id: socket.id,
         requestedPlayerID: data.requestedPlayerID,
+        nickname: requestingPlayer.nickname,
     });
 }
 
@@ -340,11 +347,12 @@ function handlePlayerUpdate(socket: Socket, data: PlayerUpdatePayload) {
 }
 
 function handleTTTStart(socket: Socket) {
-    const state = gameManager.startTTTGame(socket.id);
     const player = gameManager.players.get(socket.id);
 
     if (!player) return;
     if (player.inGame) return;
+
+    const state = gameManager.startTTTGame(socket.id);
 
     if (state == 0) return;
 
@@ -360,6 +368,16 @@ function handleTTTStart(socket: Socket) {
     }
 
     if (state == 2) {
+        const playerOneID = gameManager.tttGame.players[0];
+        const playerTwoID = gameManager.tttGame.players[1];
+
+        if (!playerOneID || !playerTwoID) return;
+
+        const playerOne = gameManager.players.get(playerOneID);
+        const playerTwo = gameManager.players.get(playerTwoID);
+
+        if (!playerOne || !playerTwo) return;
+
         player.inGame = true;
         player.gameID = 'tttGame';
 
@@ -370,8 +388,10 @@ function handleTTTStart(socket: Socket) {
 
         io.emit('update', {
             type: 'ttt_start',
-            playerOne: gameManager.tttGame.players[0],
-            playerTwo: gameManager.tttGame.players[1],
+            playerOne: playerOneID,
+            playerTwo: playerTwoID,
+            playerOneNickname: playerOne.nickname,
+            playerTwoNickname: playerTwo.nickname,
         });
 
         return;
@@ -420,10 +440,18 @@ function handleTTTMark(socket: Socket, data: TTTMarkPayload) {
 
     const checkWin = gameManager.checkWin();
     if (checkWin >= 1 && checkWin <= 8) {
+        // use server-stored nicknames only for visible TTT text while retaining socket IDs for game logic.
+        const winner = gameManager.players.get(socket.id);
+
+        if (!winner) {
+            return;
+        }
+
         io.emit('update', {
             type: 'ttt_win',
             id: socket.id,
             winner: checkWin,
+            nickname: winner.nickname,
         });
 
         wait(3000).then(() => {
