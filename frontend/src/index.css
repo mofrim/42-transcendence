@@ -285,22 +285,6 @@ body {
   text-align: center;
 }
 
-#login-ui :is(#server-help, .server-help) {
-  color: #777;
-  font-size: 11px;
-  line-height: 1.3;
-}
-
-#login-ui :is(#server-help, .server-help) a {
-  color: #3c7d7d;
-  font-weight: 600;
-  text-decoration: none;
-}
-
-#login-ui :is(#server-help, .server-help) a:hover {
-  text-decoration: underline;
-}
-
 .player-select {
   display: grid;
   grid-template-columns: 1fr 1fr;

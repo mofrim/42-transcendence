@@ -121,12 +121,13 @@ export const ServerSettings: React.FC = () => {
         <div className='server-settings' aria-label='Game server settings'>
             <div className='server-fields'>
                 <label className='server-field'>
-                    <span>Server address</span>
+                    <span>Server hostname or IP address</span>
                     <input
                         id='server-address'
                         className='server-address'
                         type='text'
                         placeholder='localhost'
+                        title='Default: http://localhost:3000'
                         autoComplete='off'
                         spellCheck='false'
                         onBlur={(e) =>
@@ -151,7 +152,6 @@ export const ServerSettings: React.FC = () => {
                     />
                 </label>
             </div>
-            <div className='server-help'>Default: http://localhost:3000</div>
         </div>
     );
 };
