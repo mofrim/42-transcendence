@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { Player } from './player';
+import { CanvasTextSprite } from './CanvasTextSprite';
 import { TTTMark, TTTMeshBoard } from '@common/types';
 
 // Type-only import: exists only during TypeScript compilation, not at runtime.
@@ -18,9 +19,9 @@ export class TTT_Game {
     tttCamera: boolean;
     vsAnimationStart: boolean;
 
-    spriteGameText: THREE.Sprite;
-    spriteGameCount: THREE.Sprite;
-    currentTextState: THREE.Sprite[];
+    spriteGameText: CanvasTextSprite;
+    spriteGameCount: CanvasTextSprite;
+    currentTextState: CanvasTextSprite[];
 
     texX: THREE.Texture;
     texO: THREE.Texture;
@@ -61,10 +62,11 @@ export class TTT_Game {
 
         this.vsAnimationStart = false;
 
-        this.spriteGameText = this.makeSprite('Click to Join', 50);
-        this.spriteGameCount = this.makeSprite('0/2', 50);
+        this.spriteGameText = new CanvasTextSprite('Click to Join', 50);
+        this.spriteGameCount = new CanvasTextSprite('0/2', 50);
         this.spriteGameText.position.set(24.25, 5.5, -16.13);
         this.spriteGameCount.position.set(24.25, 5.2, -16.13);
+        this.scene.add(this.spriteGameText, this.spriteGameCount);
 
         this.currentTextState = [];
 
@@ -111,12 +113,12 @@ export class TTT_Game {
         // some API) for undefinedness
         if (data.game != null) {
             if (data.game.players[0]) {
-                this.updateSpriteText(this.spriteGameCount, '1/2', 50);
+                this.spriteGameCount.setText('1/2', 50);
                 this.players[0] = data.game.players[0];
             }
             if (data.game.players[1]) {
-                this.updateSpriteText(this.spriteGameCount, '2/2', 50);
-                this.updateSpriteText(this.spriteGameText, 'IN GAME', 50);
+                this.spriteGameCount.setText('2/2', 50);
+                this.spriteGameText.setText('IN GAME', 50);
                 this.players[1] = data.game.players[1];
             }
         }
@@ -312,18 +314,10 @@ export class TTT_Game {
         this.renderer.render(this.overlayScene, this.overlayCamera);
     }
 
-    /* initSpriteText() {
-
-        this.spriteGameText = this.makeSprite("Click to Join", 50);
-        this.spriteGameCount = this.makeSprite("0/2", 50);
-        this.spriteGameText.position.set(24.25, 5.5, -16.13);
-        this.spriteGameCount.position.set(24.25, 5.2, -16.13);
-    } */
-
     setPlayerOne(playerID: string): void {
         this.players[0] = playerID;
         console.log('First Player added to game.' + playerID);
-        this.updateSpriteText(this.spriteGameCount, '1/2', 50);
+        this.spriteGameCount.setText('1/2', 50);
         if (this.player.id === playerID)
             this.addText(
                 'You joined the game.\nWaiting for another player…\nor press ⌨️ [ESC]ape',
@@ -369,9 +363,8 @@ export class TTT_Game {
         console.log(
             'Player 2: ' + playerTwoNickname + ' (' + this.players[1] + ')'
         );
-        this.updateSpriteText(this.spriteGameCount, '2/2', 50);
-        this.updateSpriteText(
-            this.spriteGameText,
+        this.spriteGameCount.setText('2/2', 50);
+        this.spriteGameText.setText(
             'IN GAME\n' + playerOneNickname + ' VS ' + playerTwoNickname,
             50
         );
@@ -398,8 +391,8 @@ export class TTT_Game {
 
         this.tttCamera = false;
 
-        this.updateSpriteText(this.spriteGameText, 'Click to Join', 50);
-        this.updateSpriteText(this.spriteGameCount, '0/2', 50);
+        this.spriteGameText.setText('Click to Join', 50);
+        this.spriteGameCount.setText('0/2', 50);
 
         if (
             this.player.id !== undefined &&
@@ -472,7 +465,7 @@ export class TTT_Game {
             this.players.includes(this.player.id)
         ) {
             this.removeText();
-            this.updateSpriteText(this.spriteGameText, 'FINISH', 50);
+            this.spriteGameText.setText('FINISH', 50);
 
             if (this.player.id === playerID) {
                 this.winAnimation('UserA');
@@ -494,7 +487,7 @@ export class TTT_Game {
     draw(): void {
         this.removeText();
         this.drawAnimation();
-        this.updateSpriteText(this.spriteGameText, 'FINISH', 50);
+        this.spriteGameText.setText('FINISH', 50);
     }
 
     checkDraw(): boolean {
@@ -544,110 +537,26 @@ export class TTT_Game {
         }
     }
 
-    // TODO: better create a sprite class ---------------------------------------
-
-    /** prevents text truncated by canvas boundaries. */
-    makeSprite(text: string, size: number): THREE.Sprite {
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-
-        if (!ctx) {
-            throw new Error('Failed to get 2D canvas context');
-        }
-
-        canvas.width = 2048;
-        canvas.height = 256;
-
-        ctx.font = size + 'px Segoe UI Black';
-        ctx.fillStyle = 'white';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-
-        ctx.lineWidth = 8; // outline thickness
-        ctx.strokeStyle = 'black'; // outline color
-
-        /** newline characters aren't being rendered as separate canvas lines */
-        const lines = text.split('\n');
-        const lineHeight = size * 1.2;
-        const firstLineY =
-            canvas.height / 2 - ((lines.length - 1) * lineHeight) / 2;
-
-        lines.forEach((line, index) => {
-            const y = firstLineY + index * lineHeight;
-            ctx.strokeText(line, canvas.width / 2, y);
-            ctx.fillText(line, canvas.width / 2, y);
-        });
-
-        const texture = new THREE.CanvasTexture(canvas);
-        const material = new THREE.SpriteMaterial({ map: texture });
-        material.transparent = true;
-        material.depthWrite = false;
-        material.depthTest = true;
-        const sprite = new THREE.Sprite(material);
-        sprite.scale.set(canvas.width / canvas.height, 1, 1);
-
-        this.scene.add(sprite);
-
-        return sprite;
-    }
-
-    updateSpriteText(sprite: THREE.Sprite, text: string, size: number): void {
-        const canvas = sprite.material.map?.image as HTMLCanvasElement;
-        const ctx = canvas.getContext('2d');
-
-        if (!ctx) return;
-
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.font = size + 'px Segoe UI Black';
-        ctx.fillStyle = 'white';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-
-        ctx.lineWidth = 8; // outline thickness
-        ctx.strokeStyle = 'black'; // outline color
-
-        // multiline split the text into lines and render each line separately
-        const lines = text.split('\n');
-        const lineHeight = size * 1.2;
-        const firstLineY =
-            canvas.height / 2 - ((lines.length - 1) * lineHeight) / 2;
-
-        lines.forEach((line, index) => {
-            const y = firstLineY + index * lineHeight;
-            ctx.strokeText(line, canvas.width / 2, y);
-            ctx.fillText(line, canvas.width / 2, y);
-        });
-
-        sprite.material.map!.needsUpdate = true;
-    }
-
     removeText(): void {
-        if (this.currentTextState) {
-            this.currentTextState.forEach((textSprite) => {
-                this.overlayScene.remove(textSprite);
-            });
-            this.currentTextState = [];
+        for (const textSprite of this.currentTextState) {
+            this.overlayScene.remove(textSprite);
+            textSprite.dispose();
         }
+
+        this.currentTextState.length = 0;
     }
 
-    // FIXME silenced noUncheckedIndexedAccess here
     addText(text: string, px: number, py: number, size: number): void {
-        this.currentTextState.push(this.makeSprite(text, size));
+        const textSprite = new CanvasTextSprite(text, size);
         const scaleFactor = 0.2;
-        this.currentTextState[this.currentTextState.length - 1]!.scale.set(
-            this.currentTextState[this.currentTextState.length - 1]!.scale.x *
-                scaleFactor,
-            this.currentTextState[this.currentTextState.length - 1]!.scale.y *
-                scaleFactor,
+        textSprite.scale.set(
+            textSprite.scale.x * scaleFactor,
+            textSprite.scale.y * scaleFactor,
             1
         );
-        this.currentTextState[this.currentTextState.length - 1]!.position.set(
-            px,
-            py,
-            0
-        );
-        this.overlayScene.add(
-            this.currentTextState[this.currentTextState.length - 1]!
-        );
+        textSprite.position.set(px, py, 0);
+
+        this.currentTextState.push(textSprite);
+        this.overlayScene.add(textSprite);
     }
 }

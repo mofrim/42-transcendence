@@ -1,8 +1,15 @@
 import * as THREE from 'three';
 import { Player } from './player';
 import { Remote_Player } from './remote_player';
+import { CanvasTextSprite } from './CanvasTextSprite';
+import { FloatingTextSprite } from './FloatingTextSprite';
 import type { Socket } from 'socket.io-client';
 import { RPSChoice } from '@common/types';
+
+const BATTLE_PROMPT_TEXT = 'Press ⌨️ [B] Battle Challenge';
+const BATTLE_PROMPT_SIZE = 20;
+const BATTLE_PROMPT_HEIGHT = 1.6;
+const BATTLE_RANGE_SQUARED = 4;
 
 export class RPS_Game {
     scene: THREE.Scene;
@@ -16,11 +23,9 @@ export class RPS_Game {
     playerInRange: Remote_Player | null;
     readyForRequest: boolean;
     battleRequestedPlayer: string;
-    spritePlayer: THREE.Sprite;
+    private readonly battlePrompt: FloatingTextSprite;
 
-    minDist: number;
-
-    currentTextState: THREE.Sprite[];
+    currentTextState: CanvasTextSprite[];
     overlayScene: THREE.Scene;
     overlayCamera: THREE.OrthographicCamera;
 
@@ -52,9 +57,12 @@ export class RPS_Game {
         this.playerInRange = null;
         this.readyForRequest = true;
         this.battleRequestedPlayer = '';
-        this.spritePlayer = new THREE.Sprite();
-
-        this.minDist = Infinity;
+        this.battlePrompt = new FloatingTextSprite(
+            BATTLE_PROMPT_TEXT,
+            BATTLE_PROMPT_SIZE,
+            new THREE.Vector3(0, BATTLE_PROMPT_HEIGHT, 0)
+        );
+        this.scene.add(this.battlePrompt);
 
         this.currentTextState = [];
         this.overlayScene = new THREE.Scene();
@@ -94,40 +102,37 @@ export class RPS_Game {
         );
     }
 
-    // TODO: better add this sprite to each player and update it in the player class instead of here
-    // this adds the "Press B" Sprite to a remote player
+    /**
+     * Selects the nearest remote player in battle range.
+     */
     updateCheck(): void {
-        this.minDist = Infinity;
+        let nearestPlayer: Remote_Player | null = null;
+        let nearestDistanceSquared = Infinity;
 
         for (const player of this.players.values()) {
-            const dist = this.player.group.position.distanceToSquared(
-                player.group.position
-            );
+            const distanceSquared =
+                this.player.group.position.distanceToSquared(
+                    player.group.position
+                );
 
-            if (dist < 4) {
-                if (dist < this.minDist) {
-                    this.minDist = dist;
-                    this.playerInRange = player;
-                }
-                this.inRange = true;
+            if (
+                distanceSquared < BATTLE_RANGE_SQUARED &&
+                distanceSquared < nearestDistanceSquared
+            ) {
+                nearestDistanceSquared = distanceSquared;
+                nearestPlayer = player;
             }
         }
 
-        if (this.minDist === Infinity) {
-            this.inRange = false;
-            this.playerInRange = null;
-            if (this.spritePlayer)
-                this.updateSpriteText(this.spritePlayer, '', 20);
-        } else {
-            const pos = this.playerInRange!.group.position;
+        this.playerInRange = nearestPlayer;
+        this.inRange = nearestPlayer !== null;
 
-            this.updateSpriteText(
-                this.spritePlayer,
-                'Press ⌨️ [B] Battle Challenge',
-                20
-            );
-            this.spritePlayer.position.set(pos.x, pos.y + 1.6, pos.z);
+        if (!nearestPlayer) {
+            this.battlePrompt.hide();
+            return;
         }
+
+        this.battlePrompt.follow(nearestPlayer.group);
     }
 
     BattleRequest(
@@ -234,7 +239,7 @@ export class RPS_Game {
         loop();
     }
 
-    // will be called from main
+    /** will be called from main */
     async solutionRPSAnimation(): Promise<void> {
         //this.removeText();
         console.log('RPS Solution Animation Start');
@@ -343,44 +348,6 @@ export class RPS_Game {
         this.renderer.render(this.overlayScene, this.overlayCamera);
     }
 
-    // TODO: better create a sprite class ---------------------------------------
-
-    makeSprite(text: string, size: number): THREE.Sprite {
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-
-        if (!ctx) {
-            throw new Error('Failed to get 2D canvas context');
-        }
-
-        canvas.width = 2048;
-        canvas.height = 256;
-
-        ctx.font = size + 'px Segoe UI Black';
-        ctx.fillStyle = 'white';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-
-        ctx.lineWidth = 8; // outline thickness
-        ctx.strokeStyle = 'black'; // outline color
-        ctx.strokeText(text, canvas.width / 2, canvas.height / 2);
-
-        ctx.fillStyle = 'white';
-        ctx.fillText(text, canvas.width / 2, canvas.height / 2);
-
-        const texture = new THREE.CanvasTexture(canvas);
-        const material = new THREE.SpriteMaterial({ map: texture });
-        material.transparent = true;
-        material.depthWrite = false;
-        material.depthTest = true;
-        const sprite = new THREE.Sprite(material);
-        sprite.scale.set(canvas.width / canvas.height, 1, 1);
-
-        this.scene.add(sprite);
-
-        return sprite;
-    }
-
     addRPSSprite(path: string, x: number, y: number): THREE.Mesh {
         const texture = new THREE.TextureLoader().load(path);
         const material = new THREE.MeshBasicMaterial({
@@ -395,57 +362,26 @@ export class RPS_Game {
         return mesh;
     }
 
-    updateSpriteText(sprite: THREE.Sprite, text: string, size: number): void {
-        const canvas = sprite.material.map?.image as HTMLCanvasElement;
-
-        if (!canvas) return;
-
-        const ctx = canvas.getContext('2d');
-
-        if (!ctx) return;
-
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.font = size + 'px Segoe UI Black';
-        ctx.fillStyle = 'white';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-
-        ctx.lineWidth = 8; // outline thickness
-        ctx.strokeStyle = 'black'; // outline color
-        ctx.strokeText(text, canvas.width / 2, canvas.height / 2);
-
-        ctx.fillText(text, canvas.width / 2, canvas.height / 2);
-
-        sprite.material.map!.needsUpdate = true;
-    }
-
     removeText(): void {
-        if (this.currentTextState) {
-            this.currentTextState.forEach((textSprite) => {
-                this.overlayScene.remove(textSprite);
-            });
-            this.currentTextState = [];
+        for (const textSprite of this.currentTextState) {
+            this.overlayScene.remove(textSprite);
+            textSprite.dispose();
         }
+
+        this.currentTextState.length = 0;
     }
 
-    // FIXME silenced noUncheckedIndexedAccess here
     addText(text: string, px: number, py: number, size: number): void {
-        this.currentTextState.push(this.makeSprite(text, size));
+        const textSprite = new CanvasTextSprite(text, size);
         const scaleFactor = 0.2;
-        this.currentTextState[this.currentTextState.length - 1]!.scale.set(
-            this.currentTextState[this.currentTextState.length - 1]!.scale.x *
-                scaleFactor,
-            this.currentTextState[this.currentTextState.length - 1]!.scale.y *
-                scaleFactor,
+        textSprite.scale.set(
+            textSprite.scale.x * scaleFactor,
+            textSprite.scale.y * scaleFactor,
             1
         );
-        this.currentTextState[this.currentTextState.length - 1]!.position.set(
-            px,
-            py,
-            0
-        );
-        this.overlayScene.add(
-            this.currentTextState[this.currentTextState.length - 1]!
-        );
+        textSprite.position.set(px, py, 0);
+
+        this.currentTextState.push(textSprite);
+        this.overlayScene.add(textSprite);
     }
 }
