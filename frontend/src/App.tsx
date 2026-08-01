@@ -5,6 +5,7 @@ import { CharacterPreview } from './ui/login/CharacterPreview';
 import { MapPreview } from './ui/login/MapPreview';
 import { PlayerSelect } from './ui/login/PlayerSelect';
 import { StartButton, Game } from './ui/login/StartGame';
+import { Agreements } from './ui/login/Agreements';
 import { useLoginContext } from './hooks/useLoginContext';
 
 import './App.css';
@@ -37,27 +38,7 @@ const App: React.FC<AppProps> = (props: AppProps) => {
                 <PlayerSelect />
                 <CharacterPreview />
                 <ServerSettings />
-
-                {/* TODO make this components too! */}
-                <label className='terms'>
-                    <input type='checkbox' id='privacy-checkbox' />
-                    <span>
-                        I agree to the
-                        <a href='/privacy-policy.html' target='_blank'>
-                            Privacy Policy
-                        </a>
-                    </span>
-                </label>
-                <label className='terms'>
-                    <input type='checkbox' id='tos-checkbox' />
-                    <span>
-                        I agree to the
-                        <a href='/terms.html' target='_blank'>
-                            Terms of Service
-                        </a>
-                    </span>
-                </label>
-
+                <Agreements />
                 <StartButton />
             </div>
         </>
