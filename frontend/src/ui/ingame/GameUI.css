@@ -1,0 +1,85 @@
+.game-canvas {
+    width: 100vw;
+    height: 100vh;
+}
+
+.game-ui {
+    position: fixed;
+    top: 18px;
+    right: 18px;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    color: #ffffff;
+    font-family: 'Segoe UI', sans-serif;
+}
+
+.game-ui__quest-toggle {
+    width: 48px;
+    height: 48px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: #ffffff;
+    cursor: pointer;
+    font-size: 26px;
+    line-height: 1;
+    opacity: 0.75;
+    user-select: none;
+}
+
+.game-ui__quest-toggle:hover {
+    opacity: 1;
+}
+
+.game-ui__quest-toggle:focus-visible {
+    outline: 3px solid #f4c542;
+    outline-offset: 2px;
+}
+
+.game-ui__quest-log {
+    width: min(320px, calc(100vw - 36px));
+    margin-top: 10px;
+    padding: 16px;
+    box-sizing: border-box;
+    border-radius: 12px;
+    background: rgba(14, 22, 32, 0.45);
+    -webkit-backdrop-filter: blur(3px) saturate(123%);
+    backdrop-filter: blur(3px) saturate(123%);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+.game-ui__quest-log:hover {
+    -webkit-backdrop-filter: blur(10px) saturate(123%);
+    backdrop-filter: blur(10px) saturate(123%);
+}
+
+.game-ui__quest-title {
+    margin: 0 0 12px;
+    font-size: 20px;
+    line-height: 1.2;
+}
+
+.game-ui__quest-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.game-ui__quest-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 9px;
+    font-size: 16px;
+    line-height: 1.35;
+}
+
+.game-ui__quest-marker {
+    flex: 0 0 auto;
+    font-size: 18px;
+    line-height: 1.2;
+}

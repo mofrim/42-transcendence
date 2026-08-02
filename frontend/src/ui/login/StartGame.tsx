@@ -1,6 +1,7 @@
 import React from 'react';
 import { useLoginContext } from '../../hooks/useLoginContext';
 import { startGame } from '../../game/main';
+import { GameUI } from '../ingame/GameUI';
 import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 
@@ -61,5 +62,10 @@ export const Game = () => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [gameRunning]);
 
-    return <div ref={mountRef} style={{ width: '100vw', height: '100vh' }} />;
+    return (
+        <>
+            <div ref={mountRef} style={{ width: '100vw', height: '100vh' }} />
+            <GameUI />
+        </>
+    );
 };
