@@ -118,7 +118,10 @@ export function GameUI({
 }: GameUIProps) {
     const [isQuestLogOpen, setIsQuestLogOpen] = useState(false);
     const [isProfileOpen, setIsProfileOpen] = useState(false);
+    const [isChatOpen, setIsChatOpen] = useState(false);
+    const [chatMessage, setChatMessage] = useState('');
     const eventListRef = useRef<HTMLOListElement>(null);
+    const chatInputRef = useRef<HTMLInputElement>(null);
 
     const handleQuestLogToggle = (): void => {
         setIsQuestLogOpen((isOpen) => !isOpen);
@@ -153,6 +156,40 @@ export function GameUI({
 
         eventList.scrollTop = eventList.scrollHeight;
     }, [latestEventId]);
+
+    useEffect(() => {
+        if (!isChatOpen) return;
+
+        chatInputRef.current?.focus();
+    }, [isChatOpen]);
+
+    useEffect(() => {
+        const handleChatToggle = (event: KeyboardEvent): void => {
+            const isReturnOrEnter =
+                event.key === 'Enter' || event.code === 'NumpadEnter';
+
+            if (!isReturnOrEnter || event.repeat || event.isComposing) {
+                return;
+            }
+
+            event.preventDefault();
+            event.stopPropagation();
+
+            if (isChatOpen) {
+                setChatMessage('');
+                setIsChatOpen(false);
+                return;
+            }
+
+            setIsChatOpen(true);
+        };
+
+        window.addEventListener('keydown', handleChatToggle, true);
+
+        return () => {
+            window.removeEventListener('keydown', handleChatToggle, true);
+        };
+    }, [isChatOpen]);
 
     return (
         <div
@@ -264,6 +301,24 @@ export function GameUI({
                     ))}
                 </ol>
             </aside>
+
+            <div className='hud-chat' hidden={!isChatOpen}>
+                <input
+                    ref={chatInputRef}
+                    id='game-chat-input'
+                    className='hud-chat-input'
+                    type='text'
+                    value={chatMessage}
+                    aria-label='Chat-Nachricht'
+                    placeholder='Nachricht eingeben...'
+                    autoComplete='off'
+                    onChange={(event) =>
+                        setChatMessage(event.currentTarget.value)
+                    }
+                    onKeyDown={stopGameInteraction}
+                    onKeyUp={stopGameInteraction}
+                />
+            </div>
         </div>
     );
 }

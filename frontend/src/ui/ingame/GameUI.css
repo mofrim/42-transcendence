@@ -174,3 +174,44 @@
     opacity: 0.75;
     white-space: nowrap;
 }
+
+.hud-chat {
+    position: fixed;
+    bottom: 18px;
+    left: 50%;
+    z-index: 1001;
+    width: min(480px, calc(100vw - 36px));
+    transform: translateX(-50%);
+}
+
+.hud-chat[hidden] {
+    display: none;
+}
+
+.hud-chat-input {
+    width: 100%;
+    padding: 13px 16px;
+    box-sizing: border-box;
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    border-radius: 12px;
+    outline: none;
+    background: rgba(14, 22, 32, 0.55);
+    color: #ffffff;
+    font: inherit;
+    font-size: 16px;
+    line-height: 1.35;
+    -webkit-backdrop-filter: blur(6px) saturate(123%);
+    backdrop-filter: blur(6px) saturate(123%);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+.hud-chat-input::placeholder {
+    color: rgba(255, 255, 255, 0.65);
+}
+
+.hud-chat-input:focus {
+    border-color: #f4c542;
+    box-shadow:
+        0 8px 24px rgba(0, 0, 0, 0.3),
+        0 0 0 3px rgba(244, 197, 66, 0.3);
+}
