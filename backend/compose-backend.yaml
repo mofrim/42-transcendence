@@ -17,19 +17,19 @@ services:
     ports:
       - 3000:3000
     networks:
-      - tr-net
+      - ftr-net
 
   postgres:
     container_name: ftr-postgres
     image: postgres:latest
     ports:
       - 5432:5432
-    networks:
-      - tr-net
     environment:
         POSTGRES_USER: postgres
         POSTGRES_PASSWORD: postgres
         POSTGRES_DB: postgres
+    networks:
+      - ftr-net
 
   pgadmin:
     container_name: ftr-pgadmin
@@ -40,8 +40,6 @@ services:
     configs:
       - source: pgadmin_servers.json
         target: /pgadmin4/servers.json
-    networks:
-      - tr-net
     environment:
       PGADMIN_DEFAULT_EMAIL: dev@ftr.com
       PGADMIN_DEFAULT_PASSWORD: password
@@ -49,6 +47,8 @@ services:
       PGADMIN_CONFIG_SERVER_MODE: "False"
     ports:
       - "80:80"
+    networks:
+      - ftr-net
 
 configs:
   pgadmin_servers.json:
@@ -68,6 +68,6 @@ configs:
       }
 
 networks:
-  tr-net:
+  ftr-net:
     driver: bridge
 
