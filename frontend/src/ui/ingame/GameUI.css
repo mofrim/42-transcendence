@@ -3,19 +3,29 @@
     height: 100vh;
 }
 
-.game-ui {
+.hud,
+.hud-profile {
     position: fixed;
     top: 18px;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+}
+
+.hud {
     right: 18px;
     z-index: 1000;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
+    flex-direction: row-reverse;
     color: #ffffff;
     font-family: 'Segoe UI', sans-serif;
 }
 
-.game-ui__quest-toggle {
+.hud-profile {
+    left: 18px;
+    flex-direction: row;
+}
+
+.hud-toggle {
     width: 48px;
     height: 48px;
     padding: 0;
@@ -29,39 +39,46 @@
     user-select: none;
 }
 
-.game-ui__quest-toggle:hover {
+.hud-toggle:hover {
     opacity: 1;
 }
 
-.game-ui__quest-toggle:focus-visible {
+.hud-toggle:focus-visible {
     outline: 3px solid #f4c542;
     outline-offset: 2px;
 }
 
-.game-ui__quest-log {
-    width: min(320px, calc(100vw - 36px));
-    margin-top: 10px;
+.hud-panel {
     padding: 16px;
     box-sizing: border-box;
     border-radius: 12px;
-    background: rgba(14, 22, 32, 0.45);
+    color: #ffffff;
     -webkit-backdrop-filter: blur(3px) saturate(123%);
     backdrop-filter: blur(3px) saturate(123%);
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
 }
 
-.game-ui__quest-log:hover {
+.hud-panel:hover {
     -webkit-backdrop-filter: blur(10px) saturate(123%);
     backdrop-filter: blur(10px) saturate(123%);
 }
 
-.game-ui__quest-title {
+.hud-panel :is(h2, h3) {
+    color: inherit;
+}
+
+.hud-title {
     margin: 0 0 12px;
     font-size: 20px;
     line-height: 1.2;
 }
 
-.game-ui__quest-list {
+.hud-quest-log {
+    width: min(320px, calc(100vw - 94px));
+    background: rgba(14, 22, 32, 0.45);
+}
+
+.hud-quest-list {
     display: flex;
     flex-direction: column;
     gap: 10px;
@@ -70,7 +87,7 @@
     list-style: none;
 }
 
-.game-ui__quest-item {
+.hud-quest-item {
     display: flex;
     align-items: flex-start;
     gap: 9px;
@@ -78,8 +95,42 @@
     line-height: 1.35;
 }
 
-.game-ui__quest-marker {
+.hud-quest-marker {
     flex: 0 0 auto;
     font-size: 18px;
     line-height: 1.2;
+}
+
+.hud-profile-panel {
+    width: min(300px, calc(100vw - 94px));
+    background: rgba(14, 22, 32, 0.25);
+    text-align: left;
+}
+
+.hud-profile-nickname {
+    margin: 0 0 16px;
+}
+
+.hud-profile-stats-title {
+    margin: 0 0 8px;
+    font-size: 16px;
+    line-height: 1.3;
+}
+
+.hud-profile-stats {
+    display: grid;
+    gap: 8px;
+    margin: 0;
+}
+
+.hud-profile-stats > div {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.hud-profile-stats dd {
+    margin: 0;
+    font-weight: 700;
+    white-space: nowrap;
 }

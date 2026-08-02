@@ -2,7 +2,7 @@ import React from 'react';
 import { useLoginContext } from '../../hooks/useLoginContext';
 import { startGame } from '../../game/main';
 import { GameUI } from '../ingame/GameUI';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 
 // the start-button. all this does is setting the gameRunning state var
@@ -23,11 +23,13 @@ export const Game = () => {
     const mountRef = useRef<HTMLDivElement>(null);
     const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
     const isInitializedRef = useRef(false);
+    const [nickname, setNickname] = useState('Player');
 
     useEffect(() => {
         // guard against re-render due to strict-mode
         if (isInitializedRef.current) return;
         isInitializedRef.current = true;
+        setNickname(nicknameRef.current.trim() || 'Player');
 
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         rendererRef.current = renderer;
@@ -65,7 +67,7 @@ export const Game = () => {
     return (
         <>
             <div ref={mountRef} style={{ width: '100vw', height: '100vh' }} />
-            <GameUI />
+            <GameUI nickname={nickname} />
         </>
     );
 };

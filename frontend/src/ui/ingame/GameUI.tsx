@@ -4,6 +4,7 @@ import type { SyntheticEvent } from 'react';
 import './GameUI.css';
 
 const QUEST_LOG_ID = 'game-quest-log';
+const PROFILE_PANEL_ID = 'game-profile-panel';
 
 export type QuestLogEntry = {
     readonly id: string;
@@ -12,6 +13,7 @@ export type QuestLogEntry = {
 };
 
 type GameUIProps = {
+    readonly nickname: string;
     readonly quests?: readonly QuestLogEntry[];
 };
 
@@ -42,49 +44,98 @@ const DEFAULT_QUESTS: readonly QuestLogEntry[] = [
 /**
  * React HUD for controls that do not belong in the Three.js scene.
  */
-export function GameUI({ quests = DEFAULT_QUESTS }: GameUIProps) {
+export function GameUI({ nickname, quests = DEFAULT_QUESTS }: GameUIProps) {
     const [isQuestLogOpen, setIsQuestLogOpen] = useState(false);
+    const [isProfileOpen, setIsProfileOpen] = useState(false);
 
-    const handleToggle = (): void => {
+    const handleQuestLogToggle = (): void => {
         setIsQuestLogOpen((isOpen) => !isOpen);
+    };
+
+    const handleProfileToggle = (): void => {
+        setIsProfileOpen((isOpen) => !isOpen);
     };
 
     const stopGameInteraction = (event: SyntheticEvent): void => {
         event.stopPropagation();
     };
 
-    let buttonLabel = 'Quest Log öffnen';
+    let questLogButtonLabel = 'Quest Log öffnen';
     if (isQuestLogOpen) {
-        buttonLabel = 'Quest Log schließen';
+        questLogButtonLabel = 'Quest Log schließen';
     }
+
+    let profileButtonLabel = 'Profil öffnen';
+    if (isProfileOpen) {
+        profileButtonLabel = 'Profil schließen';
+    }
+
+    const displayedNickname = nickname.trim() || 'Player';
 
     return (
         <div
             id='game-ui'
-            className='game-ui'
+            className='hud'
             onClick={stopGameInteraction}
             onPointerDown={stopGameInteraction}
         >
+            <div className='hud-profile'>
+                <button
+                    type='button'
+                    className='hud-toggle'
+                    aria-controls={PROFILE_PANEL_ID}
+                    aria-expanded={isProfileOpen}
+                    aria-label={profileButtonLabel}
+                    title={profileButtonLabel}
+                    onClick={handleProfileToggle}
+                >
+                    👤
+                </button>
+
+                <aside
+                    id={PROFILE_PANEL_ID}
+                    className='hud-panel hud-profile-panel'
+                    aria-label='Spielerprofil'
+                    hidden={!isProfileOpen}
+                >
+                    <h2 className='hud-title'>Profil</h2>
+                    <p className='hud-profile-nickname'>
+                        <strong>Nickname:</strong> {displayedNickname} ✏️
+                    </p>
+                    <h3 className='hud-profile-stats-title'>Game Stats:</h3>
+                    <dl className='hud-profile-stats'>
+                        <div>
+                            <dt>Rock-Paper-Scissors</dt>
+                            <dd>3 Wins</dd>
+                        </div>
+                        <div>
+                            <dt>Tic-Tac-Toe</dt>
+                            <dd>1 Win</dd>
+                        </div>
+                    </dl>
+                </aside>
+            </div>
+
             <button
                 type='button'
-                className='game-ui__quest-toggle'
+                className='hud-toggle'
                 aria-controls={QUEST_LOG_ID}
                 aria-expanded={isQuestLogOpen}
-                aria-label={buttonLabel}
-                title={buttonLabel}
-                onClick={handleToggle}
+                aria-label={questLogButtonLabel}
+                title={questLogButtonLabel}
+                onClick={handleQuestLogToggle}
             >
                 📑
             </button>
 
             <aside
                 id={QUEST_LOG_ID}
-                className='game-ui__quest-log'
+                className='hud-panel hud-quest-log'
                 aria-label='Quest Log'
                 hidden={!isQuestLogOpen}
             >
-                <h2 className='game-ui__quest-title'>Quest Log</h2>
-                <ul className='game-ui__quest-list'>
+                <h2 className='hud-title'>Quest Log</h2>
+                <ul className='hud-quest-list'>
                     {quests.map((quest) => {
                         let marker = '❎';
                         if (quest.completed) {
@@ -94,18 +145,16 @@ export function GameUI({ quests = DEFAULT_QUESTS }: GameUIProps) {
                         return (
                             <li
                                 key={quest.id}
-                                className='game-ui__quest-item'
+                                className='hud-quest-item'
                                 data-quest-id={quest.id}
                             >
                                 <span
-                                    className='game-ui__quest-marker'
+                                    className='hud-quest-marker'
                                     aria-hidden='true'
                                 >
                                     {marker}
                                 </span>
-                                <span className='game-ui__quest-text'>
-                                    {quest.text}
-                                </span>
+                                <span>{quest.text}</span>
                             </li>
                         );
                     })}
