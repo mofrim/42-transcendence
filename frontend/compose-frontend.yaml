@@ -1,0 +1,32 @@
+# set the project name. doing this in all sub-compose-files will make `docker
+# compose up --build` recognize the containers as belonging to the same proj
+# which will avoid the `name already in use` error.
+name: ft_transcendence
+
+# the frontend _needs_ the backend in order function properly, so include it
+include:
+    - path:
+          - ../backend/compose-backend.yaml
+      project_directory: ../backend
+      env_file: ../dev.env
+
+services:
+  frontend:
+    container_name: ftr-frontend
+    image: ftr-frontend
+    build:
+      context: ..
+      dockerfile: Dockerfile.frontend
+    depends_on:
+      backend:
+        condition: service_started
+    ports:
+      - "1111:1111"
+    volumes:
+      - ./frontend:/app
+    networks:
+      - tr-net
+
+networks:
+  tr-net:
+    driver: bridge
