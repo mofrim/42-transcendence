@@ -129,6 +129,8 @@ export function startGame(
     let localPlayerDespawnPromise: Promise<void> | null = null;
     const knownPlayerNicknames = new Map<string, string>();
 
+    // 'connect' event is fired on first connection AND reconnection
+    // QUESTION does our logic as intended on reconnect?
     socket.on('connect', () => {
         console.log('Your Player ID: ' + socket.id);
         if (player) {
