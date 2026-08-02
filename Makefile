@@ -51,4 +51,14 @@ dock-fclean:
 	-$(DOCKER) network rm -f ftr-net
 	$(call log_msg_end,Done.)
 
-.phony: all dock-clean dock-fclean
+dock-backend:
+	$(call log_msg_start,Launching ftr-backend using docker compose..)
+	cd backend && $(DOCKER) compose -f compose-backend.yaml up --build
+	$(call log_msg_end,Done.)
+
+dock-frontend:
+	$(call log_msg_start,Launching ftr-frontend using docker compose..)
+	cd frontend && $(DOCKER) compose -f compose-frontend.yaml up --build
+	$(call log_msg_end,Done.)
+
+.phony: all dock-clean dock-fclean dock-backend dock-frontend
