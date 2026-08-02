@@ -108,13 +108,29 @@ export function startGame(
     });
 
     socket.on('player_connected', (data) => {
-        const id = typeof data === 'string' ? data : data.id;
-        //const character = typeof data === 'string' ? true : normalizeCharacter(data.character);
-        const character = data.character;
+        let id: string;
+        let character = true;
+        let remoteNickname = '';
+
+        // TODO: server needs broadcast nickanme too not only id
+        if (typeof data === 'string') {
+            id = data;
+        } else {
+            id = data.id;
+            character = data.character;
+            if (typeof data.nickname === 'string') {
+                remoteNickname = data.nickname.trim();
+            }
+        }
+
+        // fallback to id if nickname is not provided or empty
+        if (!remoteNickname) {
+            remoteNickname = id;
+        }
 
         console.log('someone joined:', id);
-        if (id && multiplayer && !multiplayer.players.get(id))
-            multiplayer.spawnPlayer(id, character);
+        if (id && multiplayer)
+            multiplayer.spawnPlayer(id, character, remoteNickname);
     });
 
     socket.on('player_disconnected', (id) => {
@@ -476,7 +492,7 @@ export function startGame(
         } else {
             console.log('new player joined:', data.id);
             //multiplayer.spawnPlayer(data.id, normalizeCharacter(data.character));
-            multiplayer.spawnPlayer(data.id, data.character);
+            multiplayer.spawnPlayer(data.id, data.character, data.id);
         }
     }
 

@@ -7,6 +7,7 @@ import {
     normalizePlayerAnimationState,
     transitionPlayerAnimation,
 } from './player_animation.js';
+import { FloatingTextSprite } from './FloatingTextSprite.js';
 import type { PlayerState } from '@common/types';
 
 type PlayerAnimationState = ReturnType<typeof normalizePlayerAnimationState>;
@@ -17,6 +18,9 @@ type PlayerAnimationActions = Record<
 >;
 const PLAYER_FORWARD = new THREE.Vector3(0, 0, 1);
 const rotationDirection = new THREE.Vector3();
+const PLAYER_NAME_SIZE = 48;
+const PLAYER_NAME_HEIGHT = 1.9;
+const PLAYER_NAME_SCALE = 0.3;
 
 function getMaterials(mesh: THREE.Mesh): THREE.Material[] {
     return Array.isArray(mesh.material) ? mesh.material : [mesh.material];
@@ -44,8 +48,10 @@ const RemotePlayerImplementation = class Remote_Player {
     private colAr: THREE.Mesh[];
     scene: THREE.Scene;
     id: string;
+    nickname: string;
     model: THREE.Group | null;
     group: THREE.Group;
+    private readonly nameLabel: FloatingTextSprite;
     state: RemotePlayerState;
     stateCurrent: PlayerAnimationState;
     mixer: THREE.AnimationMixer | null;
@@ -58,6 +64,7 @@ const RemotePlayerImplementation = class Remote_Player {
     constructor(
         path: string,
         id: string,
+        nickname: string,
         scene: THREE.Scene,
         mesh_RP: THREE.Mesh | THREE.Mesh[]
     ) {
@@ -65,8 +72,16 @@ const RemotePlayerImplementation = class Remote_Player {
 
         this.scene = scene;
         this.id = id;
+        this.nickname = nickname;
         this.model = null;
         this.group = new THREE.Group();
+        this.nameLabel = new FloatingTextSprite(
+            nickname,
+            PLAYER_NAME_SIZE,
+            new THREE.Vector3(0, PLAYER_NAME_HEIGHT, 0)
+        );
+        this.nameLabel.scale.multiplyScalar(PLAYER_NAME_SCALE);
+        this.scene.add(this.nameLabel);
         this.state = 'Idle';
         this.stateCurrent = 'Idle';
         this.mixer = null;
@@ -93,6 +108,7 @@ const RemotePlayerImplementation = class Remote_Player {
         this.group.position.x = x;
         this.group.position.y = startY;
         this.group.position.z = z;
+        this.nameLabel.follow(this.group);
 
         let sv = 0;
         let av = 0;
@@ -320,8 +336,22 @@ const RemotePlayerImplementation = class Remote_Player {
         this.id = '-1';
     }
 
+    setNickname(nickname: string): void {
+        const trimmedNickname = nickname.trim();
+        if (!trimmedNickname || trimmedNickname === this.nickname) {
+            return;
+        }
+
+        this.nickname = trimmedNickname;
+        this.nameLabel.setText(trimmedNickname, PLAYER_NAME_SIZE);
+    }
+
     destroy(): void {
         // console.log("DESTROY");
+
+        this.nameLabel.hide();
+        this.scene.remove(this.nameLabel);
+        this.nameLabel.dispose();
 
         this.animateDeSpawn();
 
@@ -360,6 +390,7 @@ interface RemotePlayerConstructor {
     new (
         path: string,
         id: string,
+        nickname: string,
         scene: THREE.Scene,
         mesh_RP: THREE.Mesh | THREE.Mesh[]
     ): RemotePlayerInstance & { id: string };

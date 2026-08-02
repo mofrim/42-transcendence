@@ -176,14 +176,23 @@ export class MultiplayerManager {
         }
     }
 
-    spawnPlayer(id: string, character: Character = true) {
-        if (this.players.get(id)) return;
+    spawnPlayer(
+        id: string,
+        character: Character = true,
+        nickname: string = id
+    ) {
+        const existingPlayer = this.players.get(id);
+        if (existingPlayer) {
+            existingPlayer.setNickname(nickname);
+            return;
+        }
 
         //const newPlayer = new Remote_Player('src/glb/MainCharacterTest.glb', id, this.scene);
         //const newPlayer = new Remote_Player('glb/Male_Test.glb', id, this.scene);
         const newPlayer = new Remote_Player(
             getRemotePlayerModelPath(character),
             id,
+            nickname,
             this.scene,
             this.mesh_RP
         );
