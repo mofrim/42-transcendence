@@ -1,6 +1,3 @@
-// ====================================================================================================
-// TODO: better create a new folder for sharedTypes for front and backend?
-// ====================================================================================================
 import {
     TTTGameState,
     RPSChoice,
@@ -122,13 +119,13 @@ export class GameManager {
         if (playerRequested.inGame || playerThis.inGame) {
             console.log(
                 'One of the players is already in a game: ' +
-                    playerRequested.inGame +
-                    ' ' +
-                    playerThis.inGame +
-                    '  ' +
-                    playerRequested.id +
-                    ' ' +
-                    playerThis.id
+                playerRequested.inGame +
+                ' ' +
+                playerThis.inGame +
+                '  ' +
+                playerRequested.id +
+                ' ' +
+                playerThis.id
             );
             return 0;
         }

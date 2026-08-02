@@ -5,12 +5,14 @@ WORKDIR /app
 
 COPY package.json package-lock.json ./
 COPY backend/package.json backend/package.json
+COPY backend/src/connection-service/package.json backend/src/connection-service/package.json
 COPY common/package.json common/package.json
 
 RUN npm ci
 
 COPY common ./common
-COPY backend ./backend
+COPY backend/tsconfig.base.json backend/tsconfig.json ./backend/
+COPY backend/src/connection-service ./backend/src/connection-service
 
 RUN npm run build -w common && npm run build -w backend
 
@@ -32,4 +34,4 @@ COPY --from=builder /app/common/dist ./common/dist
 
 WORKDIR /app/backend
 
-CMD ["npm", "run", "server"]
+CMD ["node", "dist/connection-service/src/main.js"]

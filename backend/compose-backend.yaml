@@ -3,14 +3,17 @@
 # which will avoid the `name already in use` error.
 name: ft_transcendence
 
+include:
+    - ./compose-db.yaml
+
 services:
 
-  backend:
-    container_name: ftr-backend
-    image: ftr-backend
+  conn-service:
+    container_name: ftr-conn-service
+    image: ftr-conn-service
     build:
       context: ..
-      dockerfile: Dockerfile.backend
+      dockerfile: ./backend/src/connection-service/Dockerfile
     depends_on:
       postgres:
         condition: service_started
@@ -18,55 +21,6 @@ services:
       - 3000:3000
     networks:
       - ftr-net
-
-  postgres:
-    container_name: ftr-postgres
-    image: postgres:latest
-    # DONT expose the postgres port to the host it is not needed
-    # ports:
-    #   - 5432:5432
-    environment:
-        POSTGRES_USER: postgres
-        POSTGRES_PASSWORD: postgres
-        POSTGRES_DB: postgres
-    networks:
-      - ftr-net
-
-  pgadmin:
-    container_name: ftr-pgadmin
-    image: dpage/pgadmin4:latest
-    depends_on:
-      postgres:
-        condition: service_started
-    configs:
-      - source: pgadmin_servers.json
-        target: /pgadmin4/servers.json
-    environment:
-      PGADMIN_DEFAULT_EMAIL: dev@ftr.com
-      PGADMIN_DEFAULT_PASSWORD: password
-      PGADMIN_SERVER_JSON_FILE: /pgadmin4/servers.json
-      PGADMIN_CONFIG_SERVER_MODE: "False"
-    ports:
-      - "80:80"
-    networks:
-      - ftr-net
-
-configs:
-  pgadmin_servers.json:
-    content: |
-      {
-        "Servers": {
-          "1": {
-            "Name": "local",
-            "Group": "Servers",
-            "Port": 5432,
-            "Username": "postgres",
-            "Host": "postgres",
-            "SSLMode": "prefer",
-            "MaintenanceDB": "postgres"
-          }
-        }
-      }
 
 networks:
   ftr-net:

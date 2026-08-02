@@ -19,6 +19,8 @@
         "socket.io": "^4.8.3"
     },
     "devDependencies": {
+        "@types/cors": "^2.8.19",
+        "@types/express": "^5.0.6",
         "tsx": "^4.23.1"
     }
 }
