@@ -28,6 +28,7 @@
 }
 
 .hud-toggle {
+    position: relative;
     width: 48px;
     height: 48px;
     padding: 0;
@@ -39,6 +40,45 @@
     line-height: 1;
     opacity: 0.75;
     user-select: none;
+}
+
+.hud-toggle-badge {
+    position: absolute;
+    top: 0;
+    right: 0;
+    display: grid;
+    place-items: center;
+    width: 20px;
+    height: 20px;
+    box-sizing: border-box;
+    border: 2px solid rgba(14, 22, 32, 0.9);
+    border-radius: 50%;
+    background: #d92d20;
+    color: #ffffff;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1;
+    pointer-events: none;
+}
+
+.hud-toggle-timer-badge {
+    position: absolute;
+    bottom: -9px;
+    left: 50%;
+    min-width: 42px;
+    padding: 2px 6px;
+    transform: translateX(-50%);
+    border-radius: 999px;
+    background: rgba(14, 22, 32, 0.92);
+    color: #ffffff;
+    font-family: ui-monospace, Consolas, monospace;
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+    line-height: 1.2;
+    white-space: nowrap;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+    pointer-events: none;
 }
 
 .hud-toggle:hover {
@@ -101,6 +141,19 @@
     flex: 0 0 auto;
     font-size: 18px;
     line-height: 1.2;
+}
+
+.hud-quest-text {
+    min-width: 0;
+}
+
+.hud-black-hole-timer {
+    flex: 0 0 auto;
+    margin-left: auto;
+    font-family: ui-monospace, Consolas, monospace;
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+    white-space: nowrap;
 }
 
 .hud-profile-panel {

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import type { SyntheticEvent } from 'react';
+import type { ReactNode, SyntheticEvent } from 'react';
 import { normalizePlayerNickname } from '../../game/PlayerIdentity';
 
 import './GameUI.css';
@@ -7,6 +7,8 @@ import './GameUI.css';
 const QUEST_LOG_ID = 'game-quest-log';
 const PROFILE_PANEL_ID = 'game-profile-panel';
 const EVENT_LOG_TITLE_ID = 'game-event-log-title';
+const BLACK_HOLE_QUEST_ID = 'avoid-blackhole';
+const BLACK_HOLE_DURATION_SECONDS = 42 * 60; // 42 minutes in seconds (42:00)
 
 export const MAX_EVENT_LOG_ENTRIES = 10;
 
@@ -30,6 +32,8 @@ type GameUIProps = {
 };
 
 type HudPanelToggleProps = {
+    readonly badgeCount?: number;
+    readonly bottomBadge?: string;
     readonly controls: string;
     readonly icon: string;
     readonly isOpen: boolean;
@@ -37,7 +41,30 @@ type HudPanelToggleProps = {
     readonly onToggle: () => void;
 };
 
+/** blackhole timer */
+function formatCountdown(totalSeconds: number): string {
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+
+    return [minutes, seconds]
+        .map((part) => String(part).padStart(2, '0'))
+        .join(':');
+}
+
+function isQuestCompleted(
+    quest: QuestLogEntry,
+    blackHoleSecondsRemaining: number
+): boolean {
+    if (quest.id === BLACK_HOLE_QUEST_ID) {
+        return blackHoleSecondsRemaining > 0;
+    }
+
+    return quest.completed === true;
+}
+
 function HudPanelToggle({
+    badgeCount,
+    bottomBadge,
     controls,
     icon,
     isOpen,
@@ -48,7 +75,32 @@ function HudPanelToggle({
     if (isOpen) {
         action = 'schließen';
     }
-    const actionLabel = `${panelLabel} ${action}`;
+    let actionLabel = `${panelLabel} ${action}`;
+    let badge: ReactNode = null;
+    let bottomBadgeElement: ReactNode = null;
+
+    if (badgeCount !== undefined) {
+        let questCountLabel = `${badgeCount} offene Aufgaben`;
+        if (badgeCount === 1) {
+            questCountLabel = '1 offene Aufgabe';
+        }
+
+        actionLabel = `${actionLabel}, ${questCountLabel}`;
+        badge = (
+            <span className='hud-toggle-badge' aria-hidden='true'>
+                {badgeCount}
+            </span>
+        );
+    }
+
+    if (bottomBadge !== undefined) {
+        actionLabel = `${actionLabel}, Black Hole Timer ${bottomBadge}`;
+        bottomBadgeElement = (
+            <span className='hud-toggle-timer-badge' aria-hidden='true'>
+                {bottomBadge}
+            </span>
+        );
+    }
 
     return (
         <button
@@ -61,6 +113,8 @@ function HudPanelToggle({
             onClick={onToggle}
         >
             {icon}
+            {badge}
+            {bottomBadgeElement}
         </button>
     );
 }
@@ -166,6 +220,9 @@ export function GameUI({
     const [isProfileOpen, setIsProfileOpen] = useState(false);
     const [isChatOpen, setIsChatOpen] = useState(false);
     const [chatMessage, setChatMessage] = useState('');
+    const [blackHoleSecondsRemaining, setBlackHoleSecondsRemaining] = useState(
+        BLACK_HOLE_DURATION_SECONDS
+    );
     const eventListRef = useRef<HTMLOListElement>(null);
     const chatInputRef = useRef<HTMLInputElement>(null);
 
@@ -184,6 +241,45 @@ export function GameUI({
     const displayedNickname = normalizePlayerNickname(nickname);
     const displayedEvents = events.slice(-MAX_EVENT_LOG_ENTRIES);
     const latestEventId = displayedEvents.at(-1)?.id;
+    const blackHoleCountdown = formatCountdown(blackHoleSecondsRemaining);
+    let incompleteQuestCount = 0;
+
+    for (const quest of quests) {
+        if (!isQuestCompleted(quest, blackHoleSecondsRemaining)) {
+            incompleteQuestCount++;
+        }
+    }
+
+    /** blackhole timer */
+    useEffect(() => {
+        const blackHoleDeadline =
+            Date.now() + BLACK_HOLE_DURATION_SECONDS * 1_000;
+        let intervalId: number | undefined;
+
+        const updateBlackHoleTimer = (): void => {
+            const millisecondsRemaining = blackHoleDeadline - Date.now();
+            const secondsRemaining = Math.max(
+                0,
+                Math.ceil(millisecondsRemaining / 1_000)
+            );
+
+            setBlackHoleSecondsRemaining(secondsRemaining);
+
+            if (secondsRemaining === 0 && intervalId !== undefined) {
+                window.clearInterval(intervalId);
+                intervalId = undefined;
+            }
+        };
+
+        intervalId = window.setInterval(updateBlackHoleTimer, 1_000);
+        updateBlackHoleTimer();
+
+        return () => {
+            if (intervalId !== undefined) {
+                window.clearInterval(intervalId);
+            }
+        };
+    }, []);
 
     /** Auto Scroll des Eventlogs zum neuesten Eintrag. */
     useEffect(() => {
@@ -276,6 +372,8 @@ export function GameUI({
             </div>
 
             <HudPanelToggle
+                badgeCount={incompleteQuestCount}
+                bottomBadge={blackHoleCountdown}
                 controls={QUEST_LOG_ID}
                 icon='📑'
                 isOpen={isQuestLogOpen}
@@ -293,8 +391,23 @@ export function GameUI({
                 <ul className='hud-quest-list'>
                     {quests.map((quest) => {
                         let marker = '❎';
-                        if (quest.completed) {
+                        let blackHoleTimer: ReactNode = null;
+
+                        if (
+                            isQuestCompleted(quest, blackHoleSecondsRemaining)
+                        ) {
                             marker = '✅';
+                        }
+
+                        if (quest.id === BLACK_HOLE_QUEST_ID) {
+                            blackHoleTimer = (
+                                <time
+                                    className='hud-black-hole-timer'
+                                    aria-label={`🕳️ Black Hole Timer: ${blackHoleCountdown} verbleibend`}
+                                >
+                                    {blackHoleCountdown}
+                                </time>
+                            );
                         }
 
                         return (
@@ -309,7 +422,10 @@ export function GameUI({
                                 >
                                     {marker}
                                 </span>
-                                <span>{quest.text}</span>
+                                <span className='hud-quest-text'>
+                                    {quest.text}
+                                </span>
+                                {blackHoleTimer}
                             </li>
                         );
                     })}
