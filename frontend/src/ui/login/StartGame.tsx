@@ -1,9 +1,35 @@
-import React from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useLoginContext } from '../../hooks/useLoginContext';
 import { startGame } from '../../game/main';
-import { GameUI } from '../ingame/GameUI';
-import { useEffect, useRef, useState } from 'react';
+import type { GameRuntime, GameRuntimeEvent } from '../../game/main';
+import {
+    DEFAULT_PLAYER_NICKNAME,
+    normalizePlayerNickname,
+} from '../../game/PlayerIdentity';
+import {
+    GameUI,
+    MAX_EVENT_LOG_ENTRIES,
+    type EventLogEntry,
+} from '../ingame/GameUI';
 import * as THREE from 'three';
+
+/** Formats a date as a time string in HH:MM:SS format */
+function formatEventTimestamp(date: Date): string {
+    return [date.getHours(), date.getMinutes(), date.getSeconds()]
+        .map((part) => String(part).padStart(2, '0'))
+        .join(':');
+}
+
+function describeGameRuntimeEvent(event: GameRuntimeEvent): string {
+    switch (event.type) {
+        case 'player_joined':
+            return `${event.nickname} 👋🏻 joined`;
+        case 'player_left':
+            return `${event.nickname} 🚪 logged out`;
+        case 'game_result':
+            return `${event.playerNickname} ${event.outcome} a game of ${event.game} against ${event.opponentNickname}`;
+    }
+}
 
 // the start-button. all this does is setting the gameRunning state var
 export const StartButton: React.FC = () => {
@@ -22,14 +48,47 @@ export const Game = () => {
     // using ref here a lot because th
     const mountRef = useRef<HTMLDivElement>(null);
     const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
+    const gameRuntimeRef = useRef<GameRuntime | null>(null);
     const isInitializedRef = useRef(false);
-    const [nickname, setNickname] = useState('Player');
+    const eventSequenceRef = useRef(0);
+    const [nickname, setNickname] = useState(DEFAULT_PLAYER_NICKNAME);
+    const [events, setEvents] = useState<EventLogEntry[]>([]);
+
+    const appendEvent = useCallback((description: string): void => {
+        const now = new Date();
+        const event: EventLogEntry = {
+            id: `${now.getTime()}-${eventSequenceRef.current++}`,
+            timestamp: formatEventTimestamp(now),
+            description,
+        };
+
+        setEvents((currentEvents) =>
+            [...currentEvents, event].slice(-MAX_EVENT_LOG_ENTRIES)
+        );
+    }, []);
+
+    /** Runtime-Ereignisse bleiben auch außerhalb des Sichtfelds sichtbar. */
+    const handleGameEvent = useCallback(
+        (event: GameRuntimeEvent): void => {
+            appendEvent(describeGameRuntimeEvent(event));
+        },
+        [appendEvent]
+    );
+
+    const handleChatMessage = useCallback(
+        (message: string): void => {
+            appendEvent(`${nickname} 💬 ${message}`);
+            gameRuntimeRef.current?.showLocalChatMessage(message);
+        },
+        [appendEvent, nickname]
+    );
 
     useEffect(() => {
         // guard against re-render due to strict-mode
         if (isInitializedRef.current) return;
         isInitializedRef.current = true;
-        setNickname(nicknameRef.current.trim() || 'Player');
+        const normalizedNickname = normalizePlayerNickname(nicknameRef.current);
+        setNickname(normalizedNickname);
 
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         rendererRef.current = renderer;
@@ -39,11 +98,12 @@ export const Game = () => {
             mountRef.current.appendChild(renderer.domElement);
         }
 
-        startGame(
-            avatar === 'true' ? true : false,
-            nicknameRef.current,
+        gameRuntimeRef.current = startGame(
+            avatar === 'true',
+            normalizedNickname,
             fullAddrRef.current,
-            renderer
+            renderer,
+            handleGameEvent
         );
 
         // cleanup... in case we want to support logging out againg one day
@@ -58,6 +118,7 @@ export const Game = () => {
                     );
                     rendererRef.current.dispose();
                 }
+                gameRuntimeRef.current = null;
                 isInitializedRef.current = false; // Reset on unmount
             }
         };
@@ -67,7 +128,11 @@ export const Game = () => {
     return (
         <>
             <div ref={mountRef} style={{ width: '100vw', height: '100vh' }} />
-            <GameUI nickname={nickname} />
+            <GameUI
+                nickname={nickname}
+                events={events}
+                onChatMessage={handleChatMessage}
+            />
         </>
     );
 };

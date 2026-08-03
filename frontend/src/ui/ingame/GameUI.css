@@ -13,6 +13,8 @@
 }
 
 .hud {
+    --hud-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+
     right: 18px;
     z-index: 1000;
     flex-direction: row-reverse;
@@ -55,7 +57,7 @@
     color: #ffffff;
     -webkit-backdrop-filter: blur(3px) saturate(123%);
     backdrop-filter: blur(3px) saturate(123%);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+    box-shadow: var(--hud-shadow);
 }
 
 .hud-panel:hover {
@@ -202,7 +204,7 @@
     line-height: 1.35;
     -webkit-backdrop-filter: blur(6px) saturate(123%);
     backdrop-filter: blur(6px) saturate(123%);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+    box-shadow: var(--hud-shadow);
 }
 
 .hud-chat-input::placeholder {
@@ -212,6 +214,6 @@
 .hud-chat-input:focus {
     border-color: #f4c542;
     box-shadow:
-        0 8px 24px rgba(0, 0, 0, 0.3),
+        var(--hud-shadow),
         0 0 0 3px rgba(244, 197, 66, 0.3);
 }

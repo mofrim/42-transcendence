@@ -8,6 +8,7 @@ import { MultiplayerManager } from './multiplayer.js';
 // 'NPC' is defined but never used.
 // import { NPC } from './npc.js';
 import { Player } from './player.js';
+import { normalizePlayerNickname } from './PlayerIdentity.js';
 import { Camera } from './camera.js';
 import { TTT_Game } from './ttt_game.js';
 import { RPS_Game } from './rps_game.js';
@@ -38,6 +39,37 @@ function whichCharacterModelPath(character: boolean): string {
     return '/glb/Female_Test.glb';
 }
 
+/** event log msgs */
+export type GameRuntimeEvent =
+    | {
+          readonly type: 'player_joined' | 'player_left';
+          readonly playerId: string;
+          readonly nickname: string;
+      }
+    | {
+          readonly type: 'game_result';
+          readonly game: 'Tic-Tac-Toe' | 'Rock-Paper-Scissors';
+          readonly outcome: 'won' | 'lost';
+          readonly playerNickname: string;
+          readonly opponentNickname: string;
+      };
+
+export type GameRuntime = {
+    readonly showLocalChatMessage: (message: string) => void;
+};
+
+type NamedPlayer = {
+    readonly id: string;
+    readonly nickname: string;
+};
+
+type ActiveTTTPlayers = {
+    readonly playerOne: NamedPlayer;
+    readonly playerTwo: NamedPlayer;
+};
+
+type GameResultEvent = Extract<GameRuntimeEvent, { type: 'game_result' }>;
+
 /* const PLAYER_CHARACTER_MODELS = {
     true: '/glb/Male_Test.glb',
     false: '/glb/Female_Test.glb',
@@ -56,8 +88,9 @@ export function startGame(
     whichCharacter: boolean = true,
     nickname: string,
     serverUrl: string | null = null,
-    renderer: THREE.WebGLRenderer
-) {
+    renderer: THREE.WebGLRenderer,
+    onGameEvent?: (event: GameRuntimeEvent) => void
+): GameRuntime {
     // ============================================================================
     // SERVER CONNECTION
     // ============================================================================
@@ -67,6 +100,7 @@ export function startGame(
     /* const character = normalizeCharacter(whichCharacter);
     const playerModelPath = PLAYER_CHARACTER_MODELS[character]; */
     const character = whichCharacter;
+    const localNickname = normalizePlayerNickname(nickname);
     const playerModelPath = whichCharacterModelPath(whichCharacter);
     const selectedSocketServerUrl =
         typeof serverUrl === 'string' ? serverUrl.trim() : '';
@@ -80,7 +114,7 @@ export function startGame(
         auth: {
             character: whichCharacter,
             // Login-Nickname Socket.IO-Handshake
-            nickname,
+            nickname: localNickname,
         },
     });
 
@@ -89,6 +123,8 @@ export function startGame(
     let camera: Camera | null = null;
     let tttGame: TTT_Game | null = null;
     let rpsGame: RPS_Game | null = null;
+    let activeTTTPlayers: ActiveTTTPlayers | null = null;
+    const knownPlayerNicknames = new Map<string, string>();
 
     socket.on('connect', () => {
         console.log('Your Player ID: ' + socket.id);
@@ -109,34 +145,33 @@ export function startGame(
 
     socket.on('player_connected', (data) => {
         let id: string;
-        let character = true;
-        let remoteNickname = '';
+        let remoteCharacter = true;
+        let remoteNickname: string | undefined;
 
-        // TODO: server needs broadcast nickanme too not only id
         if (typeof data === 'string') {
             id = data;
         } else {
             id = data.id;
-            character = data.character;
+            remoteCharacter = data.character;
             if (typeof data.nickname === 'string') {
-                remoteNickname = data.nickname.trim();
+                remoteNickname = data.nickname;
             }
         }
 
-        // fallback to id if nickname is not provided or empty
-        if (!remoteNickname) {
-            remoteNickname = id;
-        }
-
         console.log('someone joined:', id);
-        if (id && multiplayer)
-            multiplayer.spawnPlayer(id, character, remoteNickname);
+        if (id) spawnRemotePlayer(id, remoteCharacter, remoteNickname);
     });
 
     socket.on('player_disconnected', (id) => {
         console.log('someone left:', id);
+        const disconnectedPlayer = multiplayer?.players.get(id);
+        onGameEvent?.({
+            type: 'player_left',
+            playerId: id,
+            nickname: resolvePlayerNickname(id, disconnectedPlayer?.nickname),
+        });
+
         if (!multiplayer) return;
-        const disconnectedPlayer = multiplayer.players.get(id);
         if (disconnectedPlayer) disconnectedPlayer.removePlayer();
     });
 
@@ -178,9 +213,11 @@ export function startGame(
                 break;
             case 'ttt_reset':
                 if (tttGame) void tttGame.endGame();
+                activeTTTPlayers = null;
                 break;
             case 'ttt_left': // pressed ESC
                 if (tttGame) tttGame.resetGame();
+                activeTTTPlayers = null;
                 break;
             case 'ttt_mark':
                 //console.log("Marking: " + data.board);
@@ -367,6 +404,11 @@ export function startGame(
         if (!player || !rpsGame) return;
         if (data.winner === player.id) {
             console.log('You won the RPS game!');
+            emitLocalGameResult(
+                'Rock-Paper-Scissors',
+                'won',
+                resolvePlayerNickname(data.loser)
+            );
             rpsGame.yourChoice = data.winnerChoice;
             rpsGame.opponentChoice = data.loserChoice;
 
@@ -377,6 +419,11 @@ export function startGame(
             rpsGame.solutionRPSAnimation(); */
         } else if (data.loser === player.id) {
             console.log('You lost the RPS game!');
+            emitLocalGameResult(
+                'Rock-Paper-Scissors',
+                'lost',
+                resolvePlayerNickname(data.winner)
+            );
 
             rpsGame.yourChoice = data.loserChoice;
             rpsGame.opponentChoice = data.winnerChoice;
@@ -438,7 +485,7 @@ export function startGame(
         rpsGame.BattleRequest(
             data.id,
             // Send server-stored nicknames to the minigame event
-            data.nickname
+            resolvePlayerNickname(data.id, data.nickname)
         );
         //console.log("You accepted a battle with player " + rpsGame.playerInRange.id);
     }
@@ -451,6 +498,16 @@ export function startGame(
 
     function handleTTTstart(data: TTTStartPayload) {
         if (!tttGame) return;
+        activeTTTPlayers = {
+            playerOne: createNamedPlayer(
+                data.playerOne,
+                data.playerOneNickname
+            ),
+            playerTwo: createNamedPlayer(
+                data.playerTwo,
+                data.playerTwoNickname
+            ),
+        };
         tttGame.startGame(
             data.playerOne,
             data.playerTwo,
@@ -461,6 +518,27 @@ export function startGame(
 
     function handleTTTwin(data: TTTWinPayload) {
         if (!tttGame) return;
+        const localPlayerId = player?.id;
+        if (localPlayerId && activeTTTPlayers) {
+            const localIsPlayerOne =
+                activeTTTPlayers.playerOne.id === localPlayerId;
+            const localIsPlayerTwo =
+                activeTTTPlayers.playerTwo.id === localPlayerId;
+
+            if (localIsPlayerOne || localIsPlayerTwo) {
+                let opponent = activeTTTPlayers.playerOne;
+                if (localIsPlayerOne) {
+                    opponent = activeTTTPlayers.playerTwo;
+                }
+
+                let outcome: GameResultEvent['outcome'] = 'lost';
+                if (data.id === localPlayerId) {
+                    outcome = 'won';
+                }
+
+                emitLocalGameResult('Tic-Tac-Toe', outcome, opponent.nickname);
+            }
+        }
         tttGame.drawWin(data.winner);
         tttGame.winner(
             data.id,
@@ -468,6 +546,7 @@ export function startGame(
             data.nickname
         );
         tttGame.endGame();
+        activeTTTPlayers = null;
     }
 
     function handleTTTdraw(_data: TTTDrawPayload) {
@@ -475,6 +554,75 @@ export function startGame(
         void _data;
         tttGame.draw();
         tttGame.endGame();
+        activeTTTPlayers = null;
+    }
+
+    function emitLocalGameResult(
+        game: GameResultEvent['game'],
+        outcome: GameResultEvent['outcome'],
+        opponentNickname: string
+    ): void {
+        onGameEvent?.({
+            type: 'game_result',
+            game,
+            outcome,
+            playerNickname: localNickname,
+            opponentNickname,
+        });
+    }
+
+    function resolvePlayerNickname(
+        playerId: string,
+        fallbackNickname?: string
+    ): string {
+        if (playerId === player?.id || playerId === socket.id) {
+            return localNickname;
+        }
+
+        const fallback = fallbackNickname?.trim();
+        if (fallback) {
+            knownPlayerNicknames.set(playerId, fallback);
+            return fallback;
+        }
+
+        return (
+            knownPlayerNicknames.get(playerId) ||
+            multiplayer?.players.get(playerId)?.nickname ||
+            playerId
+        );
+    }
+
+    function createNamedPlayer(
+        playerId: string,
+        fallbackNickname?: string
+    ): NamedPlayer {
+        return {
+            id: playerId,
+            nickname: resolvePlayerNickname(playerId, fallbackNickname),
+        };
+    }
+
+    /** player joined leaved notification */
+    function spawnRemotePlayer(
+        id: string,
+        remoteCharacter: boolean,
+        remoteNickname?: string
+    ): void {
+        if (!multiplayer) {
+            return;
+        }
+        const isNewPlayer = !multiplayer.players.has(id);
+        const resolvedNickname = resolvePlayerNickname(id, remoteNickname);
+        multiplayer.spawnPlayer(id, remoteCharacter, resolvedNickname);
+
+        if (!isNewPlayer) {
+            return;
+        }
+        onGameEvent?.({
+            type: 'player_joined',
+            playerId: id,
+            nickname: resolvedNickname,
+        });
     }
 
     function handlePlayer(data: PlayerUpdatePayload) {
@@ -492,7 +640,7 @@ export function startGame(
         } else {
             console.log('new player joined:', data.id);
             //multiplayer.spawnPlayer(data.id, normalizeCharacter(data.character));
-            multiplayer.spawnPlayer(data.id, data.character, data.id);
+            spawnRemotePlayer(data.id, data.character);
         }
     }
 
@@ -1213,4 +1361,10 @@ export function startGame(
             player.updateAnimation(delta);
         }
     }
+
+    return {
+        showLocalChatMessage(message: string): void {
+            player?.showChatMessage(message);
+        },
+    };
 }

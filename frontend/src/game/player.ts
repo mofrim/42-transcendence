@@ -8,12 +8,17 @@ import {
     createPlayerAnimationActions,
     transitionPlayerAnimation,
 } from './player_animation.js';
+import { FloatingTextSprite } from './FloatingTextSprite.js';
 
 type PlayerAnimationState = ReturnType<typeof transitionPlayerAnimation>;
 
 const WORLD_UP = new THREE.Vector3(0, 1, 0);
 const PLAYER_FORWARD = new THREE.Vector3(0, 0, 1);
 const COLLISION_STEP_RADIUS_FACTOR = 0.5;
+const PLAYER_CHAT_SIZE = 42;
+const PLAYER_CHAT_HEIGHT = 2.15;
+const PLAYER_CHAT_SCALE = 0.28;
+const PLAYER_CHAT_DURATION_MS = 5_000; // ms also 5 Sekunden
 
 export class Player {
     static gradientTexture = (() => {
@@ -34,6 +39,8 @@ export class Player {
     id: string | undefined;
     model: THREE.Group | null;
     group: THREE.Group;
+    private readonly chatBubble: FloatingTextSprite;
+    private chatBubbleTimeout: ReturnType<typeof setTimeout> | null;
     /** running idle? */
     stateCurrent: PlayerAnimationState;
     mixer: THREE.AnimationMixer | null;
@@ -73,11 +80,18 @@ export class Player {
 
         this.model = null;
         this.group = new THREE.Group();
+        this.chatBubble = new FloatingTextSprite(
+            '',
+            PLAYER_CHAT_SIZE,
+            new THREE.Vector3(0, PLAYER_CHAT_HEIGHT, 0)
+        );
+        this.chatBubble.scale.multiplyScalar(PLAYER_CHAT_SCALE);
+        this.chatBubbleTimeout = null;
         this.stateCurrent = 'Idle';
         this.mixer = null;
         this.actions = null;
 
-        scene.add(this.group);
+        scene.add(this.group, this.chatBubble);
         this.worldOctree = worldOctree;
         this.playerVelocity = new THREE.Vector3();
         this.playerDirection = new THREE.Vector3();
@@ -118,6 +132,24 @@ export class Player {
         this.loadModel(path);
 
         this.animateSpawn();
+    }
+
+    /** print player chat bubble */
+    showChatMessage(message: string): void {
+        const trimmedMessage = message.trim();
+        if (!trimmedMessage) return;
+
+        this.chatBubble.setText(`🗨️ ${trimmedMessage}`, PLAYER_CHAT_SIZE);
+        this.chatBubble.follow(this.group);
+
+        if (this.chatBubbleTimeout !== null) {
+            clearTimeout(this.chatBubbleTimeout);
+        }
+
+        this.chatBubbleTimeout = setTimeout(() => {
+            this.chatBubble.hide();
+            this.chatBubbleTimeout = null;
+        }, PLAYER_CHAT_DURATION_MS);
     }
 
     animateSpawn() {

@@ -1,11 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 import type { SyntheticEvent } from 'react';
+import { normalizePlayerNickname } from '../../game/PlayerIdentity';
 
 import './GameUI.css';
 
 const QUEST_LOG_ID = 'game-quest-log';
 const PROFILE_PANEL_ID = 'game-profile-panel';
 const EVENT_LOG_TITLE_ID = 'game-event-log-title';
+
+export const MAX_EVENT_LOG_ENTRIES = 10;
 
 export type QuestLogEntry = {
     readonly id: string;
@@ -23,7 +26,44 @@ type GameUIProps = {
     readonly nickname: string;
     readonly quests?: readonly QuestLogEntry[];
     readonly events?: readonly EventLogEntry[];
+    readonly onChatMessage?: (message: string) => void;
 };
+
+type HudPanelToggleProps = {
+    readonly controls: string;
+    readonly icon: string;
+    readonly isOpen: boolean;
+    readonly panelLabel: string;
+    readonly onToggle: () => void;
+};
+
+function HudPanelToggle({
+    controls,
+    icon,
+    isOpen,
+    panelLabel,
+    onToggle,
+}: HudPanelToggleProps) {
+    let action = 'öffnen';
+    if (isOpen) {
+        action = 'schließen';
+    }
+    const actionLabel = `${panelLabel} ${action}`;
+
+    return (
+        <button
+            type='button'
+            className='hud-toggle'
+            aria-controls={controls}
+            aria-expanded={isOpen}
+            aria-label={actionLabel}
+            title={actionLabel}
+            onClick={onToggle}
+        >
+            {icon}
+        </button>
+    );
+}
 
 /** Beispielaufgaben für das Quest Log. */
 const DEFAULT_QUESTS: readonly QuestLogEntry[] = [
@@ -44,12 +84,16 @@ const DEFAULT_QUESTS: readonly QuestLogEntry[] = [
         text: 'Finde einen anderen Spieler',
     },
     {
+        id: 'find-computer',
+        text: 'Finde einen Computer im Cluster',
+    },
+    {
         id: 'avoid-blackhole',
         text: "Don't get blackholed",
     },
 ];
 
-/** Beispielereignisse für das Event Log. */
+/** Beispielereignisse für das Event Log.
 const DEFAULT_EVENTS: readonly EventLogEntry[] = [
     {
         id: 'user-b-logout',
@@ -107,6 +151,7 @@ const DEFAULT_EVENTS: readonly EventLogEntry[] = [
         description: '"UserC" says: okay?',
     },
 ];
+*/
 
 /**
  * React HUD for controls that do not belong in the Three.js scene.
@@ -114,7 +159,8 @@ const DEFAULT_EVENTS: readonly EventLogEntry[] = [
 export function GameUI({
     nickname,
     quests = DEFAULT_QUESTS,
-    events = DEFAULT_EVENTS,
+    events = [],
+    onChatMessage,
 }: GameUIProps) {
     const [isQuestLogOpen, setIsQuestLogOpen] = useState(false);
     const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -135,18 +181,8 @@ export function GameUI({
         event.stopPropagation();
     };
 
-    let questLogButtonLabel = 'Quest Log öffnen';
-    if (isQuestLogOpen) {
-        questLogButtonLabel = 'Quest Log schließen';
-    }
-
-    let profileButtonLabel = 'Profil öffnen';
-    if (isProfileOpen) {
-        profileButtonLabel = 'Profil schließen';
-    }
-
-    const displayedNickname = nickname.trim() || 'Player';
-    const displayedEvents = events.slice(-10);
+    const displayedNickname = normalizePlayerNickname(nickname);
+    const displayedEvents = events.slice(-MAX_EVENT_LOG_ENTRIES);
     const latestEventId = displayedEvents.at(-1)?.id;
 
     /** Auto Scroll des Eventlogs zum neuesten Eintrag. */
@@ -176,6 +212,11 @@ export function GameUI({
             event.stopPropagation();
 
             if (isChatOpen) {
+                const submittedMessage = chatMessage.trim();
+                if (submittedMessage) {
+                    onChatMessage?.(submittedMessage);
+                }
+                //  empty the chat input and close the chat window after sending a message
                 setChatMessage('');
                 setIsChatOpen(false);
                 return;
@@ -189,7 +230,7 @@ export function GameUI({
         return () => {
             window.removeEventListener('keydown', handleChatToggle, true);
         };
-    }, [isChatOpen]);
+    }, [chatMessage, isChatOpen, onChatMessage]);
 
     return (
         <div
@@ -199,17 +240,13 @@ export function GameUI({
             onPointerDown={stopGameInteraction}
         >
             <div className='hud-profile'>
-                <button
-                    type='button'
-                    className='hud-toggle'
-                    aria-controls={PROFILE_PANEL_ID}
-                    aria-expanded={isProfileOpen}
-                    aria-label={profileButtonLabel}
-                    title={profileButtonLabel}
-                    onClick={handleProfileToggle}
-                >
-                    👤
-                </button>
+                <HudPanelToggle
+                    controls={PROFILE_PANEL_ID}
+                    icon='👤'
+                    isOpen={isProfileOpen}
+                    panelLabel='Profil'
+                    onToggle={handleProfileToggle}
+                />
 
                 <aside
                     id={PROFILE_PANEL_ID}
@@ -219,9 +256,12 @@ export function GameUI({
                 >
                     <h2 className='hud-title'>Profil</h2>
                     <p className='hud-profile-nickname'>
+                        {/* TODO: edit nickname */}
                         <strong>Nickname:</strong> {displayedNickname} ✏️
                     </p>
                     <h3 className='hud-profile-stats-title'>Game Stats:</h3>
+                    {/* TODO: Game Stats */}
+                    <p className='hud-profile-nickname'></p>
                     <dl className='hud-profile-stats'>
                         <div>
                             <dt>Rock-Paper-Scissors</dt>
@@ -235,17 +275,13 @@ export function GameUI({
                 </aside>
             </div>
 
-            <button
-                type='button'
-                className='hud-toggle'
-                aria-controls={QUEST_LOG_ID}
-                aria-expanded={isQuestLogOpen}
-                aria-label={questLogButtonLabel}
-                title={questLogButtonLabel}
-                onClick={handleQuestLogToggle}
-            >
-                📑
-            </button>
+            <HudPanelToggle
+                controls={QUEST_LOG_ID}
+                icon='📑'
+                isOpen={isQuestLogOpen}
+                panelLabel='Quest Log'
+                onToggle={handleQuestLogToggle}
+            />
 
             <aside
                 id={QUEST_LOG_ID}
@@ -283,7 +319,7 @@ export function GameUI({
             <aside
                 className='hud-panel hud-event-log'
                 aria-labelledby={EVENT_LOG_TITLE_ID}
-                title='Event Log (Chat + Player Events)'
+                title='Event Log (Chat + Events)'
             >
                 <ol
                     ref={eventListRef}
