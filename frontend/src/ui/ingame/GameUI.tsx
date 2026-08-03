@@ -432,27 +432,29 @@ export function GameUI({
                 </ul>
             </aside>
 
-            <aside
-                className='hud-panel hud-event-log'
-                aria-labelledby={EVENT_LOG_TITLE_ID}
-                title='Event Log (Chat + Events)'
-            >
-                <ol
-                    ref={eventListRef}
-                    className='hud-event-list'
-                    role='log'
-                    aria-live='polite'
+            {displayedEvents.length > 0 && (
+                <aside
+                    className='hud-panel hud-event-log'
+                    aria-labelledby={EVENT_LOG_TITLE_ID}
+                    title='Event Log (Chat + Events)'
                 >
-                    {displayedEvents.map((event) => (
-                        <li key={event.id} className='hud-event-item'>
-                            <time className='hud-event-time'>
-                                {event.timestamp}
-                            </time>
-                            <span>{event.description}</span>
-                        </li>
-                    ))}
-                </ol>
-            </aside>
+                    <ol
+                        ref={eventListRef}
+                        className='hud-event-list'
+                        role='log'
+                        aria-live='polite'
+                    >
+                        {displayedEvents.map((event) => (
+                            <li key={event.id} className='hud-event-item'>
+                                <time className='hud-event-time'>
+                                    {event.timestamp}
+                                </time>
+                                <span>{event.description}</span>
+                            </li>
+                        ))}
+                    </ol>
+                </aside>
+            )}
 
             <div className='hud-chat' hidden={!isChatOpen}>
                 <input
