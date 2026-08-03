@@ -11,6 +11,6 @@
         "type-check:watch": "tsc -b ../../../common/tsconfig.json && tsc --noEmit --watch",
         "lint": "eslint .",
         "lint-fix": "eslint . --fix",
-        "start": "node ../../dist/minigame-service/main.js"
+        "start": "node ../../dist/connection-service/main.js"
     }
 }
