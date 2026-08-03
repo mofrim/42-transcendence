@@ -1,6 +1,31 @@
 // in this file we collect types that are shared at least among multiple files.
 import * as THREE from "three";
 
+
+// -------------------=[ database backend related types ]=------------------- //
+
+// using an abstract class here in order to force implementation of _all_
+// properties in children
+export abstract class BaseUser {
+    abstract id: number;
+    abstract firstName: string;
+    abstract lastName: string;
+    abstract nickname: string;
+    abstract email: string;
+    abstract hashedPw: string;
+}
+
+export class User extends BaseUser {
+    id: number = 0;
+    firstName: string = "";
+    lastName: string = "";
+    nickname: string = "";
+    email: string = "";
+    hashedPw: string = "";
+}
+
+// ----------------------------=[ other types ]=---------------------------- //
+
 export enum PlayerState {
     Idle = 'Idle',
     Run = 'Run',

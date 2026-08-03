@@ -15,10 +15,24 @@ services:
       context: ..
       dockerfile: ./backend/src/connection-service/Dockerfile
     depends_on:
-      postgres:
+      auth-service:
         condition: service_started
     ports:
       - 3000:3000
+    networks:
+      - ftr-net
+
+  auth-service:
+    container_name: ftr-auth-service
+    image: ftr-auth-service
+    build:
+      context: ..
+      dockerfile: ./backend/src/auth-service/Dockerfile
+    depends_on:
+      postgres:
+        condition: service_started
+    ports:
+        - "${AUTH_SERVICE_PORT}:${AUTH_SERVICE_PORT}"
     networks:
       - ftr-net
 

@@ -1,0 +1,27 @@
+{
+    "name": "auth-service",
+    "description": "ft_transcendence auth-service",
+    "private": true,
+    "version": "0.0.0",
+    "type": "module",
+    "scripts": {
+        "dev": "tsx watch src/main.ts",
+        "build": "tsc -b",
+        "type-check": "tsc -b ../../../common/tsconfig.json && tsc --noEmit",
+        "type-check:watch": "tsc -b ../../../common/tsconfig.json && tsc --noEmit --watch",
+        "lint": "eslint .",
+        "lint-fix": "eslint . --fix",
+        "start": "tsx src/main.ts"
+    },
+    "dependencies": {
+        "bcryptjs": "^3.0.3",
+        "jsonwebtoken": "^9.0.3",
+        "pg": "^8.22.0",
+        "typeorm": "^1.1.0"
+    },
+    "devDependencies": {
+        "@types/bcryptjs": "^2.4.6",
+        "@types/jsonwebtoken": "^9.0.10",
+        "@types/pg": "^8.20.3"
+    }
+}

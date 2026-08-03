@@ -32,7 +32,7 @@ services:
       PGADMIN_SERVER_JSON_FILE: /pgadmin4/servers.json
       PGADMIN_CONFIG_SERVER_MODE: "False"
     ports:
-      - "80:80"
+      - 80:80
     networks:
       - ftr-net
 

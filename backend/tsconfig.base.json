@@ -29,6 +29,10 @@
         "moduleDetection": "force",
         "skipLibCheck": true,
 
+        // for typeorm
+        "emitDecoratorMetadata": true,
+        "experimentalDecorators": true,
+
         "allowJs": true,
         "checkJs": false
     }
