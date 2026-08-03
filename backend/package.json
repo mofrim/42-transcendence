@@ -5,13 +5,11 @@
     "version": "0.0.0",
     "type": "module",
     "scripts": {
-        "dev": "tsx watch src/server.ts",
         "build": "tsc -b",
         "type-check": "tsc -b ../common/tsconfig.json && tsc --noEmit",
         "type-check:watch": "tsc -b ../common/tsconfig.json && tsc --noEmit --watch",
         "lint": "eslint .",
-        "lint-fix": "eslint . --fix",
-        "server": "node dist/server.js"
+        "lint-fix": "eslint . --fix"
     },
     "dependencies": {
         "@common/types": "*",
