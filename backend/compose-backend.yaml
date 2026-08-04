@@ -36,6 +36,9 @@ services:
     networks:
       - ftr-net
 
+# TODO nginx reverse-proxy für alle microservices endpoints!
+# TODO SSL!
+
 networks:
   ftr-net:
     driver: bridge
