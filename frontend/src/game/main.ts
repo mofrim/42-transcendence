@@ -42,7 +42,7 @@ function whichCharacterModelPath(character: boolean): string {
 /** event log msgs */
 export type GameRuntimeEvent =
     | {
-          readonly type: 'player_joined' | 'player_left';
+          readonly type: 'player_joined' | 'player_left' | 'player_in_range';
           readonly playerId: string;
           readonly nickname: string;
       }
@@ -772,7 +772,18 @@ export function startGame(
             socket,
             player,
             multiplayer.players,
-            renderer
+            renderer,
+            // Connecting RPS range detection to meet student Quest
+            (nearbyPlayer) => {
+                onGameEvent?.({
+                    type: 'player_in_range',
+                    playerId: nearbyPlayer.id,
+                    nickname: resolvePlayerNickname(
+                        nearbyPlayer.id,
+                        nearbyPlayer.nickname
+                    ),
+                });
+            }
         );
 
         /* const testCube = new THREE.Mesh(

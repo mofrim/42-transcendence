@@ -24,6 +24,9 @@ export class RPS_Game {
     readyForRequest: boolean;
     battleRequestedPlayer: string;
     private readonly battlePrompt: FloatingTextSprite;
+    private readonly onPlayerInRange:
+        ((player: Remote_Player) => void) | undefined;
+    private hasReportedPlayerInRange: boolean;
 
     currentTextState: CanvasTextSprite[];
     overlayScene: THREE.Scene;
@@ -45,7 +48,8 @@ export class RPS_Game {
         socket: Socket,
         player: Player,
         players: Map<string, Remote_Player>,
-        renderer: THREE.WebGLRenderer
+        renderer: THREE.WebGLRenderer,
+        onPlayerInRange?: (player: Remote_Player) => void
     ) {
         this.scene = scene;
         this.socket = socket;
@@ -57,6 +61,8 @@ export class RPS_Game {
         this.playerInRange = null;
         this.readyForRequest = true;
         this.battleRequestedPlayer = '';
+        this.onPlayerInRange = onPlayerInRange;
+        this.hasReportedPlayerInRange = false;
         this.battlePrompt = new FloatingTextSprite(
             BATTLE_PROMPT_TEXT,
             BATTLE_PROMPT_SIZE,
@@ -130,6 +136,11 @@ export class RPS_Game {
         if (!nearestPlayer) {
             this.battlePrompt.hide();
             return;
+        }
+
+        if (!this.hasReportedPlayerInRange && this.onPlayerInRange) {
+            this.hasReportedPlayerInRange = true;
+            this.onPlayerInRange(nearestPlayer);
         }
 
         this.battlePrompt.follow(nearestPlayer.group);

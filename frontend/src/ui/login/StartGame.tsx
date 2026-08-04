@@ -11,6 +11,11 @@ import {
     MAX_EVENT_LOG_ENTRIES,
     type EventLogEntry,
 } from '../ingame/GameUI';
+import {
+    applyQuestCompletionEvent,
+    describeQuestStatusChange,
+} from '../ingame/QuestLog';
+import type { QuestStatusChange } from '../ingame/QuestLog';
 import * as THREE from 'three';
 
 /** Formats a date as a time string in HH:MM:SS format */
@@ -26,6 +31,8 @@ function describeGameRuntimeEvent(event: GameRuntimeEvent): string {
             return `${event.nickname} 👋🏻 joined`;
         case 'player_left':
             return `${event.nickname} 🚪 logged out`;
+        case 'player_in_range':
+            return `Met ${event.nickname} nearby`;
         case 'game_result':
             return `${event.playerNickname} ${event.outcome} a game of ${event.game} against ${event.opponentNickname}`;
     }
@@ -53,6 +60,7 @@ export const Game = () => {
     const eventSequenceRef = useRef(0);
     const [nickname, setNickname] = useState(DEFAULT_PLAYER_NICKNAME);
     const [events, setEvents] = useState<EventLogEntry[]>([]);
+    const [completedQuestIds, setCompletedQuestIds] = useState<string[]>([]);
 
     const appendEvent = useCallback((description: string): void => {
         const now = new Date();
@@ -71,6 +79,9 @@ export const Game = () => {
     const handleGameEvent = useCallback(
         (event: GameRuntimeEvent): void => {
             appendEvent(describeGameRuntimeEvent(event));
+            setCompletedQuestIds((currentQuestIds) =>
+                applyQuestCompletionEvent(currentQuestIds, event)
+            );
         },
         [appendEvent]
     );
@@ -81,6 +92,13 @@ export const Game = () => {
             gameRuntimeRef.current?.showLocalChatMessage(message);
         },
         [appendEvent, nickname]
+    );
+
+    const handleQuestStatusChange = useCallback(
+        (statusChange: QuestStatusChange): void => {
+            appendEvent(describeQuestStatusChange(statusChange));
+        },
+        [appendEvent]
     );
 
     useEffect(() => {
@@ -130,8 +148,10 @@ export const Game = () => {
             <div ref={mountRef} style={{ width: '100vw', height: '100vh' }} />
             <GameUI
                 nickname={nickname}
+                completedQuestIds={completedQuestIds}
                 events={events}
                 onChatMessage={handleChatMessage}
+                onQuestStatusChange={handleQuestStatusChange}
             />
         </>
     );

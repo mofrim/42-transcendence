@@ -1,22 +1,27 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ReactNode, SyntheticEvent } from 'react';
 import { normalizePlayerNickname } from '../../game/PlayerIdentity';
+import {
+    BLACK_HOLE_DURATION_SECONDS,
+    BLACK_HOLE_QUEST_ID,
+    DEFAULT_QUESTS,
+    formatQuestCountdown,
+    getQuestStatusChanges,
+    resolveQuestLogEntries,
+} from './QuestLog';
+import type {
+    QuestLogEntry,
+    QuestStatusChange,
+    ResolvedQuestLogEntry,
+} from './QuestLog';
 
 import './GameUI.css';
 
 const QUEST_LOG_ID = 'game-quest-log';
 const PROFILE_PANEL_ID = 'game-profile-panel';
 const EVENT_LOG_TITLE_ID = 'game-event-log-title';
-const BLACK_HOLE_QUEST_ID = 'avoid-blackhole';
-const BLACK_HOLE_DURATION_SECONDS = 42 * 60; // 42 minutes in seconds (42:00)
 
 export const MAX_EVENT_LOG_ENTRIES = 10;
-
-export type QuestLogEntry = {
-    readonly id: string;
-    readonly text: string;
-    readonly completed?: boolean;
-};
 
 export type EventLogEntry = {
     readonly id: string;
@@ -27,12 +32,17 @@ export type EventLogEntry = {
 type GameUIProps = {
     readonly nickname: string;
     readonly quests?: readonly QuestLogEntry[];
+    readonly completedQuestIds?: readonly string[];
     readonly events?: readonly EventLogEntry[];
     readonly onChatMessage?: (message: string) => void;
+    readonly onQuestStatusChange?: (change: QuestStatusChange) => void;
 };
 
 type HudPanelToggleProps = {
-    readonly badgeCount?: number;
+    readonly questProgress?: {
+        readonly completed: number;
+        readonly total: number;
+    };
     readonly bottomBadge?: string;
     readonly controls: string;
     readonly icon: string;
@@ -41,29 +51,8 @@ type HudPanelToggleProps = {
     readonly onToggle: () => void;
 };
 
-/** blackhole timer */
-function formatCountdown(totalSeconds: number): string {
-    const minutes = Math.floor(totalSeconds / 60);
-    const seconds = totalSeconds % 60;
-
-    return [minutes, seconds]
-        .map((part) => String(part).padStart(2, '0'))
-        .join(':');
-}
-
-function isQuestCompleted(
-    quest: QuestLogEntry,
-    blackHoleSecondsRemaining: number
-): boolean {
-    if (quest.id === BLACK_HOLE_QUEST_ID) {
-        return blackHoleSecondsRemaining > 0;
-    }
-
-    return quest.completed === true;
-}
-
 function HudPanelToggle({
-    badgeCount,
+    questProgress,
     bottomBadge,
     controls,
     icon,
@@ -79,16 +68,13 @@ function HudPanelToggle({
     let badge: ReactNode = null;
     let bottomBadgeElement: ReactNode = null;
 
-    if (badgeCount !== undefined) {
-        let questCountLabel = `${badgeCount} offene Aufgaben`;
-        if (badgeCount === 1) {
-            questCountLabel = '1 offene Aufgabe';
-        }
+    if (questProgress !== undefined) {
+        const questProgressLabel = `${questProgress.completed} von ${questProgress.total} Aufgaben erledigt`;
 
-        actionLabel = `${actionLabel}, ${questCountLabel}`;
+        actionLabel = `${actionLabel}, ${questProgressLabel}`;
         badge = (
             <span className='hud-toggle-badge' aria-hidden='true'>
-                {badgeCount}
+                {questProgress.completed}/{questProgress.total}
             </span>
         );
     }
@@ -118,34 +104,6 @@ function HudPanelToggle({
         </button>
     );
 }
-
-/** Beispielaufgaben für das Quest Log. */
-const DEFAULT_QUESTS: readonly QuestLogEntry[] = [
-    {
-        id: 'enter-campus',
-        text: 'Enter 42 Campus via Token',
-    },
-    {
-        id: 'win-rps',
-        text: 'Gewinne eine Runde Schere, Stein, Papier',
-    },
-    {
-        id: 'win-ttt',
-        text: 'Gewinne eine Runde Tic-Tac-Toe',
-    },
-    {
-        id: 'meet-player',
-        text: 'Finde einen anderen Spieler',
-    },
-    {
-        id: 'find-computer',
-        text: 'Finde einen Computer im Cluster',
-    },
-    {
-        id: 'avoid-blackhole',
-        text: "Don't get blackholed",
-    },
-];
 
 /** Beispielereignisse für das Event Log.
 const DEFAULT_EVENTS: readonly EventLogEntry[] = [
@@ -213,8 +171,10 @@ const DEFAULT_EVENTS: readonly EventLogEntry[] = [
 export function GameUI({
     nickname,
     quests = DEFAULT_QUESTS,
+    completedQuestIds = [],
     events = [],
     onChatMessage,
+    onQuestStatusChange,
 }: GameUIProps) {
     const [isQuestLogOpen, setIsQuestLogOpen] = useState(false);
     const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -225,6 +185,9 @@ export function GameUI({
     );
     const eventListRef = useRef<HTMLOListElement>(null);
     const chatInputRef = useRef<HTMLInputElement>(null);
+    const previousResolvedQuestsRef = useRef<
+        readonly ResolvedQuestLogEntry[] | null
+    >(null);
 
     const handleQuestLogToggle = (): void => {
         setIsQuestLogOpen((isOpen) => !isOpen);
@@ -241,14 +204,15 @@ export function GameUI({
     const displayedNickname = normalizePlayerNickname(nickname);
     const displayedEvents = events.slice(-MAX_EVENT_LOG_ENTRIES);
     const latestEventId = displayedEvents.at(-1)?.id;
-    const blackHoleCountdown = formatCountdown(blackHoleSecondsRemaining);
-    let incompleteQuestCount = 0;
-
-    for (const quest of quests) {
-        if (!isQuestCompleted(quest, blackHoleSecondsRemaining)) {
-            incompleteQuestCount++;
-        }
-    }
+    const blackHoleCountdown = formatQuestCountdown(blackHoleSecondsRemaining);
+    const resolvedQuests = resolveQuestLogEntries(
+        quests,
+        completedQuestIds,
+        blackHoleSecondsRemaining
+    );
+    const completedQuestCount = resolvedQuests.filter(
+        (quest) => quest.completed
+    ).length;
 
     /** blackhole timer */
     useEffect(() => {
@@ -280,6 +244,20 @@ export function GameUI({
             }
         };
     }, []);
+
+    /** Meldet ausschließlich tatsächliche Änderungen eines Quest-Status. */
+    useEffect(() => {
+        const statusChanges = getQuestStatusChanges(
+            previousResolvedQuestsRef.current,
+            resolvedQuests
+        );
+
+        previousResolvedQuestsRef.current = resolvedQuests;
+
+        for (const statusChange of statusChanges) {
+            onQuestStatusChange?.(statusChange);
+        }
+    }, [onQuestStatusChange, resolvedQuests]);
 
     /** Auto Scroll des Eventlogs zum neuesten Eintrag. */
     useEffect(() => {
@@ -372,7 +350,10 @@ export function GameUI({
             </div>
 
             <HudPanelToggle
-                badgeCount={incompleteQuestCount}
+                questProgress={{
+                    completed: completedQuestCount,
+                    total: resolvedQuests.length,
+                }}
                 bottomBadge={blackHoleCountdown}
                 controls={QUEST_LOG_ID}
                 icon='📑'
@@ -389,13 +370,11 @@ export function GameUI({
             >
                 <h2 className='hud-title'>Quest Log Checklist:</h2>
                 <ul className='hud-quest-list'>
-                    {quests.map((quest) => {
+                    {resolvedQuests.map((quest) => {
                         let marker = '❎';
                         let blackHoleTimer: ReactNode = null;
 
-                        if (
-                            isQuestCompleted(quest, blackHoleSecondsRemaining)
-                        ) {
+                        if (quest.completed) {
                             marker = '✅';
                         }
 

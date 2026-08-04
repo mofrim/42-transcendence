@@ -48,16 +48,19 @@
     right: 0;
     display: grid;
     place-items: center;
-    width: 20px;
+    min-width: 24px;
     height: 20px;
+    padding: 0 4px;
     box-sizing: border-box;
     border: 2px solid rgba(14, 22, 32, 0.9);
-    border-radius: 50%;
+    border-radius: 999px;
     background: #d92d20;
     color: #ffffff;
     font-size: 11px;
+    font-variant-numeric: tabular-nums;
     font-weight: 700;
     line-height: 1;
+    white-space: nowrap;
     pointer-events: none;
 }
 

@@ -447,7 +447,8 @@ body {
 #chat-frame {
   width: 400px;
   height: 60px;
-  background-image: url("42_files/ChatField.png");
+  /* 42_files/ChatField.png referenced in 42_files/ChatField.png didn't resolve at build time */
+  /* background-image: url("42_files/ChatField.png"); */
   background-size: 100% 100%;
   display: flex;
   align-items: center;
