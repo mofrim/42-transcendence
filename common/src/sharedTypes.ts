@@ -4,6 +4,18 @@ import * as THREE from "three";
 
 // -------------------=[ database backend related types ]=------------------- //
 
+export enum EventType {
+    ChatMsg = 'ChatMsg',
+    PlayerConnect = 'PlayerConnect',
+}
+
+// TODO eventId, userId (foreign relation), eventType (class), data (chat msg, playerID)
+export abstract class BaseEventLog {
+    abstract id: number;
+    abstract eventType: EventType;
+    abstract data: string;
+};
+
 // using an abstract class here in order to force implementation of _all_
 // properties in children
 export abstract class BaseUser {
@@ -11,6 +23,7 @@ export abstract class BaseUser {
     abstract firstName: string;
     abstract lastName: string;
     abstract nickname: string;
+    abstract character: boolean;
     abstract email: string;
     abstract hashedPw: string;
 }
@@ -21,6 +34,7 @@ export class User extends BaseUser {
     lastName: string = "";
     nickname: string = "";
     email: string = "";
+    character: boolean = true;
     hashedPw: string = "";
 }
 

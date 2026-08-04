@@ -1,14 +1,20 @@
 import 'reflect-metadata';
 import express from 'express';
 import cors from 'cors';
-// import bcrypt from 'bcryptjs';
-// import pg from 'pg';
-// import jwt from 'jsonwebtoken';
-// import type { Express, Request, Response } from 'express';
-import type { Express } from 'express';
+import dotenv from 'dotenv';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+import type { Express, Request, Response } from 'express';
+import { DataSource } from 'typeorm';
+import { exit } from 'node:process';
+import { ORMUser } from './orm_types.ts';
 
-import { BaseUser } from '@common/types';
-import { Entity, PrimaryGeneratedColumn, Column, DataSource } from 'typeorm';
+// load env vars from global dotenv...
+// this path is correct if ran from backend/src/auth-service dir
+if (process.env['NODE_ENV'] === 'development') {
+    console.log('loading dev.env...')
+    dotenv.config({ path: '../../../dev.env' });
+}
 
 const PORT = Number(process.env['AUTH_SERVICE_PORT']) || 3001;
 const app: Express = express();
@@ -18,98 +24,93 @@ app.use(express.json());
 
 // -------------------------=[ DB initialization ]=------------------------- //
 
-@Entity()
-export class ORMUser extends BaseUser {
-    @PrimaryGeneratedColumn()
-    declare id: number;
-
-    @Column('text')
-    declare firstName: string;
-
-    @Column('text')
-    declare lastName: string;
-
-    @Column('text')
-    declare nickname: string;
-
-    @Column('text')
-    declare email: string;
-
-    @Column('text')
-    declare hashedPw: string;
-}
-
-const AppDataSource = new DataSource({
+const DB = new DataSource({
     type: 'postgres',
-    host: 'localhost',
-    port: 5432,
-    username: 'postgres',
-    password: 'postgres',
-    database: 'postgres',
+    host: process.env['DB_HOST'] || 'localhost',
+    port: Number(process.env['DB_PORT']) || 5432,
+    username: process.env['DB_USER'] || 'postgres',
+    password: process.env['DB_PASSWD'] || 'postgres',
+    database: process.env['DB_NAME'] || 'postgres',
     entities: [ORMUser],
     synchronize: true,
-    logging: true,
+    logging: false,
 });
 
 try {
-    await AppDataSource.initialize();
+    await DB.initialize();
 } catch (error) {
+    console.error('Failed to connect to database!');
     console.log(error);
+    exit(1);
 }
 
-const user = new ORMUser();
-user.firstName = 'Kalle';
-user.lastName = 'Hoinz';
-user.nickname = 'K';
-user.email = 'kalle@hoinz.de';
-user.hashedPw = 'zxyz';
+// ---------------------------=[ add test user ]=--------------------------- //
 
-await AppDataSource.manager.save(user);
-console.log('user has been saved. user id is', user.id);
+try {
+    const defaultUser1 = new ORMUser({
+        firstName: "test",
+        lastName: "user",
+        nickname: 'testy',
+        email: 'test@test.de',
+        character: true,
+        hashedPw: bcrypt.hashSync('testpw', 10)
+    })
+    const savedUser: ORMUser = await DB.manager.save(defaultUser1);
+    console.log('default user created successfully: ', savedUser);
 
-// const pool = new pg.Pool({
-//     host: process.env['DB_HOST'] || 'localhost',
-//     port: Number(process.env['DB_PORT']) || 5432,
-//     user: process.env['DB_USER'] || 'postgres',
-//     password: process.env['DB_PASSWORD'] || 'postgres',
-//     database: process.env['DB_NAME'] || 'postgres',
-// });
+} catch (error) {
+    if (error instanceof Error) {
+        if (error.message.includes("duplicate")) {
+            console.warn('test user already created!');
+        } else {
+            console.error(`type of error: ${error.name}`);
+            exit(1);
+        }
+    } else {
+        console.error("Unknown error occurred:", error);
+        exit(1);
+    }
+}
 
-// app.post('/login', async (req: Request, res: Response): Promise<void> => {
-//     console.log(`body: ${JSON.stringify(req.body, null, 2)}`);
-//     const { username, password } = req.body;
-//
-//     try {
-//         const result = await pool.query(
-//             'SELECT * FROM users WHERE username = $1',
-//             [username]
-//         );
-//
-//         if (result.rows.length === 0) {
-//             res.status(401).json({ error: 'Invalid credentials' });
-//             return;
-//         }
-//
-//         const user = result.rows[0];
-//
-//         const isPasswordValid = await bcrypt.compare(password, user.password);
-//         if (!isPasswordValid) {
-//             res.status(401).json({ error: 'Invalid credentials' });
-//             return;
-//         }
-//
-//         const token = jwt.sign(
-//             { id: user.id, username: user.username },
-//             process.env['JWT_SECRET'] || 'FooBarBaz',
-//             { expiresIn: '1h' }
-//         );
-//
-//         res.json({ token, user: { id: user.id, username: user.username, email: user.email, nickname: user.nickname } });
-//     } catch (error) {
-//         console.error(error);
-//         res.status(500).json({ error: 'Internal server error' });
-//     }
-// });
+// -----------------------=[ define login endpoint ]=----------------------- //
+
+app.post('/login', async (req: Request, res: Response): Promise<void> => {
+    console.log(`body: ${JSON.stringify(req.body, null, 2)}`);
+
+    const { nickname, password } = req.body;
+
+    try {
+        const exists = await DB.manager.find(ORMUser, {
+            where: {
+                nickname: nickname
+            }
+        });
+
+        if (exists.length !== 1 || exists === undefined || exists[0] === undefined) {
+            res.status(401).json({ error: 'User not found' });
+            return;
+        }
+
+        const user = exists[0];
+
+        const isPasswordValid = await bcrypt.compare(password, user.hashedPw);
+        if (!isPasswordValid) {
+            res.status(401).json({ error: 'Invalid credentials' });
+            return;
+        }
+
+        const token = jwt.sign(
+            { nickname: user.nickname },
+            process.env['JWT_SECRET'] || 'FooBarBaz',
+            { expiresIn: '1h' }
+        );
+
+        res.json({ access_token: token, token_type: 'bearer' });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
 
 app.listen(PORT, (): void => {
     console.log(`auth-service listening on port: ${PORT}`);
