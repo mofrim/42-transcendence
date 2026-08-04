@@ -101,6 +101,27 @@ export const Game = () => {
         [appendEvent]
     );
 
+    /** suck up */
+    const exitLocalPlayer = useCallback(
+        async (description: string): Promise<void> => {
+            appendEvent(description);
+            await gameRuntimeRef.current?.despawnLocalPlayer();
+        },
+        [appendEvent]
+    );
+
+    const handleBlackHoleExpired = useCallback((): void => {
+        void exitLocalPlayer(`${nickname} 🕳️ was sucked into the Black Hole`);
+    }, [exitLocalPlayer, nickname]);
+
+    const handleLogout = useCallback(async (): Promise<void> => {
+        try {
+            await exitLocalPlayer(`${nickname} 🚪 logged out`);
+        } finally {
+            window.location.reload();
+        }
+    }, [exitLocalPlayer, nickname]);
+
     useEffect(() => {
         // guard against re-render due to strict-mode
         if (isInitializedRef.current) return;
@@ -152,6 +173,8 @@ export const Game = () => {
                 events={events}
                 onChatMessage={handleChatMessage}
                 onQuestStatusChange={handleQuestStatusChange}
+                onBlackHoleExpired={handleBlackHoleExpired}
+                onLogout={handleLogout}
             />
         </>
     );

@@ -8,6 +8,7 @@ import {
     createPlayerAnimationActions,
     transitionPlayerAnimation,
 } from './player_animation.js';
+import { despawnPlayerVisuals } from './PlayerDespawn.js';
 import { FloatingTextSprite } from './FloatingTextSprite.js';
 
 type PlayerAnimationState = ReturnType<typeof transitionPlayerAnimation>;
@@ -41,6 +42,7 @@ export class Player {
     group: THREE.Group;
     private readonly chatBubble: FloatingTextSprite;
     private chatBubbleTimeout: ReturnType<typeof setTimeout> | null;
+    private isDespawning: boolean;
     /** running idle? */
     stateCurrent: PlayerAnimationState;
     mixer: THREE.AnimationMixer | null;
@@ -87,6 +89,7 @@ export class Player {
         );
         this.chatBubble.scale.multiplyScalar(PLAYER_CHAT_SCALE);
         this.chatBubbleTimeout = null;
+        this.isDespawning = false;
         this.stateCurrent = 'Idle';
         this.mixer = null;
         this.actions = null;
@@ -136,9 +139,14 @@ export class Player {
 
     /** print player chat bubble */
     showChatMessage(message: string): void {
-        const trimmedMessage = message.trim();
-        if (!trimmedMessage) return;
+        if (this.isDespawning) {
+            return;
+        }
 
+        const trimmedMessage = message.trim();
+        if (!trimmedMessage) {
+            return;
+        }
         this.chatBubble.setText(`🗨️ ${trimmedMessage}`, PLAYER_CHAT_SIZE);
         this.chatBubble.follow(this.group);
 
@@ -156,6 +164,10 @@ export class Player {
         let sv = 0;
         let av = 0;
         const loop = () => {
+            if (this.isDespawning) {
+                return;
+            }
+
             if (this.spawnY > 0) {
                 if (!this.isLoaded || !this.model) {
                     requestAnimationFrame(loop);
@@ -192,6 +204,33 @@ export class Player {
             }
         };
         loop();
+    }
+
+    async animateDeSpawn(): Promise<void> {
+        if (this.isDespawning) {
+            return;
+        }
+        this.isDespawning = true;
+        this.isSpawned = false;
+        this.controls.key = [0, 0];
+        this.playerVelocity.set(0, 0, 0);
+        this.chatBubble.hide();
+
+        if (this.chatBubbleTimeout !== null) {
+            clearTimeout(this.chatBubbleTimeout);
+            this.chatBubbleTimeout = null;
+        }
+
+        await despawnPlayerVisuals(
+            this.group,
+            () => this.model,
+            () => this.isLoaded,
+            this.mixer
+        );
+
+        this.actions = null;
+        this.mixer = null;
+        this.model = null;
     }
 
     static loader = new GLTFLoader();
@@ -292,6 +331,10 @@ export class Player {
     }
 
     updateCharacter(delta: number) {
+        if (this.isDespawning) {
+            return;
+        }
+
         const fade = this.controls.fadeDuration;
         const key = this.controls.key;
         const rotate = this.controls.rotate;

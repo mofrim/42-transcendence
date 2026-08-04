@@ -36,6 +36,8 @@ type GameUIProps = {
     readonly events?: readonly EventLogEntry[];
     readonly onChatMessage?: (message: string) => void;
     readonly onQuestStatusChange?: (change: QuestStatusChange) => void;
+    readonly onBlackHoleExpired?: () => void;
+    readonly onLogout?: () => Promise<void>;
 };
 
 type HudPanelToggleProps = {
@@ -175,11 +177,15 @@ export function GameUI({
     events = [],
     onChatMessage,
     onQuestStatusChange,
+    onBlackHoleExpired,
+    onLogout,
 }: GameUIProps) {
     const [isQuestLogOpen, setIsQuestLogOpen] = useState(false);
     const [isProfileOpen, setIsProfileOpen] = useState(false);
     const [isChatOpen, setIsChatOpen] = useState(false);
     const [chatMessage, setChatMessage] = useState('');
+    const [isBlackHoleVisible, setIsBlackHoleVisible] = useState(false);
+    const [isLoggingOut, setIsLoggingOut] = useState(false);
     const [blackHoleSecondsRemaining, setBlackHoleSecondsRemaining] = useState(
         BLACK_HOLE_DURATION_SECONDS
     );
@@ -188,6 +194,7 @@ export function GameUI({
     const previousResolvedQuestsRef = useRef<
         readonly ResolvedQuestLogEntry[] | null
     >(null);
+    const hasBlackHoleExpiredRef = useRef(false);
 
     const handleQuestLogToggle = (): void => {
         setIsQuestLogOpen((isOpen) => !isOpen);
@@ -195,6 +202,20 @@ export function GameUI({
 
     const handleProfileToggle = (): void => {
         setIsProfileOpen((isOpen) => !isOpen);
+    };
+
+    const handleLogout = async (): Promise<void> => {
+        if (isLoggingOut || !onLogout) {
+            return;
+        }
+
+        setIsLoggingOut(true);
+        try {
+            await onLogout();
+        } catch (error) {
+            console.error('Logout failed:', error);
+            setIsLoggingOut(false);
+        }
     };
 
     const stopGameInteraction = (event: SyntheticEvent): void => {
@@ -244,6 +265,16 @@ export function GameUI({
             }
         };
     }, []);
+
+    useEffect(() => {
+        if (blackHoleSecondsRemaining > 0 || hasBlackHoleExpiredRef.current) {
+            return;
+        }
+
+        hasBlackHoleExpiredRef.current = true;
+        setIsBlackHoleVisible(true);
+        onBlackHoleExpired?.();
+    }, [blackHoleSecondsRemaining, onBlackHoleExpired]);
 
     /** Meldet ausschließlich tatsächliche Änderungen eines Quest-Status. */
     useEffect(() => {
@@ -346,6 +377,15 @@ export function GameUI({
                             <dd>1 Win</dd>
                         </div>
                     </dl>
+                    <button
+                        type='button'
+                        className='hud-profile-logout'
+                        disabled={isLoggingOut || !onLogout}
+                        aria-busy={isLoggingOut}
+                        onClick={() => void handleLogout()}
+                    >
+                        {isLoggingOut ? 'Logging out…' : '🚪 Logout'}
+                    </button>
                 </aside>
             </div>
 
@@ -452,6 +492,18 @@ export function GameUI({
                     onKeyUp={stopGameInteraction}
                 />
             </div>
+
+            {isBlackHoleVisible && (
+                <div
+                    className='hud-black-hole-overlay'
+                    role='alert'
+                    aria-label='Du wurdest vom Black Hole eingesogen'
+                >
+                    <span className='hud-black-hole-icon' aria-hidden='true'>
+                        🕳️
+                    </span>
+                </div>
+            )}
         </div>
     );
 }

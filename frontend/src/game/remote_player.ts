@@ -7,6 +7,7 @@ import {
     normalizePlayerAnimationState,
     transitionPlayerAnimation,
 } from './player_animation.js';
+import { despawnPlayerVisuals } from './PlayerDespawn.js';
 import { FloatingTextSprite } from './FloatingTextSprite.js';
 import type { PlayerState } from '@common/types';
 
@@ -52,6 +53,7 @@ const RemotePlayerImplementation = class Remote_Player {
     model: THREE.Group | null;
     group: THREE.Group;
     private readonly nameLabel: FloatingTextSprite;
+    private isDespawning: boolean;
     state: RemotePlayerState;
     stateCurrent: PlayerAnimationState;
     mixer: THREE.AnimationMixer | null;
@@ -82,6 +84,7 @@ const RemotePlayerImplementation = class Remote_Player {
         );
         this.nameLabel.scale.multiplyScalar(PLAYER_NAME_SCALE);
         this.scene.add(this.nameLabel);
+        this.isDespawning = false;
         this.state = 'Idle';
         this.stateCurrent = 'Idle';
         this.mixer = null;
@@ -155,62 +158,21 @@ const RemotePlayerImplementation = class Remote_Player {
     }
 
     async animateDeSpawn(): Promise<void> {
-        let sv = 1;
-        let av = 1;
-        const loop = (): void => {
-            if (sv > 0) {
-                const model = this.model;
-                if (!this.isLoaded || !model) {
-                    requestAnimationFrame(loop);
-                    return;
-                }
+        if (this.isDespawning) {
+            return;
+        }
+        this.isDespawning = true;
 
-                this.group.position.y += 0.1;
-                sv -= 0.07;
-                av -= 0.005;
-                //console.log("group spawnY: " + this.group.position.y);
-                this.group.scale.set(sv, 1, sv);
-                model.traverse((child: THREE.Object3D) => {
-                    if (child instanceof THREE.Mesh) {
-                        getMaterials(child).forEach((material) => {
-                            material.transparent = true;
-                            material.opacity = av;
-                        });
-                    }
-                });
-                requestAnimationFrame(loop);
-            } else {
-                //console.log("AAAAAAAAAAAAAAAAAAAAAAAAA " + sv);
-                /*
-                this.model.traverse((child) => {
-                    if (child.isMesh) {
-                        child.material.transparent = true;
-                        child.material.opacity = 0;
-                    }
-                });
-                this.group.scale.set(0, 1, 0); */
+        await despawnPlayerVisuals(
+            this.group,
+            () => this.model,
+            () => this.isLoaded,
+            this.mixer
+        );
 
-                if (this.mixer) this.mixer.stopAllAction();
-
-                if (this.group) {
-                    this.group.traverse((obj: THREE.Object3D) => {
-                        if (obj instanceof THREE.Mesh) {
-                            obj.geometry?.dispose();
-                            getMaterials(obj).forEach((material) =>
-                                material.dispose()
-                            );
-                        }
-                    });
-                }
-
-                if (this.group) this.scene.remove(this.group);
-
-                this.actions = {};
-                this.mixer = null;
-                this.model = null;
-            }
-        };
-        loop();
+        this.actions = null;
+        this.mixer = null;
+        this.model = null;
     }
 
     loadEnemyCharacter(path: string): void {
@@ -353,33 +315,7 @@ const RemotePlayerImplementation = class Remote_Player {
         this.scene.remove(this.nameLabel);
         this.nameLabel.dispose();
 
-        this.animateDeSpawn();
-
-        /*         if(this.mixer)
-            this.mixer.stopAllAction();
-
-        if(this.group){
-            this.group.traverse((obj) => {
-                if (obj.isMesh) {
-                    obj.geometry?.dispose();
-                    if (obj.material) {
-                        if (Array.isArray(obj.material)) {
-                            obj.material.forEach(m => m.dispose());
-                        } else {
-                            obj.material.dispose();
-                        }
-                    }
-                }
-            });
-        }
-
-        if(this.group)
-            this.scene.remove(this.group);
-
-        this.actions = {};
-        this.mixer = null;
-        this.model = null;
-        this.group = null; */
+        void this.animateDeSpawn();
     }
 };
 

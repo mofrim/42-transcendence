@@ -56,6 +56,7 @@ export type GameRuntimeEvent =
 
 export type GameRuntime = {
     readonly showLocalChatMessage: (message: string) => void;
+    readonly despawnLocalPlayer: () => Promise<void>;
 };
 
 type NamedPlayer = {
@@ -124,6 +125,8 @@ export function startGame(
     let tttGame: TTT_Game | null = null;
     let rpsGame: RPS_Game | null = null;
     let activeTTTPlayers: ActiveTTTPlayers | null = null;
+    let isLocalPlayerDespawning = false;
+    let localPlayerDespawnPromise: Promise<void> | null = null;
     const knownPlayerNicknames = new Map<string, string>();
 
     socket.on('connect', () => {
@@ -663,6 +666,33 @@ export function startGame(
         key: [0, 0] as [number, number],
     };
 
+    function despawnLocalPlayer(): Promise<void> {
+        if (localPlayerDespawnPromise) {
+            return localPlayerDespawnPromise;
+        }
+
+        isLocalPlayerDespawning = true;
+        controls.key[0] = 0;
+        controls.key[1] = 0;
+        for (const code of Object.keys(keyStates)) {
+            keyStates[code] = false;
+        }
+
+        localPlayerDespawnPromise = (async () => {
+            try {
+                if (player) {
+                    player.controls.key = controls.key;
+                    await player.animateDeSpawn();
+                }
+            } finally {
+                socket.disconnect();
+                renderer.setAnimationLoop(null);
+            }
+        })();
+
+        return localPlayerDespawnPromise;
+    }
+
     const worldOctree = new Octree();
     //const octreeDelete = new Octree();
     //const OctreeSpawn = new Octree();
@@ -1170,6 +1200,8 @@ export function startGame(
     }
 
     function onClick(event: MouseEvent): void {
+        if (isLocalPlayerDespawning) return;
+
         const mousePosition = getTTTField(event);
 
         const raycaster = new THREE.Raycaster();
@@ -1213,7 +1245,7 @@ export function startGame(
     }
 
     function onKeyDown(event: KeyboardEvent) {
-        if (!player) return;
+        if (!player || isLocalPlayerDespawning) return;
 
         keyStates[event.code] = true;
         const key: [number, number] = controls.key;
@@ -1241,7 +1273,7 @@ export function startGame(
     }
 
     function onKeyUp(event: KeyboardEvent) {
-        if (!player) return;
+        if (!player || isLocalPlayerDespawning) return;
 
         keyStates[event.code] = false;
         const key: [number, number] = controls.key;
@@ -1365,7 +1397,9 @@ export function startGame(
             );
         }
 
-        rpsGame.updateCheck();
+        if (!isLocalPlayerDespawning) {
+            rpsGame.updateCheck();
+        }
 
         for (const [_id, player] of npcs) {
             void _id;
@@ -1373,9 +1407,12 @@ export function startGame(
         }
     }
 
+    function showLocalChatMessage(message: string): void {
+        player?.showChatMessage(message);
+    }
+
     return {
-        showLocalChatMessage(message: string): void {
-            player?.showChatMessage(message);
-        },
+        showLocalChatMessage,
+        despawnLocalPlayer,
     };
 }
