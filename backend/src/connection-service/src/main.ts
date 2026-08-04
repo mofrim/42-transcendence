@@ -30,6 +30,9 @@ const io = new Server(server, {
 
 const gameManager = new GameManager();
 
+// TODO add event logging to all loggable socket-events like chat-msg,
+// player_connect, etc.
+
 io.on('connection', (socket) => {
     const character = socket.handshake.auth['character'];
     const nickname = socket.handshake.auth['nickname'];
