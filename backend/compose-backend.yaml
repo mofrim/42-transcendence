@@ -22,8 +22,9 @@ services:
   postgres:
     container_name: ftr-postgres
     image: postgres:latest
-    ports:
-      - 5432:5432
+    # DONT expose the postgres port to the host it is not needed
+    # ports:
+    #   - 5432:5432
     environment:
         POSTGRES_USER: postgres
         POSTGRES_PASSWORD: postgres
@@ -70,4 +71,3 @@ configs:
 networks:
   ftr-net:
     driver: bridge
-
