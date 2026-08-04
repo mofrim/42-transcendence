@@ -28,11 +28,12 @@ services:
     build:
       context: ..
       dockerfile: ./backend/src/auth-service/Dockerfile
+    env_file: ../dev.env
     depends_on:
       postgres:
-        condition: service_started
+        condition: service_healthy
     ports:
-        - "${AUTH_SERVICE_PORT}:${AUTH_SERVICE_PORT}"
+        - 3001:3001
     networks:
       - ftr-net
 
