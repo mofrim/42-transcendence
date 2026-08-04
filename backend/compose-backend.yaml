@@ -13,7 +13,7 @@ services:
     image: ftr-conn-service
     build:
       context: ..
-      dockerfile: ./backend/src/connection-service/Dockerfile
+      dockerfile: ./backend/src/conn-service/Dockerfile
     depends_on:
       auth-service:
         condition: service_started

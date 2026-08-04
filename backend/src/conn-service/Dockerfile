@@ -5,16 +5,16 @@ WORKDIR /app
 
 COPY package.json package-lock.json ./
 COPY backend/package.json backend/package.json
-COPY backend/src/connection-service/package.json backend/src/connection-service/package.json
+COPY backend/src/conn-service/package.json backend/src/conn-service/package.json
 COPY common/package.json common/package.json
 
 RUN npm ci
 
 COPY common ./common
 COPY backend/tsconfig.base.json backend/tsconfig.json ./backend/
-COPY backend/src/connection-service ./backend/src/connection-service
+COPY backend/src/conn-service ./backend/src/conn-service
 
-RUN npm run build -w common && npm run build -w backend
+RUN npm run build -w common && npm run build -w backend && npm run build -w backend/src/conn-service
 
 # --------------------------=[ serve app with node ]=------------------------ #
 
@@ -27,11 +27,11 @@ COPY backend/package.json backend/package.json
 COPY common/package.json common/package.json
 
 # only production deps in the final image
-RUN npm ci --omit=dev --workspace=backend --workspace=common
+RUN npm ci --omit=dev -w backend -w common -w backend/src/conn-service
 
 COPY --from=builder /app/backend/dist ./backend/dist
 COPY --from=builder /app/common/dist ./common/dist
 
 WORKDIR /app/backend
 
-CMD ["node", "dist/connection-service/src/main.js"]
+CMD ["node", "dist/conn-service/src/main.js"]

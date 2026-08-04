@@ -3,6 +3,8 @@
     "private": true,
     "workspaces": [
         "backend",
+        "backend/src/conn-service",
+        "backend/src/auth-service",
         "frontend",
         "common"
     ],
