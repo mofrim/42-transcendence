@@ -33,8 +33,10 @@ app.use(cookieParser());
 
 const DB = new DataSource({
     type: 'postgres',
-    // host: process.env['DB_HOST'] || 'localhost',
-    host: 'localhost',
+    host:
+        process.env['NODE_ENV'] === 'production'
+            ? process.env['DB_HOST'] || 'localhost'
+            : 'localhost',
     port: Number(process.env['DB_PORT']) || 5432,
     username: process.env['DB_USER'] || 'postgres',
     password: process.env['DB_PASSWD'] || 'postgres',
