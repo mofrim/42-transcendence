@@ -12,6 +12,7 @@ import { DataSource } from 'typeorm';
 import { exit } from 'node:process';
 import { ORMUser } from './orm_types.ts';
 import cookieParser from 'cookie-parser';
+import { setupDefaultUsers } from './defaultUserSetup.ts';
 
 // load env vars from global dotenv...
 // this path is correct if ran from backend/src/auth-service dir
@@ -24,7 +25,7 @@ const SECRET_KEY = process.env['JWT_SECRET'] || 'FooBarBaz';
 const PORT = Number(process.env['AUTH_SERVICE_PORT']) || 3001;
 const app: Express = express();
 
-app.use(cors());
+app.use(cors( { credentials: true }));
 app.use(express.json());
 app.use(cookieParser());
 
@@ -32,7 +33,8 @@ app.use(cookieParser());
 
 const DB = new DataSource({
     type: 'postgres',
-    host: process.env['DB_HOST'] || 'localhost',
+    // host: process.env['DB_HOST'] || 'localhost',
+    host: 'localhost',
     port: Number(process.env['DB_PORT']) || 5432,
     username: process.env['DB_USER'] || 'postgres',
     password: process.env['DB_PASSWD'] || 'postgres',
@@ -52,30 +54,32 @@ try {
 
 // ---------------------------=[ add test user ]=--------------------------- //
 
-try {
-    const defaultUser1 = new ORMUser({
-        firstName: 'test',
-        lastName: 'user',
-        nickname: 'testy',
-        email: 'test@test.de',
-        character: true,
-        hashedPw: bcrypt.hashSync('testpw', 10),
-    });
-    const savedUser: ORMUser = await DB.manager.save(defaultUser1);
-    console.log('default user created successfully: ', savedUser);
-} catch (error) {
-    if (error instanceof Error) {
-        if (error.message.includes('duplicate')) {
-            console.warn('test user already created!');
-        } else {
-            console.error(`type of error: ${error.name}`);
-            exit(1);
-        }
-    } else {
-        console.error('Unknown error occurred:', error);
-        exit(1);
-    }
-}
+// try {
+//     const defaultUser1 = new ORMUser({
+//         firstName: 'test',
+//         lastName: 'user',
+//         nickname: 'testy',
+//         email: 'test@test.de',
+//         character: true,
+//         hashedPw: bcrypt.hashSync('testpw', 10),
+//     });
+//     const savedUser: ORMUser = await DB.manager.save(defaultUser1);
+//     console.log('default user created successfully: ', savedUser);
+// } catch (error) {
+//     if (error instanceof Error) {
+//         if (error.message.includes('duplicate')) {
+//             console.warn('test user already created!');
+//         } else {
+//             console.error(`type of error: ${error.name}`);
+//             exit(1);
+//         }
+//     } else {
+//         console.error('Unknown error occurred:', error);
+//         exit(1);
+//     }
+// }
+
+setupDefaultUsers(DB);
 
 // -----------------------=[ define login endpoint ]=----------------------- //
 
@@ -114,8 +118,18 @@ app.post('/login', async (req: Request, res: Response): Promise<void> => {
 
         res.cookie('token', token, {
             httpOnly: true,
-            secure: process.env['NODE_ENV'] === 'production',
-            // sameSite: 'strict',
+
+            // TODO this would be more correctly for HTTPS only mode when when
+            // our SSL setup is finally up and running in docker containers:
+            //
+            //  secure: process.env['NODE_ENV'] === 'production',
+            secure: false,
+
+            // TODO possibly even use this one day
+            //
+            //  sameSite: 'strict',
+            //
+            //  for now go with:
             sameSite: 'lax',
             maxAge: 24 * 60 * 60 * 1000,
         });
@@ -132,8 +146,9 @@ app.post('/logout', (req, res) => {
     void req;
     res.clearCookie('token', {
         httpOnly: true,
-        secure: process.env['NODE_ENV'] === 'production',
-        sameSite: 'strict',
+        // TODO see above for notes on the follwing 2!
+        secure: false,
+        sameSite: 'lax',
     });
     res.json({ success: true });
 });
