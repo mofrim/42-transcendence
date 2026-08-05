@@ -1,6 +1,6 @@
 # --------------------------------=[ builder ]=------------------------------- #
 
-FROM node:22-slim AS builder
+FROM node:24-slim AS builder
 WORKDIR /app
 
 COPY package.json package-lock.json ./
@@ -18,7 +18,7 @@ RUN npm run build -w common && npm run build -w backend && npm run build -w back
 
 # --------------------------=[ serve app with node ]=------------------------ #
 
-FROM node:22-slim AS runtime
+FROM node:24-slim AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
 
