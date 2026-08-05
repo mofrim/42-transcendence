@@ -1,3 +1,9 @@
+// FIXME the whole nickname setting logic has to be adopted now as we can access
+// the real user-data from db via the backend using useAuth now
+// Most of the nickname setting logic in here seems obsolete now
+
+import { useAuth } from '../../hooks/useAuthContext';
+
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useLoginContext } from '../../hooks/useLoginContext';
 import { startGame } from '../../game/main';
@@ -61,6 +67,7 @@ export const Game = () => {
     const [nickname, setNickname] = useState(DEFAULT_PLAYER_NICKNAME);
     const [events, setEvents] = useState<EventLogEntry[]>([]);
     const [completedQuestIds, setCompletedQuestIds] = useState<string[]>([]);
+    const { user } = useAuth();
 
     const appendEvent = useCallback((description: string): void => {
         const now = new Date();
@@ -168,7 +175,11 @@ export const Game = () => {
         <>
             <div ref={mountRef} style={{ width: '100vw', height: '100vh' }} />
             <GameUI
-                nickname={nickname}
+                // NOTE now we can just use the users nickname from DB here..
+                // this might change when we want to allow change user-prefs
+                // from a in-game ui
+                nickname={user!.nickname}
+
                 completedQuestIds={completedQuestIds}
                 events={events}
                 onChatMessage={handleChatMessage}

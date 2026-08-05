@@ -161,6 +161,11 @@ body {
   display: none;
 }
 
+/* make antd messages appear above everything */
+.ant-message {
+  z-index: 20000;
+}
+
 /* LOGIN CONTAINER */
 #login-ui {
   position: absolute;
