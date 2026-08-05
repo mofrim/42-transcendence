@@ -34,4 +34,3 @@ COPY --from=builder /app/backend/dist ./backend/dist
 COPY --from=builder /app/common/dist ./common/dist
 
 CMD ["node", "backend/dist/auth-service/src/main.js"]
-# CMD ["tail", "-f"]
