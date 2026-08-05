@@ -61,4 +61,11 @@ dock-frontend:
 	cd frontend && $(DOCKER) compose -f compose-frontend.yaml up --build
 	$(call log_msg_end,Done.)
 
+# launch all backend services and the db for dev. might be handy during dev
+backend-dev:
+	$(call log_msg_start,Launching launching all backend for dev...)
+	cd backend && $(DOCKER) compose -f compose-db.yaml up -d && npm run dev:all
+	$(call log_msg_end,Done.)
+
+
 .phony: all dock-clean dock-fclean dock-backend dock-frontend
