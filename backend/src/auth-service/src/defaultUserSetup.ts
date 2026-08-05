@@ -14,9 +14,9 @@ const defaultUsers = [
     },
     {
         firstName: 'Anatolij',
-        lastName: 'Anatolij',
+        lastName: 'Semykin',
         nickname: 'alice',
-        email: 'anatolij@42.fr',
+        email: 'alice@example.com',
         character: true,
         hashedPw: bcrypt.hashSync('Anatolij', 10),
     },
