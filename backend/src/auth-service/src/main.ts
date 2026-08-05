@@ -1,5 +1,5 @@
-// FIXME seems like we don't need this anymore...
-// https://www.npmjs.com/package/reflect-metadata
+// FIXME seems like we don't need this anymore... but i could not yet figure out
+// how -> https://www.npmjs.com/package/reflect-metadata
 import 'reflect-metadata';
 
 import express from 'express';
@@ -54,32 +54,7 @@ try {
     exit(1);
 }
 
-// ---------------------------=[ add test user ]=--------------------------- //
-
-// try {
-//     const defaultUser1 = new ORMUser({
-//         firstName: 'test',
-//         lastName: 'user',
-//         nickname: 'testy',
-//         email: 'test@test.de',
-//         character: true,
-//         hashedPw: bcrypt.hashSync('testpw', 10),
-//     });
-//     const savedUser: ORMUser = await DB.manager.save(defaultUser1);
-//     console.log('default user created successfully: ', savedUser);
-// } catch (error) {
-//     if (error instanceof Error) {
-//         if (error.message.includes('duplicate')) {
-//             console.warn('test user already created!');
-//         } else {
-//             console.error(`type of error: ${error.name}`);
-//             exit(1);
-//         }
-//     } else {
-//         console.error('Unknown error occurred:', error);
-//         exit(1);
-//     }
-// }
+// -------------------=[ add us + testy as users to DB ]=-------------------- //
 
 setupDefaultUsers(DB);
 
