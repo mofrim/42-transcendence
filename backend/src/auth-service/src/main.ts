@@ -25,7 +25,7 @@ const SECRET_KEY = process.env['JWT_SECRET'] || 'FooBarBaz';
 const PORT = Number(process.env['AUTH_SERVICE_PORT']) || 3001;
 const app: Express = express();
 
-app.use(cors( { credentials: true }));
+app.use(cors({ credentials: true }));
 app.use(express.json());
 app.use(cookieParser());
 
