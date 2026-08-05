@@ -2,7 +2,7 @@
     "extends": "../../tsconfig.base.json",
     "compilerOptions": {
         "rootDir": "./src",
-        "outDir": "../../dist/connection-service"
+        "outDir": "../../dist/conn-service"
     },
     "include": ["./src/**/*.ts"]
 }
