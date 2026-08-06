@@ -1,6 +1,6 @@
 import React from 'react';
 import { UserInfo } from './ui/login/UserInfo';
-import { LoginForm } from './ui/login/LoginForm';
+import { AuthCard } from './ui/login/AuthCard';
 import { CharacterPreview } from './ui/login/CharacterPreview';
 import { MapPreview } from './ui/login/MapPreview';
 import { PlayerSelect } from './ui/login/PlayerSelect';
@@ -39,7 +39,7 @@ const App: React.FC<AppProps> = (props: AppProps) => {
                 <MapPreview />
                 <div id='login-ui'>
                     <div className='login-title'>{props.title}</div>
-                    <LoginForm />
+                    <AuthCard />
                 </div>
             </>
         );
