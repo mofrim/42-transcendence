@@ -8,7 +8,9 @@ import { useAuth } from '../../hooks/useAuthContext';
 interface LoginFormProps {
     onSwitchToRegister: () => void;
 }
-const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister }: LoginFormProps) => {
+const LoginForm: React.FC<LoginFormProps> = ({
+    onSwitchToRegister,
+}: LoginFormProps) => {
     // TODO this could be the state var for displaying a spinner or so..
     // not really used so far but maybe later. if not -> remove
     const [loading, setLoading] = useState(false);
@@ -115,7 +117,13 @@ interface RegisterFormProps {
 }
 
 function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
-    const onFinish = async (values: { firstName: string; lastName: string; nickname: string; email: string; password: string }) => {
+    const onFinish = async (values: {
+        firstName: string;
+        lastName: string;
+        nickname: string;
+        email: string;
+        password: string;
+    }) => {
         // TODO add user-creation logic here! needs the working user-sercice in
         // backend
         message.info(`(TODO) user registered: ${JSON.stringify(values)}`);
@@ -221,4 +229,4 @@ export const AuthCard: React.FC = () => {
     ) : (
         <RegisterForm onSwitchToLogin={() => setMode('login')} />
     );
-}
+};
