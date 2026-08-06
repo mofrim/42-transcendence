@@ -14,7 +14,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     ): Promise<boolean> => {
         try {
             await axios.post(
-                '/login',
+                '/api/login',
                 { nickname, password },
                 {
                     withCredentials: true,
@@ -36,7 +36,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     const logout = async () => {
         try {
             await axios.post(
-                '/logout',
+                '/api/logout',
                 {},
                 {
                     withCredentials: true,

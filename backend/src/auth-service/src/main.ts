@@ -60,7 +60,7 @@ setupDefaultUsers(DB);
 
 // -----------------------=[ define login endpoint ]=----------------------- //
 
-app.post('/login', async (req: Request, res: Response): Promise<void> => {
+app.post('/api/login', async (req: Request, res: Response): Promise<void> => {
     console.log(`body: ${JSON.stringify(req.body, null, 2)}`);
 
     const { nickname, password } = req.body;
@@ -119,7 +119,7 @@ app.post('/login', async (req: Request, res: Response): Promise<void> => {
 });
 
 // clear the cookie endpoint
-app.post('/logout', (req, res) => {
+app.post('/api/logout', (req, res) => {
     void req;
     res.clearCookie('token', {
         httpOnly: true,
@@ -178,7 +178,8 @@ const authenticate = (req: Request, res: Response, next: NextFunction) => {
     }
 };
 
-app.get('/protected', authenticate, (req: Request, res: Response) => {
+// FIXME this is only a demo endpoint. remove it before submission
+app.get('/api/protected', authenticate, (req: Request, res: Response) => {
     const nickname = req.user!.nickname;
     res.json({ msg: `hello ${nickname}!` });
 });

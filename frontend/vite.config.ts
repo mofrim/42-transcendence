@@ -6,17 +6,22 @@ export default defineConfig({
     plugins: [react()],
     server: {
         proxy: {
-            '/login': {
+            '/api/login': {
                 target: 'http://localhost:3001',
                 changeOrigin: true,
                 // rewrite: (path) => path.replace(/^\/api\/auth/, ''),
+            },
+            '/api/logout': {
+                target: 'http://localhost:3001',
+                changeOrigin: true,
+                // rewrite: (path) => path.replace(/^\/api\/users/, ''),
             },
             '/api/user': {
                 target: 'http://localhost:3001',
                 changeOrigin: true,
                 // rewrite: (path) => path.replace(/^\/api\/users/, ''),
             },
-            '/logout': {
+            '/api/protected': {
                 target: 'http://localhost:3001',
                 changeOrigin: true,
                 // rewrite: (path) => path.replace(/^\/api\/users/, ''),
