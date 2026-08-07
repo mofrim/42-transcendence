@@ -1,5 +1,8 @@
 import { useLoginContext } from '../../hooks/useLoginContext';
 
+// TODO completely move this to in-game ui or, when user-service is ready make
+// this edit the settings stored in database
+
 export const PlayerSelect: React.FC = () => {
     const { avatar, setAvatar } = useLoginContext();
 

@@ -16,14 +16,12 @@ services:
     image: ftr-frontend
     build:
       context: ..
-      dockerfile: Dockerfile.frontend
+      dockerfile: ./frontend/Dockerfile
     depends_on:
-      backend:
+      conn-service:
         condition: service_started
     ports:
       - "1111:1111"
-    volumes:
-      - ./frontend:/app
     networks:
       - ftr-net
 

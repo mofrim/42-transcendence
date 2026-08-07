@@ -1,0 +1,16 @@
+{
+    "name": "connection-service",
+    "description": "ft_transcendence connection-service",
+    "private": true,
+    "version": "0.0.0",
+    "type": "module",
+    "scripts": {
+        "dev": "NODE_ENV=development tsx watch src/main.ts",
+        "build": "tsc -b",
+        "type-check": "tsc -b ../../../common/tsconfig.json && tsc --noEmit",
+        "type-check:watch": "tsc -b ../../../common/tsconfig.json && tsc --noEmit --watch",
+        "lint": "eslint .",
+        "lint-fix": "eslint . --fix",
+        "start": "NODE_ENV=production tsx src/main.ts"
+    }
+}

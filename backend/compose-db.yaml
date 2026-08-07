@@ -1,0 +1,62 @@
+# set the project name. doing this in all sub-compose-files will make `docker
+# compose up --build` recognize the containers as belonging to the same proj
+# which will avoid the `name already in use` error.
+name: ft_transcendence
+
+services:
+
+  postgres:
+    container_name: ftr-postgres
+    image: postgres:latest
+    environment:
+        POSTGRES_USER: postgres
+        POSTGRES_PASSWORD: postgres
+        POSTGRES_DB: postgres
+    healthcheck:
+        test: pg_isready -U postgres -d postgres
+        interval: 10s
+        timeout: 5s
+        retries: 3
+        start_period: 5s
+    networks:
+      - ftr-net
+
+  pgadmin:
+    container_name: ftr-pgadmin
+    image: dpage/pgadmin4:latest
+    depends_on:
+      postgres:
+        condition: service_started
+    configs:
+      - source: pgadmin_servers.json
+        target: /pgadmin4/servers.json
+    environment:
+      PGADMIN_DEFAULT_EMAIL: dev@ftr.com
+      PGADMIN_DEFAULT_PASSWORD: password
+      PGADMIN_SERVER_JSON_FILE: /pgadmin4/servers.json
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+    ports:
+      - 80:80
+    networks:
+      - ftr-net
+
+configs:
+  pgadmin_servers.json:
+    content: |
+      {
+        "Servers": {
+          "1": {
+            "Name": "local",
+            "Group": "Servers",
+            "Port": 5432,
+            "Username": "postgres",
+            "Host": "postgres",
+            "SSLMode": "prefer",
+            "MaintenanceDB": "postgres"
+          }
+        }
+      }
+
+networks:
+  ftr-net:
+    driver: bridge

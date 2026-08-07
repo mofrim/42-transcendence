@@ -1,12 +1,14 @@
 import React from 'react';
-import { AuthInputs } from './ui/login/Auth';
-import { ServerSettings } from './ui/login/ServerSettings';
+import { UserInfo } from './ui/login/UserInfo';
+import { AuthCard } from './ui/login/AuthCard';
 import { CharacterPreview } from './ui/login/CharacterPreview';
 import { MapPreview } from './ui/login/MapPreview';
 import { PlayerSelect } from './ui/login/PlayerSelect';
 import { StartButton, Game } from './ui/login/StartGame';
 import { Agreements } from './ui/login/Agreements';
 import { useLoginContext } from './hooks/useLoginContext';
+import { useAuth } from './hooks/useAuthContext';
+import axios from 'axios';
 
 import './App.css';
 
@@ -16,12 +18,31 @@ type AppProps = {
     // version: string;
 };
 
+// make axios send credentials cookies per default for the whole app!
+axios.defaults.withCredentials = true;
+
 const App: React.FC<AppProps> = (props: AppProps) => {
     const { gameRunning } = useLoginContext();
+    const { user } = useAuth();
 
     if (gameRunning) {
         console.log('game running');
         return <Game />;
+    }
+
+    // user has not logged in yet -> display only login form
+    // TODO extend with registration possibility
+    // TODO either put agreemnents here or in the next view
+    if (user == null) {
+        return (
+            <>
+                <MapPreview />
+                <div id='login-ui'>
+                    <div className='login-title'>{props.title}</div>
+                    <AuthCard />
+                </div>
+            </>
+        );
     }
 
     return (
@@ -29,15 +50,10 @@ const App: React.FC<AppProps> = (props: AppProps) => {
             <MapPreview />
             <div id='login-ui'>
                 <div className='login-title'>{props.title}</div>
-                <div className='login-subtitle'>
-                    {props.subtitle}
-                    {/* <br /> */}
-                    {/* {props.version} */}
-                </div>
-                <AuthInputs />
+                <div className='login-subtitle'>{props.subtitle}</div>
+                <UserInfo />
                 <PlayerSelect />
                 <CharacterPreview />
-                <ServerSettings />
                 <Agreements />
                 <StartButton />
             </div>

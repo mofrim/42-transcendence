@@ -1,7 +1,11 @@
+import express from 'express';
+import cors from 'cors';
+import type { Express } from 'express';
 import http from 'http';
 import { Server } from 'socket.io';
 import type { Socket } from 'socket.io';
 import { GameManager } from './gameManager.ts';
+
 import type {
     RPSBattleChoicePayload,
     RPSRequestDataPayload,
@@ -11,45 +15,52 @@ import type {
 
 import { TTTGameState, TTTMark } from '@common/types';
 
-const server = http.createServer();
-const gameManager = new GameManager();
+const PORT = 3000;
+const app: Express = express();
+
+app.use(cors());
+
+const server: http.Server = app.listen(PORT, (): void => {
+    console.log(`listening on port: ${PORT}`);
+});
 
 const io = new Server(server, {
     cors: { origin: '*' },
 });
 
-/* function normalizeCharacter(character: boolean): Character {
-    if (typeof character === 'string') {
-        const normalizedCharacter = character.toLowerCase();
-        return normalizedCharacter !== 'false' && normalizedCharacter !== 'female';
-    }
+const gameManager = new GameManager();
 
-    return character !== false;
-} */
+// TODO add event logging to all loggable socket-events like chat-msg,
+// player_connect, etc.
 
 io.on('connection', (socket) => {
-    //const character = normalizeCharacter(socket.handshake.auth?.character);
     const character = socket.handshake.auth['character'];
     const nickname = socket.handshake.auth['nickname'];
+
+    // if required data was not given disconnect client again
+    if (character == null || nickname == null) {
+        console.log(
+            `disconnecting client: ${JSON.stringify(socket.conn.remoteAddress)}`
+        );
+        socket.disconnect(true);
+        return;
+    }
+
     socket.data.character = character;
 
-    //console.log('Character IS:', character);
-
-    console.log('Client connected:', socket.id);
-    gameManager.players.set(
-        socket.id,
-        gameManager.createPlayer(
-            socket.id,
-            // Übernimmt den Login-Nickname aus dem Socket.IO-Handshake in die serverseitigen PlayerData.
-            nickname
-        )
-    );
-
-    // notify others
+    // the only other action preformed currently by the backend apart from
+    // handling ttt and rps game
     socket.broadcast.emit('player_connected', {
         id: socket.id,
         character,
+        nickname,
     });
+    console.log('Client connected:', socket.id);
+
+    gameManager.players.set(
+        socket.id,
+        gameManager.createPlayer(socket.id, nickname)
+    );
 
     // send initial data to the connected client
     socket.emit('initData', gameManager.getMapData());
@@ -87,7 +98,6 @@ io.on('connection', (socket) => {
     });
 
     socket.on('update', (data) => {
-        //console.log("Server datatype: " + data.type);
         switch (data.type) {
             case 'player_update':
                 handlePlayerUpdate(socket, data);
@@ -95,17 +105,6 @@ io.on('connection', (socket) => {
 
             case 'ttt_mark':
                 handleTTTMark(socket, data);
-                /* socket.broadcast.emit('update', {
-                    type: 'player_update',
-                    id: socket.id,
-                    x: data.x,
-                    y: data.y,
-                    z: data.z,
-                    state: data.state,
-                    character: normalizeCharacter(
-                        data.character ?? socket.data.character
-                    ),
-                }); */
                 break;
 
             case 'ttt_update':
@@ -146,166 +145,9 @@ io.on('connection', (socket) => {
     });
 });
 
-function handleGameReset(socket: Socket) {
-    playerGameReset(socket.id);
-}
+// -----------------=[ helper functions for game management ]=--------------- //
 
-function playerGameReset(playerID: string) {
-    const player = gameManager.players.get(playerID);
-
-    if (!player) return;
-
-    const gameID = player.gameID;
-
-    if (!gameID) return;
-
-    const rpsGame = gameManager.rpsGame.get(gameID);
-
-    if (!rpsGame) return;
-
-    gameManager.removeRPSGame(gameID);
-}
-
-function handleRPSInvalid(socket: Socket) {
-    const player = gameManager.players.get(socket.id);
-
-    if (!player) return;
-
-    const gameID = player.gameID;
-
-    if (!gameID) return;
-
-    const rpsGame = gameManager.rpsGame.get(gameID);
-
-    if (!rpsGame) return;
-
-    const playerOne = rpsGame.playerOne;
-    const playerTwo = rpsGame.playerTwo;
-
-    io.emit('update', {
-        type: 'rps_invalid',
-        playerOne: playerOne,
-        playerTwo: playerTwo,
-    });
-
-    //gameManager.removeRPSGame(gameID);
-}
-
-function handleRPSChoice(socket: Socket, data: RPSBattleChoicePayload): void {
-    const result = gameManager.rpsChoice({
-        ...data,
-        id: socket.id,
-    });
-
-    if (!result || result == 0) {
-        console.log('RPS choice failed for player: ' + socket.id);
-        return;
-    }
-
-    const player = gameManager.players.get(socket.id);
-
-    if (!player) return;
-
-    const gameID = player.gameID;
-
-    if (!gameID) return;
-
-    const gameResultCheck = gameManager.verifyRPSGame(gameID);
-
-    if (!gameResultCheck) return;
-
-    if (gameResultCheck < 2 || gameResultCheck > 4) return;
-
-    const rpsGame = gameManager.rpsGame.get(gameID);
-
-    if (!rpsGame) return;
-
-    const PlayerOne = rpsGame.playerOne;
-    const PlayerTwo = rpsGame.playerTwo;
-
-    // FIXME what about this code?
-    /* if(gameResultCheck == 1){
-      gameResult = gameManager.resultInvalid(PlayerOne, PlayerTwo);
-
-      io.emit("update", {
-        type: "rps_invalid",
-        playerOne: gameResult.playerOne,
-        playerTwo: gameResult.playerTwo,
-      });
-
-    } */
-
-    if (gameResultCheck == 2) {
-        const { playerOne, playerTwo, choice } = gameManager.resultDraw(
-            PlayerOne,
-            PlayerTwo,
-            rpsGame.playerOneChoice
-        );
-
-        io.emit('update', {
-            type: 'rps_draw',
-            playerOne: playerOne,
-            playerTwo: playerTwo,
-            choice: choice,
-        });
-    } else {
-        const { winner, winnerChoice, loser, loserChoice } =
-            gameManager.resultWinner(
-                PlayerOne,
-                rpsGame.playerOneChoice,
-                PlayerTwo,
-                rpsGame.playerTwoChoice
-            );
-
-        io.emit('update', {
-            type: 'rps_winner',
-            winner: winner,
-            winnerChoice: winnerChoice,
-            loser: loser,
-            loserChoice: loserChoice,
-        });
-    }
-
-    //console.log("RPS Game ended. GameID: " + gameID + " PlayerOne: " +
-    //PlayerOne + " PlayerTwo: " + PlayerTwo);
-
-    //gameManager.removeRPSGame(gameID);
-}
-
-function handleRPSAccept(socket: Socket, data: RPSRequestDataPayload) {
-    const result = gameManager.rpsAccept({
-        ...data,
-        id: socket.id,
-    });
-
-    if (result == 0) return;
-
-    socket.broadcast.emit('update', {
-        type: 'rps_accept',
-        id: socket.id,
-        requestedPlayerID: data.requestedPlayerID,
-    });
-
-    /* console.log("START");
-    wait(2500).then(() => {
-      console.log("END");
-    }); */
-}
-
-function handleRPSDecline(socket: Socket, data: RPSRequestDataPayload) {
-    const result = gameManager.rpsDeclined({
-        ...data,
-        id: socket.id,
-    });
-
-    if (result == 0) return;
-
-    socket.broadcast.emit('update', {
-        type: 'rps_decline',
-        id: socket.id,
-        requestedPlayerID: data.requestedPlayerID,
-    });
-}
+// TODO refactor this and move all helper-functions into gameManager class.
 
 function handleRPSRequest(socket: Socket, data: RPSRequestDataPayload) {
     //console.log("RPS REQUEST");
@@ -521,6 +363,162 @@ function handleTTTMark(socket: Socket, data: TTTMarkPayload) {
     }
 }
 
-server.listen(3000, () => {
-    console.log('Server listening on port 3000');
-});
+function playerGameReset(playerID: string) {
+    const player = gameManager.players.get(playerID);
+
+    if (!player) return;
+
+    const gameID = player.gameID;
+
+    if (!gameID) return;
+
+    const rpsGame = gameManager.rpsGame.get(gameID);
+
+    if (!rpsGame) return;
+
+    gameManager.removeRPSGame(gameID);
+}
+
+function handleGameReset(socket: Socket) {
+    playerGameReset(socket.id);
+}
+
+function handleRPSInvalid(socket: Socket) {
+    const player = gameManager.players.get(socket.id);
+
+    if (!player) return;
+
+    const gameID = player.gameID;
+
+    if (!gameID) return;
+
+    const rpsGame = gameManager.rpsGame.get(gameID);
+
+    if (!rpsGame) return;
+
+    const playerOne = rpsGame.playerOne;
+    const playerTwo = rpsGame.playerTwo;
+
+    io.emit('update', {
+        type: 'rps_invalid',
+        playerOne: playerOne,
+        playerTwo: playerTwo,
+    });
+    //gameManager.removeRPSGame(gameID);
+}
+
+function handleRPSChoice(socket: Socket, data: RPSBattleChoicePayload): void {
+    const result = gameManager.rpsChoice({
+        ...data,
+        id: socket.id,
+    });
+
+    if (!result || result == 0) {
+        console.log('RPS choice failed for player: ' + socket.id);
+        return;
+    }
+
+    const player = gameManager.players.get(socket.id);
+
+    if (!player) return;
+
+    const gameID = player.gameID;
+
+    if (!gameID) return;
+
+    const gameResultCheck = gameManager.verifyRPSGame(gameID);
+
+    if (!gameResultCheck) return;
+
+    if (gameResultCheck < 2 || gameResultCheck > 4) return;
+
+    const rpsGame = gameManager.rpsGame.get(gameID);
+
+    if (!rpsGame) return;
+
+    const PlayerOne = rpsGame.playerOne;
+    const PlayerTwo = rpsGame.playerTwo;
+
+    // FIXME what about this code?
+    /* if(gameResultCheck == 1){
+      gameResult = gameManager.resultInvalid(PlayerOne, PlayerTwo);
+
+      io.emit("update", {
+        type: "rps_invalid",
+        playerOne: gameResult.playerOne,
+        playerTwo: gameResult.playerTwo,
+      });
+
+    } */
+
+    if (gameResultCheck == 2) {
+        const { playerOne, playerTwo, choice } = gameManager.resultDraw(
+            PlayerOne,
+            PlayerTwo,
+            rpsGame.playerOneChoice
+        );
+
+        io.emit('update', {
+            type: 'rps_draw',
+            playerOne: playerOne,
+            playerTwo: playerTwo,
+            choice: choice,
+        });
+    } else {
+        const { winner, winnerChoice, loser, loserChoice } =
+            gameManager.resultWinner(
+                PlayerOne,
+                rpsGame.playerOneChoice,
+                PlayerTwo,
+                rpsGame.playerTwoChoice
+            );
+
+        io.emit('update', {
+            type: 'rps_winner',
+            winner: winner,
+            winnerChoice: winnerChoice,
+            loser: loser,
+            loserChoice: loserChoice,
+        });
+    }
+
+    //console.log("RPS Game ended. GameID: " + gameID + " PlayerOne: " +
+    //PlayerOne + " PlayerTwo: " + PlayerTwo);
+
+    //gameManager.removeRPSGame(gameID);
+}
+
+function handleRPSAccept(socket: Socket, data: RPSRequestDataPayload) {
+    const result = gameManager.rpsAccept({
+        ...data,
+        id: socket.id,
+    });
+
+    if (result == 0) return;
+
+    socket.broadcast.emit('update', {
+        type: 'rps_accept',
+        id: socket.id,
+        requestedPlayerID: data.requestedPlayerID,
+    });
+
+    /* console.log("START");
+    wait(2500).then(() => {
+      console.log("END");
+    }); */
+}
+
+function handleRPSDecline(socket: Socket, data: RPSRequestDataPayload) {
+    const result = gameManager.rpsDeclined({
+        ...data,
+        id: socket.id,
+    });
+
+    if (result == 0) return;
+
+    socket.broadcast.emit('update', {
+        type: 'rps_decline',
+        id: socket.id,
+        requestedPlayerID: data.requestedPlayerID,
+    });
+}
