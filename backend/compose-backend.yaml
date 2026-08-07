@@ -17,8 +17,6 @@ services:
     depends_on:
       auth-service:
         condition: service_started
-    ports:
-      - 3000:3000
     networks:
       - ftr-net
 
@@ -32,8 +30,6 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    ports:
-        - 3001:3001
     networks:
       - ftr-net
 
