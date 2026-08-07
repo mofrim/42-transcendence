@@ -67,5 +67,4 @@ backend-dev:
 	cd backend && $(DOCKER) compose -f compose-db.yaml up -d && npm run dev:all
 	$(call log_msg_end,Done.)
 
-
 .phony: all dock-clean dock-fclean dock-backend dock-frontend
