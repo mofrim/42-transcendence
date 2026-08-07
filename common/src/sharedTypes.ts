@@ -4,12 +4,21 @@ import * as THREE from "three";
 
 // -------------------=[ database backend related types ]=------------------- //
 
+
 export enum EventType {
+    PlayerJoined = 'PlayerJoined',
+    PlayerLeft = 'PlayerLeft',
+    GameResult = 'GameResult',
     ChatMsg = 'ChatMsg',
-    PlayerConnect = 'PlayerConnect',
+    QuestProgress = 'QuestProgress',
+    Blackholed = 'Blackholed',
+    NickChange = 'NickChange',
+    CharChange = 'CharChange'
 }
 
-// TODO eventId, userId (foreign relation), eventType (class), data (chat msg, playerID)
+// TODO eventId, userId (foreign relation), eventType (class), data (chat msg,
+// playerID)
+// This will be the foundation for a new table in `eventlog-service`
 export abstract class BaseEventLog {
     abstract id: number;
     abstract eventType: EventType;
@@ -18,6 +27,7 @@ export abstract class BaseEventLog {
 
 // using an abstract class here in order to force implementation of _all_
 // properties in children
+// A `ORMUser` class is derived as child in backend services
 export abstract class BaseUser {
     abstract id: number;
     abstract firstName: string;
@@ -28,6 +38,7 @@ export abstract class BaseUser {
     abstract hashedPw: string;
 }
 
+// this is the child class of BaseUser for use in frontend
 export class User extends BaseUser {
     id: number = 0;
     firstName: string = "";
