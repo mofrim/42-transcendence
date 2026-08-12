@@ -30,7 +30,7 @@ log_msg_single = @$(ECHO) "\n$(MSGOPN) $(1) $(MSGEND)\n"
 output_color_grey = @$(ECHON) "$(GRE)"
 output_colr_reset =  @$(ECHON) "$(RST)"
 
-# wtf ?
+# wtf?
 DOCKER = docker
 
 all:
@@ -40,16 +40,21 @@ all:
 dock-clean:
 	$(call log_msg_start,Cleaning docker containers...)
 	$(output_color_grey)
-	-$(DOCKER) rm -f $$($(DOCKER) ps -qa)
+# wtf?
+# 	-$(DOCKER) rm -f $$($(DOCKER) ps -qa)
+	$(DOCKER) compose down
 	$(call log_msg_end,Done.)
 
 # TODO add volume if we have decided on this
-dock-fclean:
+dock-fclean: dock-clean
 	$(call log_msg_start,Cleaning ALL runtime docker stuff...)
 	$(output_color_grey)
-	-$(DOCKER) rm -f $$($(DOCKER) ps -qa)
+# wtf?
+#   -$(DOCKER) rm -f $$($(DOCKER) ps -qa)
+# WTF?! suicide is the only way out? kein backup, kein mitleid?
 	# -$(DOCKER) volume rm -f $$($(DOCKER) volume ls -q)
-	-$(DOCKER) network rm -f ftr-net
+# useless
+#	-$(DOCKER) network rm -f ftr-net
 	$(call log_msg_end,Done.)
 
 dock-backend:
