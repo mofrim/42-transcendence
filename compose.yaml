@@ -2,5 +2,5 @@
 name: ft_transcendence
 
 include:
-    - ./frontend/compose-frontend.yaml
-    - ./backend/compose-backend.yaml
+    - ./frontend/compose.yaml
+    - ./backend/compose.yaml

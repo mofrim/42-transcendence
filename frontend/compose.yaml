@@ -6,7 +6,7 @@ name: ft_transcendence
 # the frontend _needs_ the backend in order function properly, so include it
 include:
     - path:
-          - ../backend/compose-backend.yaml
+          - ../backend/compose.yaml
       project_directory: ../backend
       env_file: ../dev.env
 

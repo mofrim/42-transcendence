@@ -30,11 +30,12 @@ log_msg_single = @$(ECHO) "\n$(MSGOPN) $(1) $(MSGEND)\n"
 output_color_grey = @$(ECHON) "$(GRE)"
 output_colr_reset =  @$(ECHON) "$(RST)"
 
+# wtf ?
 DOCKER = docker
 
 all:
 	$(call log_msg_single,Launching ftr using docker compose..)
-	$(DOCKER) compose up --build
+	$(DOCKER) compose up --build --detach
 
 dock-clean:
 	$(call log_msg_start,Cleaning docker containers...)
@@ -53,12 +54,12 @@ dock-fclean:
 
 dock-backend:
 	$(call log_msg_start,Launching ftr-backend using docker compose..)
-	cd backend && $(DOCKER) compose -f compose-backend.yaml up --build
+	$(DOCKER) compose --project-directory ./backend up --build --detach
 	$(call log_msg_end,Done.)
 
 dock-frontend:
 	$(call log_msg_start,Launching ftr-frontend using docker compose..)
-	cd frontend && $(DOCKER) compose -f compose-frontend.yaml up --build
+	$(DOCKER) compose --project-directory ./frontend up --build --detach
 	$(call log_msg_end,Done.)
 
 # launch all backend services and the db for dev. might be handy during dev
