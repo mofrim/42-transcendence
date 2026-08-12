@@ -2,6 +2,7 @@ import * as THREE from 'three';
 
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import type { Character } from '@common/types';
+import { createThreeResourceDisposer } from './ThreeResourceDisposer.js';
 
 interface CharacterPreviewOptions {
     canvas?: HTMLCanvasElement | null;
@@ -24,45 +25,6 @@ const CHARACTER_PREVIEW_MODELS = {
         label: 'Female_Test.glb',
     },
 };
-
-function isTexture(value: unknown): value is THREE.Texture {
-    return (
-        typeof value === 'object' &&
-        value !== null &&
-        'isTexture' in value &&
-        value.isTexture === true
-    );
-}
-
-function isMesh(object: THREE.Object3D): object is THREE.Mesh {
-    return 'isMesh' in object && object.isMesh === true;
-}
-
-function disposeMaterial(material: THREE.Material): void {
-    for (const value of Object.values(material)) {
-        if (isTexture(value)) {
-            value.dispose();
-        }
-    }
-
-    material.dispose();
-}
-
-function disposeObject(object: THREE.Object3D): void {
-    object.traverse((child) => {
-        if (!isMesh(child)) {
-            return;
-        }
-
-        child.geometry?.dispose();
-
-        if (Array.isArray(child.material)) {
-            child.material.forEach(disposeMaterial);
-        } else if (child.material) {
-            disposeMaterial(child.material);
-        }
-    });
-}
 
 export function createCharacterPreview({
     canvas,
@@ -90,42 +52,43 @@ export function createCharacterPreview({
 
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(28, 9 / 16, 0.1, 100);
+    const resourceDisposer = createThreeResourceDisposer({
+        shouldCloseImageBitmap: () => true,
+        onError: (error: unknown) => {
+            console.error('Character preview resource disposal failed:', error);
+        },
+    });
 
     const ambientLight = new THREE.HemisphereLight(0xffffff, 0x6f7f91, 2.2);
-    scene.add(ambientLight);
-
     const keyLight = new THREE.DirectionalLight(0xffffff, 3.0);
     keyLight.position.set(3, 4, 5);
-    scene.add(keyLight);
 
     const fillLight = new THREE.DirectionalLight(0xffffff, 1.2);
     fillLight.position.set(-3, 2, 4);
-    scene.add(fillLight);
+    scene.add(ambientLight, keyLight, fillLight);
 
     const loader = new GLTFLoader();
     const box = new THREE.Box3();
     const center = new THREE.Vector3();
     const size = new THREE.Vector3();
+    const rendererSize = new THREE.Vector2();
+    const viewSize = new THREE.Vector2();
 
     let currentModel: THREE.Group | null = null;
     let currentCharacter: boolean | null = null;
     let disposed = false;
-    let frameId: number | null = null;
     let loadSerial = 0;
-    let rendererWidth = 0;
-    let rendererHeight = 0;
 
     function resizeRenderer(): void {
         const rect = previewCanvas.getBoundingClientRect();
         const width = Math.max(1, Math.round(rect.width));
         const height = Math.max(1, Math.round(rect.height));
 
-        if (width === rendererWidth && height === rendererHeight) {
+        renderer.getSize(rendererSize);
+        if (width === rendererSize.x && height === rendererSize.y) {
             return;
         }
 
-        rendererWidth = width;
-        rendererHeight = height;
         renderer.setSize(width, height, false);
         camera.aspect = width / height;
         camera.updateProjectionMatrix();
@@ -136,8 +99,7 @@ export function createCharacterPreview({
             return;
         }
 
-        scene.remove(currentModel);
-        disposeObject(currentModel);
+        resourceDisposer.disposeObject3D(currentModel);
         currentModel = null;
     }
 
@@ -155,10 +117,9 @@ export function createCharacterPreview({
 
         model.position.sub(center);
 
-        const fov = THREE.MathUtils.degToRad(camera.fov);
-        const fitHeightDistance = size.y / (2 * Math.tan(fov / 2));
-        const fitWidthDistance =
-            size.x / (2 * Math.tan(fov / 2) * camera.aspect);
+        camera.getViewSize(1, viewSize);
+        const fitHeightDistance = size.y / viewSize.y;
+        const fitWidthDistance = size.x / viewSize.x;
         const distance =
             Math.max(fitHeightDistance, fitWidthDistance, size.z) * 1.3;
 
@@ -167,6 +128,49 @@ export function createCharacterPreview({
         camera.position.set(0, 0.04, distance);
         camera.lookAt(0, 0.04, 0);
         camera.updateProjectionMatrix();
+    }
+
+    async function loadCharacterModel(
+        path: string,
+        serial: number
+    ): Promise<void> {
+        let gltf: Awaited<ReturnType<GLTFLoader['loadAsync']>>;
+        try {
+            gltf = await loader.loadAsync(path);
+        } catch (error: unknown) {
+            console.error('Character preview failed to load:', error);
+            return;
+        }
+
+        if (disposed || serial !== loadSerial) {
+            resourceDisposer.disposeObject3D(gltf.scene);
+            return;
+        }
+
+        const model = gltf.scene;
+        const pivot = new THREE.Group();
+
+        const meshes = model.getObjectsByProperty(
+            'isMesh',
+            true
+        ) as THREE.Mesh[];
+        for (const object of meshes) {
+            object.castShadow = false;
+            object.receiveShadow = false;
+
+            if (
+                !Array.isArray(object.material) &&
+                object.material.name === 'Outline'
+            ) {
+                object.visible = false;
+            }
+        }
+
+        pivot.add(model);
+        currentModel = pivot;
+        scene.add(currentModel);
+        resizeRenderer();
+        centerAndFrameModel(model);
     }
 
     function setCharacter(character: Character): void {
@@ -187,44 +191,7 @@ export function createCharacterPreview({
         clearCurrentModel();
         const serial = ++loadSerial;
 
-        loader.load(
-            preview.path,
-            (gltf) => {
-                if (disposed || serial !== loadSerial) {
-                    disposeObject(gltf.scene);
-                    return;
-                }
-
-                const model = gltf.scene;
-                const pivot = new THREE.Group();
-
-                model.traverse((object) => {
-                    if (!isMesh(object)) {
-                        return;
-                    }
-
-                    object.castShadow = false;
-                    object.receiveShadow = false;
-
-                    if (
-                        !Array.isArray(object.material) &&
-                        object.material.name === 'Outline'
-                    ) {
-                        object.visible = false;
-                    }
-                });
-
-                pivot.add(model);
-                currentModel = pivot;
-                scene.add(currentModel);
-                resizeRenderer();
-                centerAndFrameModel(model);
-            },
-            undefined,
-            (error) => {
-                console.error('Character preview failed to load:', error);
-            }
-        );
+        void loadCharacterModel(preview.path, serial);
     }
 
     function render(): void {
@@ -236,32 +203,24 @@ export function createCharacterPreview({
 
         if (currentModel) {
             // Drehteller
-            currentModel.rotation.y += 0.007;
+            currentModel.rotateY(0.007);
         }
 
         renderer.render(scene, camera);
-        frameId = requestAnimationFrame(render);
     }
 
-    window.addEventListener('resize', resizeRenderer);
-    frameId = requestAnimationFrame(render);
+    renderer.setAnimationLoop(render);
 
     return {
         setCharacter,
         dispose() {
             disposed = true;
             loadSerial++;
-
-            if (frameId !== null) {
-                cancelAnimationFrame(frameId);
-                frameId = null;
-            }
-
-            window.removeEventListener('resize', resizeRenderer);
+            renderer.setAnimationLoop(null);
             clearCurrentModel();
             renderer.dispose();
             // Release the character preview immediately after disposing the renderer
-            renderer.forceContextLoss?.();
+            renderer.forceContextLoss();
             console.log('characterPreview successfully disposed!');
         },
     };

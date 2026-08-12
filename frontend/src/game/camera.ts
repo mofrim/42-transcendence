@@ -2,15 +2,12 @@ import * as THREE from 'three';
 
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-type FirstHitRaycaster = THREE.Raycaster & { firstHitOnly: boolean };
-
 export class Camera {
     camera: THREE.PerspectiveCamera;
     colliders: THREE.Object3D[];
     orbitControls: OrbitControls;
-    raycaster: FirstHitRaycaster;
-    dir: THREE.Vector3;
-    rayPos: THREE.Vector3;
+    raycaster: THREE.Raycaster;
+    private readonly intersections: THREE.Intersection[];
 
     constructor(
         window: Window,
@@ -37,10 +34,9 @@ export class Camera {
         this.orbitControls.maxPolarAngle = Math.PI / 2 + 0.15; //PI90 - .05;
         this.orbitControls.update();
 
-        this.raycaster = new THREE.Raycaster() as FirstHitRaycaster;
-        this.dir = new THREE.Vector3();
-        this.rayPos = new THREE.Vector3();
+        this.raycaster = new THREE.Raycaster();
         this.raycaster.far = 3.0;
+        this.intersections = [];
     }
 
     CamColisionReset(
@@ -67,41 +63,36 @@ export class Camera {
         }
     }
 
-    CamCollisionAdjust(
-        start: THREE.Vector3,
-        end: THREE.Vector3,
-        direction: THREE.Vector3
-    ): void {
-        const distHit = start.distanceTo(end);
-        const newPos = start
-            .clone()
-            .addScaledVector(direction.normalize(), distHit - 0.1);
-        this.camera.position.copy(newPos);
-    }
-
     cameraCollisionRaycast(delta: number, group: THREE.Object3D): void {
-        this.rayPos.copy(group.position);
-        this.rayPos.y += 1;
+        this.raycaster.ray.origin.copy(group.position);
+        this.raycaster.ray.origin.y += 1;
 
-        // will be the direction vector - pointing from rayPos to the camera.
-        this.dir.subVectors(this.camera.position, this.rayPos).normalize();
-        this.raycaster.set(this.rayPos, this.dir);
-        this.raycaster.firstHitOnly = true;
+        // will be the direction vector - pointing from the ray origin to the camera.
+        this.raycaster.ray.lookAt(this.camera.position);
 
         if (this.colliders.length === 0) return;
 
-        const hits = this.raycaster.intersectObjects(this.colliders, false);
+        // Three.js sorts intersections by distance, closest first.
+        this.intersections.length = 0;
+        this.raycaster.intersectObjects(
+            this.colliders,
+            false,
+            this.intersections
+        );
 
-        if (hits.length === 0)
+        if (this.intersections.length === 0)
             this.CamColisionReset(
                 delta,
-                this.rayPos,
+                this.raycaster.ray.origin,
                 this.camera.position,
-                this.dir
+                this.raycaster.ray.direction
             );
         else {
             // FIXME silenced noUncheckedIndexedAccess here
-            this.CamCollisionAdjust(this.rayPos, hits[0]!.point, this.dir);
+            this.raycaster.ray.at(
+                this.intersections[0]!.distance - 0.1,
+                this.camera.position
+            );
             //this.testDirect(this.rayPos, hits[0].point, this.camera.position);
         }
     }

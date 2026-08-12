@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { createThreeResourceDisposer } from './ThreeResourceDisposer.js';
 
 const MAP_MODEL_PATH = '/glb/42WOB_v3.glb';
 const MAX_PIXEL_RATIO = 1.5;
@@ -22,143 +23,6 @@ const EMPTY_PREVIEW: MapPreview = Object.freeze({
  * Texture.dispose() releases GPU resources, but Three.js does not close
  * ImageBitmap sources because they may be shared.
  */
-function closeImageBitmapValue(
-    value: unknown,
-    disposedImageBitmaps: WeakSet<ImageBitmap>
-): void {
-    if (!value) {
-        return;
-    }
-
-    if (Array.isArray(value)) {
-        value.forEach((item) =>
-            closeImageBitmapValue(item, disposedImageBitmaps)
-        );
-        return;
-    }
-
-    if (
-        typeof ImageBitmap === 'undefined' ||
-        !(value instanceof ImageBitmap) ||
-        disposedImageBitmaps.has(value)
-    ) {
-        return;
-    }
-
-    disposedImageBitmaps.add(value);
-
-    try {
-        value.close();
-    } catch {
-        // Texture disposal must continue even if a browser rejects closing the source.
-    }
-}
-
-function disposeTextureValue(
-    value: unknown,
-    disposedTextures: WeakSet<THREE.Texture>,
-    disposedImageBitmaps: WeakSet<ImageBitmap>
-): void {
-    if (!value) {
-        return;
-    }
-
-    if (value instanceof THREE.Texture) {
-        if (!disposedTextures.has(value)) {
-            disposedTextures.add(value);
-            closeImageBitmapValue(value.source.data, disposedImageBitmaps);
-            value.dispose();
-        }
-        return;
-    }
-
-    if (Array.isArray(value)) {
-        value.forEach((item) =>
-            disposeTextureValue(item, disposedTextures, disposedImageBitmaps)
-        );
-    }
-}
-
-function disposeMaterial(
-    material: THREE.Material | null | undefined,
-    disposedMaterials: WeakSet<THREE.Material>,
-    disposedTextures: WeakSet<THREE.Texture>,
-    disposedImageBitmaps: WeakSet<ImageBitmap>
-): void {
-    if (!material || disposedMaterials.has(material)) {
-        return;
-    }
-
-    disposedMaterials.add(material);
-
-    for (const value of Object.values(material)) {
-        disposeTextureValue(value, disposedTextures, disposedImageBitmaps);
-    }
-
-    if (material instanceof THREE.ShaderMaterial) {
-        for (const uniform of Object.values(material.uniforms)) {
-            disposeTextureValue(
-                uniform.value,
-                disposedTextures,
-                disposedImageBitmaps
-            );
-        }
-    }
-
-    material.dispose();
-}
-
-function disposeObject(object: THREE.Object3D): void {
-    const disposedGeometries = new WeakSet<THREE.BufferGeometry>();
-    const disposedMaterials = new WeakSet<THREE.Material>();
-    const disposedTextures = new WeakSet<THREE.Texture>();
-    const disposedImageBitmaps = new WeakSet<ImageBitmap>();
-    const disposedSkeletons = new WeakSet<THREE.Skeleton>();
-
-    object.traverse((child) => {
-        if (
-            child instanceof THREE.Mesh ||
-            child instanceof THREE.Line ||
-            child instanceof THREE.Points
-        ) {
-            if (!disposedGeometries.has(child.geometry)) {
-                disposedGeometries.add(child.geometry);
-                child.geometry.dispose();
-            }
-
-            let materials: THREE.Material[];
-            if (Array.isArray(child.material)) {
-                materials = child.material;
-            } else {
-                materials = [child.material];
-            }
-
-            for (const material of materials) {
-                disposeMaterial(
-                    material,
-                    disposedMaterials,
-                    disposedTextures,
-                    disposedImageBitmaps
-                );
-            }
-        } else if (child instanceof THREE.Sprite) {
-            disposeMaterial(
-                child.material,
-                disposedMaterials,
-                disposedTextures,
-                disposedImageBitmaps
-            );
-        }
-
-        if (
-            child instanceof THREE.SkinnedMesh &&
-            !disposedSkeletons.has(child.skeleton)
-        ) {
-            disposedSkeletons.add(child.skeleton);
-            child.skeleton.dispose();
-        }
-    });
-}
 
 /** Applies the main game's glass. */
 function configureMapPreviewMesh(mesh: THREE.Mesh): void {
@@ -220,32 +84,33 @@ export function createMapPreview({
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 0.9;
     renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.shadowMap.type = THREE.PCFShadowMap;
 
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(38, 1, 0.01, 1_000);
+    const resourceDisposer = createThreeResourceDisposer({
+        shouldCloseImageBitmap: () => true,
+        onError: (error: unknown) => {
+            console.error('Map preview resource disposal failed:', error);
+        },
+    });
 
     const hemisphereLight = new THREE.HemisphereLight(0xffffff, 0x536579, 1.8);
-    scene.add(hemisphereLight);
-
     const keyLight = new THREE.DirectionalLight(0xffffff, 2.6);
     keyLight.position.set(4, 7, 6);
     keyLight.castShadow = true;
     /** Shadow map size is set to balance between quality and performance. */
-    keyLight.shadow.mapSize.set(1024, 1024);
-    scene.add(keyLight);
-    scene.add(keyLight.target);
-
+    keyLight.shadow.mapSize.setScalar(1024);
     const fillLight = new THREE.DirectionalLight(0xbfd8ff, 1.2);
     fillLight.position.set(-5, 3, -2);
-    scene.add(fillLight);
+    scene.add(hemisphereLight, keyLight, keyLight.target, fillLight);
 
     const bounds = new THREE.Box3();
-    const center = new THREE.Vector3();
     const boundingSphere = new THREE.Sphere();
     const rendererSize = new THREE.Vector2();
+    const cameraViewSize = new THREE.Vector2();
+    const animationTimer = new THREE.Timer();
     const cameraDirection = new THREE.Vector3(0.75, 0.37, 1).normalize();
-    const keyLightDirection = keyLight.position.clone().normalize();
 
     let reducedMotionQuery: MediaQueryList | null = null;
     if (typeof window.matchMedia === 'function') {
@@ -258,7 +123,6 @@ export function createMapPreview({
     let modelRadius = 0;
     let disposed = false;
     let animationRunning = false;
-    let previousFrameTime: DOMHighResTimeStamp | null = null;
     let loadGeneration = 0;
     let prefersReducedMotion = false;
     if (reducedMotionQuery) {
@@ -279,12 +143,10 @@ export function createMapPreview({
             return;
         }
 
-        const verticalFov = THREE.MathUtils.degToRad(camera.fov);
-        const horizontalFov =
-            2 * Math.atan(Math.tan(verticalFov / 2) * camera.aspect);
+        camera.getViewSize(1, cameraViewSize);
         const limitingHalfFov = Math.max(
             0.01,
-            Math.min(verticalFov, horizontalFov) / 2
+            Math.atan(Math.min(cameraViewSize.x, cameraViewSize.y) / 2)
         );
         /** die Map etwas näher reingezoomt wird,
          * weil man das Map Objekt hauptsächlich verdeckt hinter dem Loginformular sieht
@@ -335,20 +197,8 @@ export function createMapPreview({
             return;
         }
 
-        bounds.getCenter(center);
-        model.position.sub(center);
-        model.updateMatrixWorld(true);
-
-        bounds.setFromObject(model);
-        bounds.getCenter(center);
-
-        if (center.lengthSq() > Number.EPSILON) {
-            model.position.sub(center);
-            model.updateMatrixWorld(true);
-            bounds.setFromObject(model);
-        }
-
         bounds.getBoundingSphere(boundingSphere);
+        model.position.sub(boundingSphere.center);
         modelRadius = boundingSphere.radius;
         frameCamera();
         frameShadowCamera();
@@ -363,10 +213,8 @@ export function createMapPreview({
         const shadowCamera = keyLight.shadow.camera;
         const shadowExtent = modelRadius * 1.25;
 
-        keyLight.position
-            .copy(keyLightDirection)
-            .multiplyScalar(modelRadius * 2.5);
-        keyLight.target.position.set(0, 0, 0);
+        keyLight.position.setLength(modelRadius * 2.5);
+        keyLight.target.position.setScalar(0);
 
         shadowCamera.left = -shadowExtent;
         shadowCamera.right = shadowExtent;
@@ -386,7 +234,7 @@ export function createMapPreview({
             animationRunning = false;
         }
 
-        previousFrameTime = null;
+        animationTimer.reset();
     }
 
     function canAnimate(): boolean {
@@ -422,16 +270,11 @@ export function createMapPreview({
             return;
         }
 
-        let delta = 0;
-        if (previousFrameTime !== null) {
-            delta = Math.min((time - previousFrameTime) / 1000, 0.1);
-        }
-        previousFrameTime = time;
+        animationTimer.update(time);
+        /** begrenze Frame-Zeit */
+        const delta = Math.min(animationTimer.getDelta(), 0.1);
 
-        rotatingPivot.rotation.y = THREE.MathUtils.euclideanModulo(
-            rotatingPivot.rotation.y + delta * ROTATION_SPEED,
-            Math.PI * 2
-        );
+        rotatingPivot.rotateY(delta * ROTATION_SPEED);
         resizeRenderer();
         renderer.render(scene, camera);
     }
@@ -441,7 +284,7 @@ export function createMapPreview({
             return;
         }
 
-        previousFrameTime = null;
+        animationTimer.reset();
         renderer.setAnimationLoop(animate);
         animationRunning = true;
     }
@@ -479,52 +322,49 @@ export function createMapPreview({
         resizeObserver.observe(previewCanvas);
     }
 
-    if (typeof reducedMotionQuery?.addEventListener === 'function') {
-        reducedMotionQuery.addEventListener('change', onReducedMotionChange);
-    } else if (typeof reducedMotionQuery?.addListener === 'function') {
-        reducedMotionQuery.addListener(onReducedMotionChange);
-    }
+    reducedMotionQuery?.addEventListener('change', onReducedMotionChange);
 
     resizeRenderer();
     renderOnce();
 
     const loader = new GLTFLoader();
-    const generation = ++loadGeneration;
 
-    try {
-        loader.load(
-            MAP_MODEL_PATH,
-            (gltf) => {
-                if (!isActiveGeneration(generation)) {
-                    disposeObject(gltf.scene);
-                    return;
-                }
-
-                gltf.scene.traverse((child) => {
-                    if (child instanceof THREE.Mesh) {
-                        configureMapPreviewMesh(child);
-                    }
-                });
-
-                pivot = new THREE.Group();
-                pivot.add(gltf.scene);
-                scene.add(pivot);
-
-                resizeRenderer();
-                centerAndFrameModel(gltf.scene);
-                renderAnimate();
-            },
-            undefined,
-            (error: unknown) => {
-                if (isActiveGeneration(generation)) {
-                    console.error('Map preview failed to load:', error);
-                    renderOnce();
-                }
+    async function loadMap(generation: number): Promise<void> {
+        let gltf: Awaited<ReturnType<GLTFLoader['loadAsync']>>;
+        try {
+            gltf = await loader.loadAsync(MAP_MODEL_PATH);
+        } catch (error: unknown) {
+            if (isActiveGeneration(generation)) {
+                console.error('Map preview failed to load:', error);
+                renderOnce();
             }
-        );
-    } catch (error: unknown) {
-        console.error('Map preview failed to load:', error);
+            return;
+        }
+
+        if (!isActiveGeneration(generation)) {
+            resourceDisposer.disposeObject3D(gltf.scene);
+            return;
+        }
+
+        const meshes = gltf.scene.getObjectsByProperty(
+            'isMesh',
+            true
+        ) as THREE.Mesh[];
+        for (const mesh of meshes) {
+            configureMapPreviewMesh(mesh);
+        }
+
+        pivot = new THREE.Group();
+        pivot.add(gltf.scene);
+        scene.add(pivot);
+
+        resizeRenderer();
+        centerAndFrameModel(gltf.scene);
+        renderAnimate();
     }
+
+    const generation = ++loadGeneration;
+    void loadMap(generation);
 
     return {
         dispose() {
@@ -535,6 +375,7 @@ export function createMapPreview({
             disposed = true;
             loadGeneration++;
             stopAnimation();
+            animationTimer.dispose();
 
             window.removeEventListener('resize', onResize);
             document.removeEventListener(
@@ -544,19 +385,13 @@ export function createMapPreview({
             resizeObserver?.disconnect();
             resizeObserver = null;
 
-            if (typeof reducedMotionQuery?.removeEventListener === 'function') {
-                reducedMotionQuery.removeEventListener(
-                    'change',
-                    onReducedMotionChange
-                );
-            } else if (
-                typeof reducedMotionQuery?.removeListener === 'function'
-            ) {
-                reducedMotionQuery.removeListener(onReducedMotionChange);
-            }
+            reducedMotionQuery?.removeEventListener(
+                'change',
+                onReducedMotionChange
+            );
 
             if (pivot) {
-                disposeObject(pivot);
+                resourceDisposer.disposeObject3D(pivot);
                 pivot = null;
             }
 

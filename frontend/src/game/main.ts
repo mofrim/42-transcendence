@@ -12,6 +12,7 @@ import { normalizePlayerNickname } from './PlayerIdentity.js';
 import { Camera } from './camera.js';
 import { TTT_Game } from './ttt_game.js';
 import { RPS_Game } from './rps_game.js';
+import { createThreeResourceDisposer } from './ThreeResourceDisposer.js';
 
 import { io } from 'socket.io-client';
 
@@ -57,6 +58,7 @@ export type GameRuntimeEvent =
 export type GameRuntime = {
     readonly showLocalChatMessage: (message: string) => void;
     readonly despawnLocalPlayer: () => Promise<void>;
+    readonly dispose: () => Promise<void>;
 };
 
 type NamedPlayer = {
@@ -85,6 +87,9 @@ function normalizeCharacter(character: boolean): boolean {
     return character !== false;
 } */
 
+/* const character = normalizeCharacter(whichCharacter);
+    const playerModelPath = PLAYER_CHARACTER_MODELS[character]; */
+
 export function startGame(
     whichCharacter: boolean = true,
     nickname: string,
@@ -98,9 +103,6 @@ export function startGame(
 
     console.log('character: ' + whichCharacter);
 
-    /* const character = normalizeCharacter(whichCharacter);
-    const playerModelPath = PLAYER_CHARACTER_MODELS[character]; */
-    const character = whichCharacter;
     const localNickname = normalizePlayerNickname(nickname);
     const playerModelPath = whichCharacterModelPath(whichCharacter);
     const selectedSocketServerUrl =
@@ -127,7 +129,10 @@ export function startGame(
     let activeTTTPlayers: ActiveTTTPlayers | null = null;
     let isLocalPlayerDespawning = false;
     let localPlayerDespawnPromise: Promise<void> | null = null;
+    let runtimeDisposePromise: Promise<void> | null = null;
+    let runtimeDisposed = false;
     const knownPlayerNicknames = new Map<string, string>();
+    const blockedPlayerUpdates = new Set<string>();
 
     // 'connect' event is fired on first connection AND reconnection
     // QUESTION does our logic as intended on reconnect?
@@ -164,7 +169,10 @@ export function startGame(
         }
 
         console.log('someone joined:', id);
-        if (id) spawnRemotePlayer(id, remoteCharacter, remoteNickname);
+        if (id) {
+            blockedPlayerUpdates.delete(id);
+            spawnRemotePlayer(id, remoteCharacter, remoteNickname);
+        }
     });
 
     socket.on('player_disconnected', (id) => {
@@ -176,17 +184,17 @@ export function startGame(
             nickname: resolvePlayerNickname(id, disconnectedPlayer?.nickname),
         });
 
+        blockedPlayerUpdates.add(id);
         if (!multiplayer) return;
-        if (disconnectedPlayer) disconnectedPlayer.removePlayer();
+        void multiplayer.removePlayer(id);
     });
 
     socket.on('disconnect', (reason) => {
         if (!multiplayer) return;
-        for (const [id, _player] of multiplayer.players) {
-            void _player;
-            const disconnectedPlayer = multiplayer.players.get(id);
-            if (disconnectedPlayer) disconnectedPlayer.removePlayer();
+        for (const id of multiplayer.players.keys()) {
+            blockedPlayerUpdates.add(id);
         }
+        void multiplayer.removeAllPlayers();
         if (!tttGame) return;
         tttGame.endGame();
         console.log('Server Disconnect:', reason);
@@ -376,11 +384,8 @@ export function startGame(
             if (!rpsGame) return;
             rpsGame.yourChoice = RPSChoice.None;
             rpsGame.opponentChoice = RPSChoice.None;
-
             //rpsGame.playChoiceAnimation = false;
             //rpsGame.solutionRPSAnimation();
-            if (!rpsGame.animationLoop) return;
-            cancelAnimationFrame(rpsGame.animationLoop);
             rpsGame.solutionRPSAnimation();
         }
     }
@@ -395,8 +400,6 @@ export function startGame(
             rpsGame.yourChoice = data.choice;
             rpsGame.opponentChoice = data.choice;
 
-            if (!rpsGame.animationLoop) return;
-            cancelAnimationFrame(rpsGame.animationLoop);
             rpsGame.solutionRPSAnimation();
             /* if(rpsGame.playChoiceAnimation == false)
                 rpsGame.solutionRPSAnimation();
@@ -417,8 +420,6 @@ export function startGame(
             rpsGame.yourChoice = data.winnerChoice;
             rpsGame.opponentChoice = data.loserChoice;
 
-            if (!rpsGame.animationLoop) return;
-            cancelAnimationFrame(rpsGame.animationLoop);
             rpsGame.solutionRPSAnimation();
             /* rpsGame.playChoiceAnimation = false;
             rpsGame.solutionRPSAnimation(); */
@@ -433,8 +434,6 @@ export function startGame(
             rpsGame.yourChoice = data.loserChoice;
             rpsGame.opponentChoice = data.winnerChoice;
 
-            if (!rpsGame.animationLoop) return;
-            cancelAnimationFrame(rpsGame.animationLoop);
             rpsGame.solutionRPSAnimation();
             /* rpsGame.playChoiceAnimation = false;
             rpsGame.solutionRPSAnimation(); */
@@ -452,8 +451,6 @@ export function startGame(
         if (!player) return;
         if (data.requestedPlayerID !== player.id) return;
         if (!rpsGame) return;
-        rpsGame.readyForRequest = true;
-
         player.battleRequested = false;
         if (!multiplayer) return;
         const opponentPlayer = multiplayer.players.get(data.id);
@@ -469,7 +466,6 @@ export function startGame(
         if (data.requestedPlayerID !== player.id) return;
 
         if (!rpsGame) return;
-        rpsGame.readyForRequest = true;
         player.battleRequested = false;
         player.youSendRPGRequest = false;
         if (!multiplayer) return;
@@ -632,11 +628,14 @@ export function startGame(
 
     function handlePlayer(data: PlayerUpdatePayload) {
         if (!multiplayer) return;
+        if (blockedPlayerUpdates.has(data.id)) return;
+
         // check if existing player/client, if not spawn new player
-        if (multiplayer.players.get(data.id)) {
+        const remotePlayer = multiplayer.players.get(data.id);
+        if (remotePlayer?.isActive()) {
             //console.log("other player:", data.id, data.x.toFixed(4), data.y.toFixed(4), data.z.toFixed(4), data.state);
-            multiplayer.updateMultiplayerID(
-                data.id,
+            multiplayer.multiplayerMovement(
+                remotePlayer,
                 data.x,
                 data.y,
                 data.z,
@@ -655,11 +654,12 @@ export function startGame(
 
     const scene = new THREE.Scene();
     // const renderer = new THREE.WebGLRenderer({ antialias: true });
+    const runtimeResourceDisposer = createThreeResourceDisposer();
     const followGroup = new THREE.Group();
     const timer = new THREE.Timer();
+    const previousPlayerPosition = new THREE.Vector3();
+    const playerMovementDelta = new THREE.Vector3();
     const dirLight = new THREE.DirectionalLight(0xffffff, 2.5);
-
-    const npcs = new Map();
 
     //const keyStates = {};
     const keyStates: Record<string, boolean> = {};
@@ -668,31 +668,86 @@ export function startGame(
         key: [0, 0] as [number, number],
     };
 
-    function despawnLocalPlayer(): Promise<void> {
-        if (localPlayerDespawnPromise) {
-            return localPlayerDespawnPromise;
-        }
-
+    function stopLocalInput(): void {
         isLocalPlayerDespawning = true;
         controls.key[0] = 0;
         controls.key[1] = 0;
         for (const code of Object.keys(keyStates)) {
             keyStates[code] = false;
         }
+    }
+
+    function despawnLocalPlayer(): Promise<void> {
+        if (localPlayerDespawnPromise) {
+            return localPlayerDespawnPromise;
+        }
+
+        stopLocalInput();
 
         localPlayerDespawnPromise = (async () => {
             try {
                 if (player) {
                     player.controls.key = controls.key;
-                    await player.animateDeSpawn();
+                    await player.startDespawn();
                 }
             } finally {
-                socket.disconnect();
-                renderer.setAnimationLoop(null);
+                await disposeRuntime();
             }
         })();
 
         return localPlayerDespawnPromise;
+    }
+
+    /** ThreeJS Cleanup */
+    function disposeRuntime(): Promise<void> {
+        if (runtimeDisposePromise) {
+            return runtimeDisposePromise;
+        }
+
+        runtimeDisposed = true;
+        stopLocalInput();
+
+        renderer.setAnimationLoop(null);
+        window.removeEventListener('resize', onWindowResize);
+        document.removeEventListener('keydown', onKeyDown);
+        document.removeEventListener('keyup', onKeyUp);
+        document.removeEventListener('click', onClick);
+
+        socket.removeAllListeners();
+        socket.disconnect();
+
+        runtimeDisposePromise = (async () => {
+            rpsGame?.dispose();
+            tttGame?.dispose();
+            camera?.orbitControls.dispose();
+            timer.dispose();
+
+            const completions: Promise<void>[] = [];
+            if (player) {
+                completions.push(player.forceDispose());
+            }
+            if (multiplayer) {
+                completions.push(multiplayer.dispose());
+            }
+            await Promise.all(completions);
+
+            runtimeResourceDisposer.disposeObject3D(scene);
+            runtimeResourceDisposer.disposeTexture(texture);
+            scene.clear();
+            mesh_col.length = 0;
+            mesh_RP.length = 0;
+            knownPlayerNicknames.clear();
+            blockedPlayerUpdates.clear();
+
+            player = null;
+            multiplayer = null;
+            camera = null;
+            tttGame = null;
+            rpsGame = null;
+            activeTTTPlayers = null;
+        })();
+
+        return runtimeDisposePromise;
     }
 
     const worldOctree = new Octree();
@@ -702,6 +757,10 @@ export function startGame(
     const mesh_col: GLBMesh[] = [];
     const mesh_RP: GLBMesh[] = [];
     const tttBox: TTTMeshBoard = new TTTMeshBoard();
+    const tttPointer = new THREE.Vector2();
+    const tttRaycaster = new THREE.Raycaster();
+    const tttRaycastHits: THREE.Intersection[] = [];
+    tttRaycaster.far = 50.0;
 
     //let camDistance = 0;
 
@@ -730,9 +789,8 @@ export function startGame(
         cam.far = 50;
 
         /** Shadow map size is set to balance between quality and performance. */
-        dirLight.shadow.mapSize.set(6144, 6144);
-        scene.add(dirLight);
-        scene.add(dirLight.target);
+        dirLight.shadow.mapSize.setScalar(6144);
+        scene.add(dirLight, dirLight.target);
 
         /* dirLightLow.shadow.mapSize.set( 1024, 1024 );
         followGroup.add( dirLightLow );
@@ -744,10 +802,8 @@ export function startGame(
 
         //player = new Player('glb/MainCharacterTest.glb', socket.id, scene, worldOctree);
         console.log('Player model path: ' + playerModelPath);
-        fetch(playerModelPath).then((res) => console.log('exists:', res.ok));
         player = new Player(playerModelPath, socket.id, scene, worldOctree);
         multiplayer = new MultiplayerManager(scene, mesh_RP);
-        multiplayer.initMultiplayerTest();
 
         // NOTE uncommented for React! we need the domElement
         // THREE.WebGLRenderer returns for React to handle it.
@@ -834,85 +890,102 @@ export function startGame(
     );
     const loader = new GLTFLoader();
 
-    loadMesh('glb/42WOB_v3.glb', [0, 0, 0]);
+    void loadMesh('glb/42WOB_v3.glb', [0, 0, 0]);
     // const texture = new THREE.TextureLoader().load('textures/gradientMaps/twoTone2.jpg');
 
     texture.minFilter = THREE.NearestFilter;
     texture.magFilter = THREE.NearestFilter;
 
-    function loadMesh(path: string, pos: [number, number, number] = [0, 0, 0]) {
-        loader.load(path, (gltf) => {
-            const obj = gltf.scene;
+    async function loadMesh(
+        path: string,
+        pos: [number, number, number] = [0, 0, 0]
+    ): Promise<void> {
+        let gltf: Awaited<ReturnType<GLTFLoader['loadAsync']>>;
+        try {
+            gltf = await loader.loadAsync(path);
+        } catch (error: unknown) {
+            if (!runtimeDisposed) {
+                console.error(`Map model loading failed for "${path}":`, error);
+            }
+            return;
+        }
 
-            //console.log("Adding collider for: " + obj.name);
+        const obj = gltf.scene;
 
-            obj.position.set(...pos);
-            obj.traverse((child) => {
-                if (child instanceof THREE.Mesh) {
-                    if (!child.name.includes('NOCOL')) {
-                        //console.log("Adding collider for: " + child.name);
-                        mesh_col.push(child);
-                    }
+        if (runtimeDisposed) {
+            runtimeResourceDisposer.disposeObject3D(obj);
+            return;
+        }
 
-                    if (child.name.includes('TTT_Board')) {
-                        if (tttBox.cellCnt >= 9)
-                            throw new Error('ttt game can have only 9 cells!');
-                        tttBox.cells[tttBox.cellCnt] = child;
-                        tttBox.cellCnt++;
-                    }
-                    child.scale.set(1.15, 1.15, 1.15);
+        //console.log("Adding collider for: " + obj.name);
 
-                    if (child.material.name === 'Glass_mtl') {
-                        child.material = new THREE.MeshToonMaterial({
-                            color: 0xaaddff,
-                            transparent: true,
-                            opacity: 0.3,
-                        });
-                        child.castShadow = false;
-                        child.receiveShadow = false;
-                    } else if (child.material.name === 'Glass_outside') {
-                        child.material = new THREE.MeshToonMaterial({
-                            color: 0xaaddff,
-                            transparent: true,
-                            opacity: 0.8,
-                        });
-                        child.castShadow = false;
-                        child.receiveShadow = false;
-                    } else if (child.material.name === 'Glass_block') {
-                        child.material = new THREE.MeshToonMaterial({
-                            color: 0xaaddff,
-                            transparent: false,
-                        });
-                        child.castShadow = false;
-                        child.receiveShadow = false;
-                    } else {
-                        // outline
-                        const edges = new THREE.EdgesGeometry(
-                            child.geometry,
-                            50
-                        );
-                        const line = new THREE.LineSegments(
-                            edges,
-                            new THREE.LineBasicMaterial({ color: 0x000000 })
-                        );
-                        child.add(line);
+        obj.position.set(...pos);
+        const meshes = obj.getObjectsByProperty('isMesh', true) as GLBMesh[];
+        for (const child of meshes) {
+            if (!child.name.includes('NOCOL')) {
+                //console.log("Adding collider for: " + child.name);
+                mesh_col.push(child);
+            }
 
-                        child.material = new THREE.MeshToonMaterial({
-                            color: child.material.color,
-                            map: child.material.map || null,
-                            gradientMap: texture,
-                        });
+            if (child.name.includes('TTT_Board')) {
+                if (tttBox.cellCnt >= 9)
+                    throw new Error('ttt game can have only 9 cells!');
+                tttBox.cells[tttBox.cellCnt] = child;
+                tttBox.cellCnt++;
+            }
+            child.scale.setScalar(1.15);
 
-                        child.castShadow = true;
-                        child.receiveShadow = true;
-                    }
-                }
-            });
-            scene.add(obj);
-            //mesh_col.push(obj);
+            if (child.material.name === 'Glass_mtl') {
+                child.material = new THREE.MeshToonMaterial({
+                    color: 0xaaddff,
+                    transparent: true,
+                    opacity: 0.3,
+                });
+                child.castShadow = false;
+                child.receiveShadow = false;
+            } else if (child.material.name === 'Glass_outside') {
+                child.material = new THREE.MeshToonMaterial({
+                    color: 0xaaddff,
+                    transparent: true,
+                    opacity: 0.8,
+                });
+                child.castShadow = false;
+                child.receiveShadow = false;
+            } else if (child.material.name === 'Glass_block') {
+                child.material = new THREE.MeshToonMaterial({
+                    color: 0xaaddff,
+                    transparent: false,
+                });
+                child.castShadow = false;
+                child.receiveShadow = false;
+            } else {
+                // outline
+                const edges = new THREE.EdgesGeometry(child.geometry, 50);
+                const line = new THREE.LineSegments(
+                    edges,
+                    new THREE.LineBasicMaterial({ color: 0x000000 })
+                );
+                child.add(line);
 
-            worldOctree.fromGraphNode(obj);
-        });
+                child.material = new THREE.MeshToonMaterial({
+                    color: child.material.color,
+                    map: child.material.map || null,
+                    gradientMap: texture,
+                });
+
+                child.castShadow = true;
+                child.receiveShadow = true;
+            }
+        }
+        if (runtimeDisposed) {
+            runtimeResourceDisposer.disposeObject3D(obj);
+            return;
+        }
+
+        scene.add(obj);
+        //mesh_col.push(obj);
+
+        worldOctree.fromGraphNode(obj);
     }
 
     /* function loadMeshTitel(path, pos = [0, 0, 0]) {
@@ -983,7 +1056,6 @@ export function startGame(
             worldOctree.fromGraphNode(obj);
         });
     } */
-
     //loadMesh('glb/42Sign.glb', [0,1,0]);
     //loadMesh('glb/42WOB_v3.glb', [0,0,0]);
     //loadMeshTitel('glb/Titelscreen_01.glb', [0,0,0]);
@@ -1044,38 +1116,29 @@ export function startGame(
         // gives a bit of air control
         const speedDelta = deltaTime * player.controls.runVelocity;
         if (keyStates['KeyW'] || keyStates['ArrowUp']) {
-            player.playerVelocity.add(
-                player
-                    .getForwardVector(camera.camera)
-                    .multiplyScalar(speedDelta)
+            player.playerVelocity.addScaledVector(
+                player.getForwardVector(camera.camera),
+                speedDelta
             );
         }
         if (keyStates['KeyS'] || keyStates['ArrowDown']) {
-            player.playerVelocity.add(
-                player
-                    .getForwardVector(camera.camera)
-                    .multiplyScalar(-speedDelta)
+            player.playerVelocity.addScaledVector(
+                player.getForwardVector(camera.camera),
+                -speedDelta
             );
         }
         if (keyStates['KeyA'] || keyStates['ArrowLeft']) {
-            player.playerVelocity.add(
-                player.getSideVector(camera.camera).multiplyScalar(-speedDelta)
+            player.playerVelocity.addScaledVector(
+                player.getSideVector(camera.camera),
+                -speedDelta
             );
         }
         if (keyStates['KeyD'] || keyStates['ArrowRight']) {
-            player.playerVelocity.add(
-                player.getSideVector(camera.camera).multiplyScalar(speedDelta)
+            player.playerVelocity.addScaledVector(
+                player.getSideVector(camera.camera),
+                speedDelta
             );
         }
-    }
-
-    function getTTTField(event: MouseEvent): THREE.Vector2 {
-        const mousePosition = new THREE.Vector2();
-
-        mousePosition.x = (event.clientX / window.innerWidth) * 2 - 1;
-        mousePosition.y = -(event.clientY / window.innerHeight) * 2 + 1;
-
-        return mousePosition;
     }
 
     function onPressAccept(_event: KeyboardEvent) {
@@ -1183,9 +1246,16 @@ export function startGame(
             return;
         }
 
-        if (rpsGame.playerInRange) {
-            emitBattleRequest(rpsGame.playerInRange.id);
+        const nearbyPlayer = rpsGame.playerInRange;
+        if (
+            !nearbyPlayer ||
+            !nearbyPlayer.isActive() ||
+            multiplayer?.players.get(nearbyPlayer.id) !== nearbyPlayer
+        ) {
+            return;
         }
+
+        emitBattleRequest(nearbyPlayer.id);
     }
 
     /** player leave Tic-Tac-Toe game */
@@ -1204,27 +1274,28 @@ export function startGame(
     function onClick(event: MouseEvent): void {
         if (isLocalPlayerDespawning) return;
 
-        const mousePosition = getTTTField(event);
-
-        const raycaster = new THREE.Raycaster();
-        raycaster.far = 50.0;
+        tttPointer.set(
+            (event.clientX / window.innerWidth) * 2 - 1,
+            -(event.clientY / window.innerHeight) * 2 + 1
+        );
 
         if (!camera) return;
 
-        raycaster.setFromCamera(mousePosition, camera.camera);
-        const hits = raycaster.intersectObjects(mesh_col, false);
+        tttRaycaster.setFromCamera(tttPointer, camera.camera);
+        tttRaycastHits.length = 0;
+        tttRaycaster.intersectObjects(mesh_col, false, tttRaycastHits);
 
         //console.log("hits.length: " + hits.length );
 
         // FIXME silenced noUncheckedIndexedAccess here
-        if (hits.length > 0) {
+        if (tttRaycastHits.length > 0) {
             //console.log("Clicked on TTT box:" + hits[0].object.name);
             //console.log("Clicked on: " + hits[0].object.name );
-            if (hits[0]!.object.name.includes('TTT_Board')) {
+            if (tttRaycastHits[0]!.object.name.includes('TTT_Board')) {
                 //tttGame.markField(hits[0].object.name, socket.id);
-                emitTTTmark(hits[0]!.object.name);
+                emitTTTmark(tttRaycastHits[0]!.object.name);
                 //console.log("Clicked on TTT box:" + hits[0].object.name);
-            } else if (hits[0]!.object.name.includes('TTT_Start')) {
+            } else if (tttRaycastHits[0]!.object.name.includes('TTT_Start')) {
                 //tttGame.startGame(socket.id);
                 emitTTTstart();
                 //console.log("Clicked on TTT box:" + hits[0].object.name);
@@ -1233,7 +1304,7 @@ export function startGame(
             // handle tic tac toe box click, e.g. send move to server
         }
 
-        // const hitsRP = raycaster.intersectObjects(mesh_RP, true);
+        // const hitsRP = tttRaycaster.intersectObjects(mesh_RP, true);
         // console.log("hitsRP.length: " + hitsRP.length , " , mesh_RP length: " + mesh_RP.length);
 
         /* mesh_RP.forEach((o) => {
@@ -1339,30 +1410,30 @@ export function startGame(
     }
 
     function animate() {
-        if (
-            !player ||
-            !camera ||
-            !renderer ||
-            !scene ||
-            !tttGame ||
-            !rpsGame ||
-            !multiplayer
-        )
+        if (runtimeDisposed) {
             return;
+        }
+
+        if (!player || !camera || !tttGame || !rpsGame || !multiplayer) return;
 
         timer.update();
-        /** begrenze Frame-Zeit */
-        const delta = Math.min(timer.getDelta(), 0.05);
+        const lifecycleDelta = timer.getDelta();
+        /** begrenze Frame-Zeit nur für Bewegung und Physik */
+        const delta = Math.min(lifecycleDelta, 0.05);
+
+        player.updateLifecycle(lifecycleDelta);
 
         keyControls(delta);
 
-        const prevPosition = new THREE.Vector3();
-        prevPosition.copy(player.group.position);
+        previousPlayerPosition.copy(player.group.position);
 
         player.updateCharacter(delta);
 
-        const deltaC = player.group.position.clone().sub(prevPosition);
-        camera.camera.position.add(deltaC);
+        playerMovementDelta.subVectors(
+            player.group.position,
+            previousPlayerPosition
+        );
+        camera.camera.position.add(playerMovementDelta);
 
         if (tttGame.tttCamera)
             camera.orbitControls.target
@@ -1385,7 +1456,7 @@ export function startGame(
         tttGame.render();
         rpsGame.render();
 
-        multiplayer.updateMultiplayer(delta);
+        multiplayer.updateMultiplayer(delta, lifecycleDelta);
 
         // TODO !!! player.controls.current needs to be PlayerState
         if (player.isSpawned) {
@@ -1395,26 +1466,24 @@ export function startGame(
                 player.group.position.y,
                 player.group.position.z,
                 state,
-                character
+                whichCharacter
             );
         }
 
         if (!isLocalPlayerDespawning) {
             rpsGame.updateCheck();
         }
-
-        for (const [_id, player] of npcs) {
-            void _id;
-            player.updateAnimation(delta);
-        }
     }
 
     function showLocalChatMessage(message: string): void {
-        player?.showChatMessage(message);
+        if (!runtimeDisposed) {
+            player?.showChatMessage(message);
+        }
     }
 
     return {
         showLocalChatMessage,
         despawnLocalPlayer,
+        dispose: disposeRuntime,
     };
 }

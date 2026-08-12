@@ -3,6 +3,15 @@ import { Player } from './player';
 import { Remote_Player } from './remote_player';
 import { CanvasTextSprite } from './CanvasTextSprite';
 import { FloatingTextSprite } from './FloatingTextSprite';
+import { AnimationFrameSlot } from './AnimationFrameSlot';
+import {
+    addOverlayText,
+    clearOverlayText,
+    createOverlaySprite,
+    disposeOverlaySprites,
+    resizeOverlay,
+} from './GameOverlay';
+import { createThreeResourceDisposer } from './ThreeResourceDisposer';
 import type { Socket } from 'socket.io-client';
 import { RPSChoice } from '@common/types';
 
@@ -12,8 +21,6 @@ const BATTLE_PROMPT_HEIGHT = 1.6;
 const BATTLE_RANGE_SQUARED = 4;
 
 export class RPS_Game {
-    scene: THREE.Scene;
-
     socket: Socket;
     player: Player;
     players: Map<string, Remote_Player>;
@@ -21,18 +28,21 @@ export class RPS_Game {
 
     inRange: boolean;
     playerInRange: Remote_Player | null;
-    readyForRequest: boolean;
     battleRequestedPlayer: string;
     private readonly battlePrompt: FloatingTextSprite;
     private readonly onPlayerInRange:
         ((player: Remote_Player) => void) | undefined;
     private hasReportedPlayerInRange: boolean;
+    private readonly resourceDisposer: ReturnType<
+        typeof createThreeResourceDisposer
+    >;
+    private disposed: boolean;
 
     currentTextState: CanvasTextSprite[];
     overlayScene: THREE.Scene;
     overlayCamera: THREE.OrthographicCamera;
 
-    rpsSprite: Map<string, THREE.Mesh>;
+    rpsSprite: Map<string, THREE.Sprite>;
 
     rps_choiceMade: boolean;
     inBattleMode: boolean;
@@ -41,7 +51,7 @@ export class RPS_Game {
     yourChoice: RPSChoice;
     opponentChoice: RPSChoice;
 
-    animationLoop: number | null;
+    private readonly animationFrameSlot: AnimationFrameSlot;
 
     constructor(
         scene: THREE.Scene,
@@ -51,7 +61,6 @@ export class RPS_Game {
         renderer: THREE.WebGLRenderer,
         onPlayerInRange?: (player: Remote_Player) => void
     ) {
-        this.scene = scene;
         this.socket = socket;
         this.player = player;
         this.players = players;
@@ -59,21 +68,22 @@ export class RPS_Game {
 
         this.inRange = false;
         this.playerInRange = null;
-        this.readyForRequest = true;
         this.battleRequestedPlayer = '';
         this.onPlayerInRange = onPlayerInRange;
         this.hasReportedPlayerInRange = false;
+        this.resourceDisposer = createThreeResourceDisposer();
+        this.disposed = false;
         this.battlePrompt = new FloatingTextSprite(
             BATTLE_PROMPT_TEXT,
             BATTLE_PROMPT_SIZE,
             new THREE.Vector3(0, BATTLE_PROMPT_HEIGHT, 0)
         );
-        this.scene.add(this.battlePrompt);
+        scene.add(this.battlePrompt);
 
         this.currentTextState = [];
         this.overlayScene = new THREE.Scene();
         this.overlayCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
-        this.rpsSprite = new Map<string, THREE.Mesh>();
+        this.rpsSprite = new Map<string, THREE.Sprite>();
 
         this.rps_choiceMade = false;
         this.inBattleMode = false;
@@ -82,29 +92,29 @@ export class RPS_Game {
         this.yourChoice = RPSChoice.None;
         this.opponentChoice = RPSChoice.None;
 
-        this.animationLoop = null;
+        this.animationFrameSlot = new AnimationFrameSlot(() => !this.disposed);
 
         this.rpsSprite.set(
             'Beam',
-            this.addRPSSprite('textures/VS_Beam2.jpg', 10, 0.5)
+            createOverlaySprite('textures/VS_Beam2.jpg', 10, 0.5)
         );
         this.rpsSprite.get('Beam')!.position.set(0, -0.25, 0);
 
         this.rpsSprite.set(
             'VS',
-            this.addRPSSprite('textures/VS_2.png', 0.5, 0.5)
+            createOverlaySprite('textures/VS_2.png', 0.5, 0.5)
         );
         this.rpsSprite.set(
             'Draw',
-            this.addRPSSprite('textures/Draw.png', 0.5, 0.5)
+            createOverlaySprite('textures/Draw.png', 0.5, 0.5)
         );
         this.rpsSprite.set(
             'UserA',
-            this.addRPSSprite('textures/UserA.png', 1, 1)
+            createOverlaySprite('textures/UserA.png', 1, 1)
         );
         this.rpsSprite.set(
             'UserB',
-            this.addRPSSprite('textures/UserB.png', 1, 1)
+            createOverlaySprite('textures/UserB.png', 1, 1)
         );
     }
 
@@ -112,10 +122,19 @@ export class RPS_Game {
      * Selects the nearest remote player in battle range.
      */
     updateCheck(): void {
+        if (this.disposed) {
+            return;
+        }
+
+        const previousPlayer = this.playerInRange;
         let nearestPlayer: Remote_Player | null = null;
         let nearestDistanceSquared = Infinity;
 
         for (const player of this.players.values()) {
+            if (!player.isActive()) {
+                continue;
+            }
+
             const distanceSquared =
                 this.player.group.position.distanceToSquared(
                     player.group.position
@@ -132,6 +151,10 @@ export class RPS_Game {
 
         this.playerInRange = nearestPlayer;
         this.inRange = nearestPlayer !== null;
+
+        if (previousPlayer !== nearestPlayer) {
+            this.hasReportedPlayerInRange = false;
+        }
 
         if (!nearestPlayer) {
             this.battlePrompt.hide();
@@ -172,7 +195,13 @@ export class RPS_Game {
         }
     }
 
-    async startRPSAnimation(): Promise<void> {
+    startRPSAnimation(): void {
+        if (this.disposed) {
+            return;
+        }
+
+        //this.removeText();
+        this.animationFrameSlot.cancel();
         this.inBattleMode = true;
         this.player.inRPSBattleMode = true;
 
@@ -180,11 +209,14 @@ export class RPS_Game {
         const userBSprite = this.rpsSprite.get('UserB');
         const vsSprite = this.rpsSprite.get('VS');
         const beamSprite = this.rpsSprite.get('Beam');
+        const introSprites = [
+            userASprite,
+            userBSprite,
+            vsSprite,
+            beamSprite,
+        ].filter((sprite): sprite is THREE.Sprite => sprite !== undefined);
 
-        if (userASprite) this.overlayScene.add(userASprite);
-        if (userBSprite) this.overlayScene.add(userBSprite);
-        if (vsSprite) this.overlayScene.add(vsSprite);
-        if (beamSprite) this.overlayScene.add(beamSprite);
+        this.overlayScene.add(...introSprites);
 
         const yp = 0.025;
         this.rpsSprite.get('UserA')!.position.set(0, yp, 0);
@@ -198,12 +230,9 @@ export class RPS_Game {
             this.rpsSprite.get('UserB')!.position.set(posB + 0.0075, yp, 0);
 
             if (posB < 0.75 && posA > -0.75) {
-                requestAnimationFrame(loop);
+                this.animationFrameSlot.request(loop);
             } else {
-                if (userASprite) this.overlayScene.remove(userASprite);
-                if (userBSprite) this.overlayScene.remove(userBSprite);
-                if (vsSprite) this.overlayScene.remove(vsSprite);
-                if (beamSprite) this.overlayScene.remove(beamSprite);
+                this.overlayScene.remove(...introSprites);
 
                 this.inGameRPSAnimation();
             }
@@ -211,14 +240,20 @@ export class RPS_Game {
         loop();
     }
 
-    async inGameRPSAnimation(): Promise<void> {
+    inGameRPSAnimation(): void {
+        if (this.disposed) {
+            return;
+        }
+
         this.inBattleChooseMode = true;
 
         const userASprite = this.rpsSprite.get('UserA');
         const beamSprite = this.rpsSprite.get('Beam');
+        const choiceSprites = [userASprite, beamSprite].filter(
+            (sprite): sprite is THREE.Sprite => sprite !== undefined
+        );
 
-        if (userASprite) this.overlayScene.add(userASprite);
-        if (beamSprite) this.overlayScene.add(beamSprite);
+        this.overlayScene.add(...choiceSprites);
 
         this.addText('Press ⌨️ [1] - 🪨 Rock    ', -0.2, -0.1, 100);
         this.addText('Press ⌨️ [2] - 📜 Paper   ', 0, -0.25, 100);
@@ -235,11 +270,10 @@ export class RPS_Game {
             if (this.rps_choiceMade) this.removeText();
 
             if (posA < 0.75) {
-                this.animationLoop = requestAnimationFrame(loop);
+                this.animationFrameSlot.request(loop);
             } else {
                 console.log('RPS Choice Animation Ended');
-                if (userASprite) this.overlayScene.remove(userASprite);
-                if (beamSprite) this.overlayScene.remove(beamSprite);
+                this.overlayScene.remove(...choiceSprites);
                 this.removeText();
 
                 this.socket.emit('update', {
@@ -251,17 +285,22 @@ export class RPS_Game {
     }
 
     /** will be called from main */
-    async solutionRPSAnimation(): Promise<void> {
-        //this.removeText();
+    solutionRPSAnimation(): void {
+        if (this.disposed) {
+            return;
+        }
+
+        this.animationFrameSlot.cancel();
         console.log('RPS Solution Animation Start');
 
         const userASprite = this.rpsSprite.get('UserA');
         const userBSprite = this.rpsSprite.get('UserB');
         const beamSprite = this.rpsSprite.get('Beam');
+        const solutionSprites = [userASprite, userBSprite, beamSprite].filter(
+            (sprite): sprite is THREE.Sprite => sprite !== undefined
+        );
 
-        if (userASprite) this.overlayScene.add(userASprite);
-        if (userBSprite) this.overlayScene.add(userBSprite);
-        if (beamSprite) this.overlayScene.add(beamSprite);
+        this.overlayScene.add(...solutionSprites);
 
         const yp = 0.025;
         this.rpsSprite.get('UserA')!.position.set(0, yp, 0);
@@ -290,11 +329,9 @@ export class RPS_Game {
             this.rpsSprite.get('UserB')!.position.set(posB + 0.003, yp, 0);
 
             if (posB < 0.75 && posA > -0.75) {
-                requestAnimationFrame(loop);
+                this.animationFrameSlot.request(loop);
             } else {
-                if (userASprite) this.overlayScene.remove(userASprite);
-                if (userBSprite) this.overlayScene.remove(userBSprite);
-                if (beamSprite) this.overlayScene.remove(beamSprite);
+                this.overlayScene.remove(...solutionSprites);
 
                 this.removeText();
                 this.resetRPSGame();
@@ -341,58 +378,50 @@ export class RPS_Game {
         this.player.youSendRPGRequest = false;
     }
 
-    onResize(): void {
-        const aspect = window.innerWidth / window.innerHeight;
-
-        this.overlayCamera.left = -aspect;
-        this.overlayCamera.right = aspect;
-        this.overlayCamera.top = 1;
-        this.overlayCamera.bottom = -1;
-
-        this.overlayCamera.updateProjectionMatrix();
-
-        this.renderer.setSize(window.innerWidth, window.innerHeight);
-    }
-
     render(): void {
-        this.onResize();
+        if (this.disposed) {
+            return;
+        }
+
+        resizeOverlay(this.overlayCamera, this.renderer);
         this.renderer.render(this.overlayScene, this.overlayCamera);
     }
 
-    addRPSSprite(path: string, x: number, y: number): THREE.Mesh {
-        const texture = new THREE.TextureLoader().load(path);
-        const material = new THREE.MeshBasicMaterial({
-            map: texture,
-            transparent: true,
-            depthTest: false,
-            depthWrite: false,
-        });
-        const geometry = new THREE.PlaneGeometry(x, y);
-        const mesh = new THREE.Mesh(geometry, material);
-
-        return mesh;
-    }
-
     removeText(): void {
-        for (const textSprite of this.currentTextState) {
-            this.overlayScene.remove(textSprite);
-            textSprite.dispose();
-        }
-
-        this.currentTextState.length = 0;
+        clearOverlayText(this.currentTextState);
     }
 
     addText(text: string, px: number, py: number, size: number): void {
-        const textSprite = new CanvasTextSprite(text, size);
-        const scaleFactor = 0.2;
-        textSprite.scale.set(
-            textSprite.scale.x * scaleFactor,
-            textSprite.scale.y * scaleFactor,
-            1
-        );
-        textSprite.position.set(px, py, 0);
+        if (this.disposed) {
+            return;
+        }
 
-        this.currentTextState.push(textSprite);
-        this.overlayScene.add(textSprite);
+        addOverlayText(
+            this.overlayScene,
+            this.currentTextState,
+            text,
+            px,
+            py,
+            size
+        );
+    }
+
+    dispose(): void {
+        if (this.disposed) {
+            return;
+        }
+
+        this.disposed = true;
+        this.animationFrameSlot.cancel();
+        this.removeText();
+
+        this.battlePrompt.hide();
+        this.resourceDisposer.disposeObject3D(this.battlePrompt);
+
+        disposeOverlaySprites(this.rpsSprite, this.resourceDisposer);
+        this.overlayScene.clear();
+        this.playerInRange = null;
+        this.inRange = false;
+        this.hasReportedPlayerInRange = false;
     }
 }

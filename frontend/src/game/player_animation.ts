@@ -11,6 +11,43 @@ type PlayerAnimationState =
     (typeof PLAYER_ANIMATION_STATE)[keyof typeof PLAYER_ANIMATION_STATE];
 type PlayerAnimationActions = Record<PlayerAnimationState, AnimationAction>;
 
+type PlayerAnimationMixerCleanupOperation = 'stopAllAction' | 'uncacheRoot';
+
+export function cleanupPlayerAnimationMixer(
+    mixer: AnimationMixer,
+    onError?: (
+        error: unknown,
+        operation: PlayerAnimationMixerCleanupOperation
+    ) => void
+): void {
+    const report = (
+        error: unknown,
+        operation: PlayerAnimationMixerCleanupOperation
+    ): void => {
+        if (!onError) {
+            return;
+        }
+
+        try {
+            onError(error, operation);
+        } catch {
+            return;
+        }
+    };
+
+    try {
+        mixer.stopAllAction();
+    } catch (error: unknown) {
+        report(error, 'stopAllAction');
+    }
+
+    try {
+        mixer.uncacheRoot(mixer.getRoot());
+    } catch (error: unknown) {
+        report(error, 'uncacheRoot');
+    }
+}
+
 /**
  * beim weiblichen Modell Breathing (Index 0, Hände seitlich) der gewünschte Stillstand,
  * nicht der zusätzliche Clip Idle (Index 1, Hände hinten)

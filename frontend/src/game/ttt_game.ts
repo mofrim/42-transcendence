@@ -1,6 +1,15 @@
 import * as THREE from 'three';
 import { Player } from './player';
 import { CanvasTextSprite } from './CanvasTextSprite';
+import { AnimationFrameSlot } from './AnimationFrameSlot';
+import {
+    addOverlayText,
+    clearOverlayText,
+    createOverlaySprite,
+    disposeOverlaySprites,
+    resizeOverlay,
+} from './GameOverlay';
+import { createThreeResourceDisposer } from './ThreeResourceDisposer';
 import { TTTMark, TTTMeshBoard } from '@common/types';
 
 // Type-only import: exists only during TypeScript compilation, not at runtime.
@@ -30,7 +39,17 @@ export class TTT_Game {
     overlayScene: THREE.Scene;
     overlayCamera: THREE.OrthographicCamera;
 
-    vsSprite: Map<string, THREE.Mesh>;
+    vsSprite: Map<string, THREE.Sprite>;
+    private readonly resourceDisposer: ReturnType<
+        typeof createThreeResourceDisposer
+    >;
+    private readonly boardInitFrameSlot: AnimationFrameSlot;
+    private readonly animationFrameSlot: AnimationFrameSlot;
+    private readonly pendingWaits: Map<
+        ReturnType<typeof setTimeout>,
+        () => void
+    >;
+    private disposed: boolean;
 
     constructor(
         scene: THREE.Scene,
@@ -78,29 +97,34 @@ export class TTT_Game {
         this.overlayCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
 
         this.vsSprite = new Map();
+        this.resourceDisposer = createThreeResourceDisposer();
+        this.boardInitFrameSlot = new AnimationFrameSlot(() => !this.disposed);
+        this.animationFrameSlot = new AnimationFrameSlot(() => !this.disposed);
+        this.pendingWaits = new Map();
+        this.disposed = false;
 
         //this.vsSprite.set("A", this.addVSSprite('textures/X.jpg'));
         this.vsSprite.set(
             'Beam',
-            this.addVSSprite('textures/VS_Beam2.jpg', 10, 0.5)
+            createOverlaySprite('textures/VS_Beam2.jpg', 10, 0.5)
         );
         this.vsSprite.get('Beam')?.position.set(0, -0.25, 0);
 
         this.vsSprite.set(
             'VS',
-            this.addVSSprite('textures/VS_2.png', 0.5, 0.5)
+            createOverlaySprite('textures/VS_2.png', 0.5, 0.5)
         );
         this.vsSprite.set(
             'Draw',
-            this.addVSSprite('textures/Draw.png', 0.5, 0.5)
+            createOverlaySprite('textures/Draw.png', 0.5, 0.5)
         );
         this.vsSprite.set(
             'UserA',
-            this.addVSSprite('textures/UserA.png', 1, 1)
+            createOverlaySprite('textures/UserA.png', 1, 1)
         );
         this.vsSprite.set(
             'UserB',
-            this.addVSSprite('textures/UserB.png', 1, 1)
+            createOverlaySprite('textures/UserB.png', 1, 1)
         );
 
         console.log('TTT Game initialized.');
@@ -126,12 +150,11 @@ export class TTT_Game {
         this.waitforInitMesh(data);
     }
 
-    async waitforInitMesh(data: TTTInitGamePayload) {
+    waitforInitMesh(data: TTTInitGamePayload): void {
         const loop = () => {
             //console.log("Waiting for board to be ready...");
-            this.wait(10);
             if (!this.board.cells[0]) {
-                requestAnimationFrame(loop);
+                this.boardInitFrameSlot.request(loop);
             } else {
                 let index = 0;
                 if (data.game) {
@@ -153,35 +176,12 @@ export class TTT_Game {
         loop();
     }
 
-    addVSSprite(path: string, x: number, y: number): THREE.Mesh {
-        const texture = new THREE.TextureLoader().load(path);
-        const material = new THREE.MeshBasicMaterial({
-            map: texture,
-            transparent: true,
-            depthTest: false,
-            depthWrite: false,
-        });
-        const geometry = new THREE.PlaneGeometry(x, y);
-        const mesh = new THREE.Mesh(geometry, material);
-        //this.overlayScene.add(mesh);
+    startVSAnimation(): void {
+        if (this.disposed) {
+            return;
+        }
 
-        return mesh;
-    }
-
-    onResize(): void {
-        const aspect = window.innerWidth / window.innerHeight;
-
-        this.overlayCamera.left = -aspect;
-        this.overlayCamera.right = aspect;
-        this.overlayCamera.top = 1;
-        this.overlayCamera.bottom = -1;
-
-        this.overlayCamera.updateProjectionMatrix();
-
-        this.renderer.setSize(window.innerWidth, window.innerHeight);
-    }
-
-    async startVSAnimation(): Promise<void> {
+        this.animationFrameSlot.cancel();
         this.removeText();
         this.vsAnimationStart = false;
 
@@ -189,13 +189,11 @@ export class TTT_Game {
         const userBSprite = this.vsSprite.get('UserB');
         const vsSprite = this.vsSprite.get('VS');
         const beamSprite = this.vsSprite.get('Beam');
+        //this.overlayScene.add(mesh);
 
         if (!userASprite || !userBSprite || !vsSprite || !beamSprite) return;
 
-        this.overlayScene.add(userASprite);
-        this.overlayScene.add(userBSprite);
-        this.overlayScene.add(vsSprite);
-        this.overlayScene.add(beamSprite);
+        this.overlayScene.add(userASprite, userBSprite, vsSprite, beamSprite);
 
         const yp = 0.025;
         userASprite.position.set(0, yp, 0);
@@ -209,12 +207,14 @@ export class TTT_Game {
             userBSprite.position.set(posB - 0.005, yp, 0);
 
             if (posA < 0.75 && posB > -0.75) {
-                requestAnimationFrame(loop);
+                this.animationFrameSlot.request(loop);
             } else {
-                this.overlayScene.remove(userASprite);
-                this.overlayScene.remove(userBSprite);
-                this.overlayScene.remove(vsSprite);
-                this.overlayScene.remove(beamSprite);
+                this.overlayScene.remove(
+                    userASprite,
+                    userBSprite,
+                    vsSprite,
+                    beamSprite
+                );
 
                 this.removeText();
                 if (this.player.id === this.players[0]) {
@@ -229,7 +229,12 @@ export class TTT_Game {
         loop();
     }
 
-    async winAnimation(user: string): Promise<void> {
+    winAnimation(user: string): void {
+        if (this.disposed) {
+            return;
+        }
+
+        this.animationFrameSlot.cancel();
         this.vsAnimationStart = false;
         console.log('Animating win...');
 
@@ -238,8 +243,7 @@ export class TTT_Game {
 
         if (!userSprite || !beamSprite) return;
 
-        this.overlayScene.add(userSprite);
-        this.overlayScene.add(beamSprite);
+        this.overlayScene.add(userSprite, beamSprite);
 
         const yp = 0.025;
         userSprite.position.set(-0.75, yp, 0);
@@ -250,15 +254,16 @@ export class TTT_Game {
             userSprite.position.set(posA + 0.003, yp, 0);
 
             if (posA < 0) {
-                requestAnimationFrame(loop);
+                this.animationFrameSlot.request(loop);
             } else {
                 this.removeText();
 
                 //console.log("Animation finished.");
-                this.overlayScene.remove(userSprite);
-                this.overlayScene.remove(beamSprite);
-
-                this.overlayScene.remove(this.spriteGameText);
+                this.overlayScene.remove(
+                    userSprite,
+                    beamSprite,
+                    this.spriteGameText
+                );
 
                 //this.endGame();
                 this.tttCamera = false;
@@ -267,7 +272,12 @@ export class TTT_Game {
         loop();
     }
 
-    async drawAnimation(): Promise<void> {
+    drawAnimation(): void {
+        if (this.disposed) {
+            return;
+        }
+
+        this.animationFrameSlot.cancel();
         this.vsAnimationStart = false;
         console.log('Animating Draw...');
 
@@ -276,8 +286,7 @@ export class TTT_Game {
 
         if (!drawSprite || !beamSprite) return;
 
-        this.overlayScene.add(drawSprite);
-        this.overlayScene.add(beamSprite);
+        this.overlayScene.add(drawSprite, beamSprite);
 
         drawSprite.scale.set(0.5, 0.5, 0);
         drawSprite.position.set(0, -0.2, 0);
@@ -287,25 +296,30 @@ export class TTT_Game {
             drawSprite.scale.set(scaleX + 0.015, scaleX + 0.015, 1);
 
             if (scaleX < 2) {
-                requestAnimationFrame(loop);
+                this.animationFrameSlot.request(loop);
             } else {
                 this.removeText();
 
                 //console.log("Animation finished.");
-                this.overlayScene.remove(drawSprite);
-                this.overlayScene.remove(beamSprite);
+                this.overlayScene.remove(
+                    drawSprite,
+                    beamSprite,
+                    this.spriteGameText
+                );
 
-                this.overlayScene.remove(this.spriteGameText);
-
-                this.tttCamera = false;
                 //this.endGame();
+                this.tttCamera = false;
             }
         };
         loop();
     }
 
     render(): void {
-        this.onResize();
+        if (this.disposed) {
+            return;
+        }
+
+        resizeOverlay(this.overlayCamera, this.renderer);
 
         if (this.vsAnimationStart) {
             this.startVSAnimation();
@@ -376,15 +390,31 @@ export class TTT_Game {
     }
 
     wait(ms: number): Promise<void> {
-        return new Promise((resolve) => setTimeout(resolve, ms));
+        if (this.disposed) {
+            return Promise.resolve();
+        }
+
+        return new Promise((resolve) => {
+            const timeout = setTimeout(() => {
+                this.pendingWaits.delete(timeout);
+                resolve();
+            }, ms);
+            this.pendingWaits.set(timeout, resolve);
+        });
     }
 
     async endGame(): Promise<void> {
         await this.wait(4242);
-        this.resetGame();
+        if (!this.disposed) {
+            this.resetGame();
+        }
     }
 
     resetGame(): void {
+        if (this.disposed) {
+            return;
+        }
+
         this.clearBoard();
 
         console.log('TTT GAME END!!!');
@@ -400,8 +430,7 @@ export class TTT_Game {
         )
             this.removeText();
         this.players = [null, null];
-        for (const box of this.board.cells)
-            box.material.color = new THREE.Color(0xffffff);
+        for (const box of this.board.cells) box.material.color.set(0xffffff);
     }
 
     clearBoard() {
@@ -425,37 +454,37 @@ export class TTT_Game {
 
     drawWin(winnerID: number): void {
         if (winnerID == 1) {
-            this.board.getCell(0).material.color = new THREE.Color(0xff0000);
-            this.board.getCell(1).material.color = new THREE.Color(0xff0000);
-            this.board.getCell(2).material.color = new THREE.Color(0xff0000);
+            this.board.getCell(0).material.color.set(0xff0000);
+            this.board.getCell(1).material.color.set(0xff0000);
+            this.board.getCell(2).material.color.set(0xff0000);
         } else if (winnerID == 2) {
-            this.board.getCell(3).material.color = new THREE.Color(0xff0000);
-            this.board.getCell(4).material.color = new THREE.Color(0xff0000);
-            this.board.getCell(5).material.color = new THREE.Color(0xff0000);
+            this.board.getCell(3).material.color.set(0xff0000);
+            this.board.getCell(4).material.color.set(0xff0000);
+            this.board.getCell(5).material.color.set(0xff0000);
         } else if (winnerID == 3) {
-            this.board.getCell(6).material.color = new THREE.Color(0xff0000);
-            this.board.getCell(7).material.color = new THREE.Color(0xff0000);
-            this.board.getCell(8).material.color = new THREE.Color(0xff0000);
+            this.board.getCell(6).material.color.set(0xff0000);
+            this.board.getCell(7).material.color.set(0xff0000);
+            this.board.getCell(8).material.color.set(0xff0000);
         } else if (winnerID == 4) {
-            this.board.getCell(0).material.color = new THREE.Color(0xff0000);
-            this.board.getCell(3).material.color = new THREE.Color(0xff0000);
-            this.board.getCell(6).material.color = new THREE.Color(0xff0000);
+            this.board.getCell(0).material.color.set(0xff0000);
+            this.board.getCell(3).material.color.set(0xff0000);
+            this.board.getCell(6).material.color.set(0xff0000);
         } else if (winnerID == 5) {
-            this.board.getCell(1).material.color = new THREE.Color(0xff0000);
-            this.board.getCell(4).material.color = new THREE.Color(0xff0000);
-            this.board.getCell(7).material.color = new THREE.Color(0xff0000);
+            this.board.getCell(1).material.color.set(0xff0000);
+            this.board.getCell(4).material.color.set(0xff0000);
+            this.board.getCell(7).material.color.set(0xff0000);
         } else if (winnerID == 6) {
-            this.board.getCell(2).material.color = new THREE.Color(0xff0000);
-            this.board.getCell(5).material.color = new THREE.Color(0xff0000);
-            this.board.getCell(8).material.color = new THREE.Color(0xff0000);
+            this.board.getCell(2).material.color.set(0xff0000);
+            this.board.getCell(5).material.color.set(0xff0000);
+            this.board.getCell(8).material.color.set(0xff0000);
         } else if (winnerID == 7) {
-            this.board.getCell(0).material.color = new THREE.Color(0xff0000);
-            this.board.getCell(4).material.color = new THREE.Color(0xff0000);
-            this.board.getCell(8).material.color = new THREE.Color(0xff0000);
+            this.board.getCell(0).material.color.set(0xff0000);
+            this.board.getCell(4).material.color.set(0xff0000);
+            this.board.getCell(8).material.color.set(0xff0000);
         } else if (winnerID == 8) {
-            this.board.getCell(2).material.color = new THREE.Color(0xff0000);
-            this.board.getCell(4).material.color = new THREE.Color(0xff0000);
-            this.board.getCell(6).material.color = new THREE.Color(0xff0000);
+            this.board.getCell(2).material.color.set(0xff0000);
+            this.board.getCell(4).material.color.set(0xff0000);
+            this.board.getCell(6).material.color.set(0xff0000);
         }
     }
 
@@ -485,20 +514,10 @@ export class TTT_Game {
     }
 
     draw(): void {
+        //console.log("Not finished yet");
         this.removeText();
         this.drawAnimation();
         this.spriteGameText.setText('FINISH', 50);
-    }
-
-    checkDraw(): boolean {
-        for (const field of this.state) {
-            if (field === '') {
-                //console.log("Not finished yet");
-                return false;
-            }
-        }
-        console.log('No Winner :(');
-        return true;
     }
 
     markField(fieldName: string, playerID: string, mark: TTTMark): void {
@@ -538,25 +557,61 @@ export class TTT_Game {
     }
 
     removeText(): void {
-        for (const textSprite of this.currentTextState) {
-            this.overlayScene.remove(textSprite);
-            textSprite.dispose();
-        }
-
-        this.currentTextState.length = 0;
+        clearOverlayText(this.currentTextState);
     }
 
     addText(text: string, px: number, py: number, size: number): void {
-        const textSprite = new CanvasTextSprite(text, size);
-        const scaleFactor = 0.2;
-        textSprite.scale.set(
-            textSprite.scale.x * scaleFactor,
-            textSprite.scale.y * scaleFactor,
-            1
-        );
-        textSprite.position.set(px, py, 0);
+        if (this.disposed) {
+            return;
+        }
 
-        this.currentTextState.push(textSprite);
-        this.overlayScene.add(textSprite);
+        addOverlayText(
+            this.overlayScene,
+            this.currentTextState,
+            text,
+            px,
+            py,
+            size
+        );
+    }
+
+    dispose(): void {
+        if (this.disposed) {
+            return;
+        }
+
+        this.disposed = true;
+        this.boardInitFrameSlot.cancel();
+        this.animationFrameSlot.cancel();
+
+        for (const [timeout, resolve] of this.pendingWaits) {
+            clearTimeout(timeout);
+            resolve();
+        }
+        this.pendingWaits.clear();
+
+        this.removeText();
+        this.resourceDisposer.disposeObject3D([
+            this.spriteGameText,
+            this.spriteGameCount,
+        ]);
+
+        for (const cell of this.board.cells) {
+            if (
+                cell.material.map === this.texX ||
+                cell.material.map === this.texO ||
+                cell.material.map === this.texEmpty
+            ) {
+                cell.material.map = null;
+            }
+        }
+        this.resourceDisposer.disposeTexture([
+            this.texX,
+            this.texO,
+            this.texEmpty,
+        ]);
+
+        disposeOverlaySprites(this.vsSprite, this.resourceDisposer);
+        this.overlayScene.clear();
     }
 }

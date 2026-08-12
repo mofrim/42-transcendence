@@ -3,11 +3,19 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
 import {
+    cleanupPlayerAnimationMixer,
     createPlayerAnimationActions,
     normalizePlayerAnimationState,
     transitionPlayerAnimation,
 } from './player_animation.js';
-import { despawnPlayerVisuals } from './PlayerDespawn.js';
+import {
+    PlayerVisibilityTransition,
+    type PlayerLifecycleState,
+} from './PlayerVisibilityTransition.js';
+import {
+    createPlayerResourceDisposer,
+    replacePlayerModelMaterials,
+} from './PlayerModelMaterials.js';
 import { FloatingTextSprite } from './FloatingTextSprite.js';
 import type { PlayerState } from '@common/types';
 
@@ -17,51 +25,33 @@ type PlayerAnimationActions = Record<
     PlayerAnimationState,
     THREE.AnimationAction
 >;
+
 const PLAYER_FORWARD = new THREE.Vector3(0, 0, 1);
 const rotationDirection = new THREE.Vector3();
 const PLAYER_NAME_SIZE = 48;
 const PLAYER_NAME_HEIGHT = 1.9;
 const PLAYER_NAME_SCALE = 0.3;
 
-function getMaterials(mesh: THREE.Mesh): THREE.Material[] {
-    return Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-}
-
-function getMaterialColor(material: THREE.Material): THREE.Color {
-    const color = (material as THREE.Material & { color?: unknown }).color;
-    if (color instanceof THREE.Color) {
-        return color.clone();
-    } else {
-        return new THREE.Color(0xffffff);
-    }
-}
-
 const RemotePlayerImplementation = class Remote_Player {
-    static gradientTexture: THREE.Texture = (() => {
-        const texture = new THREE.TextureLoader().load(
-            '/textures/gradientMaps/twoTone2.jpg'
-        );
-        texture.minFilter = THREE.NearestFilter;
-        texture.magFilter = THREE.NearestFilter;
-        return texture;
-    })();
-
-    private colAr: THREE.Mesh[];
-    scene: THREE.Scene;
-    id: string;
+    private readonly colAr: THREE.Mesh[];
+    private readonly ownedCollisionMeshes: THREE.Mesh[];
+    private readonly nameLabel: FloatingTextSprite;
+    private readonly resourceDisposer: ReturnType<
+        typeof createPlayerResourceDisposer
+    >;
+    private readonly lifecycleController: PlayerVisibilityTransition;
+    private loadGeneration: number;
+    private finalized: boolean;
+    private remoteState: RemotePlayerState;
+    private battleRequestedState: boolean;
+    readonly id: string;
     nickname: string;
     model: THREE.Group | null;
     group: THREE.Group;
-    private readonly nameLabel: FloatingTextSprite;
-    private isDespawning: boolean;
-    state: RemotePlayerState;
     stateCurrent: PlayerAnimationState;
     mixer: THREE.AnimationMixer | null;
     actions: Partial<PlayerAnimationActions> | null;
-    isLoaded: boolean;
-    startSpawn: boolean;
     isSpawned: boolean;
-    battleRequested: boolean;
 
     constructor(
         path: string,
@@ -70,9 +60,13 @@ const RemotePlayerImplementation = class Remote_Player {
         scene: THREE.Scene,
         mesh_RP: THREE.Mesh | THREE.Mesh[]
     ) {
-        this.colAr = mesh_RP as unknown as THREE.Mesh[];
+        if (Array.isArray(mesh_RP)) {
+            this.colAr = mesh_RP;
+        } else {
+            this.colAr = [mesh_RP];
+        }
+        this.ownedCollisionMeshes = [];
 
-        this.scene = scene;
         this.id = id;
         this.nickname = nickname;
         this.model = null;
@@ -83,183 +77,376 @@ const RemotePlayerImplementation = class Remote_Player {
             new THREE.Vector3(0, PLAYER_NAME_HEIGHT, 0)
         );
         this.nameLabel.scale.multiplyScalar(PLAYER_NAME_SCALE);
-        this.scene.add(this.nameLabel);
-        this.isDespawning = false;
-        this.state = 'Idle';
+        scene.add(this.nameLabel);
+
+        this.loadGeneration = 0;
+        this.finalized = false;
+        this.remoteState = 'Idle';
+        this.battleRequestedState = false;
         this.stateCurrent = 'Idle';
         this.mixer = null;
         this.actions = null;
 
-        this.isLoaded = false;
-        this.startSpawn = false;
         this.isSpawned = false;
 
-        this.battleRequested = false;
+        this.resourceDisposer = createPlayerResourceDisposer(
+            (error: unknown) => {
+                console.error('Remote player resource disposal failed:', error);
+            }
+        );
+        this.lifecycleController = new PlayerVisibilityTransition({
+            getModel: () => this.model,
+            onSpawnComplete: () => {
+                this.isSpawned = true;
+            },
+            finalize: () => this.finalizeRemoteResources(),
+            onFinalizeError: (error: unknown) => {
+                console.error('Remote player finalization failed:', error);
+            },
+        });
 
         this.loadEnemyCharacter(path);
     }
 
-    async animateSpawn(x: number, startY: number, z: number): Promise<void> {
-        if (this.startSpawn) {
+    animateSpawn(x: number, startY: number, z: number): void {
+        if (!this.isActive()) {
             return;
         }
+
         //console.log("Animating spawn " + this.id);
-        this.startSpawn = true;
-
-        let spawnY = 1.5 + startY;
-
-        this.group.position.x = x;
-        this.group.position.y = startY;
-        this.group.position.z = z;
-        this.nameLabel.follow(this.group);
-
-        let sv = 0;
-        let av = 0;
         //console.log("Animating spawn...");
-        const loop = (): void => {
-            if (spawnY > 0.14) {
-                const model = this.model;
-                if (!this.isLoaded || !model) {
-                    requestAnimationFrame(loop);
-                    return;
-                }
-
-                spawnY -= 0.14;
-                this.group.position.y = spawnY;
-                //console.log("spawnY: " + this.group.position.y.toFixed(4));
-                if (sv < 1) sv += 0.07;
-                av += 0.05;
-                this.group.scale.set(sv, 1, sv);
-
-                model.traverse((child: THREE.Object3D) => {
-                    if (child instanceof THREE.Mesh) {
-                        getMaterials(child).forEach((material) => {
-                            material.transparent = true;
-                            material.opacity = av;
-                        });
-                    }
-                });
-                requestAnimationFrame(loop);
-            } else {
-                this.model!.traverse((child: THREE.Object3D) => {
-                    if (child instanceof THREE.Mesh) {
-                        getMaterials(child).forEach((material) => {
-                            material.transparent = true;
-                            material.opacity = 1;
-                        });
-                    }
-                });
-                this.group.position.y = startY;
-                this.group.scale.set(1, 1, 1);
-                this.isSpawned = true;
-            }
-        };
-        loop();
+        this.group.position.set(x, startY, z);
+        //console.log("spawnY: " + this.group.position.y.toFixed(4));
+        this.nameLabel.follow(this.group);
+        this.lifecycleController.startSpawn();
     }
 
-    async animateDeSpawn(): Promise<void> {
-        if (this.isDespawning) {
+    private prepareForTermination(): void {
+        this.loadGeneration += 1;
+        this.isSpawned = false;
+        this.battleRequestedState = false;
+
+        const runPreparation = (prepare: () => void): void => {
+            try {
+                prepare();
+            } catch (error) {
+                console.error(
+                    'Remote player termination preparation failed:',
+                    error
+                );
+            }
+        };
+
+        runPreparation(() => this.nameLabel.hide());
+        runPreparation(() => this.unregisterOwnedCollisionMeshes());
+    }
+
+    startDespawn(): Promise<void> {
+        // console.log("DESTROY");
+        if (this.lifecycleController.state === 'active') {
+            this.prepareForTermination();
+        }
+
+        return this.lifecycleController.startDespawn();
+    }
+
+    updateLifecycle(deltaSeconds: number): void {
+        this.lifecycleController.update(deltaSeconds);
+    }
+
+    forceDispose(): Promise<void> {
+        const completion = this.startDespawn();
+        this.lifecycleController.forceComplete();
+        return completion;
+    }
+
+    get lifecycleState(): PlayerLifecycleState {
+        return this.lifecycleController.state;
+    }
+
+    isActive(): boolean {
+        return this.lifecycleController.state === 'active';
+    }
+
+    get state(): RemotePlayerState {
+        return this.remoteState;
+    }
+
+    set state(state: RemotePlayerState) {
+        if (!this.isActive()) {
             return;
         }
-        this.isDespawning = true;
 
-        await despawnPlayerVisuals(
-            this.group,
-            () => this.model,
-            () => this.isLoaded,
-            this.mixer
-        );
+        this.remoteState = state;
+    }
+
+    get battleRequested(): boolean {
+        return this.battleRequestedState;
+    }
+
+    set battleRequested(battleRequested: boolean) {
+        if (!this.isActive() && battleRequested) {
+            return;
+        }
+
+        this.battleRequestedState = battleRequested;
+    }
+
+    private unregisterOwnedCollisionMeshes(): void {
+        const ownedMeshes = new Set(this.ownedCollisionMeshes);
+        for (let index = this.colAr.length - 1; index >= 0; index -= 1) {
+            const mesh = this.colAr[index];
+            if (mesh !== undefined && ownedMeshes.has(mesh)) {
+                this.colAr.splice(index, 1);
+            }
+        }
+        this.ownedCollisionMeshes.length = 0;
+    }
+
+    private finalizeRemoteResources(): void {
+        if (this.finalized) {
+            return;
+        }
+        this.finalized = true;
+
+        let finalizationError: unknown = null;
+        const runCleanup = (cleanup: () => void): void => {
+            try {
+                cleanup();
+            } catch (error) {
+                if (finalizationError === null) {
+                    finalizationError = error;
+                }
+            }
+        };
+
+        this.loadGeneration += 1;
+        runCleanup(() => this.unregisterOwnedCollisionMeshes());
+
+        const model = this.model;
+        const mixer = this.mixer;
+
+        if (mixer !== null) {
+            cleanupPlayerAnimationMixer(mixer, (error) => {
+                if (finalizationError === null) {
+                    finalizationError = error;
+                }
+            });
+        }
+
+        if (model !== null) {
+            runCleanup(() => this.resourceDisposer.disposeObject3D(model));
+        }
+
+        runCleanup(() => this.nameLabel.hide());
+        runCleanup(() => this.resourceDisposer.disposeObject3D(this.nameLabel));
+        runCleanup(() => this.group.removeFromParent());
 
         this.actions = null;
         this.mixer = null;
         this.model = null;
+        this.isSpawned = false;
+        this.battleRequestedState = false;
+
+        if (finalizationError !== null) {
+            throw finalizationError;
+        }
     }
 
-    loadEnemyCharacter(path: string): void {
+    private rejectLoadedModel(model: THREE.Object3D): void {
+        this.resourceDisposer.disposeObject3D(model);
+    }
+
+    private rollbackLoadedModel(
+        model: THREE.Group,
+        mixer: THREE.AnimationMixer | null,
+        actions: Partial<PlayerAnimationActions> | null
+    ): void {
+        const runRollback = (rollback: () => void): void => {
+            try {
+                rollback();
+            } catch (error) {
+                console.error('Remote player load rollback failed:', error);
+            }
+        };
+
+        if (mixer !== null) {
+            cleanupPlayerAnimationMixer(mixer, (error) => {
+                console.error('Remote player load rollback failed:', error);
+            });
+        }
+
+        if (this.actions === actions) {
+            this.actions = null;
+        }
+        if (this.mixer === mixer) {
+            this.mixer = null;
+        }
+        if (this.model === model) {
+            this.model = null;
+        }
+
+        runRollback(() => this.unregisterOwnedCollisionMeshes());
+        runRollback(() => this.resourceDisposer.disposeObject3D(model));
+
+        this.isSpawned = false;
+    }
+
+    private canAcceptLoad(generation: number): boolean {
+        return (
+            generation === this.loadGeneration &&
+            this.lifecycleController.state === 'active' &&
+            !this.finalized
+        );
+    }
+
+    private handleVisualLoadFailure(
+        generation: number,
+        path: string,
+        error: unknown
+    ): void {
+        if (!this.canAcceptLoad(generation)) {
+            return;
+        }
+
+        this.isSpawned = false;
+        console.error(
+            `Remote player model loading failed for "${path}":`,
+            error
+        );
+    }
+
+    private loadEnemyCharacter(path: string): void {
+        if (!this.isActive() || this.model !== null) {
+            return;
+        }
+
+        const generation = this.loadGeneration + 1;
+        this.loadGeneration = generation;
+
+        void this.loadEnemyCharacterAsync(path, generation);
+    }
+
+    private async loadEnemyCharacterAsync(
+        path: string,
+        generation: number
+    ): Promise<void> {
         const loader = new GLTFLoader();
         //console.log("Enemy character loading...");
+        let gltf: Awaited<ReturnType<GLTFLoader['loadAsync']>>;
+        try {
+            gltf = await loader.loadAsync(path);
+        } catch (error) {
+            this.handleVisualLoadFailure(generation, path, error);
+            return;
+        }
 
-        loader.load(path, (gltf) => {
-            const model = gltf.scene;
-            this.model = model;
+        const loadedModel = gltf.scene;
+        //model.position.set(x, y, z);
+        //model.rotation.y = rot;
+        //this.colAr.push(this.model);
+        if (!this.canAcceptLoad(generation)) {
+            this.rejectLoadedModel(loadedModel);
+            return;
+        }
 
-            this.group.add(model);
-
-            this.group.scale.set(0, 1, 0);
-
-            //model.position.set(x, y, z);
-            //model.rotation.y = rot;
-            model.rotation.y = Math.PI;
-            //this.colAr.push(this.model);
-            model.traverse((object: THREE.Object3D) => {
-                if (object instanceof THREE.Mesh) {
-                    this.colAr.push(object);
-
-                    object.castShadow = true;
-                    object.receiveShadow = true;
-
-                    const sourceMaterial = object.material;
-                    const materials = getMaterials(object).map((material) => {
-                        if (material.name === 'Outline') {
-                            object.castShadow = false;
-                            return new THREE.MeshBasicMaterial({
-                                color: 0x000000,
-                                transparent: true,
-                                opacity: 0,
-                            });
-                        }
-
-                        return new THREE.MeshToonMaterial({
-                            color: getMaterialColor(material),
-                            gradientMap: Remote_Player.gradientTexture,
-                        });
-                    });
-
-                    object.material = Array.isArray(sourceMaterial)
-                        ? materials
-                        : materials[0];
-
-                    /* object.material = new THREE.MeshToonMaterial({
+        let collisionMeshes: THREE.Mesh[];
+        try {
+            collisionMeshes = replacePlayerModelMaterials(
+                loadedModel,
+                this.resourceDisposer
+            );
+            /* object.material = new THREE.MeshToonMaterial({
                         color: object.material.color.clone(),
                         gradientMap: Remote_Player.gradientTexture,
                             transparent: true,
                             opacity: 0
                     }); */
 
-                    /* object.material = new THREE.MeshToonMaterial({
+            /* object.material = new THREE.MeshToonMaterial({
                         color: 0xffffff,
                         gradientMap: Remote_Player.gradientTexture,
                             transparent: true,
                             opacity: 0
                     }); */
-                }
-            });
+        } catch (error) {
+            this.rejectLoadedModel(loadedModel);
+            this.handleVisualLoadFailure(generation, path, error);
+            return;
+        }
 
-            const mixer = new THREE.AnimationMixer(model);
+        if (!this.canAcceptLoad(generation)) {
+            this.rejectLoadedModel(loadedModel);
+            return;
+        }
+
+        let preparedMixer: THREE.AnimationMixer | null = null;
+        let preparedActions: Partial<PlayerAnimationActions> | null = null;
+        try {
+            const mixer = new THREE.AnimationMixer(loadedModel);
             // starts Idle as the active action after initialization
             try {
-                const actions = createPlayerAnimationActions(
+                preparedActions = createPlayerAnimationActions(
                     mixer,
                     gltf.animations,
                     path
                 );
-
-                this.mixer = mixer;
-                this.actions = actions;
-                this.state = normalizePlayerAnimationState(this.state);
-                // Der erste Zustand und Updates während des Spawns werden verworfen
-                this.stateCurrent = 'Idle';
-                this.isLoaded = true;
+                preparedMixer = mixer;
             } catch (error) {
+                cleanupPlayerAnimationMixer(mixer, (cleanupError) => {
+                    console.error(
+                        'Remote animation rollback failed:',
+                        cleanupError
+                    );
+                });
                 console.error(
                     `Remote player animation initialization failed for "${path}":`,
                     error
                 );
             }
-        });
+        } catch (error) {
+            console.error(
+                `Remote player animation mixer initialization failed for "${path}":`,
+                error
+            );
+        }
+
+        if (!this.canAcceptLoad(generation)) {
+            this.rollbackLoadedModel(
+                loadedModel,
+                preparedMixer,
+                preparedActions
+            );
+            return;
+        }
+
+        try {
+            loadedModel.rotation.y = Math.PI;
+            this.model = loadedModel;
+            this.mixer = preparedMixer;
+            this.actions = preparedActions;
+            this.remoteState = normalizePlayerAnimationState(this.remoteState);
+            // Der erste Zustand und Updates während des Spawns werden verworfen
+            this.stateCurrent = 'Idle';
+            this.group.add(loadedModel);
+            this.colAr.push(...collisionMeshes);
+            this.ownedCollisionMeshes.push(...collisionMeshes);
+            this.lifecycleController.applyCurrentVisualState();
+        } catch (error) {
+            this.rollbackLoadedModel(
+                loadedModel,
+                preparedMixer,
+                preparedActions
+            );
+            this.handleVisualLoadFailure(generation, path, error);
+        }
     }
 
     rotateCharacter(startPos: THREE.Vector3, endPos: THREE.Vector3): void {
+        if (!this.isActive()) {
+            return;
+        }
+
         rotationDirection.subVectors(endPos, startPos).setY(0);
         if (rotationDirection.lengthSq() === 0) {
             this.group.quaternion.identity();
@@ -273,13 +460,13 @@ const RemotePlayerImplementation = class Remote_Player {
     }
 
     updateAnimation(delta: number): void {
-        if (!this.isLoaded || !this.mixer || !this.actions) {
+        if (!this.isActive() || !this.mixer || !this.actions) {
             return;
         }
 
         const fadeDuration = 0.3;
-        const nextState = normalizePlayerAnimationState(this.state);
-        this.state = nextState;
+        const nextState = normalizePlayerAnimationState(this.remoteState);
+        this.remoteState = nextState;
 
         // smooth start <-> stop animation
         if (this.stateCurrent !== nextState) {
@@ -294,11 +481,11 @@ const RemotePlayerImplementation = class Remote_Player {
         this.mixer.update(delta);
     }
 
-    removePlayer(): void {
-        this.id = '-1';
-    }
-
     setNickname(nickname: string): void {
+        if (!this.isActive()) {
+            return;
+        }
+
         const trimmedNickname = nickname.trim();
         if (!trimmedNickname || trimmedNickname === this.nickname) {
             return;
@@ -307,29 +494,18 @@ const RemotePlayerImplementation = class Remote_Player {
         this.nickname = trimmedNickname;
         this.nameLabel.setText(trimmedNickname, PLAYER_NAME_SIZE);
     }
-
-    destroy(): void {
-        // console.log("DESTROY");
-
-        this.nameLabel.hide();
-        this.scene.remove(this.nameLabel);
-        this.nameLabel.dispose();
-
-        void this.animateDeSpawn();
-    }
 };
 
 type RemotePlayerInstance = InstanceType<typeof RemotePlayerImplementation>;
 
 interface RemotePlayerConstructor {
-    readonly gradientTexture: THREE.Texture;
     new (
         path: string,
         id: string,
         nickname: string,
         scene: THREE.Scene,
         mesh_RP: THREE.Mesh | THREE.Mesh[]
-    ): RemotePlayerInstance & { id: string };
+    ): RemotePlayerInstance & { readonly id: string };
 }
 
 export type Remote_Player = RemotePlayerInstance;

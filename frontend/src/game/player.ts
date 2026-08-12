@@ -5,32 +5,28 @@ import { Capsule } from 'three/addons/math/Capsule.js';
 import type { Octree } from 'three/addons/math/Octree.js';
 
 import {
+    cleanupPlayerAnimationMixer,
     createPlayerAnimationActions,
     transitionPlayerAnimation,
 } from './player_animation.js';
-import { despawnPlayerVisuals } from './PlayerDespawn.js';
+import { PlayerVisibilityTransition } from './PlayerVisibilityTransition.js';
+import {
+    createPlayerResourceDisposer,
+    replacePlayerModelMaterials,
+} from './PlayerModelMaterials.js';
 import { FloatingTextSprite } from './FloatingTextSprite.js';
 
 type PlayerAnimationState = ReturnType<typeof transitionPlayerAnimation>;
 
-const WORLD_UP = new THREE.Vector3(0, 1, 0);
 const PLAYER_FORWARD = new THREE.Vector3(0, 0, 1);
 const COLLISION_STEP_RADIUS_FACTOR = 0.5;
 const PLAYER_CHAT_SIZE = 42;
 const PLAYER_CHAT_HEIGHT = 2.15;
 const PLAYER_CHAT_SCALE = 0.28;
-const PLAYER_CHAT_DURATION_MS = 5_000; // ms also 5 Sekunden
+// ms also 5 Sekunden
+const PLAYER_CHAT_DURATION_MS = 10_000; // ms also 10 Sekunden
 
 export class Player {
-    static gradientTexture = (() => {
-        const texture = new THREE.TextureLoader().load(
-            '/textures/gradientMaps/twoTone2.jpg'
-        );
-        texture.minFilter = THREE.NearestFilter;
-        texture.magFilter = THREE.NearestFilter;
-        return texture;
-    })();
-
     static colRad: number = 0.35;
     static colStartY: number = 0.35;
     static colEndY: number = 1;
@@ -41,8 +37,13 @@ export class Player {
     model: THREE.Group | null;
     group: THREE.Group;
     private readonly chatBubble: FloatingTextSprite;
+    private readonly resourceDisposer: ReturnType<
+        typeof createPlayerResourceDisposer
+    >;
+    private readonly lifecycleController: PlayerVisibilityTransition;
     private chatBubbleTimeout: ReturnType<typeof setTimeout> | null;
-    private isDespawning: boolean;
+    private loadGeneration: number;
+    private finalized: boolean;
     /** running idle? */
     stateCurrent: PlayerAnimationState;
     mixer: THREE.AnimationMixer | null;
@@ -52,8 +53,6 @@ export class Player {
     playerDirection: THREE.Vector3;
     playerOnFloor: boolean;
     GRAVITY: number;
-    spawnY: number;
-    isLoaded: boolean;
     isSpawned: boolean;
     battleRequested: boolean;
     inRPSBattleMode: boolean;
@@ -89,12 +88,12 @@ export class Player {
         );
         this.chatBubble.scale.multiplyScalar(PLAYER_CHAT_SCALE);
         this.chatBubbleTimeout = null;
-        this.isDespawning = false;
+        this.loadGeneration = 0;
+        this.finalized = false;
         this.stateCurrent = 'Idle';
         this.mixer = null;
         this.actions = null;
 
-        scene.add(this.group, this.chatBubble);
         this.worldOctree = worldOctree;
         this.playerVelocity = new THREE.Vector3();
         this.playerDirection = new THREE.Vector3();
@@ -102,8 +101,6 @@ export class Player {
 
         this.GRAVITY = 30;
 
-        this.spawnY = 1.5;
-        this.isLoaded = false;
         this.isSpawned = false;
 
         this.battleRequested = false;
@@ -116,9 +113,11 @@ export class Player {
             Player.colRad
         );
 
-        Player.offset = (Player.colEndY - Player.colStartY) / 2 + Player.colRad;
         // apply lift
         //this.playerCollider.translate(new THREE.Vector3(0, Player.offset, 0));
+        // start with scale 0 for spawn animation
+        //this.group.scale.set(0, 1, 0);
+        Player.offset = (Player.colEndY - Player.colStartY) / 2 + Player.colRad;
 
         this.controls = {
             key: [0, 0],
@@ -129,17 +128,40 @@ export class Player {
             turnSmoothness: 4.0,
         };
 
-        // start with scale 0 for spawn animation
-        //this.group.scale.set(0, 1, 0);
+        this.resourceDisposer = createPlayerResourceDisposer(
+            (error: unknown) => {
+                this.reportLifecycleError(
+                    'Player resource disposal failed:',
+                    error
+                );
+            }
+        );
+        this.lifecycleController = new PlayerVisibilityTransition({
+            getModel: () => this.model,
+            onSpawnComplete: () => {
+                this.isSpawned = true;
+            },
+            finalize: () => this.finalizePlayerResources(),
+            onFinalizeError: (error: unknown) => {
+                this.reportLifecycleError('Player finalization failed:', error);
+            },
+        });
+
+        scene.add(this.group, this.chatBubble);
 
         this.loadModel(path);
 
-        this.animateSpawn();
+        //if(sv > 0.2)
+        //if(sv < 0.9)
+        //else
+        //    sv = 1;
+        // value just for spawn animation
+        this.lifecycleController.startSpawn();
     }
 
     /** print player chat bubble */
     showChatMessage(message: string): void {
-        if (this.isDespawning) {
+        if (!this.isActive()) {
             return;
         }
 
@@ -150,157 +172,324 @@ export class Player {
         this.chatBubble.setText(`🗨️ ${trimmedMessage}`, PLAYER_CHAT_SIZE);
         this.chatBubble.follow(this.group);
 
-        if (this.chatBubbleTimeout !== null) {
-            clearTimeout(this.chatBubbleTimeout);
-        }
+        this.clearChatBubbleTimeout();
 
-        this.chatBubbleTimeout = setTimeout(() => {
-            this.chatBubble.hide();
-            this.chatBubbleTimeout = null;
-        }, PLAYER_CHAT_DURATION_MS);
-    }
-
-    animateSpawn() {
-        let sv = 0;
-        let av = 0;
-        const loop = () => {
-            if (this.isDespawning) {
+        const timeout = setTimeout(() => {
+            if (this.chatBubbleTimeout !== timeout) {
                 return;
             }
-
-            if (this.spawnY > 0) {
-                if (!this.isLoaded || !this.model) {
-                    requestAnimationFrame(loop);
-                    return;
-                }
-
-                //if(sv > 0.2)
-                this.spawnY -= 0.1;
-                //if(sv < 0.9)
-                sv += 0.07;
-                av += 0.005;
-                //else
-                //    sv = 1;
-                this.group.scale.set(sv, 1, sv);
-                this.model.traverse((child) => {
-                    if (child instanceof THREE.Mesh) {
-                        const material = child.material as THREE.Material;
-                        material.transparent = true;
-                        material.opacity = av;
-                    }
-                });
-                requestAnimationFrame(loop);
-            } else {
-                this.spawnY = 0;
-                this.model!.traverse((child) => {
-                    if (child instanceof THREE.Mesh) {
-                        const material = child.material as THREE.Material;
-                        material.transparent = true;
-                        material.opacity = 1;
-                    }
-                });
-                this.group.scale.setScalar(1);
-                this.isSpawned = true;
+            this.chatBubbleTimeout = null;
+            try {
+                this.chatBubble.hide();
+            } catch (error) {
+                this.reportLifecycleError(
+                    'Player chat bubble hide failed:',
+                    error
+                );
             }
-        };
-        loop();
+        }, PLAYER_CHAT_DURATION_MS);
+        this.chatBubbleTimeout = timeout;
     }
 
-    async animateDeSpawn(): Promise<void> {
-        if (this.isDespawning) {
+    private clearChatBubbleTimeout(): void {
+        if (this.chatBubbleTimeout === null) {
             return;
         }
-        this.isDespawning = true;
-        this.isSpawned = false;
-        this.controls.key = [0, 0];
-        this.playerVelocity.set(0, 0, 0);
-        this.chatBubble.hide();
 
-        if (this.chatBubbleTimeout !== null) {
-            clearTimeout(this.chatBubbleTimeout);
-            this.chatBubbleTimeout = null;
+        const chatBubbleTimeout = this.chatBubbleTimeout;
+        this.chatBubbleTimeout = null;
+
+        try {
+            clearTimeout(chatBubbleTimeout);
+        } catch (error) {
+            this.reportLifecycleError(
+                'Player chat timeout cancellation failed:',
+                error
+            );
+        }
+    }
+
+    private reportLifecycleError(message: string, error: unknown): void {
+        try {
+            console.error(message, error);
+        } catch {
+            // Lifecycle progress and cleanup must not depend on error reporting.
+        }
+    }
+
+    private prepareForTermination(): void {
+        this.loadGeneration += 1;
+        this.isSpawned = false;
+
+        const runPreparation = (prepare: () => void): void => {
+            try {
+                prepare();
+            } catch (error) {
+                this.reportLifecycleError(
+                    'Player termination preparation failed:',
+                    error
+                );
+            }
+        };
+
+        runPreparation(() => {
+            this.controls.key = [0, 0];
+        });
+        runPreparation(() => this.playerVelocity.setScalar(0));
+        runPreparation(() => this.chatBubble.hide());
+        runPreparation(() => this.clearChatBubbleTimeout());
+    }
+
+    startDespawn(): Promise<void> {
+        if (this.lifecycleController.state === 'active') {
+            this.prepareForTermination();
         }
 
-        await despawnPlayerVisuals(
-            this.group,
-            () => this.model,
-            () => this.isLoaded,
-            this.mixer
+        return this.lifecycleController.startDespawn();
+    }
+
+    updateLifecycle(deltaSeconds: number): void {
+        this.lifecycleController.update(deltaSeconds);
+    }
+
+    forceDispose(): Promise<void> {
+        const completion = this.startDespawn();
+        this.lifecycleController.forceComplete();
+        return completion;
+    }
+
+    isActive(): boolean {
+        return this.lifecycleController.state === 'active';
+    }
+
+    private finalizePlayerResources(): void {
+        if (this.finalized) {
+            return;
+        }
+        this.finalized = true;
+
+        let finalizationError: unknown = null;
+        const runCleanup = (cleanup: () => void): void => {
+            try {
+                cleanup();
+            } catch (error) {
+                if (finalizationError === null) {
+                    finalizationError = error;
+                }
+            }
+        };
+
+        this.clearChatBubbleTimeout();
+
+        const model = this.model;
+        const mixer = this.mixer;
+
+        if (mixer !== null) {
+            cleanupPlayerAnimationMixer(mixer, (error) => {
+                if (finalizationError === null) {
+                    finalizationError = error;
+                }
+            });
+        }
+
+        if (model !== null) {
+            runCleanup(() => this.resourceDisposer.disposeObject3D(model));
+        }
+
+        runCleanup(() => this.chatBubble.hide());
+        runCleanup(() =>
+            this.resourceDisposer.disposeObject3D(this.chatBubble)
         );
+        runCleanup(() => this.group.removeFromParent());
 
         this.actions = null;
         this.mixer = null;
         this.model = null;
+        this.isSpawned = false;
+
+        if (finalizationError !== null) {
+            throw finalizationError;
+        }
+    }
+
+    private rejectLoadedModel(model: THREE.Object3D): void {
+        this.resourceDisposer.disposeObject3D(model);
+    }
+
+    private rollbackLoadedModel(
+        model: THREE.Group,
+        mixer: THREE.AnimationMixer | null,
+        actions: ReturnType<typeof createPlayerAnimationActions> | null
+    ): void {
+        const runRollback = (rollback: () => void): void => {
+            try {
+                rollback();
+            } catch (error) {
+                this.reportLifecycleError(
+                    'Player model load rollback failed:',
+                    error
+                );
+            }
+        };
+
+        if (mixer !== null) {
+            cleanupPlayerAnimationMixer(mixer, (error) => {
+                this.reportLifecycleError(
+                    'Player model load rollback failed:',
+                    error
+                );
+            });
+        }
+
+        const ownsModel = this.model === model;
+        if (this.actions === actions) {
+            this.actions = null;
+        }
+        if (this.mixer === mixer) {
+            this.mixer = null;
+        }
+        if (ownsModel) {
+            this.model = null;
+            this.isSpawned = false;
+        }
+
+        runRollback(() => this.resourceDisposer.disposeObject3D(model));
+    }
+
+    private canAcceptLoad(generation: number): boolean {
+        return (
+            generation === this.loadGeneration &&
+            this.lifecycleController.state === 'active' &&
+            !this.finalized
+        );
+    }
+
+    private handleVisualLoadFailure(
+        generation: number,
+        path: string,
+        error: unknown
+    ): void {
+        if (!this.canAcceptLoad(generation)) {
+            return;
+        }
+
+        this.isSpawned = false;
+        this.reportLifecycleError(
+            `Player model loading failed for "${path}":`,
+            error
+        );
     }
 
     static loader = new GLTFLoader();
 
-    loadModel(path: string) {
+    loadModel(path: string): void {
         //const loader = new GLTFLoader();
-        Player.loader.load(path, (gltf) => {
-            this.model = gltf.scene;
+        if (!this.isActive() || this.finalized || this.model !== null) {
+            return;
+        }
 
-            this.group.add(this.model);
-            //this.model.rotation.y = Math.PI;
-            this.group.rotation.y = Math.PI;
+        const generation = this.loadGeneration + 1;
+        this.loadGeneration = generation;
 
-            this.model.traverse(function (object) {
-                if (object instanceof THREE.Mesh) {
-                    object.castShadow = true;
-                    object.receiveShadow = true;
-                    const material =
-                        object.material as THREE.MeshStandardMaterial;
+        void this.loadModelAsync(path, generation);
+    }
 
-                    if (material.name === 'Outline') {
-                        //console.log("OUTLINE MESH FOUND");
-                        object.material = new THREE.MeshBasicMaterial({
-                            color: 0x000000,
-                            transparent: true,
-                            opacity: 0,
-                        });
-                        object.castShadow = false; // important: prevents shadow artifacts
-                        return;
+    private async loadModelAsync(
+        path: string,
+        generation: number
+    ): Promise<void> {
+        let gltf: Awaited<ReturnType<GLTFLoader['loadAsync']>>;
+        try {
+            gltf = await Player.loader.loadAsync(path);
+        } catch (error) {
+            this.handleVisualLoadFailure(generation, path, error);
+            return;
+        }
+
+        const loadedModel = gltf.scene;
+        if (!this.canAcceptLoad(generation)) {
+            this.rejectLoadedModel(loadedModel);
+            return;
+        }
+
+        try {
+            replacePlayerModelMaterials(loadedModel, this.resourceDisposer);
+        } catch (error) {
+            this.rejectLoadedModel(loadedModel);
+            this.handleVisualLoadFailure(generation, path, error);
+            return;
+        }
+
+        if (!this.canAcceptLoad(generation)) {
+            this.rejectLoadedModel(loadedModel);
+            return;
+        }
+
+        let preparedMixer: THREE.AnimationMixer | null = null;
+        let preparedActions: ReturnType<
+            typeof createPlayerAnimationActions
+        > | null;
+        try {
+            const mixer = new THREE.AnimationMixer(loadedModel);
+            preparedMixer = mixer;
+            preparedActions = createPlayerAnimationActions(
+                mixer,
+                gltf.animations,
+                path
+            );
+        } catch (error) {
+            if (preparedMixer !== null) {
+                cleanupPlayerAnimationMixer(
+                    preparedMixer,
+                    (cleanupError, operation) => {
+                        let message =
+                            'Player animation uncache rollback failed:';
+                        if (operation === 'stopAllAction') {
+                            message = 'Player animation stop rollback failed:';
+                        }
+                        this.reportLifecycleError(message, cleanupError);
                     }
-
-                    object.material = new THREE.MeshToonMaterial({
-                        color: material.color.clone(),
-                        gradientMap: Player.gradientTexture,
-                    });
-
-                    /* object.material = new THREE.MeshToonMaterial({
-                            color: 0xffffff,
-                            gradientMap: Player.gradientTexture,
-                            transparent: true,
-                            opacity: 0
-                        }); */
-                }
-            });
-
-            const mixer = new THREE.AnimationMixer(this.model);
-
-            try {
-                const actions = createPlayerAnimationActions(
-                    mixer,
-                    gltf.animations,
-                    path
-                );
-
-                this.mixer = mixer;
-                this.actions = actions;
-                this.isLoaded = true;
-            } catch (error) {
-                console.error(
-                    `Player animation initialization failed for "${path}":`,
-                    error
                 );
             }
-        });
+            preparedMixer = null;
+            preparedActions = null;
+            this.reportLifecycleError(
+                `Player animation initialization failed for "${path}":`,
+                error
+            );
+        }
+
+        if (!this.canAcceptLoad(generation)) {
+            this.rollbackLoadedModel(
+                loadedModel,
+                preparedMixer,
+                preparedActions
+            );
+            return;
+        }
+
+        try {
+            //this.model.rotation.y = Math.PI;
+            this.group.rotation.y = Math.PI;
+            this.model = loadedModel;
+            this.mixer = preparedMixer;
+            this.actions = preparedActions;
+            this.group.add(loadedModel);
+            this.lifecycleController.applyCurrentVisualState();
+        } catch (error) {
+            this.rollbackLoadedModel(
+                loadedModel,
+                preparedMixer,
+                preparedActions
+            );
+            this.handleVisualLoadFailure(generation, path, error);
+        }
     }
 
     getForwardVector(camera: THREE.Camera) {
         return camera
             .getWorldDirection(this.playerDirection)
-            .projectOnPlane(WORLD_UP)
+            .projectOnPlane(camera.up)
             .normalize();
     }
 
@@ -331,7 +520,7 @@ export class Player {
     }
 
     updateCharacter(delta: number) {
-        if (this.isDespawning) {
+        if (!this.isActive()) {
             return;
         }
 
@@ -353,13 +542,13 @@ export class Player {
             );
         }
 
-        let damping = Math.exp(-4 * delta) - 1;
+        let damping = THREE.MathUtils.damp(1, 0, 4, delta) - 1;
         if (!this.playerOnFloor) {
             this.playerVelocity.y -= this.GRAVITY * delta;
             // small air resistance
             damping *= 0.01;
         }
-        this.playerVelocity.addScaledVector(this.playerVelocity, damping);
+        this.playerVelocity.multiplyScalar(1 + damping);
         const deltaPosition = this.playerVelocity.clone().multiplyScalar(delta);
         /** Mehrstufige Treppe */
         const maxCollisionStep =
@@ -393,14 +582,11 @@ export class Player {
                 this.group.position.y + Player.colEndY,
                 this.group.position.z
             );
-            this.playerVelocity.set(0, 0, 0);
+            this.playerVelocity.setScalar(0);
         }
         if (this.controls.current === 'Idle') {
             this.playerVelocity.set(0, this.playerVelocity.y, 0);
         }
-
-        // value just for spawn animation
-        this.group.position.y += this.spawnY;
 
         // move object
         if (this.controls.current !== 'Idle') {
@@ -434,7 +620,12 @@ export class Player {
             }
 
             // smooth rotation toward camera/movement direction using slerp
-            const t = 1 - Math.exp(-this.controls.turnSmoothness * delta);
+            const t = THREE.MathUtils.damp(
+                0,
+                1,
+                this.controls.turnSmoothness,
+                delta
+            );
             if (
                 isFinite(rotate.x) &&
                 isFinite(rotate.y) &&

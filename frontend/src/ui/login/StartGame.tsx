@@ -155,18 +155,23 @@ export const Game = () => {
         // cleanup... in case we want to support logging out againg one day
         // TODO test this! needs implementing some mechanism for unsetting gameRunning
         return () => {
-            if (!gameRunning) {
-                if (mountRef.current && rendererRef.current) {
-                    // TODO think about this...
-                    // eslint-disable-next-line react-hooks/exhaustive-deps
-                    mountRef.current.removeChild(
-                        rendererRef.current.domElement
-                    );
-                    rendererRef.current.dispose();
-                }
-                gameRuntimeRef.current = null;
-                isInitializedRef.current = false; // Reset on unmount
-            }
+            const runtime = gameRuntimeRef.current;
+            const rendererToDispose = rendererRef.current;
+
+            gameRuntimeRef.current = null;
+            rendererRef.current = null;
+            isInitializedRef.current = false; // Reset on unmount
+            // TODO think about this...
+            rendererToDispose?.domElement.remove();
+
+            const cleanup = runtime?.dispose() ?? Promise.resolve();
+            void cleanup
+                .finally(() => {
+                    rendererToDispose?.dispose();
+                })
+                .catch((error: unknown) => {
+                    console.error('Game runtime cleanup failed:', error);
+                });
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [gameRunning]);
