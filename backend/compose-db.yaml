@@ -12,6 +12,8 @@ services:
         POSTGRES_USER: postgres
         POSTGRES_PASSWORD: postgres
         POSTGRES_DB: postgres
+    volumes:
+      - ftr-db:/var/lib/postgresql
     healthcheck:
         test: pg_isready -U postgres -d postgres
         interval: 10s
@@ -56,6 +58,10 @@ configs:
           }
         }
       }
+
+volumes:
+    ftr-db:
+      name: ftr-db
 
 networks:
   ftr-net:
