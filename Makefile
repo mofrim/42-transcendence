@@ -30,47 +30,35 @@ log_msg_single = @$(ECHO) "\n$(MSGOPN) $(1) $(MSGEND)\n"
 output_color_grey = @$(ECHON) "$(GRE)"
 output_colr_reset =  @$(ECHON) "$(RST)"
 
-# wtf?
-DOCKER = docker
-
 all:
 	$(call log_msg_single,Launching ftr using docker compose..)
-	$(DOCKER) compose up --build --detach
+	docker compose up --build
 
 dock-clean:
 	$(call log_msg_start,Cleaning docker containers...)
 	$(output_color_grey)
-# wtf?
-# 	-$(DOCKER) rm -f $$($(DOCKER) ps -qa)
-	$(DOCKER) compose down
+	docker compose down
 	$(call log_msg_end,Done.)
 
-# TODO add volume if we have decided on this
-dock-fclean: dock-clean
+dock-fclean:
 	$(call log_msg_start,Cleaning ALL runtime docker stuff...)
 	$(output_color_grey)
-# wtf?
-#   -$(DOCKER) rm -f $$($(DOCKER) ps -qa)
-# WTF?! suicide is the only way out? kein backup, kein mitleid?
-	# -$(DOCKER) volume rm -f $$($(DOCKER) volume ls -q)
-# useless
-#	-$(DOCKER) network rm -f ftr-net
+	docker compose down -v
 	$(call log_msg_end,Done.)
 
 dock-backend:
 	$(call log_msg_start,Launching ftr-backend using docker compose..)
-	$(DOCKER) compose --project-directory ./backend up --build --detach
+	docker compose --project-directory ./backend up --build
 	$(call log_msg_end,Done.)
 
 dock-frontend:
 	$(call log_msg_start,Launching ftr-frontend using docker compose..)
-	$(DOCKER) compose --project-directory ./frontend up --build --detach
+	docker compose --project-directory ./frontend up --build
 	$(call log_msg_end,Done.)
 
-# launch all backend services and the db for dev. might be handy during dev
 backend-dev:
-	$(call log_msg_start,Launching launching all backend for dev...)
-	$(DOCKER) compose --project-directory ./backend --file ./backend/compose-db.yaml up --detach && npm run dev:all
+	$(call log_msg_start,Launching all backend for dev...)
+	docker compose --project-directory ./backend --file ./backend/compose-db.yaml up && npm run dev:all
 	$(call log_msg_end,Done.)
 
-.phony: all dock-clean dock-fclean dock-backend dock-frontend
+.phony: all dock-clean dock-fclean dock-backend dock-frontend backend-dev
