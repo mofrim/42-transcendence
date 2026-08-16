@@ -9,10 +9,6 @@ import { useLoginContext } from '../../hooks/useLoginContext';
 import { startGame } from '../../game/main';
 import type { GameRuntime, GameRuntimeEvent } from '../../game/main';
 import {
-    DEFAULT_PLAYER_NICKNAME,
-    normalizePlayerNickname,
-} from '../../game/PlayerIdentity';
-import {
     GameUI,
     MAX_EVENT_LOG_ENTRIES,
     type EventLogEntry,
@@ -56,7 +52,7 @@ export const StartButton: React.FC = () => {
 };
 
 export const Game = () => {
-    const { gameRunning, avatar, nicknameRef, fullAddrRef } = useLoginContext();
+    const { gameRunning, avatar, fullAddrRef } = useLoginContext();
 
     // using ref here a lot because th
     const mountRef = useRef<HTMLDivElement>(null);
@@ -64,10 +60,10 @@ export const Game = () => {
     const gameRuntimeRef = useRef<GameRuntime | null>(null);
     const isInitializedRef = useRef(false);
     const eventSequenceRef = useRef(0);
-    const [nickname, setNickname] = useState(DEFAULT_PLAYER_NICKNAME);
+    const { user } = useAuth();
+    const nickname = user!.nickname;
     const [events, setEvents] = useState<EventLogEntry[]>([]);
     const [completedQuestIds, setCompletedQuestIds] = useState<string[]>([]);
-    const { user } = useAuth();
 
     const appendEvent = useCallback((description: string): void => {
         const now = new Date();
@@ -133,8 +129,6 @@ export const Game = () => {
         // guard against re-render due to strict-mode
         if (isInitializedRef.current) return;
         isInitializedRef.current = true;
-        const normalizedNickname = normalizePlayerNickname(nicknameRef.current);
-        setNickname(normalizedNickname);
 
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         rendererRef.current = renderer;
@@ -146,7 +140,7 @@ export const Game = () => {
 
         gameRuntimeRef.current = startGame(
             avatar === 'true',
-            normalizedNickname,
+            nickname,
             fullAddrRef.current,
             renderer,
             handleGameEvent
@@ -183,7 +177,7 @@ export const Game = () => {
                 // NOTE now we can just use the users nickname from DB here..
                 // this might change when we want to allow change user-prefs
                 // from a in-game ui
-                nickname={user!.nickname}
+                nickname={nickname}
 
                 completedQuestIds={completedQuestIds}
                 events={events}

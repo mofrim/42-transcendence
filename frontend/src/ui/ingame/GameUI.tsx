@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ReactNode, SyntheticEvent } from 'react';
-import { normalizePlayerNickname } from '../../game/PlayerIdentity';
 import {
     BLACK_HOLE_DURATION_SECONDS,
     BLACK_HOLE_QUEST_ID,
@@ -222,7 +221,6 @@ export function GameUI({
         event.stopPropagation();
     };
 
-    const displayedNickname = normalizePlayerNickname(nickname);
     const displayedEvents = events.slice(-MAX_EVENT_LOG_ENTRIES);
     const latestEventId = displayedEvents.at(-1)?.id;
     const blackHoleCountdown = formatQuestCountdown(blackHoleSecondsRemaining);
@@ -362,7 +360,7 @@ export function GameUI({
                     <h2 className='hud-title'>Profil</h2>
                     <p className='hud-profile-nickname'>
                         {/* TODO: edit nickname */}
-                        <strong>Nickname:</strong> {displayedNickname} ✏️
+                        <strong>Nickname:</strong> {nickname} ✏️
                     </p>
                     <h3 className='hud-profile-stats-title'>Game Stats:</h3>
                     {/* TODO: Game Stats */}

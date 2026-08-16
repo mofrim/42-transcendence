@@ -8,7 +8,6 @@ import { MultiplayerManager } from './multiplayer.js';
 // 'NPC' is defined but never used.
 // import { NPC } from './npc.js';
 import { Player } from './player.js';
-import { normalizePlayerNickname } from './PlayerIdentity.js';
 import { Camera } from './camera.js';
 import { TTT_Game } from './ttt_game.js';
 import { RPS_Game } from './rps_game.js';
@@ -92,7 +91,7 @@ function normalizeCharacter(character: boolean): boolean {
 
 export function startGame(
     whichCharacter: boolean = true,
-    nickname: string,
+    localNickname: string,
     serverUrl: string | null = null,
     renderer: THREE.WebGLRenderer,
     onGameEvent?: (event: GameRuntimeEvent) => void
@@ -103,7 +102,6 @@ export function startGame(
 
     console.log('character: ' + whichCharacter);
 
-    const localNickname = normalizePlayerNickname(nickname);
     const playerModelPath = whichCharacterModelPath(whichCharacter);
     const selectedSocketServerUrl =
         typeof serverUrl === 'string' ? serverUrl.trim() : '';

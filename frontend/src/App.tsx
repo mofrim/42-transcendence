@@ -22,10 +22,17 @@ type AppProps = {
 axios.defaults.withCredentials = true;
 
 const App: React.FC<AppProps> = (props: AppProps) => {
-    const { gameRunning } = useLoginContext();
+    const { gameRunning, setGameRunning } = useLoginContext();
     const { user } = useAuth();
 
-    if (gameRunning) {
+    // logout reset effect
+    React.useEffect(() => {
+        if (user == null && gameRunning) {
+            setGameRunning(false);
+        }
+    }, [user, gameRunning, setGameRunning]);
+
+    if (gameRunning && user != null) {
         console.log('game running');
         return <Game />;
     }
