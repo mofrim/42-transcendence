@@ -58,7 +58,7 @@ dock-frontend:
 
 backend-dev:
 	$(call log_msg_start,Launching all backend for dev...)
-	docker compose --project-directory ./backend --file ./backend/compose-db.yaml up && npm run dev:all
+	cd backend && docker compose -f ./compose-db.yaml up -d && npm run dev:all
 	$(call log_msg_end,Done.)
 
 .phony: all dock-clean dock-fclean dock-backend dock-frontend backend-dev
