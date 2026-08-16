@@ -73,10 +73,17 @@ export class NPC {
 
             const mix = new THREE.AnimationMixer(this.model);
 
-            // FIXME silenced noUncheckedIndexedAccess here
+            const idleClip = gltf.animations[defaultAnim];
+            const runClip = gltf.animations[2];
+            if (!idleClip || !runClip) {
+                throw new Error(
+                    `NPC ${this.id} requires animation clips at indexes ${defaultAnim} and 2`
+                );
+            }
+
             const actions: NPCAnimationActions = {
-                Idle: mix.clipAction(gltf.animations[defaultAnim]!),
-                Run: mix.clipAction(gltf.animations[2]!),
+                Idle: mix.clipAction(idleClip),
+                Run: mix.clipAction(runClip),
             };
             this.actions = actions;
 

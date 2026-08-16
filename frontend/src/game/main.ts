@@ -1285,15 +1285,15 @@ export function startGame(
 
         //console.log("hits.length: " + hits.length );
 
-        // FIXME silenced noUncheckedIndexedAccess here
-        if (tttRaycastHits.length > 0) {
+        const firstHit = tttRaycastHits[0];
+        if (firstHit) {
             //console.log("Clicked on TTT box:" + hits[0].object.name);
             //console.log("Clicked on: " + hits[0].object.name );
-            if (tttRaycastHits[0]!.object.name.includes('TTT_Board')) {
+            if (firstHit.object.name.includes('TTT_Board')) {
                 //tttGame.markField(hits[0].object.name, socket.id);
-                emitTTTmark(tttRaycastHits[0]!.object.name);
+                emitTTTmark(firstHit.object.name);
                 //console.log("Clicked on TTT box:" + hits[0].object.name);
-            } else if (tttRaycastHits[0]!.object.name.includes('TTT_Start')) {
+            } else if (firstHit.object.name.includes('TTT_Start')) {
                 //tttGame.startGame(socket.id);
                 emitTTTstart();
                 //console.log("Clicked on TTT box:" + hits[0].object.name);

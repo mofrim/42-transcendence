@@ -80,7 +80,8 @@ export class Camera {
             this.intersections
         );
 
-        if (this.intersections.length === 0)
+        const nearestIntersection = this.intersections[0];
+        if (!nearestIntersection)
             this.CamColisionReset(
                 delta,
                 this.raycaster.ray.origin,
@@ -88,9 +89,8 @@ export class Camera {
                 this.raycaster.ray.direction
             );
         else {
-            // FIXME silenced noUncheckedIndexedAccess here
             this.raycaster.ray.at(
-                this.intersections[0]!.distance - 0.1,
+                nearestIntersection.distance - 0.1,
                 this.camera.position
             );
             //this.testDirect(this.rayPos, hits[0].point, this.camera.position);
