@@ -453,20 +453,31 @@ function handleRPSChoice(socket: Socket, data: RPSBattleChoicePayload): void {
             choice: choice,
         });
     } else {
-        const { winner, winnerChoice, loser, loserChoice } =
-            gameManager.resultWinner(
-                PlayerOne,
-                rpsGame.playerOneChoice,
-                PlayerTwo,
-                rpsGame.playerTwoChoice
-            );
+        let winner = PlayerOne;
+        let winnerChoice = rpsGame.playerOneChoice;
+        let loser = PlayerTwo;
+        let loserChoice = rpsGame.playerTwoChoice;
+
+        if (gameResultCheck == 4) {
+            winner = PlayerTwo;
+            winnerChoice = rpsGame.playerTwoChoice;
+            loser = PlayerOne;
+            loserChoice = rpsGame.playerOneChoice;
+        }
+
+        const gameResult = gameManager.resultWinner(
+            winner,
+            winnerChoice,
+            loser,
+            loserChoice
+        );
 
         io.emit('update', {
             type: 'rps_winner',
-            winner: winner,
-            winnerChoice: winnerChoice,
-            loser: loser,
-            loserChoice: loserChoice,
+            winner: gameResult.winner,
+            winnerChoice: gameResult.winnerChoice,
+            loser: gameResult.loser,
+            loserChoice: gameResult.loserChoice,
         });
     }
 
