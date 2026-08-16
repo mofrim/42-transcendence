@@ -47,6 +47,7 @@ export const StartButton: React.FC = () => {
 
 export const Game: React.FC<{ nickname: string }> = ({ nickname }) => {
     const { gameRunning, avatar, fullAddrRef } = useLoginContext();
+    const [character] = useState(() => avatar === 'true');
 
     // using ref here a lot because th
     const mountRef = useRef<HTMLDivElement>(null);
@@ -131,7 +132,7 @@ export const Game: React.FC<{ nickname: string }> = ({ nickname }) => {
         }
 
         gameRuntimeRef.current = startGame(
-            avatar === 'true',
+            character,
             nickname,
             fullAddrRef.current,
             renderer,
@@ -170,7 +171,7 @@ export const Game: React.FC<{ nickname: string }> = ({ nickname }) => {
                 // this might change when we want to allow change user-prefs
                 // from a in-game ui
                 nickname={nickname}
-
+                character={character}
                 completedQuestIds={completedQuestIds}
                 events={events}
                 onChatMessage={handleChatMessage}

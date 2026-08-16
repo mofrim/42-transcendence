@@ -13,6 +13,8 @@ import type {
     QuestStatusChange,
     ResolvedQuestLogEntry,
 } from './QuestLog';
+import type { Character } from '@common/types';
+import { createCharacterPreview } from '../../game/character_preview';
 
 import './GameUI.css';
 
@@ -30,6 +32,7 @@ export type EventLogEntry = {
 
 type GameUIProps = {
     readonly nickname: string;
+    readonly character: Character;
     readonly quests?: readonly QuestLogEntry[];
     readonly completedQuestIds?: readonly string[];
     readonly events?: readonly EventLogEntry[];
@@ -51,6 +54,48 @@ type HudPanelToggleProps = {
     readonly panelLabel: string;
     readonly onToggle: () => void;
 };
+
+type ProfileCharacterPreviewProps = {
+    readonly character: Character;
+};
+
+/** Add selected character preview to profile HUD */
+function ProfileCharacterPreview({ character }: ProfileCharacterPreviewProps) {
+    const canvasRef = useRef<HTMLCanvasElement>(null);
+    const previewRef = useRef<ReturnType<typeof createCharacterPreview> | null>(
+        null
+    );
+
+    useEffect(() => {
+        const preview = createCharacterPreview({ canvas: canvasRef.current });
+        previewRef.current = preview;
+
+        return () => {
+            if (previewRef.current === preview) {
+                previewRef.current = null;
+            }
+            preview.dispose();
+        };
+    }, []);
+
+    useEffect(() => {
+        previewRef.current?.setCharacter(character);
+    }, [character]);
+
+    return (
+        <div
+            className='hud-profile-character-preview'
+            role='img'
+            aria-label='Selected player character 3D preview'
+        >
+            <canvas
+                ref={canvasRef}
+                className='hud-profile-character-preview-canvas'
+                aria-hidden='true'
+            />
+        </div>
+    );
+}
 
 function HudPanelToggle({
     questProgress,
@@ -171,6 +216,7 @@ const DEFAULT_EVENTS: readonly EventLogEntry[] = [
  */
 export function GameUI({
     nickname,
+    character,
     quests = DEFAULT_QUESTS,
     completedQuestIds = [],
     events = [],
@@ -358,6 +404,9 @@ export function GameUI({
                     hidden={!isProfileOpen}
                 >
                     <h2 className='hud-title'>Profil</h2>
+                    {isProfileOpen && (
+                        <ProfileCharacterPreview character={character} />
+                    )}
                     <p className='hud-profile-nickname'>
                         {/* TODO: edit nickname */}
                         <strong>Nickname:</strong> {nickname} ✏️
