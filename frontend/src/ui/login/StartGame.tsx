@@ -1,9 +1,3 @@
-// FIXME the whole nickname setting logic has to be adopted now as we can access
-// the real user-data from db via the backend using useAuth now
-// Most of the nickname setting logic in here seems obsolete now
-
-import { useAuth } from '../../hooks/useAuthContext';
-
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useLoginContext } from '../../hooks/useLoginContext';
 import { startGame } from '../../game/main';
@@ -51,7 +45,7 @@ export const StartButton: React.FC = () => {
     );
 };
 
-export const Game = () => {
+export const Game: React.FC<{ nickname: string }> = ({ nickname }) => {
     const { gameRunning, avatar, fullAddrRef } = useLoginContext();
 
     // using ref here a lot because th
@@ -60,8 +54,6 @@ export const Game = () => {
     const gameRuntimeRef = useRef<GameRuntime | null>(null);
     const isInitializedRef = useRef(false);
     const eventSequenceRef = useRef(0);
-    const { user } = useAuth();
-    const nickname = user!.nickname;
     const [events, setEvents] = useState<EventLogEntry[]>([]);
     const [completedQuestIds, setCompletedQuestIds] = useState<string[]>([]);
 
