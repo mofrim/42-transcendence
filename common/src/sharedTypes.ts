@@ -1,5 +1,5 @@
 // in this file we collect types that are shared at least among multiple files.
-import * as THREE from "three";
+import type * as THREE from "three";
 
 
 // -------------------=[ database backend related types ]=------------------- //
@@ -77,7 +77,6 @@ export enum RPSChoice {
     Scissors = 'scissors',
 }
 
-// TODO: Important for main.ts (tttBox)
 export type GLBMesh = THREE.Mesh<
     THREE.BufferGeometry,
     THREE.MeshStandardMaterial | THREE.MeshToonMaterial
@@ -252,15 +251,9 @@ export class TTTMeshBoard {
     cellCnt: number;
 
     constructor() {
-        this.cells = Array(9).fill(null).map(() => this.createGLBMesh());
+        this.cells = [];
         this.size = 9;
         this.cellCnt = 0;
-    };
-
-    private createGLBMesh(): GLBMesh {
-        const geometry = new THREE.BufferGeometry();
-        const material = new THREE.MeshStandardMaterial();
-        return new THREE.Mesh(geometry, material) as GLBMesh;
     };
 
     // method needed to wrap the array access because with
