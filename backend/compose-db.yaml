@@ -13,7 +13,7 @@ services:
         POSTGRES_PASSWORD: postgres
         POSTGRES_DB: postgres
     volumes:
-      - ftr-db:/var/lib/postgresql
+        - ftr-db:/var/lib/postgresql
     ports:
         - 5432:5432
     healthcheck:
@@ -23,7 +23,7 @@ services:
         retries: 3
         start_period: 5s
     networks:
-      - ftr-net
+        - ftr-net
 
   pgadmin:
     container_name: ftr-pgadmin
