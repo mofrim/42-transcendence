@@ -42,14 +42,7 @@ const LoginForm: React.FC<LoginFormProps> = ({
     };
 
     return (
-        <Card
-            style={{
-                width: '100%',
-                maxWidth: 400,
-                boxShadow: '0 10px 30px rgba(0,0,0,0.3)',
-                borderRadius: '12px',
-            }}
-        >
+        <Card>
             <Form
                 name='login'
                 onFinish={onFinish}
@@ -130,14 +123,7 @@ function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
     };
 
     return (
-        <Card
-            style={{
-                width: '100%',
-                maxWidth: 400,
-                boxShadow: '0 10px 30px rgba(0,0,0,0.3)',
-                borderRadius: '12px',
-            }}
-        >
+        <Card>
             <Form
                 name='register'
                 onFinish={onFinish}

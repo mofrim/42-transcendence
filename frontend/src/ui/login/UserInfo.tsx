@@ -8,26 +8,35 @@ export const UserInfo: React.FC = () => {
     return (
         <Card
             title='User Info'
-            style={{
-                width: '100%',
-                maxWidth: 400,
-                boxShadow: '0 5px 15px rgba(0,0,0,0.3)',
-                borderRadius: '12px',
-                marginBottom: '10px',
+            styles={{
+                root: {
+                    boxShadow: '0 5px 15px rgba(0,0,0,0.3)',
+                    borderRadius: '21px',
+                    marginBottom: '15px',
+                },
+                body: {
+                    paddingTop: '5px',
+                },
             }}
         >
-            <p>
-                <strong>Nickname:</strong> {user!.nickname}
-            </p>
-            <p>
-                <strong>FirstName:</strong> {user!.firstName}
-            </p>
-            <p>
-                <strong>LastName:</strong> {user!.lastName}
-            </p>
-            <p>
-                <strong>eMail:</strong> {user!.email}
-            </p>
+            <table>
+                <tr>
+                    <td style={{ textAlign: 'left' }}>
+                        <strong>Nickname:</strong>
+                    </td>
+                    <td style={{ textAlign: 'left', paddingLeft: '10px' }}>
+                        {user!.nickname}
+                    </td>
+                </tr>
+                <tr>
+                    <td style={{ textAlign: 'left' }}>
+                        <strong>eMail:</strong>
+                    </td>
+                    <td style={{ textAlign: 'left', paddingLeft: '10px' }}>
+                        {user!.email}
+                    </td>
+                </tr>
+            </table>
         </Card>
     );
 };
