@@ -753,7 +753,7 @@ export function startGame(
     //const OctreeSpawn = new Octree();
 
     const mesh_col: GLBMesh[] = [];
-    const mesh_RP: GLBMesh[] = [];
+    const mesh_RP: THREE.Mesh[] = [];
     const tttBox: TTTMeshBoard = new TTTMeshBoard();
     const tttPointer = new THREE.Vector2();
     const tttRaycaster = new THREE.Raycaster();
