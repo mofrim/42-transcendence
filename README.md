@@ -60,8 +60,6 @@ specifying for which tasks and which parts of the project.
 
 - [Socket.IO, TypeScript, and Express backend article](https://www.xjavascript.com/blog/socket-io-typescript-express/)
 
-- [React Three Fiber documentation](https://r3f.docs.pmnd.rs/getting-started/your-first-scene)
-
 - [React Context documentation](https://react.dev/learn/passing-data-deeply-with-context)
 
 - [Express microservices article](https://codezup.com/building-microservices-with-node-and-express/)

@@ -77,7 +77,6 @@ export class MultiplayerManager {
         z: number,
         state: PlayerState
     ) {
-        // FIXME is this function obsolete?
         //console.log("ID 1 " + playe.id + " to position: " + playe.group.position.y.toFixed(4) + " , y: " + y.toFixed(4));
         //if(player.id == 1)
         //    this.multiplayerMovementTest(player);
