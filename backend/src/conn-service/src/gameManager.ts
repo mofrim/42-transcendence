@@ -249,13 +249,6 @@ export class GameManager {
         return 1;
     }
 
-    /* resultInvalid(playerOne, playerTwo){
-        return {
-            playerOne: playerOne,
-            playerTwo: playerTwo,
-        };
-    } */
-
     resultDraw(playerOneID: string, playerTwoID: string, choice: string) {
         return {
             playerOne: playerOneID,

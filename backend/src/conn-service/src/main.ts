@@ -439,18 +439,6 @@ function handleRPSChoice(socket: Socket, data: RPSBattleChoicePayload): void {
     const PlayerOne = rpsGame.playerOne;
     const PlayerTwo = rpsGame.playerTwo;
 
-    // FIXME what about this code?
-    /* if(gameResultCheck == 1){
-      gameResult = gameManager.resultInvalid(PlayerOne, PlayerTwo);
-
-      io.emit("update", {
-        type: "rps_invalid",
-        playerOne: gameResult.playerOne,
-        playerTwo: gameResult.playerTwo,
-      });
-
-    } */
-
     if (gameResultCheck == 2) {
         const { playerOne, playerTwo, choice } = gameManager.resultDraw(
             PlayerOne,
