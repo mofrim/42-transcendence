@@ -439,14 +439,14 @@ function handleRPSChoice(socket: Socket, data: RPSBattleChoicePayload): void {
     const PlayerOne = rpsGame.playerOne;
     const PlayerTwo = rpsGame.playerTwo;
 
-    if (gameResultCheck == 2) {
+    if (gameResultCheck === 2) {
         const { playerOne, playerTwo, choice } = gameManager.resultDraw(
             PlayerOne,
             PlayerTwo,
             rpsGame.playerOneChoice
         );
 
-        io.emit('update', {
+        io.to([PlayerOne, PlayerTwo]).emit('update', {
             type: 'rps_draw',
             playerOne: playerOne,
             playerTwo: playerTwo,
@@ -458,7 +458,7 @@ function handleRPSChoice(socket: Socket, data: RPSBattleChoicePayload): void {
         let loser = PlayerTwo;
         let loserChoice = rpsGame.playerTwoChoice;
 
-        if (gameResultCheck == 4) {
+        if (gameResultCheck === 4) {
             winner = PlayerTwo;
             winnerChoice = rpsGame.playerTwoChoice;
             loser = PlayerOne;
@@ -472,7 +472,7 @@ function handleRPSChoice(socket: Socket, data: RPSBattleChoicePayload): void {
             loserChoice
         );
 
-        io.emit('update', {
+        io.to([PlayerOne, PlayerTwo]).emit('update', {
             type: 'rps_winner',
             winner: gameResult.winner,
             winnerChoice: gameResult.winnerChoice,
@@ -481,10 +481,7 @@ function handleRPSChoice(socket: Socket, data: RPSBattleChoicePayload): void {
         });
     }
 
-    //console.log("RPS Game ended. GameID: " + gameID + " PlayerOne: " +
-    //PlayerOne + " PlayerTwo: " + PlayerTwo);
-
-    //gameManager.removeRPSGame(gameID);
+    gameManager.removeRPSGame(gameID);
 }
 
 function handleRPSAccept(socket: Socket, data: RPSRequestDataPayload) {
