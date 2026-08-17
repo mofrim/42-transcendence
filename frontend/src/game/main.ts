@@ -132,22 +132,21 @@ export function startGame(
     const knownPlayerNicknames = new Map<string, string>();
     const blockedPlayerUpdates = new Set<string>();
 
-    // 'connect' event is fired on first connection AND reconnection
-    // QUESTION does our logic as intended on reconnect?
     socket.on('connect', () => {
-        console.log('Your Player ID: ' + socket.id);
-        if (player) {
-            // FIXME thing about cases where socket.id could be undefined and
-            // add error logging + more sophisticated handling here
-            if (socket.id === undefined) {
-                console.error('socket connect: undefined socket.id!');
-            } else {
-                console.log(
-                    `socket connect: setting player.id to ${socket.id}`
-                );
-                player.id = socket.id;
+        const socketId = socket.id;
+        if (socketId === undefined) {
+            console.error(
+                'Socket connected without an ID; local player identity was cleared.'
+            );
+            if (player) {
+                player.id = undefined;
             }
-            //tttGame.playerID = socket.id;
+            return;
+        }
+
+        console.log('Your Player ID: ' + socketId);
+        if (player) {
+            player.id = socketId;
         }
     });
 
@@ -188,6 +187,9 @@ export function startGame(
     });
 
     socket.on('disconnect', (reason) => {
+        if (player) {
+            player.id = undefined;
+        }
         if (!multiplayer) return;
         for (const id of multiplayer.players.keys()) {
             blockedPlayerUpdates.add(id);
