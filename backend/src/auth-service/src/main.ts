@@ -1,7 +1,3 @@
-// FIXME seems like we don't need this anymore... but i could not yet figure out
-// how -> https://www.npmjs.com/package/reflect-metadata
-import 'reflect-metadata';
-
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
