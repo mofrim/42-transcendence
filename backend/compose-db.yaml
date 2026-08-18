@@ -14,6 +14,7 @@ services:
         POSTGRES_DB: postgres
     volumes:
         - ftr-db:/var/lib/postgresql
+    # TODO: remove any exposed ports
     ports:
         - 5432:5432
     healthcheck:
@@ -39,6 +40,7 @@ services:
       PGADMIN_DEFAULT_PASSWORD: password
       PGADMIN_SERVER_JSON_FILE: /pgadmin4/servers.json
       PGADMIN_CONFIG_SERVER_MODE: "False"
+    # TODO: remove any exposed ports
     ports:
       - 80:80
     networks:
