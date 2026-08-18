@@ -1,6 +1,4 @@
-# --------------------------------=[ builder ]=------------------------------- #
-
-FROM node:24-slim AS builder
+FROM node:24-slim
 WORKDIR /app
 
 COPY package.json package-lock.json ./
@@ -12,16 +10,13 @@ RUN npm ci
 COPY common ./common
 COPY frontend ./frontend
 
-RUN npm run build -w common && npm run build -w frontend
+RUN npm run build -w common && npm run build -w frontend;
 
-# --------------------------=[ serve app with nginx ]=------------------------ #
+ARG USER_ID=1000
+ARG GROUP_ID=1000
+RUN  groupadd -f -g $GROUP_ID appuser && \
+    (grep ":$USER_ID:" /etc/passwd || useradd -u $USER_ID -g appuser -M) &&  \
+    mkdir -p /dist && \
+    chown $USER_ID:$GROUP_ID /dist
 
-FROM nginx:alpine
-
-# add some stuff for debugging
-RUN apk update && apk upgrade && apk add --no-cache curl bash iproute2-ss;
-
-COPY --from=builder /app/frontend/dist /usr/share/nginx/html
-COPY frontend/nginx.conf /etc/nginx/conf.d/default.conf
-EXPOSE 1111
-CMD ["nginx", "-g", "daemon off;"]
+ENTRYPOINT rm -rf /dist/* && cp -r /app/frontend/dist/* /dist && chown -R $USER_ID:$GROUP_ID /dist && ls -al /dist

@@ -3,13 +3,6 @@
 # which will avoid the `name already in use` error.
 name: ft_transcendence
 
-# the frontend _needs_ the backend in order function properly, so include it
-include:
-    - path:
-          - ../backend/compose.yaml
-      project_directory: ../backend
-      env_file: ../dev.env
-
 services:
   frontend:
     container_name: ftr-frontend
@@ -17,14 +10,11 @@ services:
     build:
       context: ..
       dockerfile: ./frontend/Dockerfile
-    depends_on:
-      conn-service:
-        condition: service_started
-    ports:
-      - "1111:1111"
-    networks:
-      - ftr-net
-
-networks:
-  ftr-net:
-    driver: bridge
+      args:
+          USER_ID: ${UID:-1000}
+          GROUP_ID: ${GID:-1000}
+    environment:
+        USER_ID: ${UID:-1000}
+        GROUP_ID: ${GID:-1000}
+    volumes:
+        - ./docker-dist:/dist

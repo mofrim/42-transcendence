@@ -4,3 +4,4 @@ name: ft_transcendence
 include:
     - ./frontend/compose.yaml
     - ./backend/compose.yaml
+    - ./rev-proxy/compose.yaml

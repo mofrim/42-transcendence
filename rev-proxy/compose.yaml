@@ -1,0 +1,34 @@
+# compose.yaml for starting our reverse-proxy aka nginx. needs the backend
+# services in order to start. doesn't need the frontend files, but does not make
+# much sense without them.
+
+name: ft_transcendence
+
+include:
+    - path:
+          - ../backend/compose.yaml
+      project_directory: ../backend
+      env_file: ../dev.env
+
+services:
+  nginx:
+    container_name: ftr-nginx
+    image: ftr-nginx
+    build:
+      context: ..
+      dockerfile: ./rev-proxy/Dockerfile
+    volumes:
+        - ../frontend/docker-dist:/usr/share/nginx/html
+    ports:
+      - "1111:1111"
+    depends_on:
+      auth-service:
+        condition: service_started
+      conn-service:
+        condition: service_started
+    networks:
+      - ftr-net
+
+networks:
+  ftr-net:
+    driver: bridge
