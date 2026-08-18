@@ -30,7 +30,7 @@ log_msg_single = @$(ECHO) "\n$(MSGOPN) $(1) $(MSGEND)\n"
 output_color_grey = @$(ECHON) "$(GRE)"
 output_colr_reset =  @$(ECHON) "$(RST)"
 
-all:
+all: .certs
 	$(call log_msg_single,Launching ftr using docker compose..)
 	docker compose up --build
 
@@ -61,4 +61,16 @@ backend-dev:
 	cd backend && docker compose -f ./compose-db.yaml up -d && npm run dev:all
 	$(call log_msg_end,Done.)
 
-.phony: all dock-clean dock-fclean dock-backend dock-frontend backend-dev
+.certs:
+	touch .certs
+	make certs
+
+certs:
+	$(call log_msg_start,Making & distributing certs...)
+	cd tools && ./genTLSCerts.sh
+	cp tools/nginx-server-key.pem rev-proxy/nginx/server-key.pem
+	cp tools/nginx-server-cert.pem rev-proxy/nginx/server-cert.pem
+	touch .certs
+	$(call log_msg_end,Done.)
+
+.phony: all dock-clean dock-fclean dock-backend dock-frontend backend-dev certs
