@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Form, Input, Button, Card, message } from 'antd';
 import { UserOutlined, LockOutlined } from '@ant-design/icons';
 import { useAuth } from '../../hooks/useAuthContext';
@@ -15,14 +15,7 @@ const LoginForm: React.FC<LoginFormProps> = ({
     // not really used so far but maybe later. if not -> remove
     const [loading, setLoading] = useState(false);
 
-    const { login, logout } = useAuth();
-
-    // FIXME perform a login on initial mount.. is this the best solution?
-    // QUESTION what is the real idiomatic way of doing this
-    useEffect(() => {
-        logout();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    const { login } = useAuth();
 
     const onFinish = async (values: { nickname: string; password: string }) => {
         setLoading(true);

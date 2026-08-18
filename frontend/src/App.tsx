@@ -23,7 +23,7 @@ axios.defaults.withCredentials = true;
 
 const App: React.FC<AppProps> = (props: AppProps) => {
     const { gameRunning, setGameRunning, serverAddrRef } = useLoginContext();
-    const { user } = useAuth();
+    const { user, isInitializing } = useAuth();
 
     // set Addr which is used to connect to our app. this is needed to
     // initialize the socket.io-client with the correct addr.. and makes
@@ -36,15 +36,18 @@ const App: React.FC<AppProps> = (props: AppProps) => {
     React.useEffect(() => {
         serverAddrRef.current = window.location.href;
         console.log(`setting serverAddr to: ${window.location.href}`);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    }, [serverAddrRef]);
 
     // logout reset effect
     React.useEffect(() => {
-        if (user == null && gameRunning) {
+        if (!isInitializing && user == null && gameRunning) {
             setGameRunning(false);
         }
-    }, [user, gameRunning, setGameRunning]);
+    }, [user, isInitializing, gameRunning, setGameRunning]);
+
+    if (isInitializing) {
+        return null;
+    }
 
     if (gameRunning && user != null) {
         console.log('game running');
