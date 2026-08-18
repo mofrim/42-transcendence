@@ -22,8 +22,22 @@ type AppProps = {
 axios.defaults.withCredentials = true;
 
 const App: React.FC<AppProps> = (props: AppProps) => {
-    const { gameRunning, setGameRunning } = useLoginContext();
+    const { gameRunning, setGameRunning, serverAddrRef } = useLoginContext();
     const { user } = useAuth();
+
+    // set Addr which is used to connect to our app. this is needed to
+    // initialize the socket.io-client with the correct addr.. and makes
+    // ServerSettings obsolete!
+    // Only done on first mount!
+    //
+    // QUESTION
+    // TODO window.location.href might point to something we do not want, i.e.
+    // not the base addr:port of our app.. can this happen realistically
+    React.useEffect(() => {
+        serverAddrRef.current = window.location.href;
+        console.log(`setting serverAddr to: ${window.location.href}`);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     // logout reset effect
     React.useEffect(() => {

@@ -18,9 +18,7 @@ export const LoginProvider: React.FC<{ children: React.ReactNode }> = ({
 
     // not these ones
     const nicknameRef = useRef<string>('');
-    const serverAddrRef = useRef<string>('localhost');
-    const portRef = useRef<string>('3000');
-    const fullAddrRef = useRef<string>('http://localhost:3000');
+    const serverAddrRef = useRef<string>('https://localhost:1111');
     const charPreviewRef = useRef<CreateCharPreviewReturnType>(null);
 
     return (
@@ -32,8 +30,6 @@ export const LoginProvider: React.FC<{ children: React.ReactNode }> = ({
                 setAvatar,
                 nicknameRef,
                 serverAddrRef,
-                portRef,
-                fullAddrRef,
                 charPreviewCanvas,
                 setCharPreviewCanvas,
                 charPreviewLabel,

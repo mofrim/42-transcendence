@@ -46,7 +46,7 @@ export const StartButton: React.FC = () => {
 };
 
 export const Game: React.FC<{ nickname: string }> = ({ nickname }) => {
-    const { gameRunning, avatar, fullAddrRef } = useLoginContext();
+    const { gameRunning, avatar, serverAddrRef } = useLoginContext();
     const [character] = useState(() => avatar === 'true');
 
     // using ref here a lot because th
@@ -134,7 +134,7 @@ export const Game: React.FC<{ nickname: string }> = ({ nickname }) => {
         gameRuntimeRef.current = startGame(
             character,
             nickname,
-            fullAddrRef.current,
+            serverAddrRef.current,
             renderer,
             handleGameEvent
         );

@@ -92,7 +92,7 @@ function normalizeCharacter(character: boolean): boolean {
 export function startGame(
     whichCharacter: boolean = true,
     localNickname: string,
-    serverUrl: string | null = null,
+    serverUrl: string,
     renderer: THREE.WebGLRenderer,
     onGameEvent?: (event: GameRuntimeEvent) => void
 ): GameRuntime {
@@ -103,13 +103,10 @@ export function startGame(
     console.log('character: ' + whichCharacter);
 
     const playerModelPath = whichCharacterModelPath(whichCharacter);
-    const selectedSocketServerUrl =
-        typeof serverUrl === 'string' ? serverUrl.trim() : '';
 
-    const socketServerUrl =
-        selectedSocketServerUrl ||
-        import.meta.env['VITE_SOCKET_SERVER_URL'] ||
-        'http://localhost:3000';
+    // QUESTION
+    // TODO do we need any sanitizing here?
+    const socketServerUrl = serverUrl;
 
     const socket = io(socketServerUrl, {
         auth: {

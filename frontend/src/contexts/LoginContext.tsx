@@ -10,8 +10,6 @@ interface LoginContextType {
     setAvatar: Dispatch<SetStateAction<string>>;
     nicknameRef: RefObject<string>;
     serverAddrRef: RefObject<string>;
-    portRef: RefObject<string>;
-    fullAddrRef: RefObject<string>;
     charPreviewCanvas: HTMLElement | null;
     setCharPreviewCanvas: Dispatch<SetStateAction<HTMLElement | null>>;
     charPreviewLabel: HTMLElement | null;
