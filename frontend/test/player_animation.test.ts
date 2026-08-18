@@ -2,8 +2,12 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import * as THREE from 'three';
+import { PlayerState } from '@common/types';
 
-import { resolvePlayerAnimationClip } from '../src/game/player_animation.ts';
+import {
+    normalizePlayerAnimationState,
+    resolvePlayerAnimationClip,
+} from '../src/game/player_animation.ts';
 
 function clip(name: string): THREE.AnimationClip {
     return new THREE.AnimationClip(name, 1, []);
@@ -32,4 +36,20 @@ test('resolves clips by name for all both gender character models', () => {
             .name,
         'Running'
     );
+});
+
+test('normalizes shared player states to supported animation states', () => {
+    const idleState: PlayerState = normalizePlayerAnimationState(
+        PlayerState.Idle
+    );
+    const runState: PlayerState = normalizePlayerAnimationState(
+        PlayerState.Run
+    );
+    const jumpState: PlayerState = normalizePlayerAnimationState(
+        PlayerState.Jump
+    );
+
+    assert.equal(idleState, PlayerState.Idle);
+    assert.equal(runState, PlayerState.Run);
+    assert.equal(jumpState, PlayerState.Idle);
 });

@@ -17,7 +17,7 @@ import {
     replacePlayerModelMaterials,
 } from './PlayerModelMaterials.js';
 import { FloatingTextSprite } from './FloatingTextSprite.js';
-import type { PlayerState } from '@common/types';
+import { PlayerState } from '@common/types';
 
 type PlayerAnimationState = ReturnType<typeof normalizePlayerAnimationState>;
 type RemotePlayerState = PlayerState | PlayerAnimationState;
@@ -81,9 +81,9 @@ const RemotePlayerImplementation = class Remote_Player {
 
         this.loadGeneration = 0;
         this.finalized = false;
-        this.remoteState = 'Idle';
+        this.remoteState = PlayerState.Idle;
         this.battleRequestedState = false;
-        this.stateCurrent = 'Idle';
+        this.stateCurrent = PlayerState.Idle;
         this.mixer = null;
         this.actions = null;
 
@@ -427,7 +427,7 @@ const RemotePlayerImplementation = class Remote_Player {
             this.actions = preparedActions;
             this.remoteState = normalizePlayerAnimationState(this.remoteState);
             // Der erste Zustand und Updates während des Spawns werden verworfen
-            this.stateCurrent = 'Idle';
+            this.stateCurrent = PlayerState.Idle;
             this.group.add(loadedModel);
             this.colAr.push(...collisionMeshes);
             this.ownedCollisionMeshes.push(...collisionMeshes);

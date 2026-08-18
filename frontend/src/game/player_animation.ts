@@ -1,10 +1,11 @@
 import { AnimationClip } from 'three';
 import type { AnimationAction, AnimationMixer } from 'three';
+import { PlayerState } from '@common/types';
 
 /** Es gibt noch kein Jump. */
 const PLAYER_ANIMATION_STATE = Object.freeze({
-    Idle: 'Idle',
-    Run: 'Run',
+    Idle: PlayerState.Idle,
+    Run: PlayerState.Run,
 });
 
 type PlayerAnimationState =

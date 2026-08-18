@@ -1455,14 +1455,12 @@ export function startGame(
 
         multiplayer.updateMultiplayer(delta, lifecycleDelta);
 
-        // TODO !!! player.controls.current needs to be PlayerState
         if (player.isSpawned) {
-            const state = player.controls.current as PlayerState;
             emitPosition(
                 player.group.position.x,
                 player.group.position.y,
                 player.group.position.z,
-                state,
+                player.controls.current,
                 whichCharacter
             );
         }

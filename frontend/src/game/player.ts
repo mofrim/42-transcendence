@@ -15,6 +15,7 @@ import {
     replacePlayerModelMaterials,
 } from './PlayerModelMaterials.js';
 import { FloatingTextSprite } from './FloatingTextSprite.js';
+import { PlayerState } from '@common/types';
 
 type PlayerAnimationState = ReturnType<typeof transitionPlayerAnimation>;
 
@@ -90,7 +91,7 @@ export class Player {
         this.chatBubbleTimeout = null;
         this.loadGeneration = 0;
         this.finalized = false;
-        this.stateCurrent = 'Idle';
+        this.stateCurrent = PlayerState.Idle;
         this.mixer = null;
         this.actions = null;
 
@@ -122,7 +123,7 @@ export class Player {
         this.controls = {
             key: [0, 0],
             rotate: new THREE.Quaternion(),
-            current: 'Idle',
+            current: PlayerState.Idle,
             fadeDuration: 0.5,
             runVelocity: 15,
             turnSmoothness: 4.0,
@@ -528,7 +529,12 @@ export class Player {
         const key = this.controls.key;
         const rotate = this.controls.rotate;
         const active = key[0] !== 0 || key[1] !== 0;
-        const play = active ? 'Run' : 'Idle';
+        let play: PlayerState;
+        if (active) {
+            play = PlayerState.Run;
+        } else {
+            play = PlayerState.Idle;
+        }
         // Zustandsübergänge können den Renderloop abbrechen
         this.controls.current = play;
 
@@ -584,12 +590,12 @@ export class Player {
             );
             this.playerVelocity.setScalar(0);
         }
-        if (this.controls.current === 'Idle') {
+        if (this.controls.current === PlayerState.Idle) {
             this.playerVelocity.set(0, this.playerVelocity.y, 0);
         }
 
         // move object
-        if (this.controls.current !== 'Idle') {
+        if (this.controls.current !== PlayerState.Idle) {
             /*             let damping = Math.exp( - 4 * delta ) - 1;
             if ( ! this.playerOnFloor ) {
                 this.playerVelocity.y -= this.GRAVITY * delta;
