@@ -1,28 +1,31 @@
 import { useLoginContext } from '../../hooks/useLoginContext';
 import { createCharacterPreview } from '../../game/character_preview';
-import React, { useEffect } from 'react';
+import type { CreateCharPreviewReturnType } from '../../game/character_preview';
+import React, { useEffect, useRef } from 'react';
 
 export const CharacterPreview: React.FC = () => {
-    const { avatar, charPreviewRef } = useLoginContext();
+    const { avatar } = useLoginContext();
+    const canvasRef = useRef<HTMLCanvasElement>(null);
+    const labelRef = useRef<HTMLDivElement>(null);
+    const charPreviewRef = useRef<CreateCharPreviewReturnType>(null);
 
     // using 2 effects here, because dispose should on be run on unmount not on
     // avatar change!
     useEffect(() => {
-        const canvas = document.getElementById('character-preview-canvas');
-        const label = document.getElementById('character-preview-label');
+        const canvas = canvasRef.current;
+        const label = labelRef.current;
         if (!canvas || !label) return;
 
-        // initialize only once
-        if (charPreviewRef.current === null) {
-            charPreviewRef.current = createCharacterPreview({
-                canvas: canvas as HTMLCanvasElement,
-                label,
-            });
-        }
+        const preview = createCharacterPreview({ canvas, label });
+        charPreviewRef.current = preview;
 
         // cleanup only on unmount!
-        return () => charPreviewRef.current?.dispose();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+        return () => {
+            if (charPreviewRef.current === preview) {
+                charPreviewRef.current = null;
+            }
+            preview.dispose();
+        };
     }, []); // empty dependency array => runs once on mount!
 
     // update avatar on radio change
@@ -30,7 +33,6 @@ export const CharacterPreview: React.FC = () => {
         if (charPreviewRef.current) {
             charPreviewRef.current.setCharacter(avatar === 'true');
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [avatar]); // runs when avatar changes
 
     return (
@@ -40,8 +42,14 @@ export const CharacterPreview: React.FC = () => {
             role='img'
             aria-label='Selected player character 3D preview'
         >
-            <canvas id='character-preview-canvas' aria-hidden='true'></canvas>
-            <div id='character-preview-label'>Male_Test.glb</div>
+            <canvas
+                ref={canvasRef}
+                id='character-preview-canvas'
+                aria-hidden='true'
+            ></canvas>
+            <div ref={labelRef} id='character-preview-label'>
+                Male_Test.glb
+            </div>
         </div>
     );
 };

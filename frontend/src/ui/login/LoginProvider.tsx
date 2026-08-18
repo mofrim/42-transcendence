@@ -1,6 +1,5 @@
 import React, { useState, useRef } from 'react';
 import { LoginContext } from '../../contexts/LoginContext';
-import type { CreateCharPreviewReturnType } from '../../game/character_preview';
 
 export const LoginProvider: React.FC<{ children: React.ReactNode }> = ({
     children,
@@ -8,18 +7,11 @@ export const LoginProvider: React.FC<{ children: React.ReactNode }> = ({
     // these elements should clearly trigger a re-render
     const [gameRunning, setGameRunning] = useState(false);
 
-    // TODO clarify this
-    // QUESTION should these trigger re-render?
     const [avatar, setAvatar] = useState('true');
-    const [charPreviewCanvas, setCharPreviewCanvas] =
-        useState<HTMLElement | null>(null);
-    const [charPreviewLabel, setCharPreviewLabel] =
-        useState<HTMLElement | null>(null);
 
     // not these ones
     const nicknameRef = useRef<string>('');
     const serverAddrRef = useRef<string>('https://localhost:1111');
-    const charPreviewRef = useRef<CreateCharPreviewReturnType>(null);
 
     return (
         <LoginContext.Provider
@@ -30,11 +22,6 @@ export const LoginProvider: React.FC<{ children: React.ReactNode }> = ({
                 setAvatar,
                 nicknameRef,
                 serverAddrRef,
-                charPreviewCanvas,
-                setCharPreviewCanvas,
-                charPreviewLabel,
-                setCharPreviewLabel,
-                charPreviewRef,
             }}
         >
             {children}
