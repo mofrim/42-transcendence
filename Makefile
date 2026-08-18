@@ -61,6 +61,14 @@ backend-dev:
 	cd backend && docker compose -f ./compose-db.yaml up -d && npm run dev:all
 	$(call log_msg_end,Done.)
 
+# for Windows development
+backend-dev-win:
+	$(call log_msg_start,Launching all backend for dev-win...)
+	cd backend && docker compose -f ./compose-db.yaml up -d
+	cd backend && start powershell -NoExit -Command "npm --prefix .\src\conn-service run dev-win"
+	cd backend && start powershell -NoExit -Command "npm --prefix .\src\auth-service run dev-win"
+	$(call log_msg_end,Done.)
+
 .certs:
 	touch .certs
 	make certs
