@@ -104,11 +104,11 @@ export function startGame(
 
     const playerModelPath = whichCharacterModelPath(whichCharacter);
 
-    // QUESTION
-    // TODO do we need any sanitizing here?
-    const socketServerUrl = serverUrl;
-
-    const socket = io(socketServerUrl, {
+    /**
+     * Use the page origin for the Socket.IO server address and
+     * remove the redundant unsanitized pass-through variable.
+     * */
+    const socket = io(serverUrl, {
         auth: {
             character: whichCharacter,
             // Login-Nickname Socket.IO-Handshake

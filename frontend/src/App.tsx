@@ -30,12 +30,9 @@ const App: React.FC<AppProps> = (props: AppProps) => {
     // ServerSettings obsolete!
     // Only done on first mount!
     //
-    // QUESTION
-    // TODO window.location.href might point to something we do not want, i.e.
-    // not the base addr:port of our app.. can this happen realistically
     React.useEffect(() => {
-        serverAddrRef.current = window.location.href;
-        console.log(`setting serverAddr to: ${window.location.href}`);
+        serverAddrRef.current = window.location.origin;
+        console.log(`setting serverAddr to: ${window.location.origin}`);
     }, [serverAddrRef]);
 
     // logout reset effect
