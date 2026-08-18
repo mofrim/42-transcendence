@@ -51,7 +51,7 @@ const App: React.FC<AppProps> = (props: AppProps) => {
 
     if (gameRunning && user != null) {
         console.log('game running');
-        return <Game nickname={user.nickname} />;
+        return <Game nickname={user.nickname} email={user.email} />;
     }
 
     // user has not logged in yet -> display only login form

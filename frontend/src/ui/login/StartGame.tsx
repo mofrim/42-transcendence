@@ -45,7 +45,10 @@ export const StartButton: React.FC = () => {
     );
 };
 
-export const Game: React.FC<{ nickname: string }> = ({ nickname }) => {
+export const Game: React.FC<{ nickname: string; email: string }> = ({
+    nickname,
+    email,
+}) => {
     const { gameRunning, avatar, serverAddrRef } = useLoginContext();
     const [character] = useState(() => avatar === 'true');
 
@@ -171,6 +174,7 @@ export const Game: React.FC<{ nickname: string }> = ({ nickname }) => {
                 // this might change when we want to allow change user-prefs
                 // from a in-game ui
                 nickname={nickname}
+                email={email}
                 character={character}
                 completedQuestIds={completedQuestIds}
                 events={events}

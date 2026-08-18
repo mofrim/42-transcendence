@@ -32,6 +32,7 @@ export type EventLogEntry = {
 
 type GameUIProps = {
     readonly nickname: string;
+    readonly email: string;
     readonly character: Character;
     readonly quests?: readonly QuestLogEntry[];
     readonly completedQuestIds?: readonly string[];
@@ -216,6 +217,7 @@ const DEFAULT_EVENTS: readonly EventLogEntry[] = [
  */
 export function GameUI({
     nickname,
+    email,
     character,
     quests = DEFAULT_QUESTS,
     completedQuestIds = [],
@@ -410,6 +412,9 @@ export function GameUI({
                     <p className='hud-profile-nickname'>
                         {/* TODO: edit nickname */}
                         <strong>Nickname:</strong> {nickname} ✏️
+                    </p>
+                    <p className='hud-profile-email'>
+                        <strong>Email:</strong> {email}
                     </p>
                     <h3 className='hud-profile-stats-title'>Game Stats:</h3>
                     {/* TODO: Game Stats */}
