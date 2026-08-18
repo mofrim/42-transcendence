@@ -92,11 +92,9 @@ app.post('/api/login', async (req: Request, res: Response): Promise<void> => {
         res.cookie('token', token, {
             httpOnly: true,
 
-            // TODO this would be more correctly for HTTPS only mode when when
-            // our SSL setup is finally up and running in docker containers:
-            //
-            //  secure: process.env['NODE_ENV'] === 'production',
-            secure: false,
+            // this be more correctly for HTTPS only mode
+            // our SSL setup is finally up and running in docker containers
+            secure: process.env['NODE_ENV'] === 'production',
 
             // TODO possibly even use this one day
             //
