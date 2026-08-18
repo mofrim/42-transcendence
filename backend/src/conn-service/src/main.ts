@@ -48,6 +48,21 @@ io.on('connection', (socket) => {
 
     socket.data.character = character;
 
+    /**
+     * need to sync all existing players data with the new client,
+     * or he will not see nickname of existing players
+     */
+    gameManager.players.forEach((existingPlayer, playerId) => {
+        const existingSocket = io.sockets.sockets.get(playerId);
+        if (!existingSocket) return;
+
+        socket.emit('player_connected', {
+            id: playerId,
+            character: existingSocket.data.character,
+            nickname: existingPlayer.nickname,
+        });
+    });
+
     // the only other action preformed currently by the backend apart from
     // handling ttt and rps game
     socket.broadcast.emit('player_connected', {
