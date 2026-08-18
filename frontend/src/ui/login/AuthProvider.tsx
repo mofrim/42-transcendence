@@ -103,6 +103,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
             console.log('token cookie has been cleared!');
         } catch (error) {
             console.error('Logout failed:', error);
+            throw error;
         }
     }, []);
 

@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useLoginContext } from '../../hooks/useLoginContext';
+import { useAuth } from '../../hooks/useAuthContext';
 import { startGame } from '../../game/main';
 import type { GameRuntime, GameRuntimeEvent } from '../../game/main';
 import {
@@ -50,6 +51,7 @@ export const Game: React.FC<{ nickname: string; email: string }> = ({
     email,
 }) => {
     const { gameRunning, avatar, serverAddrRef } = useLoginContext();
+    const { logout } = useAuth();
     const [character] = useState(() => avatar === 'true');
 
     // using ref here a lot because th
@@ -116,10 +118,15 @@ export const Game: React.FC<{ nickname: string; email: string }> = ({
     const handleLogout = useCallback(async (): Promise<void> => {
         try {
             await exitLocalPlayer(`${nickname} 🚪 logged out`);
-        } finally {
-            window.location.reload();
+        } catch (error) {
+            console.error(
+                'Failed to despawn local player during logout:',
+                error
+            );
         }
-    }, [exitLocalPlayer, nickname]);
+
+        await logout();
+    }, [exitLocalPlayer, logout, nickname]);
 
     useEffect(() => {
         // guard against re-render due to strict-mode
