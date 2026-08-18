@@ -5,7 +5,7 @@ import { getPlayerMaterials } from './PlayerModelMaterials.js';
 export const PLAYER_VISIBILITY_DURATION_SECONDS = 0.75;
 export const PLAYER_VISIBILITY_RISE_DISTANCE = 1.5;
 
-const ENDPOINT_EPSILON = 1e-9;
+const ENDPOINT_EPSILON = 0.000_000_001;
 
 export type PlayerLifecycleState = 'active' | 'despawning' | 'disposed';
 
