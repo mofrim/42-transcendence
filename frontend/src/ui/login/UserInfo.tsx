@@ -20,22 +20,24 @@ export const UserInfo: React.FC = () => {
             }}
         >
             <table>
-                <tr>
-                    <td style={{ textAlign: 'left' }}>
-                        <strong>Nickname:</strong>
-                    </td>
-                    <td style={{ textAlign: 'left', paddingLeft: '10px' }}>
-                        {user!.nickname}
-                    </td>
-                </tr>
-                <tr>
-                    <td style={{ textAlign: 'left' }}>
-                        <strong>eMail:</strong>
-                    </td>
-                    <td style={{ textAlign: 'left', paddingLeft: '10px' }}>
-                        {user!.email}
-                    </td>
-                </tr>
+                <tbody>
+                    <tr>
+                        <td style={{ textAlign: 'left' }}>
+                            <strong>Nickname:</strong>
+                        </td>
+                        <td style={{ textAlign: 'left', paddingLeft: '10px' }}>
+                            {user!.nickname}
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style={{ textAlign: 'left' }}>
+                            <strong>eMail:</strong>
+                        </td>
+                        <td style={{ textAlign: 'left', paddingLeft: '10px' }}>
+                            {user!.email}
+                        </td>
+                    </tr>
+                </tbody>
             </table>
         </Card>
     );
