@@ -708,7 +708,7 @@ export function startGame(
         window.removeEventListener('resize', onWindowResize);
         document.removeEventListener('keydown', onKeyDown);
         document.removeEventListener('keyup', onKeyUp);
-        document.removeEventListener('click', onClick);
+        renderer.domElement.removeEventListener('click', onClick);
 
         socket.removeAllListeners();
         socket.disconnect();
@@ -830,13 +830,11 @@ export function startGame(
         //camDistance = startV.distanceTo(camera.camera.position);
         //console.log("Distance " + camDistance);
 
-        // EVENTS
-        // TODO React: handle them in React, maybe.
-
         window.addEventListener('resize', onWindowResize);
         document.addEventListener('keydown', onKeyDown);
         document.addEventListener('keyup', onKeyUp);
-        document.addEventListener('click', onClick);
+        // Three.js-Raytracing clicks
+        renderer.domElement.addEventListener('click', onClick);
 
         //initNPC();
 
