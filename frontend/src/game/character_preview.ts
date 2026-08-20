@@ -26,6 +26,9 @@ const CHARACTER_PREVIEW_MODELS = {
     },
 };
 
+const MAX_PREVIEW_FPS = 30;
+const PREVIEW_FRAME_INTERVAL = 1 / MAX_PREVIEW_FPS;
+
 export function createCharacterPreview({
     canvas,
     label,
@@ -78,6 +81,7 @@ export function createCharacterPreview({
     let currentCharacter: boolean | null = null;
     let disposed = false;
     let loadSerial = 0;
+    let lastRenderTime = 0;
 
     function resizeRenderer(): void {
         const rect = previewCanvas.getBoundingClientRect();
@@ -194,10 +198,16 @@ export function createCharacterPreview({
         void loadCharacterModel(preview.path, serial);
     }
 
-    function render(): void {
+    function render(time: number): void {
         if (disposed) {
             return;
         }
+
+        const currentTime = time / 1000;
+        if (currentTime - lastRenderTime < PREVIEW_FRAME_INTERVAL) {
+            return;
+        }
+        lastRenderTime = currentTime;
 
         resizeRenderer();
 

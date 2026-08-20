@@ -6,6 +6,8 @@ import { createThreeResourceDisposer } from './ThreeResourceDisposer.js';
 const MAP_MODEL_PATH = '/glb/42WOB_v3.glb';
 const MAX_PIXEL_RATIO = 1.5;
 const ROTATION_SPEED = THREE.MathUtils.degToRad(1.15);
+const MAX_PREVIEW_FPS = 30;
+const PREVIEW_FRAME_INTERVAL = 1 / MAX_PREVIEW_FPS;
 
 interface MapPreview {
     dispose(): void;
@@ -125,6 +127,7 @@ export function createMapPreview({
     let animationRunning = false;
     let loadGeneration = 0;
     let prefersReducedMotion = false;
+    let lastRenderTime = 0;
     if (reducedMotionQuery) {
         prefersReducedMotion = reducedMotionQuery.matches;
     }
@@ -269,6 +272,12 @@ export function createMapPreview({
             queueMicrotask(stopAnimation);
             return;
         }
+
+        const currentTime = time / 1000;
+        if (currentTime - lastRenderTime < PREVIEW_FRAME_INTERVAL) {
+            return;
+        }
+        lastRenderTime = currentTime;
 
         animationTimer.update(time);
         /** begrenze Frame-Zeit */
