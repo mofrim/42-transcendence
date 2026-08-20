@@ -33,6 +33,19 @@ services:
     networks:
       - ftr-net
 
+  eventlog-service:
+    container_name: ftr-eventlog-service
+    image: ftr-eventlog-service
+    build:
+      context: ..
+      dockerfile: ./backend/src/eventlog-service/Dockerfile
+    env_file: ../dev.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - ftr-net
+
 networks:
   ftr-net:
     driver: bridge
