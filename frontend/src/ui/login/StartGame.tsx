@@ -50,15 +50,13 @@ export const Game: React.FC<{ nickname: string; email: string }> = ({
     nickname,
     email,
 }) => {
-    const { gameRunning, avatar, serverAddrRef } = useLoginContext();
+    const { avatar, serverAddrRef } = useLoginContext();
     const { logout } = useAuth();
     const [character] = useState(() => avatar === 'true');
 
     // using ref here a lot because th
     const mountRef = useRef<HTMLDivElement>(null);
-    const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
     const gameRuntimeRef = useRef<GameRuntime | null>(null);
-    const isInitializedRef = useRef(false);
     const eventSequenceRef = useRef(0);
     const [events, setEvents] = useState<EventLogEntry[]>([]);
     const [completedQuestIds, setCompletedQuestIds] = useState<string[]>([]);
@@ -128,50 +126,40 @@ export const Game: React.FC<{ nickname: string; email: string }> = ({
         await logout();
     }, [exitLocalPlayer, logout, nickname]);
 
+
+    /** bind Cleanup direkt */
     useEffect(() => {
-        // guard against re-render due to strict-mode
-        if (isInitializedRef.current) return;
-        isInitializedRef.current = true;
+        const mount = mountRef.current;
+        if (!mount) return;
 
         const renderer = new THREE.WebGLRenderer({ antialias: true });
-        rendererRef.current = renderer;
+        mount.appendChild(renderer.domElement);
 
-        if (mountRef.current) {
-            console.warn('mountRef.current am start!');
-            mountRef.current.appendChild(renderer.domElement);
-        }
-
-        gameRuntimeRef.current = startGame(
+        const runtime = startGame(
             character,
             nickname,
             serverAddrRef.current,
             renderer,
             handleGameEvent
         );
+        gameRuntimeRef.current = runtime;
 
-        // cleanup... in case we want to support logging out againg one day
-        // TODO test this! needs implementing some mechanism for unsetting gameRunning
         return () => {
-            const runtime = gameRuntimeRef.current;
-            const rendererToDispose = rendererRef.current;
+            if (gameRuntimeRef.current === runtime) {
+                gameRuntimeRef.current = null;
+            }
+            renderer.domElement.remove();
 
-            gameRuntimeRef.current = null;
-            rendererRef.current = null;
-            isInitializedRef.current = false; // Reset on unmount
-            // TODO think about this...
-            rendererToDispose?.domElement.remove();
-
-            const cleanup = runtime?.dispose() ?? Promise.resolve();
-            void cleanup
+            void runtime
+                .dispose()
                 .finally(() => {
-                    rendererToDispose?.dispose();
+                    renderer.dispose();
                 })
                 .catch((error: unknown) => {
                     console.error('Game runtime cleanup failed:', error);
                 });
         };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [gameRunning]);
+    }, [character, handleGameEvent, nickname, serverAddrRef]);
 
     return (
         <>

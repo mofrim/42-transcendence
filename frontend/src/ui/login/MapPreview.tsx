@@ -2,8 +2,10 @@ import { createMapPreview } from '../../game/map_preview';
 import React, { useEffect } from 'react';
 
 export const MapPreview: React.FC = () => {
-    // create char preview for the first time needs this in order to run after
-    // the component has been rendered
+    /**
+     * create map preview for the first time needs this in order to run after
+     * the component has been rendered
+     */
     useEffect(() => {
         // this runs after the component mounts and the DOM is updated
         const canvas = document.getElementById('map-preview-canvas');
