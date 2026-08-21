@@ -26,11 +26,13 @@ export class CanvasTextSprite extends THREE.Sprite {
         const material = new THREE.SpriteMaterial({
             map: texture,
             transparent: true,
+            depthTest: false,
             depthWrite: false,
         });
 
         super(material);
 
+        this.renderOrder = 1;
         this.canvas = canvas;
         this.context = context;
 
