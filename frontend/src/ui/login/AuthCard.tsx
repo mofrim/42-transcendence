@@ -71,11 +71,7 @@ const LoginForm: React.FC<LoginFormProps> = ({
                         loading={loading}
                         size='large'
                         block
-                        style={{
-                            background:
-                                'linear-gradient(135deg, #1890ff 0%, #096dd9 100%)',
-                            border: 'none',
-                        }}
+                        className='auth-submit-button'
                     >
                         Login
                     </Button>
@@ -172,11 +168,7 @@ function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
                         htmlType='submit'
                         size='large'
                         block
-                        style={{
-                            background:
-                                'linear-gradient(135deg, #1890ff 0%, #096dd9 100%)',
-                            border: 'none',
-                        }}
+                        className='auth-submit-button'
                     >
                         Submit
                     </Button>

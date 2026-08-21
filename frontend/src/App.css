@@ -179,6 +179,29 @@ body {
     margin-bottom: 2px;
 }
 
+#login-ui .ant-btn.auth-submit-button {
+  background: linear-gradient(135deg, #1890ff 0%, #096dd9 100%);
+  border: none;
+}
+
+#login-ui .user-info-card {
+  margin-bottom: 15px;
+  border-radius: 21px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+}
+
+#login-ui .user-info-card .ant-card-body {
+  padding-top: 5px;
+}
+
+#login-ui .user-info-card td {
+  text-align: left;
+}
+
+#login-ui .user-info-card td + td {
+  padding-left: 10px;
+}
+
 /* LOGIN CONTAINER */
 #login-ui {
   position: absolute;
@@ -514,6 +537,11 @@ body {
   display: none;
   position: relative;
   z-index: 1;
+}
+
+.game-canvas-container {
+  width: 100vw;
+  height: 100vh;
 }
 
 #chat-ui {

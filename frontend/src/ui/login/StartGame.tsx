@@ -126,7 +126,6 @@ export const Game: React.FC<{ nickname: string; email: string }> = ({
         await logout();
     }, [exitLocalPlayer, logout, nickname]);
 
-
     /** bind Cleanup direkt */
     useEffect(() => {
         const mount = mountRef.current;
@@ -163,7 +162,7 @@ export const Game: React.FC<{ nickname: string; email: string }> = ({
 
     return (
         <>
-            <div ref={mountRef} style={{ width: '100vw', height: '100vh' }} />
+            <div ref={mountRef} className='game-canvas-container' />
             <GameUI
                 // NOTE now we can just use the users nickname from DB here..
                 // this might change when we want to allow change user-prefs

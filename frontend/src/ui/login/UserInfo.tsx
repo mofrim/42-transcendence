@@ -6,36 +6,20 @@ export const UserInfo: React.FC = () => {
     const { user } = useAuth();
 
     return (
-        <Card
-            title='User Info'
-            styles={{
-                root: {
-                    boxShadow: '0 5px 15px rgba(0,0,0,0.3)',
-                    borderRadius: '21px',
-                    marginBottom: '15px',
-                },
-                body: {
-                    paddingTop: '5px',
-                },
-            }}
-        >
+        <Card title='User Info' className='user-info-card'>
             <table>
                 <tbody>
                     <tr>
-                        <td style={{ textAlign: 'left' }}>
+                        <td>
                             <strong>Nickname:</strong>
                         </td>
-                        <td style={{ textAlign: 'left', paddingLeft: '10px' }}>
-                            {user!.nickname}
-                        </td>
+                        <td>{user!.nickname}</td>
                     </tr>
                     <tr>
-                        <td style={{ textAlign: 'left' }}>
+                        <td>
                             <strong>eMail:</strong>
                         </td>
-                        <td style={{ textAlign: 'left', paddingLeft: '10px' }}>
-                            {user!.email}
-                        </td>
+                        <td>{user!.email}</td>
                     </tr>
                 </tbody>
             </table>
