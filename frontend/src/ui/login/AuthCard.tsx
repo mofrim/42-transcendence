@@ -148,7 +148,7 @@ function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
                     name='email'
                     rules={[{ required: true, message: 'email required' }]}
                 >
-                    <Input placeholder='email' size='large' />
+                    <Input type='email' placeholder='email' size='large' />
                 </Form.Item>
 
                 <Form.Item

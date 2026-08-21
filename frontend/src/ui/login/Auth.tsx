@@ -6,7 +6,7 @@ export const AuthInputs: React.FC = () => {
 
     return (
         <>
-            <input id='email' type='text' placeholder='Email' />
+            <input id='email' type='email' placeholder='Email' />
             <input id='password' type='password' placeholder='Password' />
             <div className='nickname-field'>
                 <label htmlFor='nickname'>Nickname</label>
