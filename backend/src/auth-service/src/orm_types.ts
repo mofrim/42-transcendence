@@ -6,11 +6,11 @@ export class ORMUser extends BaseUser {
     @PrimaryGeneratedColumn()
     declare id: number;
 
-    @Column('text')
-    declare firstName: string;
+    // @Column('text')
+    // declare firstName: string;
 
-    @Column('text')
-    declare lastName: string;
+    // @Column('text')
+    // declare lastName: string;
 
     @Column({
         type: 'text',

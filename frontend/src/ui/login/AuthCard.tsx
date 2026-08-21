@@ -104,8 +104,8 @@ interface RegisterFormProps {
 
 function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
     const onFinish = async (values: {
-        firstName: string;
-        lastName: string;
+        // firstName: string;
+        // lastName: string;
         nickname: string;
         email: string;
         password: string;
@@ -134,7 +134,7 @@ function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
                     />
                 </Form.Item>
 
-                <Form.Item
+                {/* <Form.Item
                     name='firstName'
                     rules={[{ required: true, message: 'firstName required' }]}
                 >
@@ -146,7 +146,7 @@ function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
                     rules={[{ required: true, message: 'lastName required' }]}
                 >
                     <Input placeholder='lastName' size='large' />
-                </Form.Item>
+                </Form.Item> */}
 
                 <Form.Item
                     name='email'
