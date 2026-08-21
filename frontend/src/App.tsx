@@ -4,7 +4,6 @@ import { AuthCard } from './ui/login/AuthCard';
 import { CharacterPreview } from './ui/login/CharacterPreview';
 import { MapPreview } from './ui/login/MapPreview';
 import { PlayerSelect } from './ui/login/PlayerSelect';
-import { StartButton, Game } from './ui/login/StartGame';
 import { Agreements } from './ui/login/Agreements';
 import { useLoginContext } from './hooks/useLoginContext';
 import { useAuth } from './hooks/useAuthContext';
@@ -20,6 +19,10 @@ type AppProps = {
 
 // make axios send credentials cookies per default for the whole app!
 axios.defaults.withCredentials = true;
+
+const LoadGame = React.lazy(() =>
+    import('./ui/login/StartGame').then((module) => ({ default: module.Game }))
+);
 
 const App: React.FC<AppProps> = (props: AppProps) => {
     const { gameRunning, setGameRunning, serverAddrRef } = useLoginContext();
@@ -48,7 +51,11 @@ const App: React.FC<AppProps> = (props: AppProps) => {
 
     if (gameRunning && user != null) {
         console.log('game running');
-        return <Game nickname={user.nickname} email={user.email} />;
+        return (
+            <React.Suspense fallback={null}>
+                <LoadGame nickname={user.nickname} email={user.email} />
+            </React.Suspense>
+        );
     }
 
     // user has not logged in yet -> display only login form
@@ -76,7 +83,9 @@ const App: React.FC<AppProps> = (props: AppProps) => {
                 <PlayerSelect />
                 <CharacterPreview />
                 <Agreements />
-                <StartButton />
+                <button id='start-btn' onClick={() => setGameRunning(true)}>
+                    ENTER
+                </button>
             </div>
         </>
     );
