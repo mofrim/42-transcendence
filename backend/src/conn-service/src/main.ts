@@ -49,7 +49,7 @@ io.on('connection', (socket) => {
     socket.data.character = character;
 
     /**
-     * need to sync all existing players data with the new client,
+     * need to sync all existing players data on join with the new client,
      * or he will not see nickname of existing players
      */
     gameManager.players.forEach((existingPlayer, playerId) => {

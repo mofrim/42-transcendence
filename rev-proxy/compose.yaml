@@ -11,6 +11,8 @@ include:
       env_file: ../dev.env
 
 services:
+
+  # SSL nginx reverse-proxy für alle microservices endpoints!
   nginx:
     container_name: ftr-nginx
     image: ftr-nginx

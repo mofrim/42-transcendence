@@ -173,11 +173,13 @@ const authenticate = (req: Request, res: Response, next: NextFunction) => {
     }
 };
 
-// FIXME this is only a demo endpoint. remove it before submission
-app.get('/api/protected', authenticate, (req: Request, res: Response) => {
-    const nickname = req.user!.nickname;
-    res.json({ msg: `hello ${nickname}!` });
-});
+if (process.env['NODE_ENV'] === 'development') {
+    // this is only a demo endpoint
+    app.get('/api/protected', authenticate, (req: Request, res: Response) => {
+        const nickname = req.user!.nickname;
+        res.json({ msg: `hello ${nickname}!` });
+    });
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 // Another example endpoint...
