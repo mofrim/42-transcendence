@@ -167,6 +167,49 @@
     text-align: left;
 }
 
+.hud-dialog-panel {
+    position: fixed;
+    left: 50%;
+    bottom: 28px;
+    width: min(520px, calc(100vw - 36px));
+    transform: translateX(-50%);
+    background: rgba(14, 22, 32, 0.82);
+    text-align: left;
+}
+
+.hud-dialog-message {
+    margin: 0;
+    font-size: 16px;
+    line-height: 1.45;
+}
+
+.hud-dialog-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 16px;
+}
+
+.hud-dialog-next {
+    padding: 8px 16px;
+    border: 0;
+    border-radius: 999px;
+    background: #f4c542;
+    color: #101820;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 800;
+    line-height: 1;
+}
+
+.hud-dialog-next:hover {
+    background: #ffd25c;
+}
+
+.hud-dialog-next:focus-visible {
+    outline: 3px solid #ffffff;
+    outline-offset: 2px;
+}
+
 .hud-profile-character-preview {
     width: min(160px, 100%);
     aspect-ratio: 3 / 4;

@@ -5,6 +5,7 @@ import { startGame } from '../../game/main';
 import type { GameRuntime, GameRuntimeEvent } from '../../game/main';
 import {
     GameUI,
+    type DialogPanelState,
     MAX_EVENT_LOG_ENTRIES,
     type EventLogEntry,
 } from '../ingame/GameUI';
@@ -60,6 +61,10 @@ export const Game: React.FC<{ nickname: string; email: string }> = ({
     const eventSequenceRef = useRef(0);
     const [events, setEvents] = useState<EventLogEntry[]>([]);
     const [completedQuestIds, setCompletedQuestIds] = useState<string[]>([]);
+    const [dialog, setDialog] = useState<DialogPanelState>({
+        isOpen: false,
+        message: '',
+    });
 
     const appendEvent = useCallback((description: string): void => {
         const now = new Date();
@@ -96,9 +101,17 @@ export const Game: React.FC<{ nickname: string; email: string }> = ({
     const handleQuestStatusChange = useCallback(
         (statusChange: QuestStatusChange): void => {
             appendEvent(describeQuestStatusChange(statusChange));
+            if(statusChange.questId === 'avoid-blackhole') {
+                gameRuntimeRef.current?.triggerBlackHoleCutscene();
+                //console.log('### Quest status change:', statusChange);
+            }
         },
         [appendEvent]
     );
+
+    const handleDialogNext = useCallback((): void => {
+        gameRuntimeRef.current?.continueDialogue();
+    }, []);
 
     /** suck up */
     const exitLocalPlayer = useCallback(
@@ -139,7 +152,8 @@ export const Game: React.FC<{ nickname: string; email: string }> = ({
             nickname,
             serverAddrRef.current,
             renderer,
-            handleGameEvent
+            handleGameEvent,
+            setDialog
         );
         gameRuntimeRef.current = runtime;
 
@@ -176,6 +190,8 @@ export const Game: React.FC<{ nickname: string; email: string }> = ({
                 onQuestStatusChange={handleQuestStatusChange}
                 onBlackHoleExpired={handleBlackHoleExpired}
                 onLogout={handleLogout}
+                dialog={dialog}
+                onDialogNext={handleDialogNext}
             />
         </>
     );

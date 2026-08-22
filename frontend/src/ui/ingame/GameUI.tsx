@@ -30,6 +30,11 @@ export type EventLogEntry = {
     readonly description: string;
 };
 
+export type DialogPanelState = {
+    readonly isOpen: boolean;
+    readonly message: string;
+};
+
 type GameUIProps = {
     readonly nickname: string;
     readonly email: string;
@@ -41,6 +46,8 @@ type GameUIProps = {
     readonly onQuestStatusChange?: (change: QuestStatusChange) => void;
     readonly onBlackHoleExpired?: () => void;
     readonly onLogout?: () => Promise<void>;
+    readonly dialog?: DialogPanelState;
+    readonly onDialogNext?: () => void;
 };
 
 type HudPanelToggleProps = {
@@ -226,6 +233,8 @@ export function GameUI({
     onQuestStatusChange,
     onBlackHoleExpired,
     onLogout,
+    dialog,
+    onDialogNext,
 }: GameUIProps) {
     const [isQuestLogOpen, setIsQuestLogOpen] = useState(false);
     const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -501,6 +510,24 @@ export function GameUI({
                         );
                     })}
                 </ul>
+            </aside>
+
+            <aside
+                className='hud-panel hud-dialog-panel'
+                aria-label='Dialog'
+                hidden={!dialog?.isOpen}
+            >
+                <h2 className='hud-title'>{nickname}</h2>
+                <p className='hud-dialog-message'>{dialog?.message}</p>
+                <div className='hud-dialog-actions'>
+                    <button
+                        type='button'
+                        className='hud-dialog-next'
+                        onClick={onDialogNext}
+                    >
+                        ...
+                    </button>
+                </div>
             </aside>
 
             {displayedEvents.length > 0 && (

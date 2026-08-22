@@ -11,8 +11,8 @@ import type { Character } from '@common/types';
  * Typisiert die Modellpfade vollständig nach CharacterModel und behebt TS7053.
  */
 const PLAYER_CHARACTER_MODELS: Readonly<Record<CharacterModel, string>> = {
-    [CharacterModel.male]: '/glb/Male_Test.glb',
-    [CharacterModel.female]: '/glb/Female_Test.glb',
+    [CharacterModel.male]: '/glb/Main_Male.glb',
+    [CharacterModel.female]: '/glb/Main_Female.glb',
 };
 
 function normalizeCharacter(character: Character): CharacterModel {

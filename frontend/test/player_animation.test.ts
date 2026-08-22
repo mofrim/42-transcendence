@@ -18,21 +18,21 @@ test('resolves clips by name for all both gender character models', () => {
     const femaleAnimations = [clip('Running'), clip('Breathing'), clip('Idle')];
 
     assert.equal(
-        resolvePlayerAnimationClip(maleAnimations, 'Idle', 'Male_Test.glb')
+        resolvePlayerAnimationClip(maleAnimations, 'Idle', 'Main_Male.glb')
             .name,
         'Breathing'
     );
     assert.equal(
-        resolvePlayerAnimationClip(maleAnimations, 'Run', 'Male_Test.glb').name,
+        resolvePlayerAnimationClip(maleAnimations, 'Run', 'Main_Male.glb').name,
         'Running'
     );
     assert.equal(
-        resolvePlayerAnimationClip(femaleAnimations, 'Idle', 'Female_Test.glb')
+        resolvePlayerAnimationClip(femaleAnimations, 'Idle', 'Main_Female.glb')
             .name,
         'Breathing'
     );
     assert.equal(
-        resolvePlayerAnimationClip(femaleAnimations, 'Run', 'Female_Test.glb')
+        resolvePlayerAnimationClip(femaleAnimations, 'Run', 'Main_Female.glb')
             .name,
         'Running'
     );

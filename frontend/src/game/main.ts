@@ -5,13 +5,14 @@ import { Octree } from 'three/addons/math/Octree.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
 import { MultiplayerManager } from './multiplayer.js';
-// 'NPC' is defined but never used.
-// import { NPC } from './npc.js';
+import { NPC } from './npc.js';
 import { Player } from './player.js';
 import { Camera } from './camera.js';
 import { TTT_Game } from './ttt_game.js';
 import { RPS_Game } from './rps_game.js';
 import { createThreeResourceDisposer } from './ThreeResourceDisposer.js';
+import { Story_Manager } from './story_manager.js';
+import { InteractionManager } from './interaction_manager.js';
 
 import { io } from 'socket.io-client';
 
@@ -34,9 +35,9 @@ import type {
 
 function whichCharacterModelPath(character: boolean): string {
     if (character === true) {
-        return '/glb/Male_Test.glb';
+        return '/glb/Main_Male.glb';
     }
-    return '/glb/Female_Test.glb';
+    return '/glb/Main_Female.glb';
 }
 
 /** event log msgs */
@@ -58,11 +59,14 @@ export type GameRuntime = {
     readonly showLocalChatMessage: (message: string) => void;
     readonly despawnLocalPlayer: () => Promise<void>;
     readonly dispose: () => Promise<void>;
+    readonly continueDialogue: () => void;
+    readonly triggerBlackHoleCutscene: () => void;
 };
 
 type NamedPlayer = {
     readonly id: string;
     readonly nickname: string;
+    onDialogChange?: (state: { isOpen: boolean; message: string }) => void;
 };
 
 type ActiveTTTPlayers = {
@@ -94,7 +98,8 @@ export function startGame(
     localNickname: string,
     serverUrl: string,
     renderer: THREE.WebGLRenderer,
-    onGameEvent?: (event: GameRuntimeEvent) => void
+    onGameEvent?: (event: GameRuntimeEvent) => void,
+    onDialogChange?: (state: { isOpen: boolean; message: string }) => void
 ): GameRuntime {
     // ============================================================================
     // SERVER CONNECTION
@@ -121,6 +126,8 @@ export function startGame(
     let camera: Camera | null = null;
     let tttGame: TTT_Game | null = null;
     let rpsGame: RPS_Game | null = null;
+    let storyManager: Story_Manager | null = null;
+    let interactionManager: InteractionManager | null = null;
     let activeTTTPlayers: ActiveTTTPlayers | null = null;
     let isLocalPlayerDespawning = false;
     let localPlayerDespawnPromise: Promise<void> | null = null;
@@ -656,7 +663,19 @@ export function startGame(
     const timer = new THREE.Timer();
     const previousPlayerPosition = new THREE.Vector3();
     const playerMovementDelta = new THREE.Vector3();
-    const dirLight = new THREE.DirectionalLight(0xffffff, 2.5);
+    const dirLight = new THREE.DirectionalLight(0xffffff, 1.25);
+    const fillLight  = new THREE.DirectionalLight(0xffffff, 1.25);
+
+    const npcs = new Map();
+
+    let envLoaded: boolean = false;
+    const texture = new THREE.TextureLoader().load(
+        'textures/gradientMaps/twoTone2.jpg'
+    );
+    const loader = new GLTFLoader();
+    // const texture = new THREE.TextureLoader().load('textures/gradientMaps/twoTone2.jpg');
+    texture.minFilter = THREE.NearestFilter;
+    texture.magFilter = THREE.NearestFilter;
 
     //const keyStates = {};
     const keyStates: Record<string, boolean> = {};
@@ -761,9 +780,16 @@ export function startGame(
 
     //let camDistance = 0;
 
+    function createSkyBox():void {
+        const skyGeometry = new THREE.SphereGeometry(70, 32, 32);
+        const skyMaterial = new THREE.MeshBasicMaterial({ color: 0x87CEEB, side: THREE.BackSide });
+        const sky = new THREE.Mesh(skyGeometry, skyMaterial);
+        scene.add(sky);
+    }
+
     init();
 
-    function init() {
+    async function init() {
         //timer = new THREE.Timer();
         timer.connect(document);
 
@@ -777,8 +803,12 @@ export function startGame(
         //dirLight = new THREE.DirectionalLight(0xffffff, 2.5);
         // initial position (local to followGroup) - matches previous values
         //dirLight.position.set( - 2, 5, - 3 );
-        dirLight.position.set(-25, 15, -15);
+        dirLight.position.set(15, 30, -5);
+        dirLight.target.position.set(50, 0, 5);
         dirLight.castShadow = true;
+        fillLight.position.set(15, 30, -5);
+        fillLight.target.position.set(50, 0, 5);
+        fillLight.castShadow = false;
         const cam = dirLight.shadow.camera;
         cam.top = cam.right = 115;
         cam.bottom = cam.left = -115;
@@ -788,6 +818,7 @@ export function startGame(
         /** Shadow map size is set to balance between quality and performance. */
         dirLight.shadow.mapSize.setScalar(6144);
         scene.add(dirLight, dirLight.target);
+        scene.add(fillLight);
 
         /* dirLightLow.shadow.mapSize.set( 1024, 1024 );
         followGroup.add( dirLightLow );
@@ -836,7 +867,7 @@ export function startGame(
         // Three.js-Raytracing clicks
         renderer.domElement.addEventListener('click', onClick);
 
-        //initNPC();
+        initNPC();
 
         const plane = new THREE.Mesh(
             new THREE.BoxGeometry(35, 0.05, 35),
@@ -869,6 +900,31 @@ export function startGame(
             }
         );
 
+        storyManager = new Story_Manager(
+            scene,
+            player,
+            renderer,
+            camera,
+            keyStates,
+            controls.key,
+            onDialogChange
+        );
+
+        storyManager.onQuestInteraction = (interaction) => {
+            console.log('Quest interaction:', interaction);
+        };
+
+        interactionManager = new InteractionManager(scene);
+        interactionManager.onInteraction = (interaction) => {
+            storyManager?.handleInteraction(interaction);
+            //onQuestComplete?.(interaction);
+        };
+
+        await loadMesh('glb/42WOB_v5.glb', [0, 0, 0]);
+        await loadMeshSky('glb/Clouds.glb', [0, 0, 0]);
+        await loadMeshSky('glb/RocksBorder3.glb', [0, 0, 0]);
+
+        storyManager.GameIntro();
         /* const testCube = new THREE.Mesh(
             new THREE.BoxGeometry(1, 1, 1),
             new THREE.MeshBasicMaterial({ color: 0xff0000 })
@@ -880,16 +936,16 @@ export function startGame(
         scene.add(new THREE.AmbientLight(0xffffff, 12)); */
     }
 
-    const texture = new THREE.TextureLoader().load(
-        'textures/gradientMaps/twoTone2.jpg'
-    );
-    const loader = new GLTFLoader();
-
-    void loadMesh('glb/42WOB_v3.glb', [0, 0, 0]);
-    // const texture = new THREE.TextureLoader().load('textures/gradientMaps/twoTone2.jpg');
-
-    texture.minFilter = THREE.NearestFilter;
-    texture.magFilter = THREE.NearestFilter;
+    const blackholeTex = new THREE.TextureLoader().load("textures/Blackhole.png");
+    const material = new THREE.MeshBasicMaterial({
+        map: blackholeTex,
+        transparent: true,
+    });
+    const geometry = new THREE.PlaneGeometry(40, 40);
+    const plane = new THREE.Mesh(geometry, material);
+    plane.rotation.x = Math.PI / 2.3;
+    plane.position.set(16, 20, -5);
+    scene.add(plane);
 
     async function loadMesh(
         path: string,
@@ -981,6 +1037,45 @@ export function startGame(
         //mesh_col.push(obj);
 
         worldOctree.fromGraphNode(obj);
+
+        envLoaded = true;
+    }
+
+    async function loadMeshSky(path: string, pos: [number, number, number] = [0, 0, 0]): Promise <void> {
+
+        const gltf = await loader.loadAsync(path);
+        const obj = gltf.scene;
+
+        obj.position.set(...pos);
+        obj.traverse((child) => {
+            if (child instanceof THREE.Mesh) {
+
+                child.scale.set(1.15, 1.15, 1.15);
+
+                // outline
+                const edges = new THREE.EdgesGeometry(
+                    child.geometry,
+                    50
+                );
+                const line = new THREE.LineSegments(
+                    edges,
+                    new THREE.LineBasicMaterial({ color: 0x000000 })
+                );
+                child.add(line);
+
+                child.material = new THREE.MeshToonMaterial({
+                    color: child.material.color,
+                    map: child.material.map || null,
+                    gradientMap: texture,
+                });
+
+                child.castShadow = false;
+                child.receiveShadow = true;
+                
+            }
+        });
+        scene.add(obj);
+
     }
 
     /* function loadMeshTitel(path, pos = [0, 0, 0]) {
@@ -1058,29 +1153,46 @@ export function startGame(
 
     //tttGame.board = tttBox;
 
-    /** error TS6133: 'initNPC' is declared but its value is never read.
     function initNPC(): void {
 
-        const npc1 = new NPC('glb/SpidermanMeme.glb', 2, scene, 1);
-        const npc2 = new NPC('glb/SpidermanMeme.glb', 3, scene, 1);
-        const npc3 = new NPC('glb/SpidermanMeme.glb', 4, scene, 1);
+        // NPCs at the entrance of the 42WOB building
+        const entry1 = new NPC('glb/NPC_Man_1.glb', 2, scene, 'Nod');
+        const entry2 = new NPC('glb/NPC_Man_1.glb', 3, scene, 'Talking_2');
+        const entry3 = new NPC('glb/NPC_Man_1.glb', 4, scene, 'Nod');
+
+        entry1.group.position.set(6.5, 0, 1);
+        entry2.group.position.set(8, 0, 1.5);
+        entry3.group.position.set(6.5, 0, 2.5);
+
+        entry1.rotateCharacter(entry1.group.position, entry2.group.position);
+        entry2.rotateCharacter(entry2.group.position, entry3.group.position);
+        entry3.rotateCharacter(entry3.group.position, entry2.group.position);
+
+        scene.add(entry1.group, entry2.group, entry3.group);
+        
+        npcs.set(entry1.id, entry1);
+        npcs.set(entry2.id, entry2);
+        npcs.set(entry3.id, entry3);
 
 
-        npc1.group.position.set(5.5, -0.1, 5);
-        npc2.group.position.set(7, -0.1, 6.5);
-        npc3.group.position.set(5.5, -0.1, 8);
+        // NPCs 1Floor doing the Spiderman meme
+        /* const spider1 = new NPC('glb/SpidermanMeme.glb', 2, scene, 1);
+        const spider2 = new NPC('glb/SpidermanMeme.glb', 3, scene, 1);
+        const spider3 = new NPC('glb/SpidermanMeme.glb', 4, scene, 1);
+        spider2.group.position.set(9.5, 3.71-0.1, -7.3);
+        spider3.group.position.set(9.5, 3.71-0.1, -5.6);
+        spider1.group.position.set(11.3, 3.71-0.1, -6.5);
 
-        npc1.rotateCharacter(npc1.group.position, npc2.group.position);
-        npc2.rotateCharacter(npc2.group.position, npc3.group.position);
-        npc3.rotateCharacter(npc3.group.position, npc1.group.position);
+        spider1.rotateCharacter(spider1.group.position, spider3.group.position);
+        spider2.rotateCharacter(spider2.group.position, spider1.group.position);
+        spider3.rotateCharacter(spider3.group.position, spider2.group.position);
 
-        scene.add(npc1.group, npc2.group, npc3.group);
+        scene.add(spider1.group, spider2.group, spider3.group);
 
-        npcs.set(npc1.id, npc1);
-        npcs.set(npc2.id, npc2);
-        npcs.set(npc3.id, npc3);
+        npcs.set(spider1.id, spider1);
+        npcs.set(spider2.id, spider2);
+        npcs.set(spider3.id, spider3); */
     }
-    */
 
     // Test function fo spawn and delete
     /* function onDeleteCollision(): void {
@@ -1253,9 +1365,12 @@ export function startGame(
         emitBattleRequest(nearbyPlayer.id);
     }
 
-    /** player leave Tic-Tac-Toe game */
+    /** player leave Tic-Tac-Toe game & end cutscene */
     function onPressEscape(_event: KeyboardEvent) {
         void _event;
+
+        if(storyManager) 
+            storyManager.skipCameraAnimation = true;
 
         if (!player || !tttGame) {
             return;
@@ -1315,6 +1430,9 @@ export function startGame(
     function onKeyDown(event: KeyboardEvent) {
         if (!player || isLocalPlayerDespawning) return;
 
+        if(storyManager && storyManager.inCutscene)
+            return;
+
         keyStates[event.code] = true;
         const key: [number, number] = controls.key;
         player.controls.key = key;
@@ -1336,6 +1454,14 @@ export function startGame(
             case 'ArrowRight':
             case 'KeyD':
                 key[1] = 1;
+                break;
+
+            // TODO: TESTS - REMOVE IF NOT NEEDED ANYMORE
+            case 'KeyO':
+                DebugCutscene();
+                break;
+            case 'KeyP':
+                posPrintDebug();
                 break;
         }
     }
@@ -1393,7 +1519,34 @@ export function startGame(
             case 'Digit3':
                 scissorsKey(event);
                 break;
+
+            case 'KeyE':
+                interactionManager?.OnActivatePress(player.group.position);
+                break;
         }
+    }
+
+    function DebugCutscene(){
+        if (!player) return;
+
+        if(storyManager)
+            storyManager.blackHoleCutscene();
+    }
+
+    function posPrintDebug() {
+        if (!player) return;
+
+        if(storyManager)
+            storyManager.GameIntro();
+
+        console.log(
+            'Player position: x=' +
+                player.group.position.x.toFixed(2) +    
+                ', y=' +
+                player.group.position.y.toFixed(2) +
+                ', z=' +
+                player.group.position.z.toFixed(2)
+        );
     }
 
     function onWindowResize() {
@@ -1409,7 +1562,7 @@ export function startGame(
             return;
         }
 
-        if (!player || !camera || !tttGame || !rpsGame || !multiplayer) return;
+        if (!player || !camera || !tttGame || !rpsGame || !multiplayer || !storyManager || !envLoaded || !interactionManager) return;
 
         timer.update();
         const lifecycleDelta = timer.getDelta();
@@ -1424,27 +1577,32 @@ export function startGame(
 
         player.updateCharacter(delta);
 
-        playerMovementDelta.subVectors(
-            player.group.position,
-            previousPlayerPosition
-        );
-        camera.camera.position.add(playerMovementDelta);
+        // update camera and character only while not in cutscene. Otherwise Cutscene animation
+        if(!storyManager.inCutscene) { 
 
-        if (tttGame.tttCamera)
-            camera.orbitControls.target
-                .copy(player.group.position)
-                .add({ x: 0, y: 1.75, z: 0 });
-        else
-            camera.orbitControls.target
-                .copy(player.group.position)
-                .add({ x: 0, y: 1, z: 0 });
-        followGroup.position.copy(player.group.position);
-        camera.orbitControls.update();
+            playerMovementDelta.subVectors(
+                player.group.position,
+                previousPlayerPosition
+            );
+            camera.camera.position.add(playerMovementDelta);
 
-        // onDeleteCollision();
-        // onSpawnCollision();
+            if (tttGame.tttCamera)
+                camera.orbitControls.target
+                    .copy(player.group.position)
+                    .add({ x: 0, y: 1.75, z: 0 });
+            else
+                camera.orbitControls.target
+                    .copy(player.group.position)
+                    .add({ x: 0, y: 1, z: 0 });
+            followGroup.position.copy(player.group.position);
+            camera.orbitControls.update();
 
-        camera.cameraCollisionRaycast(delta, player.group);
+            // onDeleteCollision();
+            // onSpawnCollision();
+
+            camera.cameraCollisionRaycast(delta, player.group);
+
+        }
 
         renderer.clear();
         renderer.render(scene, camera.camera);
@@ -1466,6 +1624,13 @@ export function startGame(
         if (!isLocalPlayerDespawning) {
             rpsGame.updateCheck();
         }
+
+        interactionManager.update(player.group.position);
+
+        for (const [_id, player] of npcs) {
+            void _id;
+            player.updateAnimation(delta);
+        }
     }
 
     function showLocalChatMessage(message: string): void {
@@ -1478,5 +1643,11 @@ export function startGame(
         showLocalChatMessage,
         despawnLocalPlayer,
         dispose: disposeRuntime,
+        continueDialogue(): void {
+            storyManager?.continueDialogue();
+        },
+        triggerBlackHoleCutscene(): void {
+            storyManager?.blackHoleCutscene();
+        }
     };
 }

@@ -48,7 +48,7 @@ export const CharacterPreview: React.FC = () => {
                 aria-hidden='true'
             ></canvas>
             <div ref={labelRef} id='character-preview-label'>
-                Male_Test.glb
+                Main_Male.glb
             </div>
         </div>
     );

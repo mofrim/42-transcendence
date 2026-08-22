@@ -1,7 +1,7 @@
 import type { GameRuntimeEvent } from '../../game/main';
 
 export const BLACK_HOLE_QUEST_ID = 'avoid-blackhole';
-export const BLACK_HOLE_DURATION_SECONDS = 42 * 60; // 42 minutes in seconds (42:00)
+export const BLACK_HOLE_DURATION_SECONDS = 5 * 60; // 5 minutes in seconds (05:00)
 export const MEET_PLAYER_QUEST_ID = 'meet-player';
 export const RPS_WIN_QUEST_ID = 'win-rps-minigame';
 export const TTT_WIN_QUEST_ID = 'win-ttt-minigame';
@@ -26,9 +26,38 @@ export type QuestStatusChange = {
 export const DEFAULT_QUESTS: readonly QuestLogEntry[] = [
     {
         // TODO: logikal quest id for entering campus, maybe use the token or door trigger
-        id: 'enter-campus',
-        text: 'Enter 42 Campus via Token',
+        id: 'FIND_RUBBERDUCK',
+        text: 'Find the Rubber Duck',
     },
+    {
+        id: 'GET_COFFEE',
+        text: 'Get a Coffee',
+    },
+    {
+        id: 'GET_PAPER',
+        text: 'Get a Piece of Paper',
+    },
+    {
+        id: 'LOGIN_COMPUTER',
+        text: 'Log In to Computer c2r12s6',
+    },
+    {
+        id: 'START_EVALUATION',
+        text: 'Start Evaluation',
+    },
+    {
+        id: BLACK_HOLE_QUEST_ID,
+        text: "Don't get blackholed",
+    },
+
+    // Pop up once login is successful
+    /* {
+        id: 'FIND_EVALUATING_STUDENT',
+        text: 'Find the Evaluating Student at c1r11s2',
+    }, */
+
+    // Secondary quests, once blackhole is disabled ?
+    /* 
     {
         id: RPS_WIN_QUEST_ID,
         text: 'Gewinne eine Runde Schere, Stein, Papier',
@@ -41,14 +70,7 @@ export const DEFAULT_QUESTS: readonly QuestLogEntry[] = [
         id: MEET_PLAYER_QUEST_ID,
         text: 'Finde einen anderen Student',
     },
-    {
-        id: 'find-computer',
-        text: 'Finde einen Computer im Cluster',
-    },
-    {
-        id: BLACK_HOLE_QUEST_ID,
-        text: "Don't get blackholed",
-    },
+    */
 ];
 
 /** blackhole timer */

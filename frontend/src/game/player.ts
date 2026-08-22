@@ -33,6 +33,9 @@ export class Player {
     static colEndY: number = 1;
     static offset: number = 0;
 
+    static playerStartX: number = 16;
+    static playerStartZ: number = 14;
+
     /** ugly random Socket ID strings */
     id: string | undefined;
     model: THREE.Group | null;
@@ -49,6 +52,7 @@ export class Player {
     stateCurrent: PlayerAnimationState;
     mixer: THREE.AnimationMixer | null;
     actions: ReturnType<typeof createPlayerAnimationActions> | null;
+    animations: THREE.AnimationClip[] = [];
     worldOctree: Octree;
     playerVelocity: THREE.Vector3;
     playerDirection: THREE.Vector3;
@@ -63,6 +67,7 @@ export class Player {
         key: [number, number];
         rotate: THREE.Quaternion;
         current: PlayerAnimationState;
+        requestedAnimation: PlayerAnimationState | null;
         fadeDuration: number;
         runVelocity: number;
         turnSmoothness: number;
@@ -94,6 +99,7 @@ export class Player {
         this.stateCurrent = PlayerState.Idle;
         this.mixer = null;
         this.actions = null;
+        this.animations = [];
 
         this.worldOctree = worldOctree;
         this.playerVelocity = new THREE.Vector3();
@@ -109,8 +115,8 @@ export class Player {
         this.youSendRPGRequest = false;
 
         this.playerCollider = new Capsule(
-            new THREE.Vector3(14.2, Player.colStartY, -9.2),
-            new THREE.Vector3(14.2, Player.colEndY, -9.2),
+            new THREE.Vector3(0, Player.colStartY, 0),
+            new THREE.Vector3(0, Player.colEndY, 0),
             Player.colRad
         );
 
@@ -118,12 +124,14 @@ export class Player {
         //this.playerCollider.translate(new THREE.Vector3(0, Player.offset, 0));
         // start with scale 0 for spawn animation
         //this.group.scale.set(0, 1, 0);
+        this.PlayerToStartPosition();
         Player.offset = (Player.colEndY - Player.colStartY) / 2 + Player.colRad;
 
         this.controls = {
             key: [0, 0],
             rotate: new THREE.Quaternion(),
             current: PlayerState.Idle,
+            requestedAnimation: null,
             fadeDuration: 0.5,
             runVelocity: 15,
             turnSmoothness: 4.0,
@@ -158,6 +166,16 @@ export class Player {
         //    sv = 1;
         // value just for spawn animation
         this.lifecycleController.startSpawn();
+    }
+
+    // change Players position - update playerCollider
+    setPlayerPosition(X: number, Y: number, Z: number) {
+        this.playerCollider.start.set(X, Y + Player.colStartY, Z);
+        this.playerCollider.end.set(X, Y + Player.colEndY, Z);
+    }
+
+    PlayerToStartPosition(){
+        this.setPlayerPosition(Player.playerStartX, 0, Player.playerStartZ);
     }
 
     /** print player chat bubble */
@@ -529,12 +547,13 @@ export class Player {
         const key = this.controls.key;
         const rotate = this.controls.rotate;
         const active = key[0] !== 0 || key[1] !== 0;
-        let play: PlayerState;
-        if (active) {
-            play = PlayerState.Run;
-        } else {
-            play = PlayerState.Idle;
-        }
+        const play =
+            this.controls.requestedAnimation ??
+            (active
+                ? PlayerState.Run
+                : PlayerState.Idle);
+
+        console.log(`REQUESTED: Player Animation requested: ${this.controls.requestedAnimation}`);
         // Zustandsübergänge können den Renderloop abbrechen
         this.controls.current = play;
 
@@ -595,7 +614,8 @@ export class Player {
         }
 
         // move object
-        if (this.controls.current !== PlayerState.Idle) {
+        // TODO: only if not idle for performance ?
+        if (active) {
             /*             let damping = Math.exp( - 4 * delta ) - 1;
             if ( ! this.playerOnFloor ) {
                 this.playerVelocity.y -= this.GRAVITY * delta;

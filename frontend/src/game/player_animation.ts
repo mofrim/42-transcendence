@@ -6,6 +6,15 @@ import { PlayerState } from '@common/types';
 const PLAYER_ANIMATION_STATE = Object.freeze({
     Idle: PlayerState.Idle,
     Run: PlayerState.Run,
+    Falling: PlayerState.Falling,
+    Angry: PlayerState.Angry,
+    ArmStretch: PlayerState.ArmStretch,
+    Drinking: PlayerState.Drinking,
+    Relieved: PlayerState.Relieved,
+    Strong: PlayerState.Strong,
+    Surprised: PlayerState.Surprised,
+    ThumbsUp: PlayerState.ThumbsUp,
+    Victory: PlayerState.Victory
 });
 
 type PlayerAnimationState =
@@ -57,14 +66,36 @@ const CLIP_NAME_BY_STATE: Readonly<Record<PlayerAnimationState, string>> =
     Object.freeze({
         [PLAYER_ANIMATION_STATE.Idle]: 'Breathing',
         [PLAYER_ANIMATION_STATE.Run]: 'Running',
+        [PLAYER_ANIMATION_STATE.Falling]: 'Falling',
+        [PLAYER_ANIMATION_STATE.Angry]: 'Angry',
+        [PLAYER_ANIMATION_STATE.ArmStretch]: 'ArmStretch',
+        [PLAYER_ANIMATION_STATE.Drinking]: 'Drinking',
+        [PLAYER_ANIMATION_STATE.Relieved]: 'Relieved',
+        [PLAYER_ANIMATION_STATE.Strong]: 'Strong',
+        [PLAYER_ANIMATION_STATE.Surprised]: 'Surprised',
+        [PLAYER_ANIMATION_STATE.ThumbsUp]: 'ThumbsUp',
+        [PLAYER_ANIMATION_STATE.Victory]: 'Victory'
     });
 
 export function normalizePlayerAnimationState(
     state: unknown
 ): PlayerAnimationState {
-    return state === PLAYER_ANIMATION_STATE.Run
-        ? PLAYER_ANIMATION_STATE.Run
-        : PLAYER_ANIMATION_STATE.Idle;
+    switch (state) {
+        case PLAYER_ANIMATION_STATE.Idle:
+        case PLAYER_ANIMATION_STATE.Run:
+        case PLAYER_ANIMATION_STATE.Falling:
+        case PLAYER_ANIMATION_STATE.Angry:
+        case PLAYER_ANIMATION_STATE.ArmStretch:
+        case PLAYER_ANIMATION_STATE.Drinking:
+        case PLAYER_ANIMATION_STATE.Relieved:
+        case PLAYER_ANIMATION_STATE.Strong:
+        case PLAYER_ANIMATION_STATE.Surprised:
+        case PLAYER_ANIMATION_STATE.ThumbsUp:
+        case PLAYER_ANIMATION_STATE.Victory:
+            return state;
+        default:
+            return PLAYER_ANIMATION_STATE.Idle;
+    }
 }
 
 export function resolvePlayerAnimationClip(
@@ -107,10 +138,64 @@ export function createPlayerAnimationActions(
         PLAYER_ANIMATION_STATE.Run,
         modelPath
     );
+    const angryClip = resolvePlayerAnimationClip(
+        animations,
+        PLAYER_ANIMATION_STATE.Angry,
+        modelPath
+    );
+    const fallingClip = resolvePlayerAnimationClip(
+        animations,
+        PLAYER_ANIMATION_STATE.Falling,
+        modelPath
+    );
+    const armStretchClip = resolvePlayerAnimationClip(
+        animations,
+        PLAYER_ANIMATION_STATE.ArmStretch,
+        modelPath
+    );
+    const drinkingClip = resolvePlayerAnimationClip(
+        animations,
+        PLAYER_ANIMATION_STATE.Drinking,
+        modelPath
+    );
+    const relievedClip = resolvePlayerAnimationClip(
+        animations,
+        PLAYER_ANIMATION_STATE.Relieved,
+        modelPath
+    );
+    const strongClip = resolvePlayerAnimationClip(
+        animations,
+        PLAYER_ANIMATION_STATE.Strong,
+        modelPath
+    );
+    const surprisedClip = resolvePlayerAnimationClip(
+        animations,
+        PLAYER_ANIMATION_STATE.Surprised,
+        modelPath
+    );
+    const thumbsUpClip = resolvePlayerAnimationClip(
+        animations,
+        PLAYER_ANIMATION_STATE.ThumbsUp,
+        modelPath
+    );
+    const victoryClip = resolvePlayerAnimationClip(
+        animations,
+        PLAYER_ANIMATION_STATE.Victory,
+        modelPath
+    );
 
     const actions = {
         [PLAYER_ANIMATION_STATE.Idle]: mixer.clipAction(idleClip),
         [PLAYER_ANIMATION_STATE.Run]: mixer.clipAction(runClip),
+        [PLAYER_ANIMATION_STATE.Angry]: mixer.clipAction(angryClip),
+        [PLAYER_ANIMATION_STATE.Falling]: mixer.clipAction(fallingClip),
+        [PLAYER_ANIMATION_STATE.ArmStretch]: mixer.clipAction(armStretchClip),
+        [PLAYER_ANIMATION_STATE.Drinking]: mixer.clipAction(drinkingClip),
+        [PLAYER_ANIMATION_STATE.Relieved]: mixer.clipAction(relievedClip),
+        [PLAYER_ANIMATION_STATE.Strong]: mixer.clipAction(strongClip),
+        [PLAYER_ANIMATION_STATE.Surprised]: mixer.clipAction(surprisedClip),
+        [PLAYER_ANIMATION_STATE.ThumbsUp]: mixer.clipAction(thumbsUpClip),
+        [PLAYER_ANIMATION_STATE.Victory]: mixer.clipAction(victoryClip),
     };
 
     for (const [state, action] of Object.entries(actions)) {

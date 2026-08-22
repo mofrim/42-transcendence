@@ -17,12 +17,12 @@ export interface CreateCharPreviewReturnType {
 /** all both gender */
 const CHARACTER_PREVIEW_MODELS = {
     true: {
-        path: '/glb/Male_Test.glb',
-        label: 'Male_Test.glb',
+        path: '/glb/Main_Male.glb',
+        label: 'Main_Male.glb',
     },
     false: {
-        path: '/glb/Female_Test.glb',
-        label: 'Female_Test.glb',
+        path: '/glb/Main_Female.glb',
+        label: 'Main_Female.glb',
     },
 };
 

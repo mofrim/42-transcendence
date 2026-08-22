@@ -9,9 +9,14 @@ type NPCAnimationActions = {
 };
 
 export class NPC {
-    static gradientTexture = new THREE.TextureLoader().load(
-        'src/textures/gradientMaps/twoTone2.jpg'
-    );
+    static gradientTexture = (() => {
+            const texture = new THREE.TextureLoader().load(
+                '/textures/gradientMaps/twoTone2.jpg'
+            );
+            texture.minFilter = THREE.NearestFilter;
+            texture.magFilter = THREE.NearestFilter;
+            return texture;
+    })();
 
     scene: THREE.Scene;
     id: number;
@@ -24,7 +29,7 @@ export class NPC {
         path: string,
         id: number,
         scene: THREE.Scene,
-        defaultAnim: number = 0
+        animation: string
     ) {
         this.scene = scene;
         this.id = id;
@@ -33,10 +38,14 @@ export class NPC {
         this.mixer = null;
         this.actions = null;
 
-        this.loadEnemyCharacter(path, defaultAnim);
+        this.loadEnemyCharacter(path, animation);
     }
 
-    loadEnemyCharacter(path: string, defaultAnim: number): void {
+    randomRange(min: number, max: number): number {
+        return Math.random() * (max - min) + min;
+    }
+
+    loadEnemyCharacter(path: string, animation: string): void {
         const loader = new GLTFLoader();
         //console.log("Enemy character loading...");
 
@@ -48,24 +57,27 @@ export class NPC {
             //model.position.set(x, y, z);
             //model.rotation.y = rot;
 
-            this.model.traverse((object) => {
+            this.model.traverse(function (object) {
                 if (object instanceof THREE.Mesh) {
                     object.castShadow = true;
                     object.receiveShadow = true;
 
-                    if (
-                        !Array.isArray(object.material) &&
-                        object.material.name === 'Outline'
-                    ) {
+                    const material =
+                        object.material as THREE.MeshStandardMaterial;
+
+                    // console.log("Material name: ", material.name);
+
+                    if (material.name === 'Outline') {
+                        // console.log("OUTLINE MESH FOUND");
                         object.material = new THREE.MeshBasicMaterial({
-                            color: 0x000000,
+                            color: 0x000000
                         });
-                        object.castShadow = false;
+                        object.castShadow = false; // important: prevents shadow artifacts
                         return;
                     }
-
+                    // console.log("Material NOT OUTLINE: ");
                     object.material = new THREE.MeshToonMaterial({
-                        color: 0xffffff,
+                        color: material.color.clone(),
                         gradientMap: NPC.gradientTexture,
                     });
                 }
@@ -73,29 +85,26 @@ export class NPC {
 
             const mix = new THREE.AnimationMixer(this.model);
 
-            const idleClip = gltf.animations[defaultAnim];
-            const runClip = gltf.animations[2];
-            if (!idleClip || !runClip) {
-                throw new Error(
-                    `NPC ${this.id} requires animation clips at indexes ${defaultAnim} and 2`
-                );
+            const clip = gltf.animations.find(
+                (clip) => clip.name === animation
+            );
+
+            if (!clip) {
+                console.warn(`NPC Animation "${animation}" not found`);
+                return;
             }
 
-            const actions: NPCAnimationActions = {
-                Idle: mix.clipAction(idleClip),
-                Run: mix.clipAction(runClip),
-            };
-            this.actions = actions;
+            const action = mix.clipAction(clip);
 
-            for (const [m, action] of Object.entries(actions)) {
-                action.enabled = true;
-                action.setEffectiveTimeScale(1);
-                if (m !== 'Idle') action.setEffectiveWeight(0);
-            }
+            action.play();
 
-            actions.Idle.play();
+            const random = this.randomRange(0.8, 1.2);
+
+            action.setEffectiveTimeScale(random);
+            action.setEffectiveWeight(1);
 
             this.mixer = mix;
+            
         });
     }
 
