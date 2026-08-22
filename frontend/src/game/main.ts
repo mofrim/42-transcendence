@@ -780,12 +780,12 @@ export function startGame(
 
     //let camDistance = 0;
 
-    function createSkyBox():void {
+    /* function createSkyBox():void {
         const skyGeometry = new THREE.SphereGeometry(70, 32, 32);
         const skyMaterial = new THREE.MeshBasicMaterial({ color: 0x87CEEB, side: THREE.BackSide });
         const sky = new THREE.Mesh(skyGeometry, skyMaterial);
         scene.add(sky);
-    }
+    } */
 
     init();
 
