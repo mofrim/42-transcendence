@@ -814,11 +814,17 @@ export function startGame(
         cam.bottom = cam.left = -115;
         cam.near = 1;
         cam.far = 50;
+        const camFill = fillLight.shadow.camera;
+        camFill.top = camFill.right = 115;
+        camFill.bottom = camFill.left = -115;
+        camFill.near = 1;
+        camFill.far = 50;
 
         /** Shadow map size is set to balance between quality and performance. */
         dirLight.shadow.mapSize.setScalar(6144);
+        fillLight.shadow.mapSize.setScalar(6144);
         scene.add(dirLight, dirLight.target);
-        scene.add(fillLight);
+        scene.add(fillLight, fillLight.target);
 
         /* dirLightLow.shadow.mapSize.set( 1024, 1024 );
         followGroup.add( dirLightLow );
