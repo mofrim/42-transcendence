@@ -55,6 +55,15 @@ export enum PlayerState {
     Idle = 'Idle',
     Run = 'Run',
     Jump = 'Jump',
+    Falling = 'Falling',
+    Angry = 'Angry',
+    ArmStretch = 'ArmStretch',
+    Drinking = 'Drinking',
+    Relieved = 'Relieved',
+    Strong = 'Strong',
+    Surprised = 'Surprised',
+    ThumbsUp = 'ThumbsUp',
+    Victory = 'Victory',
 }
 
 export enum CharacterModel {
