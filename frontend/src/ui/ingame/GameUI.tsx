@@ -472,7 +472,7 @@ export function GameUI({
                 <h2 className='hud-title'>Quest Log Checklist:</h2>
                 <ul className='hud-quest-list'>
                     {resolvedQuests.map((quest) => {
-                        let marker = '❎';
+                        let marker = '🟥';
                         let blackHoleTimer: ReactNode = null;
 
                         if (quest.completed) {
