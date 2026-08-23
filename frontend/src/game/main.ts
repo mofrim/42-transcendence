@@ -13,7 +13,7 @@ import { RPS_Game } from './rps_game.js';
 import { createThreeResourceDisposer } from './ThreeResourceDisposer.js';
 import { Story_Manager } from './story_manager.js';
 import { InteractionManager } from './interaction_manager.js';
-import { MAP_MODEL_PATH } from './gameAssets.js';
+import { MAP_MODEL_PATH } from './Assets.js';
 
 import { io } from 'socket.io-client';
 
@@ -647,7 +647,7 @@ export function startGame(
     const previousPlayerPosition = new THREE.Vector3();
     const playerMovementDelta = new THREE.Vector3();
     const dirLight = new THREE.DirectionalLight(0xffffff, 1.25);
-    const fillLight  = new THREE.DirectionalLight(0xffffff, 1.25);
+    const fillLight = new THREE.DirectionalLight(0xffffff, 1.25);
 
     const npcs = new Map();
 
@@ -925,7 +925,9 @@ export function startGame(
         scene.add(new THREE.AmbientLight(0xffffff, 12)); */
     }
 
-    const blackholeTex = new THREE.TextureLoader().load("textures/Blackhole.png");
+    const blackholeTex = new THREE.TextureLoader().load(
+        'textures/Blackhole.png'
+    );
     const material = new THREE.MeshBasicMaterial({
         map: blackholeTex,
         transparent: true,
@@ -1030,22 +1032,20 @@ export function startGame(
         envLoaded = true;
     }
 
-    async function loadMeshSky(path: string, pos: [number, number, number] = [0, 0, 0]): Promise <void> {
-
+    async function loadMeshSky(
+        path: string,
+        pos: [number, number, number] = [0, 0, 0]
+    ): Promise<void> {
         const gltf = await loader.loadAsync(path);
         const obj = gltf.scene;
 
         obj.position.set(...pos);
         obj.traverse((child) => {
             if (child instanceof THREE.Mesh) {
-
                 child.scale.set(1.15, 1.15, 1.15);
 
                 // outline
-                const edges = new THREE.EdgesGeometry(
-                    child.geometry,
-                    50
-                );
+                const edges = new THREE.EdgesGeometry(child.geometry, 50);
                 const line = new THREE.LineSegments(
                     edges,
                     new THREE.LineBasicMaterial({ color: 0x000000 })
@@ -1060,11 +1060,9 @@ export function startGame(
 
                 child.castShadow = false;
                 child.receiveShadow = true;
-
             }
         });
         scene.add(obj);
-
     }
 
     /* function loadMeshTitel(path, pos = [0, 0, 0]) {
@@ -1143,7 +1141,6 @@ export function startGame(
     //tttGame.board = tttBox;
 
     function initNPC(): void {
-
         // NPCs at the entrance of the 42WOB building
         const entry1 = new NPC('glb/NPC_Man_1.glb', 2, scene, 'Nod');
         const entry2 = new NPC('glb/NPC_Man_1.glb', 3, scene, 'Talking_2');
@@ -1162,7 +1159,6 @@ export function startGame(
         npcs.set(entry1.id, entry1);
         npcs.set(entry2.id, entry2);
         npcs.set(entry3.id, entry3);
-
 
         // NPCs 1Floor doing the Spiderman meme
         /* const spider1 = new NPC('glb/SpidermanMeme.glb', 2, scene, 1);
@@ -1358,8 +1354,7 @@ export function startGame(
     function onPressEscape(_event: KeyboardEvent) {
         void _event;
 
-        if(storyManager)
-            storyManager.skipCameraAnimation = true;
+        if (storyManager) storyManager.skipCameraAnimation = true;
 
         if (!player || !tttGame) {
             return;
@@ -1419,8 +1414,7 @@ export function startGame(
     function onKeyDown(event: KeyboardEvent) {
         if (!player || isLocalPlayerDespawning) return;
 
-        if(storyManager && storyManager.inCutscene)
-            return;
+        if (storyManager && storyManager.inCutscene) return;
 
         keyStates[event.code] = true;
         const key: [number, number] = controls.key;
@@ -1515,18 +1509,16 @@ export function startGame(
         }
     }
 
-    function DebugCutscene(){
+    function DebugCutscene() {
         if (!player) return;
 
-        if(storyManager)
-            storyManager.blackHoleCutscene();
+        if (storyManager) storyManager.blackHoleCutscene();
     }
 
     function posPrintDebug() {
         if (!player) return;
 
-        if(storyManager)
-            storyManager.GameIntro();
+        if (storyManager) storyManager.GameIntro();
 
         console.log(
             'Player position: x=' +
@@ -1551,7 +1543,17 @@ export function startGame(
             return;
         }
 
-        if (!player || !camera || !tttGame || !rpsGame || !multiplayer || !storyManager || !envLoaded || !interactionManager) return;
+        if (
+            !player ||
+            !camera ||
+            !tttGame ||
+            !rpsGame ||
+            !multiplayer ||
+            !storyManager ||
+            !envLoaded ||
+            !interactionManager
+        )
+            return;
 
         timer.update();
         const lifecycleDelta = timer.getDelta();
@@ -1567,8 +1569,7 @@ export function startGame(
         player.updateCharacter(delta);
 
         // update camera and character only while not in cutscene. Otherwise Cutscene animation
-        if(!storyManager.inCutscene) {
-
+        if (!storyManager.inCutscene) {
             playerMovementDelta.subVectors(
                 player.group.position,
                 previousPlayerPosition
@@ -1590,7 +1591,6 @@ export function startGame(
             // onSpawnCollision();
 
             camera.cameraCollisionRaycast(delta, player.group);
-
         }
 
         renderer.clear();
@@ -1637,6 +1637,6 @@ export function startGame(
         },
         triggerBlackHoleCutscene(): void {
             storyManager?.blackHoleCutscene();
-        }
+        },
     };
 }

@@ -14,7 +14,7 @@ const PLAYER_ANIMATION_STATE = Object.freeze({
     Strong: PlayerState.Strong,
     Surprised: PlayerState.Surprised,
     ThumbsUp: PlayerState.ThumbsUp,
-    Victory: PlayerState.Victory
+    Victory: PlayerState.Victory,
 });
 
 type PlayerAnimationState =
@@ -74,7 +74,7 @@ const CLIP_NAME_BY_STATE: Readonly<Record<PlayerAnimationState, string>> =
         [PLAYER_ANIMATION_STATE.Strong]: 'Strong',
         [PLAYER_ANIMATION_STATE.Surprised]: 'Surprised',
         [PLAYER_ANIMATION_STATE.ThumbsUp]: 'ThumbsUp',
-        [PLAYER_ANIMATION_STATE.Victory]: 'Victory'
+        [PLAYER_ANIMATION_STATE.Victory]: 'Victory',
     });
 
 export function normalizePlayerAnimationState(

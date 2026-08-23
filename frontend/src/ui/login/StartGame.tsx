@@ -101,7 +101,7 @@ export const Game: React.FC<{ nickname: string; email: string }> = ({
     const handleQuestStatusChange = useCallback(
         (statusChange: QuestStatusChange): void => {
             appendEvent(describeQuestStatusChange(statusChange));
-            if(statusChange.questId === 'avoid-blackhole') {
+            if (statusChange.questId === 'avoid-blackhole') {
                 gameRuntimeRef.current?.triggerBlackHoleCutscene();
                 //console.log('### Quest status change:', statusChange);
             }

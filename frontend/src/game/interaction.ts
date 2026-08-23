@@ -21,24 +21,24 @@ export class Interaction {
 
     constructor(
         scene: THREE.Scene,
-        typeID: 'FIND_RUBBERDUCK' | 'GET_COFFEE' | 'GET_PAPER' | 'LOGIN_COMPUTER' | 'START_EVALUATION',
+        typeID:
+            | 'FIND_RUBBERDUCK'
+            | 'GET_COFFEE'
+            | 'GET_PAPER'
+            | 'LOGIN_COMPUTER'
+            | 'START_EVALUATION',
         position: THREE.Vector3,
         size: THREE.Vector3
-    )
-    {
+    ) {
         this.typeID = typeID;
         this.scene = scene;
         this.position = position;
 
-        this.zone = this.createInteractionBox(
-            position,
-            size
-        );
+        this.zone = this.createInteractionBox(position, size);
 
         const helper = new THREE.Box3Helper(this.zone, 0xff0000);
         this.scene = scene;
         this.scene.add(helper);
-
     }
 
     createInteractionBox(
@@ -63,17 +63,20 @@ export class Interaction {
     }
 
     showEngageButton(): void {
-        if(this.pressText)
-            return;
+        if (this.pressText) return;
 
         this.pressText = new CanvasTextSprite('Press [E]', 25);
-        this.pressText.position.set(this.position.x, this.position.y + 1.75, this.position.z);
+        this.pressText.position.set(
+            this.position.x,
+            this.position.y + 1.75,
+            this.position.z
+        );
 
         this.scene.add(this.pressText);
     }
 
     removeEngageButton(): void {
-        if(this.pressText) {
+        if (this.pressText) {
             this.scene.remove(this.pressText);
             this.pressText = null;
         }

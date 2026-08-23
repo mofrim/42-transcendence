@@ -8,8 +8,7 @@ import { PlayerState } from '@common/types';
 type DialogState = {
     readonly isOpen: boolean;
     readonly message: string;
-}
-
+};
 
 export class Story_Manager {
     scene: THREE.Scene;
@@ -28,7 +27,7 @@ export class Story_Manager {
     private dialogResolver: (() => void) | null;
     private readonly onDialogChange: ((state: DialogState) => void) | undefined;
 
-    onQuestComplete : string | null = null;
+    onQuestComplete: string | null = null;
 
     constructor(
         scene: THREE.Scene,
@@ -38,8 +37,7 @@ export class Story_Manager {
         keyStates: { [key: string]: boolean },
         keys: [number, number],
         onDialogChange?: (state: DialogState) => void
-    )
-    {
+    ) {
         this.scene = scene;
         this.player = player;
         this.renderer = renderer;
@@ -57,8 +55,8 @@ export class Story_Manager {
         this.dialogResolver = null;
     }
 
-    releaseAllKeys(): void{
-        for(const key in this.keyStates){
+    releaseAllKeys(): void {
+        for (const key in this.keyStates) {
             this.keyStates[key] = false;
         }
         this.keys[0] = 0;
@@ -73,26 +71,29 @@ export class Story_Manager {
 
             const startPosition = this.camera.camera.position.clone();
 
-            const playerTarget = this.player.group.position.clone()
+            const playerTarget = this.player.group.position
+                .clone()
                 .add(new THREE.Vector3(0, 1, 0));
 
-            const direction = startPosition.clone()
+            const direction = startPosition
+                .clone()
                 .sub(playerTarget)
                 .normalize();
 
-            const endPosition = playerTarget.clone()
+            const endPosition = playerTarget
+                .clone()
                 .add(direction.multiplyScalar(3));
 
             const cameraDirection = new THREE.Vector3();
             this.camera.camera.getWorldDirection(cameraDirection);
 
-            const startLookAt = startPosition.clone()
+            const startLookAt = startPosition
+                .clone()
                 .add(cameraDirection.multiplyScalar(10));
 
             const endLookAt = playerTarget.clone();
 
             const updateCamera = (currentTime: number) => {
-
                 const elapsedSeconds = (currentTime - startTime) / 1000;
                 const progress = Math.min(elapsedSeconds / time, 1);
 
@@ -102,10 +103,9 @@ export class Story_Manager {
                     progress
                 );
 
-                const currentLookAt = startLookAt.clone().lerp(
-                    endLookAt,
-                    progress
-                );
+                const currentLookAt = startLookAt
+                    .clone()
+                    .lerp(endLookAt, progress);
 
                 this.camera.camera.lookAt(currentLookAt);
 
@@ -121,7 +121,6 @@ export class Story_Manager {
         });
     }
 
-
     lookAtPlayer(time: number): Promise<void> {
         return new Promise((resolve) => {
             this.skipCameraAnimation = false;
@@ -133,20 +132,21 @@ export class Story_Manager {
 
             // Get current look direction
             this.camera.camera.getWorldDirection(direction);
-            startLookAt.copy(this.camera.camera.position).add(direction.multiplyScalar(10));
+            startLookAt
+                .copy(this.camera.camera.position)
+                .add(direction.multiplyScalar(10));
 
-            const endLookAt = this.player.group.position.clone()
+            const endLookAt = this.player.group.position
+                .clone()
                 .add(new THREE.Vector3(0, 1, 0));
 
             const updateCamera = (currentTime: number) => {
-
                 const elapsedSeconds = (currentTime - startTime) / 1000;
                 const progress = Math.min(elapsedSeconds / time, 1);
 
-                const currentLookAt = startLookAt.clone().lerp(
-                    endLookAt,
-                    progress
-                );
+                const currentLookAt = startLookAt
+                    .clone()
+                    .lerp(endLookAt, progress);
 
                 this.camera.camera.lookAt(currentLookAt);
 
@@ -171,7 +171,6 @@ export class Story_Manager {
         this.advanceDialogueCamera = false;
 
         return new Promise((resolve) => {
-
             if (time <= 0) {
                 this.camera.camera.position.copy(to);
                 this.camera.camera.lookAt(lookAt);
@@ -187,7 +186,6 @@ export class Story_Manager {
             this.camera.camera.lookAt(lookAt);
 
             const updateCamera = (currentTime: number) => {
-
                 // Stop immediately if requested
                 if (this.advanceDialogueCamera) {
                     // console.log("1 ### Camera move event completed.");
@@ -221,9 +219,9 @@ export class Story_Manager {
         time: number,
         lookAt: THREE.Vector3
     ): Promise<void> {
-            this.skipCameraAnimation = false;
+        this.skipCameraAnimation = false;
 
-            return new Promise((resolve) => {
+        return new Promise((resolve) => {
             if (time <= 0) {
                 this.camera.camera.position.copy(to);
                 this.camera.camera.lookAt(lookAt);
@@ -237,15 +235,14 @@ export class Story_Manager {
 
             this.camera.camera.position.copy(startPosition);
             this.camera.camera.lookAt(lookAt);
-            
+
             const updateCamera = (currentTime: number) => {
                 const elapsedSeconds = (currentTime - startTime) / 1000;
                 const progress = Math.min(elapsedSeconds / time, 1);
 
-                const currentPosition = startPosition.clone().lerp(
-                    targetPosition,
-                    progress
-                );
+                const currentPosition = startPosition
+                    .clone()
+                    .lerp(targetPosition, progress);
 
                 this.camera.camera.position.copy(currentPosition);
 
@@ -268,10 +265,10 @@ export class Story_Manager {
         lookAtStart: THREE.Vector3,
         lookAtEnd: THREE.Vector3
     ): Promise<void> {
-            this.skipCameraAnimation = false;
-            this.camera.orbitControls.enabled = false;
+        this.skipCameraAnimation = false;
+        this.camera.orbitControls.enabled = false;
 
-            return new Promise((resolve) => {
+        return new Promise((resolve) => {
             if (time <= 0) {
                 this.camera.camera.position.copy(to);
                 this.camera.camera.lookAt(lookAtEnd);
@@ -289,14 +286,12 @@ export class Story_Manager {
                 const elapsedSeconds = (currentTime - startTime) / 1000;
                 const progress = Math.min(elapsedSeconds / time, 1);
 
-                const currentPosition = startPosition.clone().lerp(
-                    targetPosition,
-                    progress
-                );
-                const currentLookAt = startLookAt.clone().lerp(
-                    targetLookAt,
-                    progress
-                );
+                const currentPosition = startPosition
+                    .clone()
+                    .lerp(targetPosition, progress);
+                const currentLookAt = startLookAt
+                    .clone()
+                    .lerp(targetLookAt, progress);
 
                 this.camera.camera.position.copy(currentPosition);
                 this.camera.camera.lookAt(currentLookAt);
@@ -316,7 +311,7 @@ export class Story_Manager {
     // for testing. need to be replaces with dialogue system
     waitForMouseClick(): Promise<void> {
         return new Promise((resolve) => {
-            window.addEventListener("pointerdown", () => resolve(), {
+            window.addEventListener('pointerdown', () => resolve(), {
                 once: true,
             });
         });
@@ -325,7 +320,7 @@ export class Story_Manager {
     stopCurrentDialogueCamera(): void {
         this.advanceDialogueCamera = true;
     }
-    
+
     continueDialogue(): void {
         this.onDialogChange?.({ isOpen: false, message: '' });
 
@@ -400,10 +395,14 @@ export class Story_Manager {
 
         this.player.controls.requestedAnimation = PlayerState.Angry;
         await this.showDialog('Oh no... my black hole is getting closer!');
-        await this.showDialog('I don’t have much time left. I need to finish my evaluation.');
+        await this.showDialog(
+            'I don’t have much time left. I need to finish my evaluation.'
+        );
         this.player.controls.requestedAnimation = PlayerState.ArmStretch;
-        await this.showDialog('Just a few final preparations, then I can begin the evaluation!');
-        
+        await this.showDialog(
+            'Just a few final preparations, then I can begin the evaluation!'
+        );
+
         this.stopCurrentDialogueCamera();
 
         await this.returnCameraToPlayer(1.0);
@@ -425,7 +424,7 @@ export class Story_Manager {
         this.startCutscene();
 
         this.player.controls.requestedAnimation = PlayerState.Falling;
-        
+
         this.transformModelForCutscene(16, 15, -5);
 
         this.showDialog('OH NO... THE BLACK HOLE IS PULLING ME IN!');
@@ -440,32 +439,33 @@ export class Story_Manager {
 
         this.resetModelPosition();
         this.player.PlayerToStartPosition();
-        
+
         this.moveCameraDialog(
             new THREE.Vector3(16.3, 1.1, 13),
             new THREE.Vector3(15.7, 1.1, 13),
             20,
             new THREE.Vector3(16.3, 1.1, 14)
         );
-        
+
         this.player.controls.requestedAnimation = PlayerState.Angry;
         await this.showDialog('Uff... I just thought I got black-holed...');
         await this.showDialog('...That felt way too real.');
-        await this.showDialog('Whatever it was, I better not let it happen again.');
+        await this.showDialog(
+            'Whatever it was, I better not let it happen again.'
+        );
         this.player.controls.requestedAnimation = PlayerState.ArmStretch;
-        await this.showDialog('I need to finish. Now!')
+        await this.showDialog('I need to finish. Now!');
 
         this.stopCurrentDialogueCamera();
 
         // TODO: Kompletter Reset? Alle Quests zurücksetzen etc.
-        
-        await this.returnCameraToPlayer(1.0);
 
+        await this.returnCameraToPlayer(1.0);
 
         this.endCutscene();
     }
 
-    async caseInteraction(type : string, message: string): Promise<void> {
+    async caseInteraction(type: string, message: string): Promise<void> {
         this.startCutscene();
         this.onQuestComplete = type;
         await this.showDialog(message);
@@ -481,46 +481,46 @@ export class Story_Manager {
             case 'FIND_RUBBERDUCK':
                 this.player.controls.requestedAnimation = PlayerState.Surprised;
                 await this.caseInteraction(
-                    'FIND_RUBBERDUCK', 
+                    'FIND_RUBBERDUCK',
                     'Found the duck! One less thing to worry about.'
                 );
                 break;
             case 'GET_COFFEE':
                 this.player.controls.requestedAnimation = PlayerState.Drinking;
                 await this.caseInteraction(
-                    'GET_COFFEE', 
+                    'GET_COFFEE',
                     'Ahh much better... Now I can finally think!'
                 );
                 break;
             case 'GET_PAPER':
                 this.player.controls.requestedAnimation = PlayerState.ThumbsUp;
                 await this.caseInteraction(
-                    'GET_PAPER', 
+                    'GET_PAPER',
                     'I found some paper! Now I can finally take some notes.'
                 );
                 break;
             case 'LOGIN_COMPUTER':
                 this.player.controls.requestedAnimation = PlayerState.ThumbsUp;
                 await this.caseInteraction(
-                    'LOGIN_COMPUTER', 
+                    'LOGIN_COMPUTER',
                     'Great, the computer is ready. Just a few more steps to go!'
                 );
                 break;
             case 'START_EVALUATION':
                 await this.caseInteraction(
-                    'START_EVALUATION', 
-                    'I\'m ready to start the evaluation. Let\'s do this!'
+                    'START_EVALUATION',
+                    "I'm ready to start the evaluation. Let's do this!"
                 );
                 break;
         }
     }
 
     interact(): void {
-        if (this.onQuestComplete){
+        if (this.onQuestComplete) {
             this.onQuestInteraction?.(this.onQuestComplete);
         }
     }
-    
+
     // Callback
     // TODO: If Questlog Id is enum, than change also here?
     onQuestInteraction?: (questId: string) => void;
@@ -539,5 +539,4 @@ export class Story_Manager {
 
         this.endCutscene();
     }
-
 }

@@ -2,7 +2,7 @@ import * as THREE from 'three';
 
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { createThreeResourceDisposer } from './ThreeResourceDisposer.js';
-import { MAP_MODEL_PATH } from './gameAssets.js';
+import { MAP_MODEL_PATH } from './Assets.js';
 
 const MAX_PIXEL_RATIO = 1.5;
 const ROTATION_SPEED = THREE.MathUtils.degToRad(1.15);

@@ -10,12 +10,12 @@ type NPCAnimationActions = {
 
 export class NPC {
     static gradientTexture = (() => {
-            const texture = new THREE.TextureLoader().load(
-                '/textures/gradientMaps/twoTone2.jpg'
-            );
-            texture.minFilter = THREE.NearestFilter;
-            texture.magFilter = THREE.NearestFilter;
-            return texture;
+        const texture = new THREE.TextureLoader().load(
+            '/textures/gradientMaps/twoTone2.jpg'
+        );
+        texture.minFilter = THREE.NearestFilter;
+        texture.magFilter = THREE.NearestFilter;
+        return texture;
     })();
 
     scene: THREE.Scene;
@@ -70,7 +70,7 @@ export class NPC {
                     if (material.name === 'Outline') {
                         // console.log("OUTLINE MESH FOUND");
                         object.material = new THREE.MeshBasicMaterial({
-                            color: 0x000000
+                            color: 0x000000,
                         });
                         object.castShadow = false; // important: prevents shadow artifacts
                         return;
@@ -104,7 +104,6 @@ export class NPC {
             action.setEffectiveWeight(1);
 
             this.mixer = mix;
-            
         });
     }
 

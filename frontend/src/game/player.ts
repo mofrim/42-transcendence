@@ -174,7 +174,7 @@ export class Player {
         this.playerCollider.end.set(X, Y + Player.colEndY, Z);
     }
 
-    PlayerToStartPosition(){
+    PlayerToStartPosition() {
         this.setPlayerPosition(Player.playerStartX, 0, Player.playerStartZ);
     }
 
@@ -549,11 +549,11 @@ export class Player {
         const active = key[0] !== 0 || key[1] !== 0;
         const play =
             this.controls.requestedAnimation ??
-            (active
-                ? PlayerState.Run
-                : PlayerState.Idle);
+            (active ? PlayerState.Run : PlayerState.Idle);
 
-        console.log(`REQUESTED: Player Animation requested: ${this.controls.requestedAnimation}`);
+        console.log(
+            `REQUESTED: Player Animation requested: ${this.controls.requestedAnimation}`
+        );
         // Zustandsübergänge können den Renderloop abbrechen
         this.controls.current = play;
 
