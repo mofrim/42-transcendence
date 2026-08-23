@@ -13,6 +13,7 @@ import { RPS_Game } from './rps_game.js';
 import { createThreeResourceDisposer } from './ThreeResourceDisposer.js';
 import { Story_Manager } from './story_manager.js';
 import { InteractionManager } from './interaction_manager.js';
+import { MAP_MODEL_PATH } from './gameAssets.js';
 
 import { io } from 'socket.io-client';
 
@@ -908,7 +909,7 @@ export function startGame(
             //onQuestComplete?.(interaction);
         };
 
-        await loadMesh('glb/42WOB_v5.glb', [0, 0, 0]);
+        await loadMesh(MAP_MODEL_PATH, [0, 0, 0]);
         await loadMeshSky('glb/Clouds.glb', [0, 0, 0]);
         await loadMeshSky('glb/RocksBorder3.glb', [0, 0, 0]);
 
@@ -1135,7 +1136,7 @@ export function startGame(
         });
     } */
     //loadMesh('glb/42Sign.glb', [0,1,0]);
-    //loadMesh('glb/42WOB_v3.glb', [0,0,0]);
+    //loadMesh(MAP_MODEL_PATH, [0,0,0]);
     //loadMeshTitel('glb/Titelscreen_01.glb', [0,0,0]);
     //loadMesh('glb/Floor.glb', [0,0,0]);
 
