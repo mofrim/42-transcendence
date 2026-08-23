@@ -75,24 +75,6 @@ type ActiveTTTPlayers = {
 };
 
 type GameResultEvent = Extract<GameRuntimeEvent, { type: 'game_result' }>;
-
-/* const PLAYER_CHARACTER_MODELS = {
-    true: '/glb/Male_Test.glb',
-    false: '/glb/Female_Test.glb',
-};
-
-function normalizeCharacter(character: boolean): boolean {
-    if (typeof character === 'string') {
-        const normalizedCharacter = character.toLowerCase();
-        return normalizedCharacter !== false && normalizedCharacter !== true;
-    }
-
-    return character !== false;
-} */
-
-/* const character = normalizeCharacter(whichCharacter);
-    const playerModelPath = PLAYER_CHARACTER_MODELS[character]; */
-
 export function startGame(
     whichCharacter: boolean = true,
     localNickname: string,
@@ -1077,7 +1059,7 @@ export function startGame(
 
                 child.castShadow = false;
                 child.receiveShadow = true;
-                
+
             }
         });
         scene.add(obj);
@@ -1175,7 +1157,7 @@ export function startGame(
         entry3.rotateCharacter(entry3.group.position, entry2.group.position);
 
         scene.add(entry1.group, entry2.group, entry3.group);
-        
+
         npcs.set(entry1.id, entry1);
         npcs.set(entry2.id, entry2);
         npcs.set(entry3.id, entry3);
@@ -1375,7 +1357,7 @@ export function startGame(
     function onPressEscape(_event: KeyboardEvent) {
         void _event;
 
-        if(storyManager) 
+        if(storyManager)
             storyManager.skipCameraAnimation = true;
 
         if (!player || !tttGame) {
@@ -1547,7 +1529,7 @@ export function startGame(
 
         console.log(
             'Player position: x=' +
-                player.group.position.x.toFixed(2) +    
+                player.group.position.x.toFixed(2) +
                 ', y=' +
                 player.group.position.y.toFixed(2) +
                 ', z=' +
@@ -1584,7 +1566,7 @@ export function startGame(
         player.updateCharacter(delta);
 
         // update camera and character only while not in cutscene. Otherwise Cutscene animation
-        if(!storyManager.inCutscene) { 
+        if(!storyManager.inCutscene) {
 
             playerMovementDelta.subVectors(
                 player.group.position,

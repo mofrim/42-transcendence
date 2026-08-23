@@ -197,8 +197,6 @@ export class MultiplayerManager {
             this.players.delete(id);
             this.trackDepartingPlayer(existingPlayer);
         }
-        //const newPlayer = new Remote_Player('src/glb/MainCharacterTest.glb', id, this.scene);
-        //const newPlayer = new Remote_Player('glb/Male_Test.glb', id, this.scene);
 
         const newPlayer = new Remote_Player(
             getRemotePlayerModelPath(character),
