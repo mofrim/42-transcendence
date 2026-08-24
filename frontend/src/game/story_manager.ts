@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { Player, type PlayerAnimationState } from './player';
 import { Camera } from './camera';
+import { InteractionManager } from './interaction_manager';
 import { Interaction } from './interaction';
 import { PlayerState } from '@common/types';
 
@@ -20,6 +21,7 @@ export class Story_Manager {
     keyStates: { [key: string]: boolean };
     keys: [number, number];
     skipCameraAnimation: boolean;
+    interactionManager: InteractionManager;
     advanceDialogue: boolean;
     advanceDialogueCamera: boolean;
     // private = only Story_Manager should access these values.
@@ -40,6 +42,7 @@ export class Story_Manager {
         camera: Camera,
         keyStates: { [key: string]: boolean },
         keys: [number, number],
+        interactionManager: InteractionManager,
         onDialogChange?: (state: DialogState) => void
     ) {
         this.scene = scene;
@@ -49,6 +52,7 @@ export class Story_Manager {
         this.inCutscene = false;
         this.keyStates = keyStates;
         this.keys = keys;
+        this.interactionManager = interactionManager;
         this.onDialogChange = onDialogChange;
 
         this.onQuestComplete = null;
@@ -69,8 +73,6 @@ export class Story_Manager {
         this.questState.set("GET_COFFEE", false);
         this.questState.set("GET_PAPER", false);
         this.questState.set("LOGIN_COMPUTER", false);
-        // this.questState.set("START_EVALUATION", false);
-        // this.questState.set("BLACK_HOLE_QUEST_ID", false);
     }
 
     releaseAllKeys(): void {
@@ -510,70 +512,112 @@ export class Story_Manager {
         return true;
     }
 
-    async handleInteraction(interaction: Interaction): Promise<void> {
-        //console.log(`Interaction triggered: ${interaction.typeID}`);
-        this.onQuestComplete = null;
+    enableInteraction(typeID: string): void {
+        this.interactionManager.enableInteraction(typeID);
+    }
 
-        switch (interaction.typeID) {
+    disableInteraction(typeID: string): void {
+        this.interactionManager.disableInteraction(typeID);
+    }
+
+    async preparationsCompleted(): Promise<void> {
+        await this.playDialogInteraction(
+            'Everything is coming together. Now I just need to book my evaluation!',
+            PlayerState.Strong
+        );
+
+        this.enableInteraction('WHERE_IS_EVALUATOR');
+        this.enableInteraction('FIND_EVALUATING_STUDENT');
+    }
+
+    async handlePreparationQuest(typeID: string): Promise<void> {
+        switch (typeID) {
+
             case 'FIND_RUBBERDUCK':
-                if(!this.questState.get('FIND_RUBBERDUCK'))
-                    await this.caseInteraction(
-                        'FIND_RUBBERDUCK', 
-                        'Found the duck! One less thing to worry about.', 
-                        PlayerState.Surprised);
-                else
-                    await this.playDialogInteraction(
-                        'Rubber Duck... Check!', 
-                        PlayerState.ThumbsUp);
-                break;
-            case 'GET_COFFEE':
-                if(!this.questState.get('GET_COFFEE'))
-                    await this.caseInteraction(
-                        'GET_COFFEE', 
-                        'Ahh much better... Now I can finally think!', 
-                        PlayerState.Drinking);
-                else
-                    await this.playDialogInteraction(
-                        'Coffee... Check!', 
-                        PlayerState.ThumbsUp);
-                break;
-            case 'GET_PAPER':
-                if(!this.questState.get('GET_PAPER'))
-                    await this.caseInteraction(
-                        'GET_PAPER', 
-                        'I found some paper! Now I can finally take some notes.',
-                        PlayerState.ThumbsUp
-                    );
-                else
-                    await this.playDialogInteraction(
-                        'Paper... Check!', 
-                        PlayerState.ThumbsUp
-                    );
-                break;
-            case 'LOGIN_COMPUTER':
-                if(!this.questState.get('LOGIN_COMPUTER'))
-                    await this.caseInteraction(
-                        'LOGIN_COMPUTER', 
-                        'Great, the computer is ready. Just a few more steps to go!',
-                        PlayerState.ThumbsUp
-                    );
-                else
-                    await this.playDialogInteraction(
-                        'Computer... Check!', 
-                        PlayerState.ThumbsUp
-                    );
-                break;
-            case 'START_EVALUATION':
                 await this.caseInteraction(
-                    'START_EVALUATION', 
-                    'I\'m ready to start the evaluation. Let\'s do this!',
-                    PlayerState.Victory
+                    'FIND_RUBBERDUCK',
+                    'Found the duck! One less thing to worry about.',
+                    PlayerState.Surprised
+                );
+                break;
+
+            case 'GET_COFFEE':
+                await this.caseInteraction(
+                    'GET_COFFEE',
+                    'Ahh much better... Now I can finally think!',
+                    PlayerState.Drinking
+                );
+                break;
+
+            case 'GET_PAPER':
+                await this.caseInteraction(
+                    'GET_PAPER',
+                    'I found some paper! Now I can finally take some notes.',
+                    PlayerState.ThumbsUp
+                );
+                break;
+
+            case 'LOGIN_COMPUTER':
+                await this.caseInteraction(
+                    'LOGIN_COMPUTER',
+                    'Great, the computer is ready. Just a few more steps to go!',
+                    PlayerState.ThumbsUp
                 );
                 break;
         }
 
+        this.disableInteraction(typeID);
+
         if (this.allQuestsCompleted()) {
-            console.log("All QUEST DONE!");
+            await this.preparationsCompleted();
+        }
+    }
+
+    async handleInteraction(interaction: Interaction): Promise<void> {
+        //console.log(`Interaction triggered: ${interaction.typeID}`);
+        this.onQuestComplete = null;
+
+        // Checklist Preparation
+        switch (interaction.typeID) {
+            case 'FIND_RUBBERDUCK':
+            case 'GET_COFFEE':
+            case 'GET_PAPER':
+            case 'LOGIN_COMPUTER':
+                await this.handlePreparationQuest(interaction.typeID);
+                return;
+        }
+
+        // Find Evaluating Student
+        switch (interaction.typeID) {
+            case 'WHERE_IS_EVALUATOR':
+                await this.playDialogInteraction(
+                    'Someone\'s been assigned to my evaluation. They\'re at c1r12s2. Let\'s go.', 
+                    PlayerState.ThumbsUp
+                );
+                return;
+
+            case 'FIND_EVALUATING_STUDENT':
+                await this.caseInteraction(
+                    'FIND_EVALUATING_STUDENT', 
+                    'Found him! Time to head back and kick off the evaluation.',
+                    PlayerState.Strong
+                );
+
+                this.disableInteraction('WHERE_IS_EVALUATOR');
+                this.disableInteraction('FIND_EVALUATING_STUDENT');
+                this.enableInteraction('START_EVALUATION');
+
+                return;
+        }
+      
+        // Start Evaluation
+        if(interaction.typeID === 'START_EVALUATION'){
+            await this.caseInteraction(
+                'START_EVALUATION', 
+                'Evaluation is starting. Let\'s go!',
+                PlayerState.Strong
+            ); 
+            return;
         }
     }
 

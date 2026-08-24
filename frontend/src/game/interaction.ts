@@ -18,6 +18,7 @@ export class Interaction {
     pressText: CanvasTextSprite | null = null;
     scene: THREE.Scene;
     position: THREE.Vector3;
+    enabled: boolean;
 
     constructor(
         scene: THREE.Scene,
@@ -26,13 +27,17 @@ export class Interaction {
             | 'GET_COFFEE'
             | 'GET_PAPER'
             | 'LOGIN_COMPUTER'
+            | 'WHERE_IS_EVALUATOR'
+            | 'FIND_EVALUATING_STUDENT'
             | 'START_EVALUATION',
         position: THREE.Vector3,
-        size: THREE.Vector3
+        size: THREE.Vector3,
+        enabled: boolean
     ) {
         this.typeID = typeID;
         this.scene = scene;
         this.position = position;
+        this.enabled = enabled;
 
         this.zone = this.createInteractionBox(position, size);
 
@@ -60,6 +65,14 @@ export class Interaction {
                 bottomCenter.z + halfDepth
             )
         );
+    }
+
+    enableInteraction(): void {
+        this.enabled = true;
+    }
+
+    disableInteraction(): void {
+        this.enabled = false;
     }
 
     showEngageButton(): void {
