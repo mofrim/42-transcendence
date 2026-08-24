@@ -1,6 +1,7 @@
 import * as THREE from 'three';
-import { Player } from './player';
+import { Player, type PlayerAnimationState } from './player';
 import { Camera } from './camera';
+import { InteractionManager } from './interaction_manager';
 import { Interaction } from './interaction';
 import { PlayerState } from '@common/types';
 
@@ -9,6 +10,7 @@ type DialogState = {
     readonly isOpen: boolean;
     readonly message: string;
 };
+
 
 export class Story_Manager {
     scene: THREE.Scene;
@@ -19,6 +21,7 @@ export class Story_Manager {
     keyStates: { [key: string]: boolean };
     keys: [number, number];
     skipCameraAnimation: boolean;
+    interactionManager: InteractionManager;
     advanceDialogue: boolean;
     advanceDialogueCamera: boolean;
     // private = only Story_Manager should access these values.
@@ -29,6 +32,9 @@ export class Story_Manager {
 
     onQuestComplete: string | null = null;
 
+    // TODO: TEMP - need to be changed with Database
+    questState: Map<string, boolean>;
+
     constructor(
         scene: THREE.Scene,
         player: Player,
@@ -36,6 +42,7 @@ export class Story_Manager {
         camera: Camera,
         keyStates: { [key: string]: boolean },
         keys: [number, number],
+        interactionManager: InteractionManager,
         onDialogChange?: (state: DialogState) => void
     ) {
         this.scene = scene;
@@ -45,6 +52,7 @@ export class Story_Manager {
         this.inCutscene = false;
         this.keyStates = keyStates;
         this.keys = keys;
+        this.interactionManager = interactionManager;
         this.onDialogChange = onDialogChange;
 
         this.onQuestComplete = null;
@@ -53,6 +61,18 @@ export class Story_Manager {
         this.advanceDialogue = false;
         this.advanceDialogueCamera = false;
         this.dialogResolver = null;
+
+        // TODO: TEMP - need to be changed with Database
+        this.questState = new Map();
+        this.initQuestState();
+    }
+
+    // TODO: TEMP - need to be changed with Database
+    initQuestState(): void {
+        this.questState.set("FIND_RUBBERDUCK", false);
+        this.questState.set("GET_COFFEE", false);
+        this.questState.set("GET_PAPER", false);
+        this.questState.set("LOGIN_COMPUTER", false);
     }
 
     releaseAllKeys(): void {
@@ -465,53 +485,139 @@ export class Story_Manager {
         this.endCutscene();
     }
 
-    async caseInteraction(type: string, message: string): Promise<void> {
+    async playDialogInteraction(message: string, animation: PlayerAnimationState): Promise<void> {
         this.startCutscene();
-        this.onQuestComplete = type;
+        this.player.controls.requestedAnimation = animation;
         await this.showDialog(message);
-        this.interact();
         this.endCutscene();
+    }
+
+    async caseInteraction(type : string, message: string, animation: PlayerAnimationState): Promise<void> {
+        this.startCutscene();
+        this.player.controls.requestedAnimation = animation;
+        await this.showDialog(message);
+        this.endCutscene();
+
+        this.questState.set(type, true);
+        this.onQuestComplete = type;
+        this.interact();
+    }
+
+    allQuestsCompleted(): boolean {
+        for (const [quest, check] of this.questState.entries()) {
+            void quest;
+            if(!check)
+                return false;
+        }
+        return true;
+    }
+
+    enableInteraction(typeID: string): void {
+        this.interactionManager.enableInteraction(typeID);
+    }
+
+    disableInteraction(typeID: string): void {
+        this.interactionManager.disableInteraction(typeID);
+    }
+
+    async preparationsCompleted(): Promise<void> {
+        await this.playDialogInteraction(
+            'Everything is coming together. Now I just need to book my evaluation!',
+            PlayerState.Strong
+        );
+
+        this.enableInteraction('WHERE_IS_EVALUATOR');
+        this.enableInteraction('FIND_EVALUATING_STUDENT');
+    }
+
+    async handlePreparationQuest(typeID: string): Promise<void> {
+        switch (typeID) {
+
+            case 'FIND_RUBBERDUCK':
+                await this.caseInteraction(
+                    'FIND_RUBBERDUCK',
+                    'Found the duck! One less thing to worry about.',
+                    PlayerState.Surprised
+                );
+                break;
+
+            case 'GET_COFFEE':
+                await this.caseInteraction(
+                    'GET_COFFEE',
+                    'Ahh much better... Now I can finally think!',
+                    PlayerState.Drinking
+                );
+                break;
+
+            case 'GET_PAPER':
+                await this.caseInteraction(
+                    'GET_PAPER',
+                    'I found some paper! Now I can finally take some notes.',
+                    PlayerState.ThumbsUp
+                );
+                break;
+
+            case 'LOGIN_COMPUTER':
+                await this.caseInteraction(
+                    'LOGIN_COMPUTER',
+                    'Great, the computer is ready. Just a few more steps to go!',
+                    PlayerState.ThumbsUp
+                );
+                break;
+        }
+
+        this.disableInteraction(typeID);
+
+        if (this.allQuestsCompleted()) {
+            await this.preparationsCompleted();
+        }
     }
 
     async handleInteraction(interaction: Interaction): Promise<void> {
         //console.log(`Interaction triggered: ${interaction.typeID}`);
         this.onQuestComplete = null;
 
+        // Checklist Preparation
         switch (interaction.typeID) {
             case 'FIND_RUBBERDUCK':
-                this.player.controls.requestedAnimation = PlayerState.Surprised;
-                await this.caseInteraction(
-                    'FIND_RUBBERDUCK',
-                    'Found the duck! One less thing to worry about.'
-                );
-                break;
             case 'GET_COFFEE':
-                this.player.controls.requestedAnimation = PlayerState.Drinking;
-                await this.caseInteraction(
-                    'GET_COFFEE',
-                    'Ahh much better... Now I can finally think!'
-                );
-                break;
             case 'GET_PAPER':
-                this.player.controls.requestedAnimation = PlayerState.ThumbsUp;
-                await this.caseInteraction(
-                    'GET_PAPER',
-                    'I found some paper! Now I can finally take some notes.'
-                );
-                break;
             case 'LOGIN_COMPUTER':
-                this.player.controls.requestedAnimation = PlayerState.ThumbsUp;
-                await this.caseInteraction(
-                    'LOGIN_COMPUTER',
-                    'Great, the computer is ready. Just a few more steps to go!'
+                await this.handlePreparationQuest(interaction.typeID);
+                return;
+        }
+
+        // Find Evaluating Student
+        switch (interaction.typeID) {
+            case 'WHERE_IS_EVALUATOR':
+                await this.playDialogInteraction(
+                    'Someone\'s been assigned to my evaluation. They\'re at c1r12s2. Let\'s go.', 
+                    PlayerState.ThumbsUp
                 );
-                break;
-            case 'START_EVALUATION':
+                return;
+
+            case 'FIND_EVALUATING_STUDENT':
                 await this.caseInteraction(
-                    'START_EVALUATION',
-                    "I'm ready to start the evaluation. Let's do this!"
+                    'FIND_EVALUATING_STUDENT', 
+                    'Found him! Time to head back and kick off the evaluation.',
+                    PlayerState.Strong
                 );
-                break;
+
+                this.disableInteraction('WHERE_IS_EVALUATOR');
+                this.disableInteraction('FIND_EVALUATING_STUDENT');
+                this.enableInteraction('START_EVALUATION');
+
+                return;
+        }
+      
+        // Start Evaluation
+        if(interaction.typeID === 'START_EVALUATION'){
+            await this.caseInteraction(
+                'START_EVALUATION', 
+                'Evaluation is starting. Let\'s go!',
+                PlayerState.Strong
+            ); 
+            return;
         }
     }
 

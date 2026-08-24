@@ -889,6 +889,13 @@ export function startGame(
             }
         );
 
+        interactionManager = new InteractionManager(scene);
+
+        interactionManager.onInteraction = (interaction) => {
+            storyManager?.handleInteraction(interaction);
+            //onQuestComplete?.(interaction);
+        };
+
         storyManager = new Story_Manager(
             scene,
             player,
@@ -896,17 +903,12 @@ export function startGame(
             camera,
             keyStates,
             controls.key,
+            interactionManager,
             onDialogChange
         );
 
         storyManager.onQuestInteraction = (interaction) => {
             console.log('Quest interaction:', interaction);
-        };
-
-        interactionManager = new InteractionManager(scene);
-        interactionManager.onInteraction = (interaction) => {
-            storyManager?.handleInteraction(interaction);
-            //onQuestComplete?.(interaction);
         };
 
         await loadMesh(MAP_MODEL_PATH, [0, 0, 0]);
@@ -1518,7 +1520,7 @@ export function startGame(
     function posPrintDebug() {
         if (!player) return;
 
-        if (storyManager) storyManager.GameIntro();
+        // if (storyManager) storyManager.GameIntro();
 
         console.log(
             'Player position: x=' +

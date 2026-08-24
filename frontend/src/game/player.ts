@@ -17,7 +17,7 @@ import {
 import { FloatingTextSprite } from './FloatingTextSprite.js';
 import { PlayerState } from '@common/types';
 
-type PlayerAnimationState = ReturnType<typeof transitionPlayerAnimation>;
+export type PlayerAnimationState = ReturnType<typeof transitionPlayerAnimation>;
 
 const PLAYER_FORWARD = new THREE.Vector3(0, 0, 1);
 const COLLISION_STEP_RADIUS_FACTOR = 0.5;
@@ -551,9 +551,6 @@ export class Player {
             this.controls.requestedAnimation ??
             (active ? PlayerState.Run : PlayerState.Idle);
 
-        console.log(
-            `REQUESTED: Player Animation requested: ${this.controls.requestedAnimation}`
-        );
         // Zustandsübergänge können den Renderloop abbrechen
         this.controls.current = play;
 

@@ -42,6 +42,10 @@ export const DEFAULT_QUESTS: readonly QuestLogEntry[] = [
         text: 'Log In to Computer c2r12s6',
     },
     {
+        id: 'FIND_EVALUATING_STUDENT',
+        text: 'Find the Evaluating Student',
+    },
+    {
         id: 'START_EVALUATION',
         text: 'Start Evaluation',
     },
@@ -49,12 +53,6 @@ export const DEFAULT_QUESTS: readonly QuestLogEntry[] = [
         id: BLACK_HOLE_QUEST_ID,
         text: "Don't get blackholed",
     },
-
-    // Pop up once login is successful
-    /* {
-        id: 'FIND_EVALUATING_STUDENT',
-        text: 'Find the Evaluating Student at c1r11s2',
-    }, */
 
     // Secondary quests, once blackhole is disabled ?
     /* 
