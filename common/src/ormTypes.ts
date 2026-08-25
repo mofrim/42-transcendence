@@ -1,4 +1,10 @@
-import { Entity, PrimaryGeneratedColumn, Column, OneToMany, ManyToOne } from 'typeorm';
+import {
+    Entity,
+    PrimaryGeneratedColumn,
+    Column,
+    OneToMany,
+    ManyToOne,
+} from 'typeorm';
 import { BaseUser, BaseEventLog, EventType } from 'common/sharedTypes';
 
 @Entity('users')

@@ -1,9 +1,7 @@
 // in this file we collect types that are shared at least among multiple files.
-import type * as THREE from "three";
-
+import type * as THREE from 'three';
 
 // -------------------=[ database backend related types ]=------------------- //
-
 
 export enum EventType {
     PlayerJoined = 'PlayerJoined',
@@ -13,7 +11,7 @@ export enum EventType {
     QuestProgress = 'QuestProgress',
     Blackholed = 'Blackholed',
     NickChange = 'NickChange',
-    CharChange = 'CharChange'
+    CharChange = 'CharChange',
 }
 
 // TODO eventId, userId (foreign relation), eventType (class), data (chat msg,
@@ -23,7 +21,7 @@ export abstract class BaseEventLog {
     abstract id: number;
     abstract eventType: EventType;
     abstract data: string;
-};
+}
 
 // using an abstract class here in order to force implementation of _all_
 // properties in children
@@ -91,7 +89,6 @@ export type GLBMesh = THREE.Mesh<
     THREE.MeshStandardMaterial | THREE.MeshToonMaterial
 >;
 
-
 export type PlayerData = {
     id: string;
     nickname: string;
@@ -109,8 +106,7 @@ export type PlayerUpdatePayload = {
     z: number;
     state: PlayerState;
     character: Character;
-}
-
+};
 
 // ================================================
 // RPS Game
@@ -122,13 +118,13 @@ export enum RPSGameState {
 }
 
 export type RPSGame = {
-    gameID: string,
-    playerOne: string,
-    playerTwo: string,
-    playerOneChoice: RPSChoice,
-    playerTwoChoice: RPSChoice,
+    gameID: string;
+    playerOne: string;
+    playerTwo: string;
+    playerOneChoice: RPSChoice;
+    playerTwoChoice: RPSChoice;
     state: RPSGameState;
-}
+};
 
 // ================================================
 // TTT Game
@@ -139,28 +135,40 @@ export type PlayerSlot = string | null;
 export enum TTTMark {
     Empty = '',
     X = 'X',
-    O = 'O'
+    O = 'O',
 }
 
 // tuple type for the board state
 export type TTTBoard = [
-    TTTMark, TTTMark, TTTMark,
-    TTTMark, TTTMark, TTTMark,
-    TTTMark, TTTMark, TTTMark
-]
+    TTTMark,
+    TTTMark,
+    TTTMark,
+    TTTMark,
+    TTTMark,
+    TTTMark,
+    TTTMark,
+    TTTMark,
+    TTTMark,
+];
 
 export enum TTTGameState {
     WaitingForFirstPlayer = 0,
     WaitingForSecondPlayer = 1,
     InGame = 2,
-    Finished = 3
+    Finished = 3,
 }
 
 type TTTBoardNames = [
-    string, string, string,
-    string, string, string,
-    string, string, string
-]
+    string,
+    string,
+    string,
+    string,
+    string,
+    string,
+    string,
+    string,
+    string,
+];
 
 export type TTTGame = {
     players: [PlayerSlot, PlayerSlot];
@@ -169,7 +177,7 @@ export type TTTGame = {
     board: TTTBoard;
     currentMark: TTTMark;
     state: TTTGameState;
-}
+};
 
 // ================================================
 // SOCKET.IO messages types
@@ -181,7 +189,7 @@ export type RPSBattleChoicePayload = {
     type: 'rps_choice';
     id: string;
     choice: RPSChoice;
-}
+};
 
 export type RPSRequestDataPayload = {
     type: 'rps_accept' | 'rps_decline' | 'rps_request';
@@ -192,34 +200,34 @@ export type RPSRequestDataPayload = {
 
 export type TTTInitGamePayload = {
     game: TTTGame;
-}
+};
 
 export type RPSInvalidPayload = {
     type: 'rps_invalid';
     playerOne: string;
     playerTwo: string;
-}
+};
 
 export type RPSDrawPayload = {
     type: 'rps_draw';
     playerOne: string;
     playerTwo: string;
     choice: RPSChoice;
-}
+};
 
 export type RPSWinnerPayload = {
     type: 'rps_winner';
     winner: string;
     winnerChoice: RPSChoice;
-    loser: string,
-    loserChoice: RPSChoice,
-}
+    loser: string;
+    loserChoice: RPSChoice;
+};
 
 export type RPSAcceptDeclinePayload = {
     type: 'rps_accept' | 'rps_decline';
     id: string;
     requestedPlayerID: string;
-}
+};
 
 // TTT Game ---------------------------------------
 
@@ -228,12 +236,12 @@ export type TTTMarkPayload = {
     id: string;
     fieldName: string;
     mark: TTTMark;
-}
+};
 
 export type TTTPlayerPayload = {
     type: 'ttt_playerOne' | 'ttt_playerTwo';
     id: string;
-}
+};
 
 export type TTTStartPayload = {
     type: 'ttt_start';
@@ -252,7 +260,7 @@ export type TTTWinPayload = {
 
 export type TTTDrawPayload = {
     type: 'ttt_draw';
-}
+};
 
 export class TTTMeshBoard {
     cells: GLBMesh[];
@@ -263,7 +271,7 @@ export class TTTMeshBoard {
         this.cells = [];
         this.size = 9;
         this.cellCnt = 0;
-    };
+    }
 
     // method needed to wrap the array access because with
     // `noUncheckedIndexedAccess` tsc is treating each array-acces as `... |
