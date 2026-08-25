@@ -1,7 +1,7 @@
 import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
 import { BaseUser, BaseEventLog, EventType } from 'common/sharedTypes';
 
-@Entity()
+@Entity('users')
 export class ORMUser extends BaseUser {
     @PrimaryGeneratedColumn()
     declare id: number;
