@@ -5,7 +5,7 @@ import type { Express, Request, Response } from 'express';
 import { DataSource } from 'typeorm';
 import { exit } from 'node:process';
 
-import { ORMEventLog } from 'common/ormTypes';
+import { ORMEventLog, ORMUser } from 'common/ormTypes';
 import { EventType } from 'common/sharedTypes';
 
 if (process.env['NODE_ENV'] === 'development') {
@@ -30,7 +30,7 @@ const DB = new DataSource({
     username: process.env['DB_USER'] || 'postgres',
     password: process.env['DB_PASSWD'] || 'postgres',
     database: process.env['DB_NAME'] || 'postgres',
-    entities: [ORMEventLog],
+    entities: [ORMEventLog, ORMUser],
     synchronize: true,
     logging: false,
 });
@@ -43,14 +43,46 @@ try {
     exit(1);
 }
 
+const getUserId = async (nick: string): Promise<number | null> => {
+    try {
+        const exists = await DB.manager.find(ORMUser, {
+            where: {
+                nickname: nick,
+            },
+        });
+
+        // TODO: make this check more consise / cleaner
+        if (
+            exists.length !== 1 ||
+            exists === undefined ||
+            exists[0] === undefined
+        ) {
+            return null;
+        }
+
+        return exists[0].id;
+    } catch (err) {
+        console.error(err);
+        return null;
+    }
+};
+
 app.post(
     '/api/eventlog',
     async (req: Request, res: Response): Promise<void> => {
-        const { eventType, data } = req.body;
+        const { eventType, data, user } = req.body;
 
         if (!Object.values(EventType).includes(eventType)) {
             res.status(400).json({
                 error: 'Invalid event type',
+            });
+            return;
+        }
+
+        const userId = await getUserId(user);
+        if (userId === null) {
+            res.status(400).json({
+                error: `User ${user} not found`,
             });
             return;
         }
@@ -64,8 +96,10 @@ app.post(
 
         try {
             const event = DB.manager.create(ORMEventLog, {
-                eventType,
-                data,
+                eventType: eventType,
+                data: data,
+                // this has to be Partial<ORMUser> so...
+                user: { id: userId },
             });
 
             const savedEvent = await DB.manager.save(event);
@@ -81,6 +115,10 @@ app.post(
     }
 );
 
+// TODO add proper api documentation here & for other endpoints!
+//
+// endpoint returns per default up to last 50 logs sorted in _ascending_ order ,
+// i.e. the most recent log entry will be last in array.
 app.get('/api/eventlog', async (req: Request, res: Response): Promise<void> => {
     const limit = Number(req.query['limit'] ?? 50);
 
@@ -94,9 +132,18 @@ app.get('/api/eventlog', async (req: Request, res: Response): Promise<void> => {
     try {
         const events = await DB.manager.find(ORMEventLog, {
             order: {
-                id: 'DESC',
+                id: 'ASC',
             },
             take: limit,
+            relations: { user: true },
+            select: {
+                id: true,
+                eventType: true,
+                data: true,
+                user: {
+                    nickname: true,
+                },
+            },
         });
 
         res.status(200).json(events);

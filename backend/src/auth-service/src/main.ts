@@ -6,7 +6,7 @@ import jwt from 'jsonwebtoken';
 import type { Express, Request, Response, NextFunction } from 'express';
 import { DataSource } from 'typeorm';
 import { exit } from 'node:process';
-import { ORMUser } from 'common/ormTypes';
+import { ORMEventLog, ORMUser } from 'common/ormTypes';
 import cookieParser from 'cookie-parser';
 import { setupDefaultUsers } from './defaultUserSetup.ts';
 
@@ -37,7 +37,7 @@ const DB = new DataSource({
     username: process.env['DB_USER'] || 'postgres',
     password: process.env['DB_PASSWD'] || 'postgres',
     database: process.env['DB_NAME'] || 'postgres',
-    entities: [ORMUser],
+    entities: [ORMUser, ORMEventLog],
     synchronize: true,
     logging: false,
 });

@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, OneToMany, ManyToOne } from 'typeorm';
 import { BaseUser, BaseEventLog, EventType } from 'common/sharedTypes';
 
 @Entity('users')
@@ -21,6 +21,9 @@ export class ORMUser extends BaseUser {
     @Column('text')
     declare hashedPw: string;
 
+    @OneToMany(() => ORMEventLog, (evlog) => evlog.user)
+    declare eventLogs: ORMEventLog[];
+
     constructor(data?: Partial<ORMUser>) {
         super();
         if (data) {
@@ -39,5 +42,7 @@ export class ORMEventLog extends BaseEventLog {
 
     @Column({ type: 'text' })
     declare data: string;
-}
 
+    @ManyToOne(() => ORMUser, (user) => user.eventLogs)
+    declare user: ORMUser;
+}
