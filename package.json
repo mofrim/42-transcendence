@@ -6,7 +6,7 @@
         "backend",
         "backend/src/conn-service",
         "backend/src/auth-service",
-		"backend/src/eventlog-service",
+        "backend/src/eventlog-service",
         "frontend",
         "common"
     ],
