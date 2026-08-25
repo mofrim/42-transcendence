@@ -1,6 +1,7 @@
 {
     "name": "ft_transcendence",
     "private": true,
+    "type": "module",
     "workspaces": [
         "backend",
         "backend/src/conn-service",
