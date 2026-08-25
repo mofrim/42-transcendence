@@ -56,6 +56,16 @@ dock-frontend:
 	docker compose --project-directory ./frontend up --build
 	$(call log_msg_end,Done.)
 
+dock-db:
+	$(call log_msg_start,Launching all backend for dev...)
+	cd backend && docker compose -f ./compose-db.yaml up -d
+	$(call log_msg_end,Done.)
+
+dock-db-down:
+	$(call log_msg_start,Launching all backend for dev...)
+	cd backend && docker compose -f ./compose-db.yaml down
+	$(call log_msg_end,Done.)
+
 backend-dev:
 	$(call log_msg_start,Launching all backend for dev...)
 	cd backend && docker compose -f ./compose-db.yaml up -d && npm run dev:all
@@ -81,4 +91,5 @@ certs:
 	touch .certs
 	$(call log_msg_end,Done.)
 
-.phony: all dock-clean dock-fclean dock-backend dock-frontend backend-dev certs
+.phony: all dock-clean dock-fclean dock-backend dock-frontend dock-db \
+	dock-db-down backend-dev certs
