@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import * as THREE from 'three';
-import { PlayerState } from '@common/types';
+import { PlayerState } from 'common/sharedTypes';
 
 import {
     normalizePlayerAnimationState,

@@ -1,16 +1,10 @@
 import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
-import { BaseUser } from '@common/types';
+import { BaseUser, BaseEventLog, EventType } from 'common/sharedTypes';
 
 @Entity()
 export class ORMUser extends BaseUser {
     @PrimaryGeneratedColumn()
     declare id: number;
-
-    // @Column('text')
-    // declare firstName: string;
-
-    // @Column('text')
-    // declare lastName: string;
 
     @Column({
         type: 'text',
@@ -34,3 +28,16 @@ export class ORMUser extends BaseUser {
         }
     }
 }
+
+@Entity('event_logs')
+export class EventLogEntity extends BaseEventLog {
+    @PrimaryGeneratedColumn()
+    declare id: number;
+
+    @Column({ type: 'enum', enum: EventType })
+    declare eventType: EventType;
+
+    @Column({ type: 'text' })
+    declare data: string;
+}
+

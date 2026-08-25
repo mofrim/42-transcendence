@@ -6,7 +6,7 @@ import jwt from 'jsonwebtoken';
 import type { Express, Request, Response, NextFunction } from 'express';
 import { DataSource } from 'typeorm';
 import { exit } from 'node:process';
-import { ORMUser } from './orm_types.ts';
+import { ORMUser } from 'common/ormTypes';
 import cookieParser from 'cookie-parser';
 import { setupDefaultUsers } from './defaultUserSetup.ts';
 

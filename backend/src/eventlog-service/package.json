@@ -14,7 +14,7 @@
         "start": "NODE_ENV=production tsx src/main.ts"
     },
     "dependencies": {
-        "@common/types": "*",
+        "common": "*",
         "dotenv": "^17.4.2",
         "express": "^5.1.0",
         "pg": "^8.23.0",

@@ -1,17 +1,25 @@
 {
-  "name": "@common/types",
-  "version": "1.0.0",
-  "main": "./dist/sharedTypes.js",
-  "types": "./dist/sharedTypes.d.ts",
-  "private": true,
-  "type": "module",
-  "exports": {
-    ".": "./dist/sharedTypes.js"
-  },
-  "scripts": {
-    "build": "tsc -b"
-  },
-  "dependencies": {
-    "three": "^0.184.0"
-  }
+    "name": "common",
+    "version": "1.0.0",
+    "private": true,
+    "type": "module",
+    "exports": {
+        "./sharedTypes": {
+            "import": "./dist/sharedTypes.js",
+            "types": "./dist/sharedTypes.d.ts"
+        },
+        "./ormTypes": {
+            "import": "./dist/ormTypes.js",
+            "types": "./dist/ormTypes.d.ts"
+        }
+    },
+    "scripts": {
+        "build": "tsc -b",
+        "lint": "eslint .",
+        "lint-fix": "eslint . --fix"
+    },
+    "dependencies": {
+        "three": "^0.184.0",
+        "typeorm": "^1.1.0"
+    }
 }

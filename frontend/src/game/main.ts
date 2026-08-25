@@ -17,7 +17,7 @@ import { MAP_MODEL_PATH } from './Assets.js';
 
 import { io } from 'socket.io-client';
 
-import { PlayerState, RPSChoice, TTTMeshBoard } from '@common/types';
+import { PlayerState, RPSChoice, TTTMeshBoard } from 'common/sharedTypes';
 import type {
     GLBMesh,
     RPSInvalidPayload,
@@ -30,7 +30,7 @@ import type {
     TTTWinPayload,
     TTTDrawPayload,
     PlayerUpdatePayload,
-} from '@common/types';
+} from 'common/sharedTypes';
 
 /** all both gender */
 

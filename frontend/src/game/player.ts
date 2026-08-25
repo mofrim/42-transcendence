@@ -15,7 +15,7 @@ import {
     replacePlayerModelMaterials,
 } from './PlayerModelMaterials.js';
 import { FloatingTextSprite } from './FloatingTextSprite.js';
-import { PlayerState } from '@common/types';
+import { PlayerState } from 'common/sharedTypes';
 
 export type PlayerAnimationState = ReturnType<typeof transitionPlayerAnimation>;
 

@@ -1,4 +1,4 @@
-import { ORMUser } from './orm_types.ts';
+import { ORMUser } from 'common/ormTypes';
 import bcrypt from 'bcryptjs';
 import { exit } from 'node:process';
 import { DataSource } from 'typeorm';

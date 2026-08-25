@@ -3,7 +3,7 @@ import { Player, type PlayerAnimationState } from './player';
 import { Camera } from './camera';
 import { InteractionManager } from './interaction_manager';
 import { Interaction } from './interaction';
-import { PlayerState } from '@common/types';
+import { PlayerState } from 'common/sharedTypes';
 
 // TODO: move this to sharedTypes.ts
 type DialogState = {

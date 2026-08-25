@@ -5,8 +5,8 @@ import type { Express, Request, Response } from 'express';
 import { DataSource } from 'typeorm';
 import { exit } from 'node:process';
 
-import { EventLogEntity } from './eventlog_entity.ts';
-import { EventType } from '@common/types';
+import { EventLogEntity } from 'common/ormTypes';
+import { EventType } from 'common/sharedTypes';
 
 if (process.env['NODE_ENV'] === 'development') {
     console.log('loading dev.env...');

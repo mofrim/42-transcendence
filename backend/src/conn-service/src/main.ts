@@ -11,9 +11,9 @@ import type {
     RPSRequestDataPayload,
     PlayerUpdatePayload,
     TTTMarkPayload,
-} from '@common/types';
+} from 'common/sharedTypes';
 
-import { TTTGameState, TTTMark } from '@common/types';
+import { TTTGameState, TTTMark } from 'common/sharedTypes';
 
 const PORT = 3000;
 const app: Express = express();

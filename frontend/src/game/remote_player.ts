@@ -17,7 +17,7 @@ import {
     replacePlayerModelMaterials,
 } from './PlayerModelMaterials.js';
 import { FloatingTextSprite } from './FloatingTextSprite.js';
-import { PlayerState } from '@common/types';
+import { PlayerState } from 'common/sharedTypes';
 
 type PlayerAnimationState = ReturnType<typeof normalizePlayerAnimationState>;
 type RemotePlayerState = PlayerState | PlayerAnimationState;

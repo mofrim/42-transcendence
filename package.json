@@ -15,7 +15,7 @@
         "build": "npm run build -w common && npm run build -w backend && npm run build -w frontend"
     },
     "devDependencies": {
-        "@common/types": "*",
+        "common": "*",
         "@eslint/js": "^10.0.1",
         "@types/node": "^24.12.3",
         "@types/three": "^0.185.1",

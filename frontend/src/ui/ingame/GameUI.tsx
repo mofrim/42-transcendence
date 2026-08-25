@@ -13,7 +13,7 @@ import type {
     QuestStatusChange,
     ResolvedQuestLogEntry,
 } from './QuestLog';
-import type { Character } from '@common/types';
+import type { Character } from 'common/sharedTypes';
 import { createCharacterPreview } from '../../game/character_preview';
 
 import './GameUI.css';

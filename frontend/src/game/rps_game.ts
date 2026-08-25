@@ -13,7 +13,7 @@ import {
 } from './GameOverlay';
 import { createThreeResourceDisposer } from './ThreeResourceDisposer';
 import type { Socket } from 'socket.io-client';
-import { RPSChoice } from '@common/types';
+import { RPSChoice } from 'common/sharedTypes';
 
 const BATTLE_PROMPT_TEXT = 'Press ⌨️ [B] Battle Challenge';
 const BATTLE_PROMPT_SIZE = 20;
