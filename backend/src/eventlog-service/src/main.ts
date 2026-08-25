@@ -119,8 +119,15 @@ app.post(
 //
 // endpoint returns per default up to last 50 logs sorted in _ascending_ order ,
 // i.e. the most recent log entry will be last in array.
+//
+// the follwing query params are possible:
+//
+// - limit=[number] will output the last `number` logs
+// - user=[nickname] will filter the logs for the given nickname
+//
 app.get('/api/eventlog', async (req: Request, res: Response): Promise<void> => {
     const limit = Number(req.query['limit'] ?? 50);
+    const queryUser = req.query['user'];
 
     if (!Number.isInteger(limit) || limit <= 0) {
         res.status(400).json({
@@ -129,22 +136,55 @@ app.get('/api/eventlog', async (req: Request, res: Response): Promise<void> => {
         return;
     }
 
+    if (queryUser != null) {
+        if ((await getUserId(String(queryUser))) === null) {
+            res.status(400).json({
+                error: `User ${queryUser} not found`,
+            });
+            return;
+        }
+    }
+
     try {
-        const events = await DB.manager.find(ORMEventLog, {
-            order: {
-                id: 'ASC',
-            },
-            take: limit,
-            relations: { user: true },
-            select: {
-                id: true,
-                eventType: true,
-                data: true,
-                user: {
-                    nickname: true,
+        let events;
+        if (queryUser == null) {
+            events = await DB.manager.find(ORMEventLog, {
+                order: {
+                    id: 'DESC',
                 },
-            },
-        });
+                take: limit,
+                relations: { user: true },
+                select: {
+                    id: true,
+                    eventType: true,
+                    data: true,
+                    user: {
+                        nickname: true,
+                    },
+                },
+            });
+        } else {
+            events = await DB.manager.find(ORMEventLog, {
+                order: {
+                    id: 'ASC',
+                },
+                take: limit,
+                where: {
+                    user: {
+                        nickname: String(queryUser),
+                    },
+                },
+                relations: { user: true },
+                select: {
+                    id: true,
+                    eventType: true,
+                    data: true,
+                    user: {
+                        nickname: true,
+                    },
+                },
+            });
+        }
 
         res.status(200).json(events);
     } catch (error) {
