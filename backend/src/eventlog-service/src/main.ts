@@ -5,7 +5,7 @@ import type { Express, Request, Response } from 'express';
 import { DataSource } from 'typeorm';
 import { exit } from 'node:process';
 
-import { EventLogEntity } from 'common/ormTypes';
+import { ORMEventLog } from 'common/ormTypes';
 import { EventType } from 'common/sharedTypes';
 
 if (process.env['NODE_ENV'] === 'development') {
@@ -30,7 +30,7 @@ const DB = new DataSource({
     username: process.env['DB_USER'] || 'postgres',
     password: process.env['DB_PASSWD'] || 'postgres',
     database: process.env['DB_NAME'] || 'postgres',
-    entities: [EventLogEntity],
+    entities: [ORMEventLog],
     synchronize: true,
     logging: false,
 });
@@ -63,7 +63,7 @@ app.post(
         }
 
         try {
-            const event = DB.manager.create(EventLogEntity, {
+            const event = DB.manager.create(ORMEventLog, {
                 eventType,
                 data,
             });
@@ -92,7 +92,7 @@ app.get('/api/eventlog', async (req: Request, res: Response): Promise<void> => {
     }
 
     try {
-        const events = await DB.manager.find(EventLogEntity, {
+        const events = await DB.manager.find(ORMEventLog, {
             order: {
                 id: 'DESC',
             },

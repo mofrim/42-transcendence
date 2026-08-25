@@ -30,7 +30,7 @@ export class ORMUser extends BaseUser {
 }
 
 @Entity('event_logs')
-export class EventLogEntity extends BaseEventLog {
+export class ORMEventLog extends BaseEventLog {
     @PrimaryGeneratedColumn()
     declare id: number;
 
