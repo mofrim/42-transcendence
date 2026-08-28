@@ -16,7 +16,7 @@ if (process.env['NODE_ENV'] === 'development') {
     dotenv.config({ path: '../../../dev.env' });
 }
 
-const PORT = Number(process.env['USER_SERVICE_PORT']) || 3002;
+const PORT = Number(process.env['USER_SERVICE_PORT']) || 3003;
 const app: Express = express();
 
 app.use(cors({ credentials: true }));
