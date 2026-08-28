@@ -46,6 +46,19 @@ services:
     networks:
       - ftr-net
 
+  user-service:
+      container_name: ftr-user-service
+      image: ftr-user-service
+      build:
+          context: ..
+          dockerfile: ./backend/src/user-service/Dockerfile
+      env_file: ../dev.env
+      depends_on:
+          postgres:
+              condition: service_healthy
+      networks:
+          - ftr-net
+
 networks:
   ftr-net:
     driver: bridge

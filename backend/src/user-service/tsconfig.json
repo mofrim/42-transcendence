@@ -1,0 +1,13 @@
+{
+    "extends": "../../tsconfig.base.json",
+    "compilerOptions": {
+        "types": ["node"],
+        "moduleResolution": "nodenext",
+        "rootDir": "./userProfile/src",
+        "outDir": "../../dist/user-service/src"
+    },
+    "include": [
+        "./userProfile/src/**/*.ts",
+        "./userProfile/src/**/*.d.ts"
+    ]
+}
