@@ -2,18 +2,21 @@ import express from 'express';
 import cors from 'cors';
 import type { Express } from 'express';
 import http from 'http';
+import { randomUUID } from 'node:crypto';
 import { Server } from 'socket.io';
 import type { Socket } from 'socket.io';
 import { GameManager } from './gameManager.ts';
 
 import type {
+    ChatSendPayload,
+    ReceivedChatPayload,
     RPSBattleChoicePayload,
     RPSRequestDataPayload,
     PlayerUpdatePayload,
     TTTMarkPayload,
 } from 'common/sharedTypes';
 
-import { TTTGameState, TTTMark } from 'common/sharedTypes';
+import { Spectator, TTTGameState, TTTMark } from 'common/sharedTypes';
 
 const PORT = 3000;
 const app: Express = express();
@@ -34,11 +37,13 @@ const gameManager = new GameManager();
 // player_connect, etc.
 
 io.on('connection', (socket) => {
-    const character = socket.handshake.auth['character'];
-    const nickname = socket.handshake.auth['nickname'];
+    const requestedRole = socket.handshake.auth['role'];
 
-    // if required data was not given disconnect client again
-    if (character == null || nickname == null) {
+    if (
+        requestedRole !== undefined &&
+        requestedRole !== 'player' &&
+        requestedRole !== 'spectator'
+    ) {
         console.log(
             `disconnecting client: ${JSON.stringify(socket.conn.remoteAddress)}`
         );
@@ -46,7 +51,27 @@ io.on('connection', (socket) => {
         return;
     }
 
-    socket.data.character = character;
+    const isSpectator = requestedRole === 'spectator';
+    const character = socket.handshake.auth['character'];
+    const nickname = socket.handshake.auth['nickname'];
+
+    // if required data was not given disconnect client again
+    if (!isSpectator && (character == null || nickname == null)) {
+        console.log(
+            `disconnecting client: ${JSON.stringify(socket.conn.remoteAddress)}`
+        );
+        socket.disconnect(true);
+        return;
+    }
+
+    if (isSpectator) {
+        socket.data.role = 'spectator';
+        socket.data.nickname = Spectator;
+    } else {
+        socket.data.role = 'player';
+        socket.data.nickname = nickname;
+        socket.data.character = character;
+    }
 
     /**
      * need to sync all existing players data on join with the new client,
@@ -63,6 +88,41 @@ io.on('connection', (socket) => {
         });
     });
 
+    socket.on('chat_message', (data: unknown) => {
+        if (typeof data !== 'object' || data === null || Array.isArray(data)) {
+            return;
+        }
+
+        const chatData = data as Partial<ChatSendPayload>;
+
+        if (typeof chatData.message !== 'string') {
+            return;
+        }
+
+        const message = chatData.message.trim();
+
+        if (message.length === 0 || message.length > 500) {
+            return;
+        }
+
+        const canonicalPayload: ReceivedChatPayload = {
+            messageId: randomUUID(),
+            senderId: socket.id,
+            senderName: socket.data.nickname,
+            message,
+        };
+
+        io.emit('chat_message', canonicalPayload);
+    });
+
+    // send initial data to the connected client
+    socket.emit('initData', gameManager.getMapData());
+
+    if (isSpectator) {
+        console.log('Spectator connected:', socket.id);
+        return;
+    }
+
     // the only other action preformed currently by the backend apart from
     // handling ttt and rps game
     socket.broadcast.emit('player_connected', {
@@ -76,9 +136,6 @@ io.on('connection', (socket) => {
         socket.id,
         gameManager.createPlayer(socket.id, nickname)
     );
-
-    // send initial data to the connected client
-    socket.emit('initData', gameManager.getMapData());
 
     // TTT-Disconnect
     // dissconnect and remove player from gameManager

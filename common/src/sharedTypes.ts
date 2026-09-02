@@ -69,10 +69,35 @@ export enum CharacterModel {
     female = 'female',
 }
 
-export interface SocketAuth {
+export const SPECTATOR_NAME = '42Staff' as const;
+
+export type PlayerSocketAuth = {
+    role?: 'player';
     character: boolean;
     nickname: string;
-}
+};
+
+export type SpectatorSocketAuth = {
+    role: 'spectator';
+    character?: never;
+    nickname?: never;
+};
+
+export type SocketAuth = PlayerSocketAuth | SpectatorSocketAuth;
+
+export type ChatSendPayload = {
+    message: string;
+};
+
+export type ReceivedChatPayload = {
+    messageId: string;
+    senderId: string;
+    senderName: string;
+    message: string;
+};
+
+export type ClientChatPayload = ChatSendPayload;
+export type ServerChatPayload = ReceivedChatPayload;
 
 /** all both gender */
 export type Character = boolean;
