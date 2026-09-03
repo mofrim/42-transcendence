@@ -16,7 +16,7 @@ import type {
     TTTMarkPayload,
 } from 'common/sharedTypes';
 
-import { Spectator, TTTGameState, TTTMark } from 'common/sharedTypes';
+import { SPECTATOR_NAME, TTTGameState, TTTMark } from 'common/sharedTypes';
 
 const PORT = 3000;
 const app: Express = express();
@@ -66,7 +66,7 @@ io.on('connection', (socket) => {
 
     if (isSpectator) {
         socket.data.role = 'spectator';
-        socket.data.nickname = Spectator;
+        socket.data.nickname = SPECTATOR_NAME;
     } else {
         socket.data.role = 'player';
         socket.data.nickname = nickname;

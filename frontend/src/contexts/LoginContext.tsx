@@ -5,6 +5,8 @@ import type { Dispatch, SetStateAction, RefObject } from 'react';
 interface LoginContextType {
     gameRunning: boolean;
     setGameRunning: Dispatch<SetStateAction<boolean>>;
+    isSpectator: boolean;
+    setIsSpectator: Dispatch<SetStateAction<boolean>>;
     avatar: string;
     setAvatar: Dispatch<SetStateAction<string>>;
     nicknameRef: RefObject<string>;

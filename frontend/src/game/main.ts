@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { Octree } from 'three/addons/math/Octree.js';
 
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { FlyControls } from 'three/addons/controls/FlyControls.js';
 
 import { MultiplayerManager } from './multiplayer.js';
 import { NPC } from './npc.js';
@@ -30,6 +31,7 @@ import type {
     TTTWinPayload,
     TTTDrawPayload,
     PlayerUpdatePayload,
+    SocketAuth,
 } from 'common/sharedTypes';
 
 /** all both gender */
@@ -76,37 +78,48 @@ type ActiveTTTPlayers = {
 };
 
 type GameResultEvent = Extract<GameRuntimeEvent, { type: 'game_result' }>;
+export type GameMode = 'player' | 'spectator';
+
 export function startGame(
     whichCharacter: boolean = true,
     localNickname: string,
     serverUrl: string,
     renderer: THREE.WebGLRenderer,
     onGameEvent?: (event: GameRuntimeEvent) => void,
-    onDialogChange?: (state: { isOpen: boolean; message: string }) => void
+    onDialogChange?: (state: { isOpen: boolean; message: string }) => void,
+    mode: GameMode = 'player'
 ): GameRuntime {
     // ============================================================================
     // SERVER CONNECTION
     // ============================================================================
 
-    console.log('character: ' + whichCharacter);
+    const isSpectator = mode === 'spectator';
 
-    const playerModelPath = whichCharacterModelPath(whichCharacter);
+    let socketAuth: SocketAuth;
+
+    if (isSpectator) {
+        socketAuth = { role: 'spectator' };
+    } else {
+        socketAuth = {
+            role: 'player',
+            character: whichCharacter,
+            nickname: localNickname,
+        };
+    }
 
     /**
      * Use the page origin for the Socket.IO server address and
      * remove the redundant unsanitized pass-through variable.
      * */
     const socket = io(serverUrl, {
-        auth: {
-            character: whichCharacter,
-            // Login-Nickname Socket.IO-Handshake
-            nickname: localNickname,
-        },
+        auth: socketAuth,
     });
 
     let player: Player | null = null;
     let multiplayer: MultiplayerManager | null = null;
     let camera: Camera | null = null;
+    let activeCamera: THREE.PerspectiveCamera | null = null;
+    let spectatorControls: FlyControls | null = null;
     let tttGame: TTT_Game | null = null;
     let rpsGame: RPS_Game | null = null;
     let storyManager: Story_Manager | null = null;
@@ -718,6 +731,7 @@ export function startGame(
         runtimeDisposePromise = (async () => {
             rpsGame?.dispose();
             tttGame?.dispose();
+            spectatorControls?.dispose();
             camera?.orbitControls.dispose();
             timer.dispose();
 
@@ -741,6 +755,8 @@ export function startGame(
             player = null;
             multiplayer = null;
             camera = null;
+            activeCamera = null;
+            spectatorControls = null;
             tttGame = null;
             rpsGame = null;
             activeTTTPlayers = null;
@@ -770,7 +786,11 @@ export function startGame(
         scene.add(sky);
     } */
 
-    init();
+    void init().catch((error: unknown) => {
+        if (!runtimeDisposed) {
+            console.error('Game runtime initialization failed:', error);
+        }
+    });
 
     async function init() {
         //timer = new THREE.Timer();
@@ -817,9 +837,12 @@ export function startGame(
         const ambientLight = new THREE.AmbientLight(0xffffff, 2.0);
         scene.add(ambientLight);
 
-        //player = new Player('glb/MainCharacterTest.glb', socket.id, scene, worldOctree);
-        console.log('Player model path: ' + playerModelPath);
-        player = new Player(playerModelPath, socket.id, scene, worldOctree);
+        if (!isSpectator) {
+            const playerModelPath = whichCharacterModelPath(whichCharacter);
+            //player = new Player('glb/MainCharacterTest.glb', socket.id, scene, worldOctree);
+            console.log('Player model path: ' + playerModelPath);
+            player = new Player(playerModelPath, socket.id, scene, worldOctree);
+        }
         multiplayer = new MultiplayerManager(scene, mesh_RP);
 
         // NOTE uncommented for React! we need the domElement
@@ -843,7 +866,26 @@ export function startGame(
         //
         //container.appendChild(renderer.domElement);
 
-        camera = new Camera(window, renderer, mesh_col);
+        if (isSpectator) {
+            activeCamera = new THREE.PerspectiveCamera(
+                60,
+                window.innerWidth / window.innerHeight,
+                0.1,
+                100
+            );
+            activeCamera.position.set(0, 2, -5);
+            activeCamera.lookAt(0, 1, 0);
+            spectatorControls = new FlyControls(
+                activeCamera,
+                renderer.domElement
+            );
+            spectatorControls.movementSpeed = 15;
+            spectatorControls.rollSpeed = Math.PI / 3;
+            spectatorControls.dragToLook = true;
+        } else {
+            camera = new Camera(window, renderer, mesh_col);
+            activeCamera = camera.camera;
+        }
         renderer.setAnimationLoop(animate);
 
         //const startV = new THREE.Vector3(0, 1, 0);
@@ -851,10 +893,12 @@ export function startGame(
         //console.log("Distance " + camDistance);
 
         window.addEventListener('resize', onWindowResize);
-        document.addEventListener('keydown', onKeyDown);
-        document.addEventListener('keyup', onKeyUp);
-        // Three.js-Raytracing clicks
-        renderer.domElement.addEventListener('click', onClick);
+        if (!isSpectator) {
+            document.addEventListener('keydown', onKeyDown);
+            document.addEventListener('keyup', onKeyUp);
+            // Three.js-Raytracing clicks
+            renderer.domElement.addEventListener('click', onClick);
+        }
 
         initNPC();
 
@@ -868,54 +912,59 @@ export function startGame(
         //scene.add(plane);
         worldOctree.fromGraphNode(plane);
 
-        // Removed the unused TTT button constructor argument
-        tttGame = new TTT_Game(scene, player, tttBox, renderer);
-        rpsGame = new RPS_Game(
-            scene,
-            socket,
-            player,
-            multiplayer.players,
-            renderer,
-            // Connecting RPS range detection to meet student Quest
-            (nearbyPlayer) => {
-                onGameEvent?.({
-                    type: 'player_in_range',
-                    playerId: nearbyPlayer.id,
-                    nickname: resolvePlayerNickname(
-                        nearbyPlayer.id,
-                        nearbyPlayer.nickname
-                    ),
-                });
-            }
-        );
+        if (!isSpectator && player && camera) {
+            // Removed the unused TTT button constructor argument
+            tttGame = new TTT_Game(scene, player, tttBox, renderer);
+            rpsGame = new RPS_Game(
+                scene,
+                socket,
+                player,
+                multiplayer.players,
+                renderer,
+                // Connecting RPS range detection to meet student Quest
+                (nearbyPlayer) => {
+                    onGameEvent?.({
+                        type: 'player_in_range',
+                        playerId: nearbyPlayer.id,
+                        nickname: resolvePlayerNickname(
+                            nearbyPlayer.id,
+                            nearbyPlayer.nickname
+                        ),
+                    });
+                }
+            );
 
-        interactionManager = new InteractionManager(scene);
+            interactionManager = new InteractionManager(scene);
 
-        interactionManager.onInteraction = (interaction) => {
-            storyManager?.handleInteraction(interaction);
-            //onQuestComplete?.(interaction);
-        };
+            interactionManager.onInteraction = (interaction) => {
+                storyManager?.handleInteraction(interaction);
+                //onQuestComplete?.(interaction);
+            };
 
-        storyManager = new Story_Manager(
-            scene,
-            player,
-            renderer,
-            camera,
-            keyStates,
-            controls.key,
-            interactionManager,
-            onDialogChange
-        );
+            storyManager = new Story_Manager(
+                scene,
+                player,
+                renderer,
+                camera,
+                keyStates,
+                controls.key,
+                interactionManager,
+                onDialogChange
+            );
 
-        storyManager.onQuestInteraction = (interaction) => {
-            console.log('Quest interaction:', interaction);
-        };
+            storyManager.onQuestInteraction = (interaction) => {
+                console.log('Quest interaction:', interaction);
+            };
+        }
 
         await loadMesh(MAP_MODEL_PATH, [0, 0, 0]);
+        if (runtimeDisposed) return;
         await loadMeshSky('glb/Clouds.glb', [0, 0, 0]);
+        if (runtimeDisposed) return;
         await loadMeshSky('glb/RocksBorder3.glb', [0, 0, 0]);
+        if (runtimeDisposed) return;
 
-        storyManager.GameIntro();
+        storyManager?.GameIntro();
         /* const testCube = new THREE.Mesh(
             new THREE.BoxGeometry(1, 1, 1),
             new THREE.MeshBasicMaterial({ color: 0xff0000 })
@@ -1038,8 +1087,22 @@ export function startGame(
         path: string,
         pos: [number, number, number] = [0, 0, 0]
     ): Promise<void> {
-        const gltf = await loader.loadAsync(path);
+        let gltf: Awaited<ReturnType<GLTFLoader['loadAsync']>>;
+        try {
+            gltf = await loader.loadAsync(path);
+        } catch (error: unknown) {
+            if (!runtimeDisposed) {
+                console.error(`Sky model loading failed for "${path}":`, error);
+            }
+            return;
+        }
+
         const obj = gltf.scene;
+
+        if (runtimeDisposed) {
+            runtimeResourceDisposer.disposeObject3D(obj);
+            return;
+        }
 
         obj.position.set(...pos);
         obj.traverse((child) => {
@@ -1064,6 +1127,11 @@ export function startGame(
                 child.receiveShadow = true;
             }
         });
+        if (runtimeDisposed) {
+            runtimeResourceDisposer.disposeObject3D(obj);
+            return;
+        }
+
         scene.add(obj);
     }
 
@@ -1533,10 +1601,10 @@ export function startGame(
     }
 
     function onWindowResize() {
-        if (!camera) return;
+        if (!activeCamera) return;
 
-        camera.camera.aspect = window.innerWidth / window.innerHeight;
-        camera.camera.updateProjectionMatrix();
+        activeCamera.aspect = window.innerWidth / window.innerHeight;
+        activeCamera.updateProjectionMatrix();
         renderer.setSize(window.innerWidth, window.innerHeight);
     }
 
@@ -1545,78 +1613,84 @@ export function startGame(
             return;
         }
 
-        if (
-            !player ||
-            !camera ||
-            !tttGame ||
-            !rpsGame ||
-            !multiplayer ||
-            !storyManager ||
-            !envLoaded ||
-            !interactionManager
-        )
-            return;
+        if (!activeCamera || !multiplayer || !envLoaded) return;
 
         timer.update();
         const lifecycleDelta = timer.getDelta();
         /** begrenze Frame-Zeit nur für Bewegung und Physik */
         const delta = Math.min(lifecycleDelta, 0.05);
 
-        player.updateLifecycle(lifecycleDelta);
+        if (isSpectator) {
+            spectatorControls?.update(delta);
+        } else {
+            if (
+                !player ||
+                !camera ||
+                !tttGame ||
+                !rpsGame ||
+                !storyManager ||
+                !interactionManager
+            )
+                return;
 
-        keyControls(delta);
+            player.updateLifecycle(lifecycleDelta);
 
-        previousPlayerPosition.copy(player.group.position);
+            keyControls(delta);
 
-        player.updateCharacter(delta);
+            previousPlayerPosition.copy(player.group.position);
 
-        // update camera and character only while not in cutscene. Otherwise Cutscene animation
-        if (!storyManager.inCutscene) {
-            playerMovementDelta.subVectors(
-                player.group.position,
-                previousPlayerPosition
-            );
-            camera.camera.position.add(playerMovementDelta);
+            player.updateCharacter(delta);
 
-            if (tttGame.tttCamera)
-                camera.orbitControls.target
-                    .copy(player.group.position)
-                    .add({ x: 0, y: 1.75, z: 0 });
-            else
-                camera.orbitControls.target
-                    .copy(player.group.position)
-                    .add({ x: 0, y: 1, z: 0 });
-            followGroup.position.copy(player.group.position);
-            camera.orbitControls.update();
+            // update camera and character only while not in cutscene. Otherwise Cutscene animation
+            if (!storyManager.inCutscene) {
+                playerMovementDelta.subVectors(
+                    player.group.position,
+                    previousPlayerPosition
+                );
+                camera.camera.position.add(playerMovementDelta);
 
-            // onDeleteCollision();
-            // onSpawnCollision();
+                if (tttGame.tttCamera)
+                    camera.orbitControls.target
+                        .copy(player.group.position)
+                        .add({ x: 0, y: 1.75, z: 0 });
+                else
+                    camera.orbitControls.target
+                        .copy(player.group.position)
+                        .add({ x: 0, y: 1, z: 0 });
+                followGroup.position.copy(player.group.position);
+                camera.orbitControls.update();
 
-            camera.cameraCollisionRaycast(delta, player.group);
+                // onDeleteCollision();
+                // onSpawnCollision();
+
+                camera.cameraCollisionRaycast(delta, player.group);
+            }
         }
 
         renderer.clear();
-        renderer.render(scene, camera.camera);
-        tttGame.render();
-        rpsGame.render();
+        renderer.render(scene, activeCamera);
+        tttGame?.render();
+        rpsGame?.render();
 
         multiplayer.updateMultiplayer(delta, lifecycleDelta);
 
-        if (player.isSpawned) {
-            emitPosition(
-                player.group.position.x,
-                player.group.position.y,
-                player.group.position.z,
-                player.controls.current,
-                whichCharacter
-            );
-        }
+        if (!isSpectator && player && rpsGame && interactionManager) {
+            if (player.isSpawned) {
+                emitPosition(
+                    player.group.position.x,
+                    player.group.position.y,
+                    player.group.position.z,
+                    player.controls.current,
+                    whichCharacter
+                );
+            }
 
-        if (!isLocalPlayerDespawning) {
-            rpsGame.updateCheck();
-        }
+            if (!isLocalPlayerDespawning) {
+                rpsGame.updateCheck();
+            }
 
-        interactionManager.update(player.group.position);
+            interactionManager.update(player.group.position);
+        }
 
         for (const [_id, player] of npcs) {
             void _id;

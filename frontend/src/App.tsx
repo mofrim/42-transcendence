@@ -7,6 +7,7 @@ import { PlayerSelect } from './ui/login/PlayerSelect';
 import { Agreements } from './ui/login/Agreements';
 import { useLoginContext } from './hooks/useLoginContext';
 import { useAuth } from './hooks/useAuthContext';
+import { SPECTATOR_NAME } from 'common/sharedTypes';
 import axios from 'axios';
 
 import './App.css';
@@ -25,7 +26,13 @@ const LoadGame = React.lazy(() =>
 );
 
 const App: React.FC<AppProps> = (props: AppProps) => {
-    const { gameRunning, setGameRunning, serverAddrRef } = useLoginContext();
+    const {
+        gameRunning,
+        setGameRunning,
+        isSpectator,
+        setIsSpectator,
+        serverAddrRef,
+    } = useLoginContext();
     const { user, isInitializing } = useAuth();
 
     // set Addr which is used to connect to our app. this is needed to
@@ -40,20 +47,37 @@ const App: React.FC<AppProps> = (props: AppProps) => {
 
     // logout reset effect
     React.useEffect(() => {
-        if (!isInitializing && user == null && gameRunning) {
+        if (!isInitializing && user == null && gameRunning && !isSpectator) {
             setGameRunning(false);
         }
-    }, [user, isInitializing, gameRunning, setGameRunning]);
+    }, [user, isInitializing, gameRunning, isSpectator, setGameRunning]);
 
     if (isInitializing) {
         return null;
+    }
+
+    if (gameRunning && isSpectator) {
+        console.log('spectator mode running');
+        return (
+            <React.Suspense fallback={null}>
+                <LoadGame
+                    nickname={SPECTATOR_NAME}
+                    email=''
+                    isSpectator={true}
+                />
+            </React.Suspense>
+        );
     }
 
     if (gameRunning && user != null) {
         console.log('game running');
         return (
             <React.Suspense fallback={null}>
-                <LoadGame nickname={user.nickname} email={user.email} />
+                <LoadGame
+                    nickname={user.nickname}
+                    email={user.email}
+                    isSpectator={false}
+                />
             </React.Suspense>
         );
     }
@@ -68,6 +92,16 @@ const App: React.FC<AppProps> = (props: AppProps) => {
                 <div id='login-ui'>
                     <div className='login-title'>{props.title}</div>
                     <AuthCard />
+                    <button
+                        id='spectator-btn'
+                        type='button'
+                        onClick={() => {
+                            setIsSpectator(true);
+                            setGameRunning(true);
+                        }}
+                    >
+                        SPECTATE
+                    </button>
                 </div>
             </>
         );
@@ -83,7 +117,13 @@ const App: React.FC<AppProps> = (props: AppProps) => {
                 <PlayerSelect />
                 <CharacterPreview />
                 <Agreements />
-                <button id='start-btn' onClick={() => setGameRunning(true)}>
+                <button
+                    id='start-btn'
+                    onClick={() => {
+                        setIsSpectator(false);
+                        setGameRunning(true);
+                    }}
+                >
                     ENTER
                 </button>
             </div>

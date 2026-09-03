@@ -47,11 +47,13 @@ export const StartButton: React.FC = () => {
     );
 };
 
-export const Game: React.FC<{ nickname: string; email: string }> = ({
-    nickname,
-    email,
-}) => {
-    const { avatar, serverAddrRef } = useLoginContext();
+export const Game: React.FC<{
+    nickname: string;
+    email: string;
+    isSpectator?: boolean;
+}> = ({ nickname, email, isSpectator = false }) => {
+    const { avatar, serverAddrRef, setGameRunning, setIsSpectator } =
+        useLoginContext();
     const { logout } = useAuth();
     const [character] = useState(() => avatar === 'true');
 
@@ -139,6 +141,11 @@ export const Game: React.FC<{ nickname: string; email: string }> = ({
         await logout();
     }, [exitLocalPlayer, logout, nickname]);
 
+    const handleSpectatorExit = useCallback((): void => {
+        setIsSpectator(false);
+        setGameRunning(false);
+    }, [setGameRunning, setIsSpectator]);
+
     /** bind Cleanup direkt */
     useEffect(() => {
         const mount = mountRef.current;
@@ -147,14 +154,28 @@ export const Game: React.FC<{ nickname: string; email: string }> = ({
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         mount.appendChild(renderer.domElement);
 
-        const runtime = startGame(
-            character,
-            nickname,
-            serverAddrRef.current,
-            renderer,
-            handleGameEvent,
-            setDialog
-        );
+        let runtime: GameRuntime;
+        if (isSpectator) {
+            runtime = startGame(
+                character,
+                nickname,
+                serverAddrRef.current,
+                renderer,
+                undefined,
+                undefined,
+                'spectator'
+            );
+        } else {
+            runtime = startGame(
+                character,
+                nickname,
+                serverAddrRef.current,
+                renderer,
+                handleGameEvent,
+                setDialog,
+                'player'
+            );
+        }
         gameRuntimeRef.current = runtime;
 
         return () => {
@@ -172,11 +193,21 @@ export const Game: React.FC<{ nickname: string; email: string }> = ({
                     console.error('Game runtime cleanup failed:', error);
                 });
         };
-    }, [character, handleGameEvent, nickname, serverAddrRef]);
+    }, [character, handleGameEvent, isSpectator, nickname, serverAddrRef]);
 
-    return (
-        <>
-            <div ref={mountRef} className='game-canvas-container' />
+    let gameInterface: React.ReactNode;
+    if (isSpectator) {
+        gameInterface = (
+            <button
+                id='spectator-exit-btn'
+                type='button'
+                onClick={handleSpectatorExit}
+            >
+                EXIT SPECTATOR
+            </button>
+        );
+    } else {
+        gameInterface = (
             <GameUI
                 // NOTE now we can just use the users nickname from DB here..
                 // this might change when we want to allow change user-prefs
@@ -193,6 +224,13 @@ export const Game: React.FC<{ nickname: string; email: string }> = ({
                 dialog={dialog}
                 onDialogNext={handleDialogNext}
             />
+        );
+    }
+
+    return (
+        <>
+            <div ref={mountRef} className='game-canvas-container' />
+            {gameInterface}
         </>
     );
 };

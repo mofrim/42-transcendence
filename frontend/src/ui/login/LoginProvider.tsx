@@ -6,6 +6,7 @@ export const LoginProvider: React.FC<{ children: React.ReactNode }> = ({
 }) => {
     // these elements should clearly trigger a re-render
     const [gameRunning, setGameRunning] = useState(false);
+    const [isSpectator, setIsSpectator] = useState(false);
 
     const [avatar, setAvatar] = useState('true');
 
@@ -18,6 +19,8 @@ export const LoginProvider: React.FC<{ children: React.ReactNode }> = ({
             value={{
                 gameRunning,
                 setGameRunning,
+                isSpectator,
+                setIsSpectator,
                 avatar,
                 setAvatar,
                 nicknameRef,
