@@ -27,8 +27,8 @@ export class GameManager {
 
     createPlayer(id: string, nickname: string): PlayerData {
         return {
-            id: id,
-            nickname: nickname,
+            id,
+            nickname,
             position: { x: 0, y: 0, z: 0 },
             state: PlayerState.Idle,
             gameID: null,
@@ -51,11 +51,13 @@ export class GameManager {
         z: number,
         state: PlayerState
     ): void {
-        void id;
-        void x;
-        void y;
-        void z;
-        void state;
+        const player = this.players.get(id);
+        if (!player) {
+            return;
+        }
+
+        Object.assign(player.position, { x, y, z });
+        player.state = state;
     }
 
     // ====================================================================================================

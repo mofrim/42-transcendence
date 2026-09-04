@@ -14,7 +14,7 @@ import { RPS_Game } from './rps_game.js';
 import { createThreeResourceDisposer } from './ThreeResourceDisposer.js';
 import { Story_Manager } from './story_manager.js';
 import { InteractionManager } from './interaction_manager.js';
-import { MAP_MODEL_PATH } from './Assets.js';
+import { getPlayerModelPath, MAP_MODEL_PATH } from './Assets.js';
 
 import { io } from 'socket.io-client';
 
@@ -30,18 +30,12 @@ import type {
     TTTStartPayload,
     TTTWinPayload,
     TTTDrawPayload,
+    ChatSendPayload,
+    PlayerConnectedPayload,
     PlayerUpdatePayload,
+    ReceivedChatPayload,
     SocketAuth,
 } from 'common/sharedTypes';
-
-/** all both gender */
-
-function whichCharacterModelPath(character: boolean): string {
-    if (character === true) {
-        return '/glb/Main_Male.glb';
-    }
-    return '/glb/Main_Female.glb';
-}
 
 /** event log msgs */
 export type GameRuntimeEvent =
@@ -59,7 +53,7 @@ export type GameRuntimeEvent =
       };
 
 export type GameRuntime = {
-    readonly showLocalChatMessage: (message: string) => void;
+    readonly sendChatMessage: (message: string) => void;
     readonly despawnLocalPlayer: () => Promise<void>;
     readonly dispose: () => Promise<void>;
     readonly continueDialogue: () => void;
@@ -78,6 +72,7 @@ type ActiveTTTPlayers = {
 };
 
 type GameResultEvent = Extract<GameRuntimeEvent, { type: 'game_result' }>;
+type RemotePlayerUpdate = Pick<PlayerUpdatePayload, 'x' | 'y' | 'z' | 'state'>;
 export type GameMode = 'player' | 'spectator';
 
 export function startGame(
@@ -87,7 +82,8 @@ export function startGame(
     renderer: THREE.WebGLRenderer,
     onGameEvent?: (event: GameRuntimeEvent) => void,
     onDialogChange?: (state: { isOpen: boolean; message: string }) => void,
-    mode: GameMode = 'player'
+    mode: GameMode = 'player',
+    onChatMessage?: (message: ReceivedChatPayload) => void
 ): GameRuntime {
     // ============================================================================
     // SERVER CONNECTION
@@ -150,25 +146,58 @@ export function startGame(
         }
     });
 
-    socket.on('player_connected', (data) => {
+    socket.on('player_connected', (data: string | PlayerConnectedPayload) => {
         let id: string;
         let remoteCharacter = true;
         let remoteNickname: string | undefined;
+        let initialUpdate: RemotePlayerUpdate | undefined;
+        let shouldAnnounceJoin = true;
 
         if (typeof data === 'string') {
             id = data;
         } else {
             id = data.id;
             remoteCharacter = data.character;
+            shouldAnnounceJoin = !data.isInitialSnapshot;
             if (typeof data.nickname === 'string') {
                 remoteNickname = data.nickname;
+            }
+            if (
+                typeof data.x === 'number' &&
+                typeof data.y === 'number' &&
+                typeof data.z === 'number' &&
+                data.state !== undefined
+            ) {
+                initialUpdate = {
+                    x: data.x,
+                    y: data.y,
+                    z: data.z,
+                    state: data.state,
+                };
             }
         }
 
         console.log('someone joined:', id);
         if (id) {
             blockedPlayerUpdates.delete(id);
-            spawnRemotePlayer(id, remoteCharacter, remoteNickname);
+            spawnRemotePlayer(
+                id,
+                remoteCharacter,
+                shouldAnnounceJoin,
+                remoteNickname,
+                initialUpdate
+            );
+        }
+    });
+
+    socket.on('chat_message', (data: ReceivedChatPayload) => {
+        if (runtimeDisposed) {
+            return;
+        }
+
+        onChatMessage?.(data);
+        if (data.senderId === socket.id) {
+            player?.showChatMessage(data.message);
         }
     });
 
@@ -607,7 +636,9 @@ export function startGame(
     function spawnRemotePlayer(
         id: string,
         remoteCharacter: boolean,
-        remoteNickname?: string
+        shouldAnnounceJoin: boolean,
+        remoteNickname?: string,
+        initialUpdate?: RemotePlayerUpdate
     ): void {
         if (!multiplayer) {
             return;
@@ -616,7 +647,18 @@ export function startGame(
         const resolvedNickname = resolvePlayerNickname(id, remoteNickname);
         multiplayer.spawnPlayer(id, remoteCharacter, resolvedNickname);
 
-        if (!isNewPlayer) {
+        const remotePlayer = multiplayer.players.get(id);
+        if (initialUpdate && remotePlayer?.isActive()) {
+            multiplayer.multiplayerMovement(
+                remotePlayer,
+                initialUpdate.x,
+                initialUpdate.y,
+                initialUpdate.z,
+                initialUpdate.state
+            );
+        }
+
+        if (!isNewPlayer || !shouldAnnounceJoin) {
             return;
         }
         onGameEvent?.({
@@ -644,7 +686,7 @@ export function startGame(
         } else {
             console.log('new player joined:', data.id);
             //multiplayer.spawnPlayer(data.id, normalizeCharacter(data.character));
-            spawnRemotePlayer(data.id, data.character);
+            spawnRemotePlayer(data.id, data.character, true, undefined, data);
         }
     }
 
@@ -838,7 +880,7 @@ export function startGame(
         scene.add(ambientLight);
 
         if (!isSpectator) {
-            const playerModelPath = whichCharacterModelPath(whichCharacter);
+            const playerModelPath = getPlayerModelPath(whichCharacter);
             //player = new Player('glb/MainCharacterTest.glb', socket.id, scene, worldOctree);
             console.log('Player model path: ' + playerModelPath);
             player = new Player(playerModelPath, socket.id, scene, worldOctree);
@@ -1613,7 +1655,8 @@ export function startGame(
             return;
         }
 
-        if (!activeCamera || !multiplayer || !envLoaded) return;
+        if (!activeCamera || !multiplayer || (!isSpectator && !envLoaded))
+            return;
 
         timer.update();
         const lifecycleDelta = timer.getDelta();
@@ -1698,14 +1741,17 @@ export function startGame(
         }
     }
 
-    function showLocalChatMessage(message: string): void {
-        if (!runtimeDisposed) {
-            player?.showChatMessage(message);
+    function sendChatMessage(message: string): void {
+        if (runtimeDisposed) {
+            return;
         }
+
+        const payload: ChatSendPayload = { message };
+        socket.emit('chat_message', payload);
     }
 
     return {
-        showLocalChatMessage,
+        sendChatMessage,
         despawnLocalPlayer,
         dispose: disposeRuntime,
         continueDialogue(): void {

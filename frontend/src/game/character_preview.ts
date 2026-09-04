@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import type { Character } from 'common/sharedTypes';
 import { createThreeResourceDisposer } from './ThreeResourceDisposer.js';
+import { getPlayerModelPath } from './Assets.js';
 
 interface CharacterPreviewOptions {
     canvas?: HTMLCanvasElement | null;
@@ -13,18 +14,6 @@ export interface CreateCharPreviewReturnType {
     setCharacter(character: Character): void;
     dispose(): void;
 }
-
-/** all both gender */
-const CHARACTER_PREVIEW_MODELS = {
-    true: {
-        path: '/glb/Main_Male.glb',
-        label: 'Main_Male.glb',
-    },
-    false: {
-        path: '/glb/Main_Female.glb',
-        label: 'Main_Female.glb',
-    },
-};
 
 const MAX_PREVIEW_FPS = 30;
 const PREVIEW_FRAME_INTERVAL = 1 / MAX_PREVIEW_FPS;
@@ -178,9 +167,7 @@ export function createCharacterPreview({
     }
 
     function setCharacter(character: Character): void {
-        const preview = character
-            ? CHARACTER_PREVIEW_MODELS.true
-            : CHARACTER_PREVIEW_MODELS.false;
+        const modelPath = getPlayerModelPath(character);
 
         if (currentCharacter === character) {
             return;
@@ -189,13 +176,13 @@ export function createCharacterPreview({
         currentCharacter = character;
 
         if (label) {
-            label.textContent = preview.label;
+            label.textContent = modelPath.slice(modelPath.lastIndexOf('/') + 1);
         }
 
         clearCurrentModel();
         const serial = ++loadSerial;
 
-        void loadCharacterModel(preview.path, serial);
+        void loadCharacterModel(modelPath, serial);
     }
 
     function render(time: number): void {

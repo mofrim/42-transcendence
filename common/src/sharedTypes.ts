@@ -114,24 +114,31 @@ export type GLBMesh = THREE.Mesh<
     THREE.MeshStandardMaterial | THREE.MeshToonMaterial
 >;
 
+export type PlayerPosition = {
+    x: number;
+    y: number;
+    z: number;
+};
+
 export type PlayerData = {
     id: string;
     nickname: string;
-    position: { x: 0; y: 0; z: 0 };
+    position: PlayerPosition;
     state: PlayerState;
     gameID: string | null;
     inGame: boolean;
 };
 
-export type PlayerUpdatePayload = {
-    type: 'player_update';
-    id: string;
-    x: number;
-    y: number;
-    z: number;
-    state: PlayerState;
+export type PlayerUpdatePayload = Pick<PlayerData, 'id' | 'state'> &
+    PlayerPosition & {
+        type: 'player_update';
+        character: Character;
+    };
+
+export type PlayerConnectedPayload = Pick<PlayerData, 'id' | 'nickname'> & {
     character: Character;
-};
+    isInitialSnapshot: boolean;
+} & Partial<Pick<PlayerUpdatePayload, 'x' | 'y' | 'z' | 'state'>>;
 
 // ================================================
 // RPS Game

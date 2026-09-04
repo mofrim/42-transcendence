@@ -48,6 +48,7 @@ type GameUIProps = {
     readonly onLogout?: () => Promise<void>;
     readonly dialog?: DialogPanelState;
     readonly onDialogNext?: () => void;
+    readonly isSpectator?: boolean;
 };
 
 type HudPanelToggleProps = {
@@ -235,6 +236,7 @@ export function GameUI({
     onLogout,
     dialog,
     onDialogNext,
+    isSpectator = false,
 }: GameUIProps) {
     const [isQuestLogOpen, setIsQuestLogOpen] = useState(false);
     const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -392,10 +394,15 @@ export function GameUI({
         };
     }, [chatMessage, isChatOpen, onChatMessage]);
 
+    let hudClassName = 'hud';
+    if (isSpectator) {
+        hudClassName += ' spectator-hud';
+    }
+
     return (
         <div
             id='game-ui'
-            className='hud'
+            className={hudClassName}
             onClick={stopGameInteraction}
             onPointerDown={stopGameInteraction}
         >

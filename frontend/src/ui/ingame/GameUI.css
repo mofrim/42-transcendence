@@ -22,6 +22,16 @@
     font-family: 'Segoe UI', sans-serif;
 }
 
+.hud.spectator-hud > :is(
+        .hud-profile,
+        .hud-toggle,
+        .hud-quest-log,
+        .hud-dialog-panel,
+        .hud-black-hole-overlay
+    ) {
+    display: none;
+}
+
 .hud-profile {
     left: 18px;
     /* prevents logout button overlapped by event log panel */

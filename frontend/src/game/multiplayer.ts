@@ -2,26 +2,10 @@ import * as THREE from 'three';
 
 // import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { Remote_Player } from './remote_player.js';
+import { getPlayerModelPath } from './Assets.js';
 
-import { PlayerState, CharacterModel } from 'common/sharedTypes';
+import { PlayerState } from 'common/sharedTypes';
 import type { Character } from 'common/sharedTypes';
-
-/**
- * all both gender
- * Typisiert die Modellpfade vollständig nach CharacterModel und behebt TS7053.
- */
-const PLAYER_CHARACTER_MODELS: Readonly<Record<CharacterModel, string>> = {
-    [CharacterModel.male]: '/glb/Main_Male.glb',
-    [CharacterModel.female]: '/glb/Main_Female.glb',
-};
-
-function normalizeCharacter(character: Character): CharacterModel {
-    return character ? CharacterModel.male : CharacterModel.female;
-}
-
-function getRemotePlayerModelPath(character: Character): string {
-    return PLAYER_CHARACTER_MODELS[normalizeCharacter(character)];
-}
 
 export class MultiplayerManager {
     scene: THREE.Scene;
@@ -81,6 +65,8 @@ export class MultiplayerManager {
         //if(player.id == 1)
         //    this.multiplayerMovementTest(player);
         //console.log("ID 1 " + player.id + " to position: " + player.group.position.y.toFixed(4));
+        player.state = state;
+
         if (!player.isSpawned) {
             player.animateSpawn(x, y, z);
             return;
@@ -89,7 +75,6 @@ export class MultiplayerManager {
         const pos = player.group.position;
 
         this.desired.set(x, y, z);
-        player.state = state;
 
         if (state === PlayerState.Run)
             player.rotateCharacter(this.desired, pos);
@@ -199,7 +184,7 @@ export class MultiplayerManager {
         }
 
         const newPlayer = new Remote_Player(
-            getRemotePlayerModelPath(character),
+            getPlayerModelPath(character),
             id,
             nickname,
             this.scene,

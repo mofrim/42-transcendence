@@ -12,6 +12,7 @@ import type {
     ReceivedChatPayload,
     RPSBattleChoicePayload,
     RPSRequestDataPayload,
+    PlayerConnectedPayload,
     PlayerUpdatePayload,
     TTTMarkPayload,
 } from 'common/sharedTypes';
@@ -81,11 +82,15 @@ io.on('connection', (socket) => {
         const existingSocket = io.sockets.sockets.get(playerId);
         if (!existingSocket) return;
 
-        socket.emit('player_connected', {
+        const connectedPlayer: PlayerConnectedPayload = {
             id: playerId,
             character: existingSocket.data.character,
             nickname: existingPlayer.nickname,
-        });
+            isInitialSnapshot: true,
+            ...existingPlayer.position,
+            state: existingPlayer.state,
+        };
+        socket.emit('player_connected', connectedPlayer);
     });
 
     socket.on('chat_message', (data: unknown) => {
@@ -125,11 +130,13 @@ io.on('connection', (socket) => {
 
     // the only other action preformed currently by the backend apart from
     // handling ttt and rps game
-    socket.broadcast.emit('player_connected', {
+    const connectedPlayer: PlayerConnectedPayload = {
         id: socket.id,
         character,
         nickname,
-    });
+        isInitialSnapshot: false,
+    };
+    socket.broadcast.emit('player_connected', connectedPlayer);
     console.log('Client connected:', socket.id);
 
     gameManager.players.set(

@@ -2,7 +2,12 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useLoginContext } from '../../hooks/useLoginContext';
 import { useAuth } from '../../hooks/useAuthContext';
 import { startGame } from '../../game/main';
-import type { GameRuntime, GameRuntimeEvent } from '../../game/main';
+import type {
+    GameMode,
+    GameRuntime,
+    GameRuntimeEvent,
+} from '../../game/main';
+import type { ReceivedChatPayload } from 'common/sharedTypes';
 import {
     GameUI,
     type DialogPanelState,
@@ -92,12 +97,15 @@ export const Game: React.FC<{
         [appendEvent]
     );
 
-    const handleChatMessage = useCallback(
-        (message: string): void => {
-            appendEvent(`${nickname} 💬 ${message}`);
-            gameRuntimeRef.current?.showLocalChatMessage(message);
+    const handleChatMessage = useCallback((message: string): void => {
+        gameRuntimeRef.current?.sendChatMessage(message);
+    }, []);
+
+    const handleReceivedChatMessage = useCallback(
+        (message: ReceivedChatPayload): void => {
+            appendEvent(`${message.senderName} 💬 ${message.message}`);
         },
-        [appendEvent, nickname]
+        [appendEvent]
     );
 
     const handleQuestStatusChange = useCallback(
@@ -154,28 +162,30 @@ export const Game: React.FC<{
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         mount.appendChild(renderer.domElement);
 
-        let runtime: GameRuntime;
-        if (isSpectator) {
-            runtime = startGame(
-                character,
-                nickname,
-                serverAddrRef.current,
-                renderer,
-                undefined,
-                undefined,
-                'spectator'
-            );
-        } else {
-            runtime = startGame(
-                character,
-                nickname,
-                serverAddrRef.current,
-                renderer,
-                handleGameEvent,
-                setDialog,
-                'player'
-            );
+        let gameMode: GameMode = 'spectator';
+        let runtimeGameEventHandler:
+            | ((event: GameRuntimeEvent) => void)
+            | undefined;
+        let runtimeDialogHandler:
+            | ((state: DialogPanelState) => void)
+            | undefined;
+
+        if (!isSpectator) {
+            gameMode = 'player';
+            runtimeGameEventHandler = handleGameEvent;
+            runtimeDialogHandler = setDialog;
         }
+
+        const runtime: GameRuntime = startGame(
+            character,
+            nickname,
+            serverAddrRef.current,
+            renderer,
+            runtimeGameEventHandler,
+            runtimeDialogHandler,
+            gameMode,
+            handleReceivedChatMessage
+        );
         gameRuntimeRef.current = runtime;
 
         return () => {
@@ -193,11 +203,20 @@ export const Game: React.FC<{
                     console.error('Game runtime cleanup failed:', error);
                 });
         };
-    }, [character, handleGameEvent, isSpectator, nickname, serverAddrRef]);
+    }, [
+        character,
+        handleGameEvent,
+        handleReceivedChatMessage,
+        isSpectator,
+        nickname,
+        serverAddrRef,
+    ]);
 
-    let gameInterface: React.ReactNode;
+    let spectatorExitButton: React.ReactNode = null;
+    let playerOnlyGameUIProps: Partial<React.ComponentProps<typeof GameUI>> = {};
+
     if (isSpectator) {
-        gameInterface = (
+        spectatorExitButton = (
             <button
                 id='spectator-exit-btn'
                 type='button'
@@ -207,7 +226,19 @@ export const Game: React.FC<{
             </button>
         );
     } else {
-        gameInterface = (
+        playerOnlyGameUIProps = {
+            onQuestStatusChange: handleQuestStatusChange,
+            onBlackHoleExpired: handleBlackHoleExpired,
+            onLogout: handleLogout,
+            dialog,
+            onDialogNext: handleDialogNext,
+        };
+    }
+
+    return (
+        <>
+            <div ref={mountRef} className='game-canvas-container' />
+            {spectatorExitButton}
             <GameUI
                 // NOTE now we can just use the users nickname from DB here..
                 // this might change when we want to allow change user-prefs
@@ -218,19 +249,9 @@ export const Game: React.FC<{
                 completedQuestIds={completedQuestIds}
                 events={events}
                 onChatMessage={handleChatMessage}
-                onQuestStatusChange={handleQuestStatusChange}
-                onBlackHoleExpired={handleBlackHoleExpired}
-                onLogout={handleLogout}
-                dialog={dialog}
-                onDialogNext={handleDialogNext}
+                {...playerOnlyGameUIProps}
+                isSpectator={isSpectator}
             />
-        );
-    }
-
-    return (
-        <>
-            <div ref={mountRef} className='game-canvas-container' />
-            {gameInterface}
         </>
     );
 };
