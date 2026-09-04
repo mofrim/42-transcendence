@@ -76,7 +76,7 @@ export class NPC {
                     }
                     // console.log("Material NOT OUTLINE: ");
                     object.material = new THREE.MeshToonMaterial({
-                        color: material.color.clone(),
+                        color: material.color,
                         gradientMap: NPC.gradientTexture,
                     });
                 }
