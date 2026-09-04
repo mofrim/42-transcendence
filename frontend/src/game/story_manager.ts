@@ -11,7 +11,6 @@ type DialogState = {
     readonly message: string;
 };
 
-
 export class Story_Manager {
     scene: THREE.Scene;
     renderer: THREE.WebGLRenderer;
@@ -69,10 +68,10 @@ export class Story_Manager {
 
     // TODO: TEMP - need to be changed with Database
     initQuestState(): void {
-        this.questState.set("FIND_RUBBERDUCK", false);
-        this.questState.set("GET_COFFEE", false);
-        this.questState.set("GET_PAPER", false);
-        this.questState.set("LOGIN_COMPUTER", false);
+        this.questState.set('FIND_RUBBERDUCK', false);
+        this.questState.set('GET_COFFEE', false);
+        this.questState.set('GET_PAPER', false);
+        this.questState.set('LOGIN_COMPUTER', false);
     }
 
     releaseAllKeys(): void {
@@ -312,11 +311,7 @@ export class Story_Manager {
                     targetPosition,
                     progress
                 );
-                currentLookAt.lerpVectors(
-                    startLookAt,
-                    targetLookAt,
-                    progress
-                );
+                currentLookAt.lerpVectors(startLookAt, targetLookAt, progress);
                 this.camera.camera.lookAt(currentLookAt);
 
                 if (progress < 1 && !this.skipCameraAnimation) {
@@ -488,14 +483,21 @@ export class Story_Manager {
         this.endCutscene();
     }
 
-    async playDialogInteraction(message: string, animation: PlayerAnimationState): Promise<void> {
+    async playDialogInteraction(
+        message: string,
+        animation: PlayerAnimationState
+    ): Promise<void> {
         this.startCutscene();
         this.player.controls.requestedAnimation = animation;
         await this.showDialog(message);
         this.endCutscene();
     }
 
-    async caseInteraction(type : string, message: string, animation: PlayerAnimationState): Promise<void> {
+    async caseInteraction(
+        type: string,
+        message: string,
+        animation: PlayerAnimationState
+    ): Promise<void> {
         this.startCutscene();
         this.player.controls.requestedAnimation = animation;
         await this.showDialog(message);
@@ -509,8 +511,7 @@ export class Story_Manager {
     allQuestsCompleted(): boolean {
         for (const [quest, check] of this.questState.entries()) {
             void quest;
-            if(!check)
-                return false;
+            if (!check) return false;
         }
         return true;
     }
@@ -535,7 +536,6 @@ export class Story_Manager {
 
     async handlePreparationQuest(typeID: string): Promise<void> {
         switch (typeID) {
-
             case 'FIND_RUBBERDUCK':
                 await this.caseInteraction(
                     'FIND_RUBBERDUCK',
@@ -594,14 +594,14 @@ export class Story_Manager {
         switch (interaction.typeID) {
             case 'WHERE_IS_EVALUATOR':
                 await this.playDialogInteraction(
-                    'Someone\'s been assigned to my evaluation. They\'re at c1r12s2. Let\'s go.', 
+                    "Someone's been assigned to my evaluation. They're at c1r12s2. Let's go.",
                     PlayerState.ThumbsUp
                 );
                 return;
 
             case 'FIND_EVALUATING_STUDENT':
                 await this.caseInteraction(
-                    'FIND_EVALUATING_STUDENT', 
+                    'FIND_EVALUATING_STUDENT',
                     'Found him! Time to head back and kick off the evaluation.',
                     PlayerState.Strong
                 );
@@ -612,14 +612,14 @@ export class Story_Manager {
 
                 return;
         }
-      
+
         // Start Evaluation
-        if(interaction.typeID === 'START_EVALUATION'){
+        if (interaction.typeID === 'START_EVALUATION') {
             await this.caseInteraction(
-                'START_EVALUATION', 
-                'Evaluation is starting. Let\'s go!',
+                'START_EVALUATION',
+                "Evaluation is starting. Let's go!",
                 PlayerState.Strong
-            ); 
+            );
             return;
         }
     }
