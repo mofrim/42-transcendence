@@ -10,7 +10,7 @@ import {
     resizeOverlay,
 } from './GameOverlay';
 import { createThreeResourceDisposer } from './ThreeResourceDisposer';
-import { TTTMark, TTTMeshBoard } from 'common/sharedTypes';
+import { TTTGameState, TTTMark, TTTMeshBoard } from 'common/sharedTypes';
 
 // Type-only import: exists only during TypeScript compilation, not at runtime.
 // The type is removed after compilation, so it must be imported using `import type`.
@@ -21,6 +21,8 @@ import type {
 } from 'common/sharedTypes';
 
 const TTT_TEXTURE_LOADER = new THREE.TextureLoader();
+
+type TTTLifecycleState = 'idle' | 'active' | 'finished';
 
 export class TTT_Game {
     board: TTTMeshBoard;
@@ -55,6 +57,8 @@ export class TTT_Game {
         ReturnType<typeof setTimeout>,
         () => void
     >;
+    private lifecycleState: TTTLifecycleState;
+    private generation: number;
     private disposed: boolean;
 
     constructor(
@@ -107,6 +111,8 @@ export class TTT_Game {
         this.boardInitFrameSlot = new AnimationFrameSlot(() => !this.disposed);
         this.animationFrameSlot = new AnimationFrameSlot(() => !this.disposed);
         this.pendingWaits = new Map();
+        this.lifecycleState = 'idle';
+        this.generation = 0;
         this.disposed = false;
 
         //this.vsSprite.set("A", this.addVSSprite('textures/X.jpg'));
@@ -137,20 +143,29 @@ export class TTT_Game {
     }
 
     initGame(data: TTTInitGamePayload): void {
-        // `data.game != null` checks for !== null and !== undefined because
-        // null != undefined is false (but null === unedfined too)!
-        // it's the idiomatic way for checking external JSON-data (like from
-        // some API) for undefinedness
-        if (data.game != null) {
-            if (data.game.players[0]) {
-                this.spriteGameCount.setText('1/2', 50);
-                this.players[0] = data.game.players[0];
-            }
-            if (data.game.players[1]) {
-                this.spriteGameCount.setText('2/2', 50);
-                this.spriteGameText.setText('IN GAME', 50);
-                this.players[1] = data.game.players[1];
-            }
+        if (this.disposed) {
+            return;
+        }
+
+        const game = data.game;
+        this.generation++;
+        this.lifecycleState = 'idle';
+        this.cancelTransientAnimation();
+        this.tttCamera = false;
+        this.removeText();
+        this.spriteGameText.setText('Click to Join', 50);
+        this.syncPlayerSlot(game.players[0], game.players[1], true);
+
+        if (
+            game.state === TTTGameState.InGame &&
+            game.players[0] !== null &&
+            game.players[1] !== null
+        ) {
+            this.lifecycleState = 'active';
+            this.spriteGameText.setText('IN GAME', 50);
+        } else if (game.state === TTTGameState.Finished) {
+            this.lifecycleState = 'finished';
+            this.spriteGameText.setText('FINISH', 50);
         }
 
         this.waitforInitMesh(data);
@@ -166,12 +181,14 @@ export class TTT_Game {
                 if (data.game) {
                     if (index < this.board.size) {
                         for (const box of data.game.board) {
+                            const cell = this.board.getCell(index);
+                            cell.material.color.set(0xffffff);
                             if (box === TTTMark.X)
-                                this.board.getCell(index).material.map =
-                                    this.texX;
+                                cell.material.map = this.texX;
                             else if (box === TTTMark.O)
-                                this.board.getCell(index).material.map =
-                                    this.texO;
+                                cell.material.map = this.texO;
+                            else cell.material.map = this.texEmpty;
+                            cell.material.needsUpdate = true;
                             index++;
                             //console.log("# Initializing board: " + box);
                         }
@@ -183,7 +200,7 @@ export class TTT_Game {
     }
 
     startVSAnimation(): void {
-        if (this.disposed) {
+        if (this.disposed || this.lifecycleState !== 'active') {
             return;
         }
 
@@ -334,11 +351,93 @@ export class TTT_Game {
         this.renderer.render(this.overlayScene, this.overlayCamera);
     }
 
+    private updateSharedReserveUI(): void {
+        if (this.lifecycleState === 'active') {
+            this.spriteGameCount.setText('2/2', 50);
+            return;
+        }
+
+        if (this.lifecycleState === 'finished') {
+            return;
+        }
+
+        const reservedSlots = this.players.filter(
+            (player) => player !== null
+        ).length;
+        this.spriteGameCount.setText(`${reservedSlots}/2`, 50);
+    }
+
+    private syncPlayerSlot(
+        playerOne: PlayerSlot,
+        playerTwo: PlayerSlot,
+        authoritative: boolean
+    ): boolean {
+        if (this.disposed) {
+            return false;
+        }
+
+        if (!authoritative && this.lifecycleState !== 'idle') {
+            if (
+                playerOne !== null &&
+                this.players[0] !== null &&
+                playerOne !== this.players[0]
+            ) {
+                return false;
+            }
+            if (
+                playerTwo !== null &&
+                this.players[1] !== null &&
+                playerTwo !== this.players[1]
+            ) {
+                return false;
+            }
+        }
+
+        if (authoritative) {
+            this.players = [playerOne, playerTwo];
+        } else {
+            if (playerOne !== null) {
+                this.players[0] = playerOne;
+            }
+            if (playerTwo !== null) {
+                this.players[1] = playerTwo;
+            }
+        }
+
+        this.updateSharedReserveUI();
+        return true;
+    }
+
+    private isLocalParticipant(): boolean {
+        if (this.player.id === undefined) {
+            return false;
+        }
+        return this.players.includes(this.player.id);
+    }
+
+    private cancelTransientAnimation(): void {
+        this.animationFrameSlot.cancel();
+        this.vsAnimationStart = false;
+        this.overlayScene.remove(...this.vsSprite.values());
+    }
+
     setPlayerOne(playerID: string): void {
-        this.players[0] = playerID;
+        const alreadyKnown = this.players[0] === playerID;
+        const synchronized = this.syncPlayerSlot(
+            playerID,
+            this.players[1],
+            false
+        );
+        if (!synchronized) {
+            return;
+        }
+
         console.log('First Player added to game.' + playerID);
-        this.spriteGameCount.setText('1/2', 50);
-        if (this.player.id === playerID)
+        if (
+            this.lifecycleState === 'idle' &&
+            !alreadyKnown &&
+            this.player.id === playerID
+        )
             this.addText(
                 'You joined the game.\nWaiting for another player…\nor press ⌨️ [ESC]ape',
                 0,
@@ -348,8 +447,16 @@ export class TTT_Game {
     }
 
     setPlayerTwo(playerID: string): void {
+        const synchronized = this.syncPlayerSlot(
+            this.players[0],
+            playerID,
+            false
+        );
+        if (!synchronized) {
+            return;
+        }
+
         console.log('Second Player added to game.' + playerID);
-        this.players[1] = playerID;
     }
 
     startGame(
@@ -357,7 +464,15 @@ export class TTT_Game {
         playerTwo: string,
         playerOneNickname: string,
         playerTwoNickname: string
-    ): void {
+    ): boolean {
+        if (this.disposed || this.lifecycleState !== 'idle') {
+            return false;
+        }
+
+        if (!playerOne || !playerTwo || playerOne === playerTwo) {
+            return false;
+        }
+
         console.log(
             'Players: ' +
                 playerOneNickname +
@@ -370,11 +485,10 @@ export class TTT_Game {
                 playerTwo +
                 ')'
         );
-        if (playerOne !== this.players[0] || playerTwo !== this.players[1]) {
-            console.log('Player IDs do not match. Cannot start game.');
-            return;
-        }
+        this.syncPlayerSlot(playerOne, playerTwo, true);
 
+        this.generation++;
+        this.lifecycleState = 'active';
         this.clearBoard();
         console.log('TTT GAME START!');
         console.log(
@@ -383,16 +497,17 @@ export class TTT_Game {
         console.log(
             'Player 2: ' + playerTwoNickname + ' (' + this.players[1] + ')'
         );
-        this.spriteGameCount.setText('2/2', 50);
         this.spriteGameText.setText(
             'IN GAME\n' + playerOneNickname + ' VS ' + playerTwoNickname,
             50
         );
 
-        if (this.player.id !== playerOne && this.player.id !== playerTwo)
-            return;
+        if (!this.isLocalParticipant()) {
+            return true;
+        }
 
         this.startVSAnimation();
+        return true;
     }
 
     wait(ms: number): Promise<void> {
@@ -410,10 +525,15 @@ export class TTT_Game {
     }
 
     async endGame(): Promise<void> {
+        const generation = this.generation;
         await this.wait(4242);
-        if (!this.disposed) {
-            this.resetGame();
+        if (this.disposed) {
+            return;
         }
+        if (generation !== this.generation) {
+            return;
+        }
+        this.resetGame();
     }
 
     resetGame(): void {
@@ -421,6 +541,9 @@ export class TTT_Game {
             return;
         }
 
+        this.generation++;
+        this.lifecycleState = 'idle';
+        this.cancelTransientAnimation();
         this.clearBoard();
 
         console.log('TTT GAME END!!!');
@@ -430,11 +553,7 @@ export class TTT_Game {
         this.spriteGameText.setText('Click to Join', 50);
         this.spriteGameCount.setText('0/2', 50);
 
-        if (
-            this.player.id !== undefined &&
-            this.players.includes(this.player.id)
-        )
-            this.removeText();
+        this.removeText();
         this.players = [null, null];
         for (const box of this.board.cells) box.material.color.set(0xffffff);
     }
@@ -459,6 +578,10 @@ export class TTT_Game {
     }
 
     drawWin(winnerID: number): void {
+        if (this.disposed || this.lifecycleState !== 'active') {
+            return;
+        }
+
         if (winnerID == 1) {
             this.board.getCell(0).material.color.set(0xff0000);
             this.board.getCell(1).material.color.set(0xff0000);
@@ -495,10 +618,12 @@ export class TTT_Game {
     }
 
     winner(playerID: string, playerNickname?: string): void {
-        if (
-            this.player.id !== undefined &&
-            this.players.includes(this.player.id)
-        ) {
+        if (this.disposed || this.lifecycleState !== 'active') {
+            return;
+        }
+
+        this.lifecycleState = 'finished';
+        if (this.isLocalParticipant()) {
             this.removeText();
             this.spriteGameText.setText('FINISH', 50);
 
@@ -520,10 +645,18 @@ export class TTT_Game {
     }
 
     draw(): void {
-        //console.log("Not finished yet");
+        if (this.disposed || this.lifecycleState !== 'active') {
+            return;
+        }
+
+        this.lifecycleState = 'finished';
+        this.spriteGameText.setText('FINISH', 50);
+        if (!this.isLocalParticipant()) {
+            return;
+        }
+
         this.removeText();
         this.drawAnimation();
-        this.spriteGameText.setText('FINISH', 50);
     }
 
     markField(fieldName: string, playerID: string, mark: TTTMark): void {

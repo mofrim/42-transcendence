@@ -35,6 +35,7 @@ import type {
     PlayerUpdatePayload,
     ReceivedChatPayload,
     SocketAuth,
+    TTTGame,
 } from 'common/sharedTypes';
 
 /** event log msgs */
@@ -229,10 +230,10 @@ export function startGame(
         console.log('Server Disconnect:', reason);
     });
 
-    socket.on('initData', (data) => {
+    socket.on('initData', (data: TTTGame) => {
         console.log('Received initData from server.');
         if (!tttGame) return;
-        tttGame.initGame(data);
+        tttGame.initGame({ game: data });
     });
 
     socket.on('update', (data) => {
@@ -254,11 +255,8 @@ export function startGame(
                 handleTTTstart(data);
                 break;
             case 'ttt_reset':
-                if (tttGame) void tttGame.endGame();
-                activeTTTPlayers = null;
-                break;
             case 'ttt_left': // pressed ESC
-                if (tttGame) tttGame.resetGame();
+                tttGame?.resetGame();
                 activeTTTPlayers = null;
                 break;
             case 'ttt_mark':
@@ -528,6 +526,14 @@ export function startGame(
 
     function handleTTTstart(data: TTTStartPayload) {
         if (!tttGame) return;
+        const accepted = tttGame.startGame(
+            data.playerOne,
+            data.playerTwo,
+            data.playerOneNickname,
+            data.playerTwoNickname
+        );
+        if (!accepted) return;
+
         activeTTTPlayers = {
             playerOne: createNamedPlayer(
                 data.playerOne,
@@ -538,12 +544,6 @@ export function startGame(
                 data.playerTwoNickname
             ),
         };
-        tttGame.startGame(
-            data.playerOne,
-            data.playerTwo,
-            data.playerOneNickname,
-            data.playerTwoNickname
-        );
     }
 
     function handleTTTwin(data: TTTWinPayload) {
