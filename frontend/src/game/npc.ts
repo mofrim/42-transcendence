@@ -41,10 +41,6 @@ export class NPC {
         this.loadEnemyCharacter(path, animation);
     }
 
-    randomRange(min: number, max: number): number {
-        return Math.random() * (max - min) + min;
-    }
-
     loadEnemyCharacter(path: string, animation: string): void {
         const loader = new GLTFLoader();
         //console.log("Enemy character loading...");
@@ -98,7 +94,7 @@ export class NPC {
 
             action.play();
 
-            const random = this.randomRange(0.8, 1.2);
+            const random = THREE.MathUtils.randFloat(0.8, 1.2);
 
             action.setEffectiveTimeScale(random);
             action.setEffectiveWeight(1);
