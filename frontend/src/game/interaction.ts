@@ -50,21 +50,9 @@ export class Interaction {
         bottomCenter: THREE.Vector3,
         size: THREE.Vector3
     ): THREE.Box3 {
-        const halfWidth = size.x / 2;
-        const halfDepth = size.z / 2;
-
-        return new THREE.Box3(
-            new THREE.Vector3(
-                bottomCenter.x - halfWidth,
-                bottomCenter.y,
-                bottomCenter.z - halfDepth
-            ),
-            new THREE.Vector3(
-                bottomCenter.x + halfWidth,
-                bottomCenter.y + size.y,
-                bottomCenter.z + halfDepth
-            )
-        );
+        const center = bottomCenter.clone();
+        center.y += size.y / 2;
+        return new THREE.Box3().setFromCenterAndSize(center, size);
     }
 
     enableInteraction(): void {
