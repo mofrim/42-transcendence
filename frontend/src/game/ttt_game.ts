@@ -14,7 +14,11 @@ import { TTTMark, TTTMeshBoard } from 'common/sharedTypes';
 
 // Type-only import: exists only during TypeScript compilation, not at runtime.
 // The type is removed after compilation, so it must be imported using `import type`.
-import type { TTTBoard, PlayerSlot, TTTInitGamePayload } from 'common/sharedTypes';
+import type {
+    TTTBoard,
+    PlayerSlot,
+    TTTInitGamePayload,
+} from 'common/sharedTypes';
 
 export class TTT_Game {
     board: TTTMeshBoard;
