@@ -1481,8 +1481,20 @@ export function startGame(
         if (isLocalPlayerDespawning) return;
 
         tttPointer.set(
-            (event.clientX / window.innerWidth) * 2 - 1,
-            -(event.clientY / window.innerHeight) * 2 + 1
+            THREE.MathUtils.mapLinear(
+                event.clientX,
+                0,
+                window.innerWidth,
+                -1,
+                1
+            ),
+            THREE.MathUtils.mapLinear(
+                event.clientY,
+                0,
+                window.innerHeight,
+                1,
+                -1
+            )
         );
 
         if (!camera) return;
