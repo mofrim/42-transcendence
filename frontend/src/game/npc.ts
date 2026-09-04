@@ -10,6 +10,7 @@ type NPCAnimationActions = {
 
 const NPC_FORWARD = new THREE.Vector3(0, 0, 1);
 const rotationDirection = new THREE.Vector3();
+const NPC_LOADER = new GLTFLoader();
 
 export class NPC {
     static gradientTexture = (() => {
@@ -45,10 +46,9 @@ export class NPC {
     }
 
     loadEnemyCharacter(path: string, animation: string): void {
-        const loader = new GLTFLoader();
         //console.log("Enemy character loading...");
 
-        loader.load(path, (gltf) => {
+        NPC_LOADER.load(path, (gltf) => {
             this.model = gltf.scene;
 
             this.group.add(this.model);
@@ -56,31 +56,32 @@ export class NPC {
             //model.position.set(x, y, z);
             //model.rotation.y = rot;
 
-            this.model.traverse(function (object) {
-                if (object instanceof THREE.Mesh) {
-                    object.castShadow = true;
-                    object.receiveShadow = true;
+            const meshes = this.model.getObjectsByProperty(
+                'isMesh',
+                true
+            ) as THREE.Mesh[];
+            for (const object of meshes) {
+                object.castShadow = true;
+                object.receiveShadow = true;
 
-                    const material =
-                        object.material as THREE.MeshStandardMaterial;
+                const material = object.material as THREE.MeshStandardMaterial;
 
-                    // console.log("Material name: ", material.name);
+                // console.log("Material name: ", material.name);
 
-                    if (material.name === 'Outline') {
-                        // console.log("OUTLINE MESH FOUND");
-                        object.material = new THREE.MeshBasicMaterial({
-                            color: 0x000000,
-                        });
-                        object.castShadow = false; // important: prevents shadow artifacts
-                        return;
-                    }
-                    // console.log("Material NOT OUTLINE: ");
-                    object.material = new THREE.MeshToonMaterial({
-                        color: material.color,
-                        gradientMap: NPC.gradientTexture,
+                if (material.name === 'Outline') {
+                    // console.log("OUTLINE MESH FOUND");
+                    object.material = new THREE.MeshBasicMaterial({
+                        color: 0x000000,
                     });
+                    object.castShadow = false; // important: prevents shadow artifacts
+                    continue;
                 }
-            });
+                // console.log("Material NOT OUTLINE: ");
+                object.material = new THREE.MeshToonMaterial({
+                    color: material.color,
+                    gradientMap: NPC.gradientTexture,
+                });
+            }
 
             const mix = new THREE.AnimationMixer(this.model);
 

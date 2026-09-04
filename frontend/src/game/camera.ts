@@ -64,8 +64,9 @@ export class Camera {
     }
 
     cameraCollisionRaycast(delta: number, group: THREE.Object3D): void {
-        this.raycaster.ray.origin.copy(group.position);
-        this.raycaster.ray.origin.y += 1;
+        this.raycaster.ray.origin
+            .copy(group.position)
+            .setY(group.position.y + 1);
 
         // will be the direction vector - pointing from the ray origin to the camera.
         this.raycaster.ray.lookAt(this.camera.position);

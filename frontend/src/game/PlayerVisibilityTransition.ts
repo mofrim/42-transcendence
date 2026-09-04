@@ -162,8 +162,9 @@ export class PlayerVisibilityTransition {
 
         this.capturedModel = model;
         this.visiblePosition.copy(model.position);
-        this.hiddenPosition.copy(this.visiblePosition);
-        this.hiddenPosition.y += PLAYER_VISIBILITY_RISE_DISTANCE;
+        this.hiddenPosition
+            .copy(this.visiblePosition)
+            .setY(this.visiblePosition.y + PLAYER_VISIBILITY_RISE_DISTANCE);
         this.visibleScale.copy(model.scale);
         this.hiddenScale.set(0, this.visibleScale.y, 0);
         this.materialStates.clear();

@@ -707,9 +707,8 @@ export function startGame(
     const npcs = new Map();
 
     let envLoaded: boolean = false;
-    const texture = new THREE.TextureLoader().load(
-        'textures/gradientMaps/twoTone2.jpg'
-    );
+    const textureLoader = new THREE.TextureLoader();
+    const texture = textureLoader.load('textures/gradientMaps/twoTone2.jpg');
     const loader = new GLTFLoader();
     // const texture = new THREE.TextureLoader().load('textures/gradientMaps/twoTone2.jpg');
     texture.minFilter = THREE.NearestFilter;
@@ -868,8 +867,7 @@ export function startGame(
         /** Shadow map size is set to balance between quality and performance. */
         dirLight.shadow.mapSize.setScalar(6144);
         fillLight.shadow.mapSize.setScalar(6144);
-        scene.add(dirLight, dirLight.target);
-        scene.add(fillLight, fillLight.target);
+        scene.add(dirLight, dirLight.target, fillLight, fillLight.target);
 
         /* dirLightLow.shadow.mapSize.set( 1024, 1024 );
         followGroup.add( dirLightLow );
@@ -1018,9 +1016,7 @@ export function startGame(
         scene.add(new THREE.AmbientLight(0xffffff, 12)); */
     }
 
-    const blackholeTex = new THREE.TextureLoader().load(
-        'textures/Blackhole.png'
-    );
+    const blackholeTex = textureLoader.load('textures/Blackhole.png');
     const material = new THREE.MeshBasicMaterial({
         map: blackholeTex,
         transparent: true,
@@ -1054,7 +1050,7 @@ export function startGame(
 
         //console.log("Adding collider for: " + obj.name);
 
-        obj.position.set(...pos);
+        obj.position.fromArray(pos);
         const meshes = obj.getObjectsByProperty('isMesh', true) as GLBMesh[];
         for (const child of meshes) {
             if (!child.name.includes('NOCOL')) {
@@ -1146,29 +1142,28 @@ export function startGame(
             return;
         }
 
-        obj.position.set(...pos);
-        obj.traverse((child) => {
-            if (child instanceof THREE.Mesh) {
-                child.scale.set(1.15, 1.15, 1.15);
+        obj.position.fromArray(pos);
+        const meshes = obj.getObjectsByProperty('isMesh', true) as GLBMesh[];
+        for (const child of meshes) {
+            child.scale.setScalar(1.15);
 
-                // outline
-                const edges = new THREE.EdgesGeometry(child.geometry, 50);
-                const line = new THREE.LineSegments(
-                    edges,
-                    new THREE.LineBasicMaterial({ color: 0x000000 })
-                );
-                child.add(line);
+            // outline
+            const edges = new THREE.EdgesGeometry(child.geometry, 50);
+            const line = new THREE.LineSegments(
+                edges,
+                new THREE.LineBasicMaterial({ color: 0x000000 })
+            );
+            child.add(line);
 
-                child.material = new THREE.MeshToonMaterial({
-                    color: child.material.color,
-                    map: child.material.map || null,
-                    gradientMap: texture,
-                });
+            child.material = new THREE.MeshToonMaterial({
+                color: child.material.color,
+                map: child.material.map || null,
+                gradientMap: texture,
+            });
 
-                child.castShadow = false;
-                child.receiveShadow = true;
-            }
-        });
+            child.castShadow = false;
+            child.receiveShadow = true;
+        }
         if (runtimeDisposed) {
             runtimeResourceDisposer.disposeObject3D(obj);
             return;
@@ -1707,11 +1702,11 @@ export function startGame(
                 if (tttGame.tttCamera)
                     camera.orbitControls.target
                         .copy(player.group.position)
-                        .add({ x: 0, y: 1.75, z: 0 });
+                        .setY(player.group.position.y + 1.75);
                 else
                     camera.orbitControls.target
                         .copy(player.group.position)
-                        .add({ x: 0, y: 1, z: 0 });
+                        .setY(player.group.position.y + 1);
                 followGroup.position.copy(player.group.position);
                 camera.orbitControls.update();
 

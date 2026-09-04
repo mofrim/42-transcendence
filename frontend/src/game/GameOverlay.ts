@@ -5,13 +5,14 @@ import type { ThreeResourceDisposer } from './ThreeResourceDisposer';
 
 const OVERLAY_TEXT_SCALE = 0.2;
 const OVERLAY_SIZE = new THREE.Vector2();
+const OVERLAY_TEXTURE_LOADER = new THREE.TextureLoader();
 
 export function createOverlaySprite(
     path: string,
     width: number,
     height: number
 ): THREE.Sprite {
-    const texture = new THREE.TextureLoader().load(path);
+    const texture = OVERLAY_TEXTURE_LOADER.load(path);
     const material = new THREE.SpriteMaterial({
         map: texture,
         transparent: true,
@@ -67,8 +68,7 @@ export function addOverlayText(
     size: number
 ): void {
     const textSprite = new CanvasTextSprite(text, size);
-    textSprite.scale.multiplyScalar(OVERLAY_TEXT_SCALE);
-    textSprite.scale.z = 1;
+    textSprite.scale.multiplyScalar(OVERLAY_TEXT_SCALE).setZ(1);
     textSprite.position.set(x, y, 0);
 
     textSprites.push(textSprite);

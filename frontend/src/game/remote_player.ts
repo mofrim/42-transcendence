@@ -28,6 +28,7 @@ type PlayerAnimationActions = Record<
 
 const PLAYER_FORWARD = new THREE.Vector3(0, 0, 1);
 const rotationDirection = new THREE.Vector3();
+const REMOTE_PLAYER_LOADER = new GLTFLoader();
 const PLAYER_NAME_SIZE = 48;
 const PLAYER_NAME_HEIGHT = 1.9;
 const PLAYER_NAME_SCALE = 0.3;
@@ -331,11 +332,10 @@ const RemotePlayerImplementation = class Remote_Player {
         path: string,
         generation: number
     ): Promise<void> {
-        const loader = new GLTFLoader();
         //console.log("Enemy character loading...");
         let gltf: Awaited<ReturnType<GLTFLoader['loadAsync']>>;
         try {
-            gltf = await loader.loadAsync(path);
+            gltf = await REMOTE_PLAYER_LOADER.loadAsync(path);
         } catch (error) {
             this.handleVisualLoadFailure(generation, path, error);
             return;

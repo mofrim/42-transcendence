@@ -20,6 +20,8 @@ import type {
     TTTInitGamePayload,
 } from 'common/sharedTypes';
 
+const TTT_TEXTURE_LOADER = new THREE.TextureLoader();
+
 export class TTT_Game {
     board: TTTMeshBoard;
     scene: THREE.Scene;
@@ -93,9 +95,9 @@ export class TTT_Game {
 
         this.currentTextState = [];
 
-        this.texX = new THREE.TextureLoader().load('textures/X.jpg');
-        this.texO = new THREE.TextureLoader().load('textures/O.jpg');
-        this.texEmpty = new THREE.TextureLoader().load('textures/Empty.jpg');
+        this.texX = TTT_TEXTURE_LOADER.load('textures/X.jpg');
+        this.texO = TTT_TEXTURE_LOADER.load('textures/O.jpg');
+        this.texEmpty = TTT_TEXTURE_LOADER.load('textures/Empty.jpg');
 
         this.overlayScene = new THREE.Scene();
         this.overlayCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
@@ -292,12 +294,12 @@ export class TTT_Game {
 
         this.overlayScene.add(drawSprite, beamSprite);
 
-        drawSprite.scale.set(0.5, 0.5, 0);
+        drawSprite.scale.setScalar(0.5).setZ(0);
         drawSprite.position.set(0, -0.2, 0);
 
         const loop = () => {
             const scaleX = drawSprite.scale.x;
-            drawSprite.scale.set(scaleX + 0.015, scaleX + 0.015, 1);
+            drawSprite.scale.setScalar(scaleX + 0.015).setZ(1);
 
             if (scaleX < 2) {
                 this.animationFrameSlot.request(loop);

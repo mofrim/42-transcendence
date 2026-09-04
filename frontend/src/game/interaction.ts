@@ -50,8 +50,7 @@ export class Interaction {
         bottomCenter: THREE.Vector3,
         size: THREE.Vector3
     ): THREE.Box3 {
-        const center = bottomCenter.clone();
-        center.y += size.y / 2;
+        const center = bottomCenter.clone().setY(bottomCenter.y + size.y / 2);
         return new THREE.Box3().setFromCenterAndSize(center, size);
     }
 
@@ -78,7 +77,7 @@ export class Interaction {
 
     removeEngageButton(): void {
         if (this.pressText) {
-            this.scene.remove(this.pressText);
+            this.pressText.removeFromParent();
             this.pressText = null;
         }
     }

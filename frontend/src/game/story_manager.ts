@@ -92,23 +92,21 @@ export class Story_Manager {
 
             const playerTarget = this.player.group.position
                 .clone()
-                .add(new THREE.Vector3(0, 1, 0));
+                .setY(this.player.group.position.y + 1);
 
             const direction = startPosition
                 .clone()
                 .sub(playerTarget)
-                .normalize();
+                .setLength(3);
 
-            const endPosition = playerTarget
-                .clone()
-                .add(direction.multiplyScalar(3));
+            const endPosition = playerTarget.clone().add(direction);
 
             const cameraDirection = new THREE.Vector3();
             this.camera.camera.getWorldDirection(cameraDirection);
 
             const startLookAt = startPosition
                 .clone()
-                .add(cameraDirection.multiplyScalar(10));
+                .addScaledVector(cameraDirection, 10);
 
             const endLookAt = playerTarget.clone();
             const currentLookAt = new THREE.Vector3();
@@ -152,11 +150,11 @@ export class Story_Manager {
             this.camera.camera.getWorldDirection(direction);
             startLookAt
                 .copy(this.camera.camera.position)
-                .add(direction.multiplyScalar(10));
+                .addScaledVector(direction, 10);
 
             const endLookAt = this.player.group.position
                 .clone()
-                .add(new THREE.Vector3(0, 1, 0));
+                .setY(this.player.group.position.y + 1);
             const currentLookAt = new THREE.Vector3();
 
             const updateCamera = (currentTime: number) => {
@@ -435,7 +433,7 @@ export class Story_Manager {
     }
 
     resetModelPosition(): void {
-        this.player.model?.position.set(0, 0, 0);
+        this.player.model?.position.setScalar(0);
     }
 
     async blackHoleCutscene(): Promise<void> {

@@ -45,7 +45,6 @@ export class FloatingTextSprite extends CanvasTextSprite {
     private updatePosition(): void {
         if (!this.target) return;
 
-        this.target.getWorldPosition(this.position);
-        this.position.add(this.worldOffset);
+        this.target.getWorldPosition(this.position).add(this.worldOffset);
     }
 }
