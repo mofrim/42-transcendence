@@ -8,6 +8,9 @@ type NPCAnimationActions = {
     Run: THREE.AnimationAction;
 };
 
+const NPC_FORWARD = new THREE.Vector3(0, 0, 1);
+const rotationDirection = new THREE.Vector3();
+
 export class NPC {
     static gradientTexture = (() => {
         const texture = new THREE.TextureLoader().load(
@@ -81,8 +84,9 @@ export class NPC {
 
             const mix = new THREE.AnimationMixer(this.model);
 
-            const clip = gltf.animations.find(
-                (clip) => clip.name === animation
+            const clip = THREE.AnimationClip.findByName(
+                gltf.animations,
+                animation
             );
 
             if (!clip) {
@@ -104,16 +108,16 @@ export class NPC {
     }
 
     rotateCharacter(startPos: THREE.Vector3, endPos: THREE.Vector3): void {
-        const rotate = new THREE.Quaternion();
-        const up = new THREE.Vector3(0, 1, 0);
+        rotationDirection.subVectors(endPos, startPos).setY(0);
+        if (rotationDirection.lengthSq() === 0) {
+            this.group.quaternion.identity();
+            return;
+        }
 
-        const dir = new THREE.Vector3();
-        dir.subVectors(endPos, startPos).normalize();
-
-        const angle = Math.atan2(dir.x, dir.z);
-        rotate.setFromAxisAngle(up, angle);
-
-        this.group.quaternion.copy(rotate);
+        this.group.quaternion.setFromUnitVectors(
+            NPC_FORWARD,
+            rotationDirection.normalize()
+        );
     }
 
     updateAnimation(delta: number): void {

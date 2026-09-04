@@ -112,6 +112,7 @@ export class Story_Manager {
                 .add(cameraDirection.multiplyScalar(10));
 
             const endLookAt = playerTarget.clone();
+            const currentLookAt = new THREE.Vector3();
 
             const updateCamera = (currentTime: number) => {
                 const elapsedSeconds = (currentTime - startTime) / 1000;
@@ -123,9 +124,7 @@ export class Story_Manager {
                     progress
                 );
 
-                const currentLookAt = startLookAt
-                    .clone()
-                    .lerp(endLookAt, progress);
+                currentLookAt.lerpVectors(startLookAt, endLookAt, progress);
 
                 this.camera.camera.lookAt(currentLookAt);
 
@@ -159,14 +158,13 @@ export class Story_Manager {
             const endLookAt = this.player.group.position
                 .clone()
                 .add(new THREE.Vector3(0, 1, 0));
+            const currentLookAt = new THREE.Vector3();
 
             const updateCamera = (currentTime: number) => {
                 const elapsedSeconds = (currentTime - startTime) / 1000;
                 const progress = Math.min(elapsedSeconds / time, 1);
 
-                const currentLookAt = startLookAt
-                    .clone()
-                    .lerp(endLookAt, progress);
+                currentLookAt.lerpVectors(startLookAt, endLookAt, progress);
 
                 this.camera.camera.lookAt(currentLookAt);
 
@@ -216,9 +214,11 @@ export class Story_Manager {
                 const elapsedSeconds = (currentTime - startTime) / 1000;
                 const progress = Math.min(elapsedSeconds / time, 1);
 
-                this.camera.camera.position
-                    .copy(startPosition)
-                    .lerp(targetPosition, progress);
+                this.camera.camera.position.lerpVectors(
+                    startPosition,
+                    targetPosition,
+                    progress
+                );
 
                 if (progress < 1 && !this.advanceDialogueCamera) {
                     requestAnimationFrame(updateCamera);
@@ -260,11 +260,11 @@ export class Story_Manager {
                 const elapsedSeconds = (currentTime - startTime) / 1000;
                 const progress = Math.min(elapsedSeconds / time, 1);
 
-                const currentPosition = startPosition
-                    .clone()
-                    .lerp(targetPosition, progress);
-
-                this.camera.camera.position.copy(currentPosition);
+                this.camera.camera.position.lerpVectors(
+                    startPosition,
+                    targetPosition,
+                    progress
+                );
 
                 if (progress < 1 && !this.skipCameraAnimation) {
                     requestAnimationFrame(updateCamera);
@@ -301,19 +301,22 @@ export class Story_Manager {
             const targetPosition = to.clone();
             const startLookAt = lookAtStart.clone();
             const targetLookAt = lookAtEnd.clone();
+            const currentLookAt = new THREE.Vector3();
 
             const updateCamera = (currentTime: number) => {
                 const elapsedSeconds = (currentTime - startTime) / 1000;
                 const progress = Math.min(elapsedSeconds / time, 1);
 
-                const currentPosition = startPosition
-                    .clone()
-                    .lerp(targetPosition, progress);
-                const currentLookAt = startLookAt
-                    .clone()
-                    .lerp(targetLookAt, progress);
-
-                this.camera.camera.position.copy(currentPosition);
+                this.camera.camera.position.lerpVectors(
+                    startPosition,
+                    targetPosition,
+                    progress
+                );
+                currentLookAt.lerpVectors(
+                    startLookAt,
+                    targetLookAt,
+                    progress
+                );
                 this.camera.camera.lookAt(currentLookAt);
 
                 if (progress < 1 && !this.skipCameraAnimation) {
