@@ -539,7 +539,7 @@ export class Story_Manager {
             case 'FIND_RUBBERDUCK':
                 await this.caseInteraction(
                     'FIND_RUBBERDUCK',
-                    'Found the duck! One less thing to worry about.',
+                    'Found the duck 🦆! One less thing to worry about.',
                     PlayerState.Surprised
                 );
                 break;
@@ -547,7 +547,7 @@ export class Story_Manager {
             case 'GET_COFFEE':
                 await this.caseInteraction(
                     'GET_COFFEE',
-                    'Ahh much better... Now I can finally think!',
+                    'Ahh ☕ much better... Now I can finally think!',
                     PlayerState.Drinking
                 );
                 break;
@@ -555,7 +555,7 @@ export class Story_Manager {
             case 'GET_PAPER':
                 await this.caseInteraction(
                     'GET_PAPER',
-                    'I found some paper! Now I can finally take some notes.',
+                    'I found some paper 📃! Now I can finally take some notes.',
                     PlayerState.ThumbsUp
                 );
                 break;
