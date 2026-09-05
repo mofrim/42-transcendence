@@ -79,7 +79,7 @@ export class MultiplayerManager {
         if (state === PlayerState.Run)
             player.rotateCharacter(this.desired, pos);
 
-        pos.copy(this.desired);
+        player.setNetworkPositionTarget(this.desired);
     }
 
     private trackDepartingPlayer(player: Remote_Player): Promise<void> {
@@ -132,6 +132,7 @@ export class MultiplayerManager {
             }
 
             player.updateLifecycle(lifecycleDelta);
+            player.updateNetworkPosition(lifecycleDelta);
             player.updateAnimation(animationDelta);
         }
 

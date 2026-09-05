@@ -18,7 +18,11 @@ import { getPlayerModelPath, MAP_MODEL_PATH } from './Assets.js';
 
 import { io } from 'socket.io-client';
 
-import { PlayerState, RPSChoice, TTTMeshBoard } from 'common/sharedTypes';
+import {
+    PLAYER_NETWORK_UPDATE_INTERVAL_MS,
+    RPSChoice,
+    TTTMeshBoard,
+} from 'common/sharedTypes';
 import type {
     GLBMesh,
     RPSInvalidPayload,
@@ -126,6 +130,7 @@ export function startGame(
     let localPlayerDespawnPromise: Promise<void> | null = null;
     let runtimeDisposePromise: Promise<void> | null = null;
     let runtimeDisposed = false;
+    let playerUpdateIntervalId: number | null = null;
     const knownPlayerNicknames = new Map<string, string>();
     const blockedPlayerUpdates = new Set<string>();
 
@@ -314,22 +319,47 @@ export function startGame(
         });
     } */
 
-    function emitPosition(
-        x: number,
-        y: number,
-        z: number,
-        state: PlayerState,
-        character: boolean
-    ) {
-        //console.log("Received data:" + type);
+    function sendLocalPlayerUpdate(): void {
+        if (
+            runtimeDisposed ||
+            isSpectator ||
+            !socket.connected ||
+            !envLoaded ||
+            !player ||
+            !player.isSpawned
+        ) {
+            return;
+        }
+
+        const { x, y, z } = player.group.position;
         socket.emit('update', {
             type: 'player_update',
             x,
             y,
             z,
-            state,
-            character,
+            state: player.controls.current,
+            character: whichCharacter,
         });
+    }
+
+    function startPlayerUpdateLoop(): void {
+        if (isSpectator || playerUpdateIntervalId !== null) {
+            return;
+        }
+
+        playerUpdateIntervalId = window.setInterval(
+            sendLocalPlayerUpdate,
+            PLAYER_NETWORK_UPDATE_INTERVAL_MS
+        );
+    }
+
+    function stopPlayerUpdateLoop(): void {
+        if (playerUpdateIntervalId === null) {
+            return;
+        }
+
+        window.clearInterval(playerUpdateIntervalId);
+        playerUpdateIntervalId = null;
     }
 
     function emitBattleRequest(reqID: string) {
@@ -766,6 +796,7 @@ export function startGame(
         document.removeEventListener('keyup', onKeyUp);
         renderer.domElement.removeEventListener('click', onClick);
 
+        stopPlayerUpdateLoop();
         socket.removeAllListeners();
         socket.disconnect();
 
@@ -999,6 +1030,7 @@ export function startGame(
 
         await loadMesh(MAP_MODEL_PATH, [0, 0, 0]);
         if (runtimeDisposed) return;
+        startPlayerUpdateLoop();
         await loadMeshSky('glb/Clouds.glb', [0, 0, 0]);
         if (runtimeDisposed) return;
         await loadMeshSky('glb/RocksBorder3.glb', [0, 0, 0]);
@@ -1725,16 +1757,6 @@ export function startGame(
         multiplayer.updateMultiplayer(delta, lifecycleDelta);
 
         if (!isSpectator && player && rpsGame && interactionManager) {
-            if (player.isSpawned) {
-                emitPosition(
-                    player.group.position.x,
-                    player.group.position.y,
-                    player.group.position.z,
-                    player.controls.current,
-                    whichCharacter
-                );
-            }
-
             if (!isLocalPlayerDespawning) {
                 rpsGame.updateCheck();
             }

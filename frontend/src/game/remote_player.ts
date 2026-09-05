@@ -17,6 +17,7 @@ import {
     replacePlayerModelMaterials,
 } from './PlayerModelMaterials.js';
 import { FloatingTextSprite } from './FloatingTextSprite.js';
+import { SmootherMovement } from './SmootherMovement.js';
 import { PlayerState } from 'common/sharedTypes';
 
 type PlayerAnimationState = ReturnType<typeof normalizePlayerAnimationState>;
@@ -37,6 +38,7 @@ const RemotePlayerImplementation = class Remote_Player {
     private readonly colAr: THREE.Mesh[];
     private readonly ownedCollisionMeshes: THREE.Mesh[];
     private readonly nameLabel: FloatingTextSprite;
+    private readonly positionInterpolator: SmootherMovement;
     private readonly resourceDisposer: ReturnType<
         typeof createPlayerResourceDisposer
     >;
@@ -79,6 +81,7 @@ const RemotePlayerImplementation = class Remote_Player {
         );
         this.nameLabel.scale.multiplyScalar(PLAYER_NAME_SCALE);
         scene.add(this.nameLabel);
+        this.positionInterpolator = new SmootherMovement();
 
         this.loadGeneration = 0;
         this.finalized = false;
@@ -120,6 +123,25 @@ const RemotePlayerImplementation = class Remote_Player {
         //console.log("spawnY: " + this.group.position.y.toFixed(4));
         this.nameLabel.follow(this.group);
         this.lifecycleController.startSpawn();
+    }
+
+    setNetworkPositionTarget(targetPosition: THREE.Vector3): void {
+        if (!this.isActive() || !this.isSpawned) {
+            return;
+        }
+
+        this.positionInterpolator.setTarget(
+            this.group.position,
+            targetPosition
+        );
+    }
+
+    updateNetworkPosition(deltaSeconds: number): void {
+        if (!this.isActive() || !this.isSpawned) {
+            return;
+        }
+
+        this.positionInterpolator.update(this.group.position, deltaSeconds);
     }
 
     private prepareForTermination(): void {

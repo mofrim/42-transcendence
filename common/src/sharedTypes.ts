@@ -71,6 +71,13 @@ export enum CharacterModel {
 
 export const SPECTATOR_NAME = '42Staff' as const;
 
+/** 30 server fps */
+export const PLAYER_NETWORK_UPDATE_RATE_HZ = 30;
+export const PLAYER_NETWORK_UPDATE_INTERVAL_MS =
+    1_000 / PLAYER_NETWORK_UPDATE_RATE_HZ;
+export const PLAYER_NETWORK_UPDATE_INTERVAL_SECONDS =
+    PLAYER_NETWORK_UPDATE_INTERVAL_MS / 1_000;
+
 export type PlayerSocketAuth = {
     role?: 'player';
     character: boolean;
