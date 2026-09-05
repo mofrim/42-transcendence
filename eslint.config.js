@@ -25,6 +25,7 @@ export default defineConfig([
     rules: {
       ...prettierPlugin.configs.recommended.rules,
       'prettier/prettier': 'warn', // use 'error' here for strict enforcement
+      '@typescript-eslint/no-namespace': 'off' // for common/expressTypes
     },
     languageOptions: {
       globals: globals.browser,

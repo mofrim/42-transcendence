@@ -14,18 +14,22 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import type { Express, Request, Response, NextFunction } from 'express';
 import { DataSource } from 'typeorm';
 import { exit } from 'node:process';
 import cookieParser from 'cookie-parser';
 import { Logger } from 'tslog';
+import type { ILogObj } from 'tslog';
 import { body, matchedData, validationResult } from 'express-validator';
 
+import type { Request, Express, Response, NextFunction } from 'express';
+
 import { ORMEventLog, ORMUser } from 'common/ormTypes';
+import { authenticateMid } from 'common/middleware';
 import { setupDefaultUsers } from './defaultUserSetup.ts';
+import 'common/expressTypes';
 
 // Initialize main tslog-logger
-const log = new Logger({ name: 'auth', minLevel: 'INFO' });
+const log = new Logger<ILogObj>({ name: 'auth', minLevel: 'INFO' });
 
 // Load env vars from global dotenv...
 // this path is correct if ran from backend/src/auth-service dir
@@ -37,6 +41,11 @@ if (process.env['NODE_ENV'] === 'development') {
 
 const SECRET_KEY: string = process.env['JWT_SECRET'] || 'FooBarBaz';
 const PORT = Number(process.env['AUTH_SERVICE_PORT']) || 3001;
+
+// using partial function evaluation here to set the local logger and SECRET_KEY
+// in auth middleware function
+const authenticate = (req: Request, res: Response, next: NextFunction) =>
+    authenticateMid(req, res, next, log, SECRET_KEY);
 
 const app: Express = express();
 
@@ -166,17 +175,8 @@ app.post(
 
             res.cookie('token', token, {
                 httpOnly: true,
-
-                // this be more correctly for HTTPS only mode
-                // our SSL setup is finally up and running in docker containers
                 secure: process.env['NODE_ENV'] === 'production',
-
-                // TODO possibly even use this one day
-                //
-                //      sameSite: 'strict',
-                //
-                //  for now go with:
-                sameSite: 'lax',
+                sameSite: 'strict',
                 maxAge: 60 * 60 * 1000, // 1h
             });
 
@@ -188,49 +188,14 @@ app.post(
     }
 );
 
-// ---------------------=[ authentication middleware ]=--------------------- //
-
-const verifyToken = (token: string): { nickname: string } => {
-    try {
-        const decoded = jwt.verify(token, SECRET_KEY);
-        if (typeof decoded === 'string' || !decoded['nickname']) {
-            throw new Error('Invalid token');
-        }
-        return decoded as { nickname: string };
-    } catch (err) {
-        throw new Error('Invalid token', { cause: err });
-    }
-};
-
-// this is a so-called middleware function
-const authenticate = (req: Request, res: Response, next: NextFunction) => {
-    const authLog = log.getSubLogger({ name: 'authenticate' });
-    const token = req.cookies['token'];
-    if (!token) {
-        res.status(401).json({ error: 'Unauthorized' });
-        authLog.warn('Unauthorized access');
-        return;
-    }
-
-    try {
-        const decoded = verifyToken(token);
-        req.user = decoded;
-        next();
-    } catch (err) {
-        void err;
-        authLog.warn('Got invalid JWT from', req.ip);
-        res.status(401).json({ error: 'Invalid token' });
-    }
-};
-
 // ------------------=[ logout aka clear-cookie endpoint ]=------------------ //
 
 app.post('/api/logout', authenticate, (req, res) => {
     void req;
     res.clearCookie('token', {
         httpOnly: true,
-        secure: false,
-        sameSite: 'lax',
+        secure: process.env['NODE_ENV'] === 'production',
+        sameSite: 'strict',
     });
     res.json({ success: true });
 });
@@ -281,11 +246,7 @@ app.get('/api/user', authenticate, async (req, res) => {
                 nickname: nickname,
             },
         });
-        if (
-            user.length !== 1 ||
-                user === undefined ||
-                user[0] === undefined
-        ) {
+        if (user.length !== 1 || user === undefined || user[0] === undefined) {
             res.status(401).json({ error: 'User not found' });
             return;
         }

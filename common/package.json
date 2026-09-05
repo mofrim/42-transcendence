@@ -11,6 +11,14 @@
         "./ormTypes": {
             "import": "./dist/ormTypes.js",
             "types": "./dist/ormTypes.d.ts"
+        },
+        "./middleware": {
+            "import": "./dist/middleware.js",
+            "types": "./dist/middleware.d.ts"
+        },
+        "./expressTypes": {
+            "import": "./dist/expressTypes.js",
+            "types": "./dist/expressTypes.d.ts"
         }
     },
     "scripts": {
@@ -19,7 +27,14 @@
         "lint-fix": "eslint . --fix"
     },
     "dependencies": {
+        "express": "^5.2.1",
+        "jsonwebtoken": "^9.0.3",
         "three": "^0.185.1",
+        "tslog": "^5.1.0",
         "typeorm": "^1.1.0"
+    },
+    "devDependencies": {
+        "@types/express": "^5.0.6",
+        "@types/jsonwebtoken": "^9.0.10"
     }
 }
