@@ -191,7 +191,7 @@ export function createMapPreview({
     }
 
     function centerAndFrameModel(model: THREE.Object3D): void {
-        model.updateMatrixWorld(true);
+        model.updateWorldMatrix(true, false);
         bounds.setFromObject(model);
 
         if (bounds.isEmpty()) {

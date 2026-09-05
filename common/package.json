@@ -19,7 +19,7 @@
         "lint-fix": "eslint . --fix"
     },
     "dependencies": {
-        "three": "^0.184.0",
+        "three": "^0.185.1",
         "typeorm": "^1.1.0"
     }
 }
