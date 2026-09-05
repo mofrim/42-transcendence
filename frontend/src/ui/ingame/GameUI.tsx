@@ -1,5 +1,10 @@
-import { useEffect, useRef, useState } from 'react';
-import type { ReactNode, SyntheticEvent } from 'react';
+import {
+    useEffect,
+    useRef,
+    useState,
+    type ReactNode,
+    type SyntheticEvent,
+} from 'react';
 import {
     BLACK_HOLE_DURATION_SECONDS,
     BLACK_HOLE_QUEST_ID,
@@ -7,14 +12,12 @@ import {
     formatQuestCountdown,
     getQuestStatusChanges,
     resolveQuestLogEntries,
-} from './QuestLog';
-import type {
-    QuestLogEntry,
-    QuestStatusChange,
-    ResolvedQuestLogEntry,
+    type QuestLogEntry,
+    type QuestStatusChange,
+    type ResolvedQuestLogEntry,
 } from './QuestLog';
 import type { Character } from 'common/sharedTypes';
-import { createCharacterPreview } from '../../game/character_preview';
+import { CharacterPreviewView } from '../login/CharacterPreview';
 
 import './GameUI.css';
 
@@ -42,6 +45,7 @@ type GameUIProps = {
     readonly quests?: readonly QuestLogEntry[];
     readonly completedQuestIds?: readonly string[];
     readonly events?: readonly EventLogEntry[];
+    readonly matchHistory?: readonly EventLogEntry[];
     readonly onChatMessage?: (message: string) => void;
     readonly onQuestStatusChange?: (change: QuestStatusChange) => void;
     readonly onBlackHoleExpired?: () => void;
@@ -64,46 +68,17 @@ type HudPanelToggleProps = {
     readonly onToggle: () => void;
 };
 
-type ProfileCharacterPreviewProps = {
-    readonly character: Character;
+type EventLogItemsProps = {
+    readonly entries: readonly EventLogEntry[];
 };
 
-/** Add selected character preview to profile HUD */
-function ProfileCharacterPreview({ character }: ProfileCharacterPreviewProps) {
-    const canvasRef = useRef<HTMLCanvasElement>(null);
-    const previewRef = useRef<ReturnType<typeof createCharacterPreview> | null>(
-        null
-    );
-
-    useEffect(() => {
-        const preview = createCharacterPreview({ canvas: canvasRef.current });
-        previewRef.current = preview;
-
-        return () => {
-            if (previewRef.current === preview) {
-                previewRef.current = null;
-            }
-            preview.dispose();
-        };
-    }, []);
-
-    useEffect(() => {
-        previewRef.current?.setCharacter(character);
-    }, [character]);
-
-    return (
-        <div
-            className='hud-profile-character-preview'
-            role='img'
-            aria-label='Selected player character 3D preview'
-        >
-            <canvas
-                ref={canvasRef}
-                className='hud-profile-character-preview-canvas'
-                aria-hidden='true'
-            />
-        </div>
-    );
+function EventLogItems({ entries }: EventLogItemsProps) {
+    return entries.map((entry) => (
+        <li key={entry.id} className='hud-event-item'>
+            <time className='hud-event-time'>{entry.timestamp}</time>
+            <span>{entry.description}</span>
+        </li>
+    ));
 }
 
 function HudPanelToggle({
@@ -230,6 +205,7 @@ export function GameUI({
     quests = DEFAULT_QUESTS,
     completedQuestIds = [],
     events = [],
+    matchHistory = [],
     onChatMessage,
     onQuestStatusChange,
     onBlackHoleExpired,
@@ -423,7 +399,11 @@ export function GameUI({
                 >
                     <h2 className='hud-title'>Profil</h2>
                     {isProfileOpen && (
-                        <ProfileCharacterPreview character={character} />
+                        <CharacterPreviewView
+                            character={character}
+                            className='hud-profile-character-preview'
+                            canvasClassName='hud-profile-character-preview-canvas'
+                        />
                     )}
                     <p className='hud-profile-nickname'>
                         {/* TODO: edit nickname */}
@@ -432,19 +412,19 @@ export function GameUI({
                     <p className='hud-profile-email'>
                         <strong>Email:</strong> {email}
                     </p>
-                    <h3 className='hud-profile-stats-title'>Game Stats:</h3>
-                    {/* TODO: Game Stats */}
-                    <p className='hud-profile-nickname'></p>
-                    <dl className='hud-profile-stats'>
-                        <div>
-                            <dt>Rock-Paper-Scissors</dt>
-                            <dd>3 Wins</dd>
-                        </div>
-                        <div>
-                            <dt>Tic-Tac-Toe</dt>
-                            <dd>1 Win</dd>
-                        </div>
-                    </dl>
+                    <h3 className='hud-profile-stats-title'>
+                        Tic-Tac-Toe Match History:
+                    </h3>
+                    {matchHistory.length === 0 && (
+                        <p className='hud-profile-match-empty'>
+                            No Tic-Tac-Toe matches yet.
+                        </p>
+                    )}
+                    {matchHistory.length > 0 && (
+                        <ol className='hud-event-list hud-profile-match-history'>
+                            <EventLogItems entries={matchHistory} />
+                        </ol>
+                    )}
                     <button
                         type='button'
                         className='hud-profile-logout'
@@ -549,14 +529,7 @@ export function GameUI({
                         role='log'
                         aria-live='polite'
                     >
-                        {displayedEvents.map((event) => (
-                            <li key={event.id} className='hud-event-item'>
-                                <time className='hud-event-time'>
-                                    {event.timestamp}
-                                </time>
-                                <span>{event.description}</span>
-                            </li>
-                        ))}
+                        <EventLogItems entries={displayedEvents} />
                     </ol>
                 </aside>
             )}

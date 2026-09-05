@@ -132,6 +132,7 @@ app.post(
             const event = DB.manager.create(ORMEventLog, {
                 eventType: eventType,
                 data: data,
+                // this has to be Partial<ORMUser> so...
                 user: { id: userId },
             });
 
@@ -206,7 +207,7 @@ app.get(
             } else {
                 events = await DB.manager.find(ORMEventLog, {
                     order: {
-                        id: 'ASC',
+                        id: 'DESC',
                     },
                     take: limit,
                     where: {
@@ -224,6 +225,8 @@ app.get(
                         },
                     },
                 });
+                // ordering from descending
+                events.reverse();
             }
 
             res.status(200).json(events);

@@ -52,7 +52,7 @@ export type GameRuntimeEvent =
     | {
           readonly type: 'game_result';
           readonly game: 'Tic-Tac-Toe' | 'Rock-Paper-Scissors';
-          readonly outcome: 'won' | 'lost';
+          readonly outcome: 'won' | 'lost' | 'draw';
           readonly playerNickname: string;
           readonly opponentNickname: string;
       };
@@ -576,28 +576,32 @@ export function startGame(
         };
     }
 
+    function getActiveTTTOpponent(
+        localPlayerId: string | undefined
+    ): NamedPlayer | null {
+        if (!localPlayerId || !activeTTTPlayers) {
+            return null;
+        }
+        if (activeTTTPlayers.playerOne.id === localPlayerId) {
+            return activeTTTPlayers.playerTwo;
+        }
+        if (activeTTTPlayers.playerTwo.id === localPlayerId) {
+            return activeTTTPlayers.playerOne;
+        }
+        return null;
+    }
+
     function handleTTTwin(data: TTTWinPayload) {
         if (!tttGame) return;
         const localPlayerId = player?.id;
-        if (localPlayerId && activeTTTPlayers) {
-            const localIsPlayerOne =
-                activeTTTPlayers.playerOne.id === localPlayerId;
-            const localIsPlayerTwo =
-                activeTTTPlayers.playerTwo.id === localPlayerId;
-
-            if (localIsPlayerOne || localIsPlayerTwo) {
-                let opponent = activeTTTPlayers.playerOne;
-                if (localIsPlayerOne) {
-                    opponent = activeTTTPlayers.playerTwo;
-                }
-
-                let outcome: GameResultEvent['outcome'] = 'lost';
-                if (data.id === localPlayerId) {
-                    outcome = 'won';
-                }
-
-                emitLocalGameResult('Tic-Tac-Toe', outcome, opponent.nickname);
+        const opponent = getActiveTTTOpponent(localPlayerId);
+        if (localPlayerId && opponent) {
+            let outcome: GameResultEvent['outcome'] = 'lost';
+            if (data.id === localPlayerId) {
+                outcome = 'won';
             }
+
+            emitLocalGameResult('Tic-Tac-Toe', outcome, opponent.nickname);
         }
         tttGame.drawWin(data.winner);
         tttGame.winner(
@@ -612,6 +616,12 @@ export function startGame(
     function handleTTTdraw(_data: TTTDrawPayload) {
         if (!tttGame) return;
         void _data;
+
+        const opponent = getActiveTTTOpponent(player?.id);
+        if (opponent) {
+            emitLocalGameResult('Tic-Tac-Toe', 'draw', opponent.nickname);
+        }
+
         tttGame.draw();
         tttGame.endGame();
         activeTTTPlayers = null;

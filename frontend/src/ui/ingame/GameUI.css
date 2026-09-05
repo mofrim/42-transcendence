@@ -247,22 +247,14 @@
     line-height: 1.3;
 }
 
-.hud-profile-stats {
-    display: grid;
-    gap: 8px;
-    margin: 0;
+.hud-profile-match-history {
+    max-height: 220px;
 }
 
-.hud-profile-stats > div {
-    display: flex;
-    justify-content: space-between;
-    gap: 16px;
-}
-
-.hud-profile-stats dd {
+.hud-profile-match-empty {
     margin: 0;
-    font-weight: 700;
-    white-space: nowrap;
+    font-size: 13px;
+    opacity: 0.75;
 }
 
 .hud-profile-logout {

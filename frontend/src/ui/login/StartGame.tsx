@@ -1,13 +1,14 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import axios from 'axios';
 import { useLoginContext } from '../../hooks/useLoginContext';
 import { useAuth } from '../../hooks/useAuthContext';
-import { startGame } from '../../game/main';
-import type {
-    GameMode,
-    GameRuntime,
-    GameRuntimeEvent,
+import {
+    startGame,
+    type GameMode,
+    type GameRuntime,
+    type GameRuntimeEvent,
 } from '../../game/main';
-import type { ReceivedChatPayload } from 'common/sharedTypes';
+import { EventType, type ReceivedChatPayload } from 'common/sharedTypes';
 import {
     GameUI,
     type DialogPanelState,
@@ -17,9 +18,81 @@ import {
 import {
     applyQuestCompletionEvent,
     describeQuestStatusChange,
+    type QuestStatusChange,
 } from '../ingame/QuestLog';
-import type { QuestStatusChange } from '../ingame/QuestLog';
 import * as THREE from 'three';
+
+/** limit event History */
+const EVENT_LOG_HISTORY_LIMIT = 50;
+
+/** limit Match History */
+const MAX_MATCH_HISTORY_ENTRIES = 10;
+
+type EventLogApiEntry = {
+    readonly id: number;
+    readonly eventType: EventType;
+    readonly data: string;
+};
+
+type StoredTicTacToeResult = {
+    readonly game: 'Tic-Tac-Toe';
+    readonly playedAt: string;
+    readonly outcome: 'won' | 'lost' | 'draw';
+    readonly opponentNickname: string;
+};
+
+function createMatchHistoryEntry(
+    id: number,
+    data: StoredTicTacToeResult
+): EventLogEntry {
+    let result = 'Draw';
+    if (data.outcome === 'won') {
+        result = 'Win';
+    } else if (data.outcome === 'lost') {
+        result = 'Loss';
+    }
+
+    return {
+        id: String(id),
+        timestamp: new Date(data.playedAt).toLocaleString(undefined, {
+            dateStyle: 'short',
+            timeStyle: 'short',
+        }),
+        description: `${data.game}: ${result} vs ${data.opponentNickname}`,
+    };
+}
+
+/** Tic-Tac-Toe Match History */
+function parseTicTacToeMatch(event: EventLogApiEntry): EventLogEntry | null {
+    if (event.eventType !== EventType.GameResult) {
+        return null;
+    }
+
+    try {
+        const data = JSON.parse(event.data) as Partial<StoredTicTacToeResult>;
+        if (
+            data.game !== 'Tic-Tac-Toe' ||
+            typeof data.playedAt !== 'string' ||
+            Number.isNaN(Date.parse(data.playedAt)) ||
+            (data.outcome !== 'won' &&
+                data.outcome !== 'lost' &&
+                data.outcome !== 'draw') ||
+            typeof data.opponentNickname !== 'string' ||
+            data.opponentNickname.trim().length === 0
+        ) {
+            return null;
+        }
+
+        return createMatchHistoryEntry(event.id, {
+            game: data.game,
+            playedAt: data.playedAt,
+            outcome: data.outcome,
+            opponentNickname: data.opponentNickname,
+        });
+    } catch {
+        return null;
+    }
+}
 
 /** Formats a date as a time string in HH:MM:SS format */
 function formatEventTimestamp(date: Date): string {
@@ -37,6 +110,9 @@ function describeGameRuntimeEvent(event: GameRuntimeEvent): string {
         case 'player_in_range':
             return `Met ${event.nickname} nearby`;
         case 'game_result':
+            if (event.outcome === 'draw') {
+                return `${event.playerNickname} drew a game of ${event.game} against ${event.opponentNickname}`;
+            }
             return `${event.playerNickname} ${event.outcome} a game of ${event.game} against ${event.opponentNickname}`;
     }
 }
@@ -67,6 +143,7 @@ export const Game: React.FC<{
     const gameRuntimeRef = useRef<GameRuntime | null>(null);
     const eventSequenceRef = useRef(0);
     const [events, setEvents] = useState<EventLogEntry[]>([]);
+    const [matchHistory, setMatchHistory] = useState<EventLogEntry[]>([]);
     const [completedQuestIds, setCompletedQuestIds] = useState<string[]>([]);
     const [dialog, setDialog] = useState<DialogPanelState>({
         isOpen: false,
@@ -86,15 +163,108 @@ export const Game: React.FC<{
         );
     }, []);
 
+    useEffect(() => {
+        if (isSpectator) {
+            return;
+        }
+
+        let ignoreResponse = false;
+
+        const loadMatchHistory = async (): Promise<void> => {
+            try {
+                const response = await axios.get<EventLogApiEntry[]>(
+                    '/api/eventlog',
+                    {
+                        params: {
+                            limit: EVENT_LOG_HISTORY_LIMIT,
+                            user: nickname,
+                        },
+                    }
+                );
+
+                if (ignoreResponse) {
+                    return;
+                }
+
+                const history = response.data
+                    .map(parseTicTacToeMatch)
+                    .filter((match): match is EventLogEntry => match !== null);
+
+                setMatchHistory(history.slice(-MAX_MATCH_HISTORY_ENTRIES));
+            } catch (error) {
+                if (!ignoreResponse) {
+                    console.error(
+                        'Failed to load Tic-Tac-Toe match history:',
+                        error
+                    );
+                }
+            }
+        };
+
+        void loadMatchHistory();
+
+        return () => {
+            ignoreResponse = true;
+        };
+    }, [isSpectator, nickname]);
+
+    const recordTicTacToeMatch = useCallback(
+        async (
+            event: Extract<GameRuntimeEvent, { type: 'game_result' }>
+        ): Promise<void> => {
+            if (isSpectator || event.game !== 'Tic-Tac-Toe') {
+                return;
+            }
+
+            const storedResult: StoredTicTacToeResult = {
+                game: event.game,
+                playedAt: new Date().toISOString(),
+                outcome: event.outcome,
+                opponentNickname: event.opponentNickname,
+            };
+
+            try {
+                const response = await axios.post<EventLogApiEntry>(
+                    '/api/eventlog',
+                    {
+                        eventType: EventType.GameResult,
+                        data: JSON.stringify(storedResult),
+                        user: nickname,
+                    }
+                );
+
+                const savedMatch = createMatchHistoryEntry(
+                    response.data.id,
+                    storedResult
+                );
+
+                setMatchHistory((currentHistory) =>
+                    [...currentHistory, savedMatch].slice(
+                        -MAX_MATCH_HISTORY_ENTRIES
+                    )
+                );
+            } catch (error) {
+                console.error(
+                    'Failed to save Tic-Tac-Toe match result:',
+                    error
+                );
+            }
+        },
+        [isSpectator, nickname]
+    );
+
     /** Runtime-Ereignisse bleiben auch außerhalb des Sichtfelds sichtbar. */
     const handleGameEvent = useCallback(
         (event: GameRuntimeEvent): void => {
             appendEvent(describeGameRuntimeEvent(event));
+            if (event.type === 'game_result') {
+                void recordTicTacToeMatch(event);
+            }
             setCompletedQuestIds((currentQuestIds) =>
                 applyQuestCompletionEvent(currentQuestIds, event)
             );
         },
-        [appendEvent]
+        [appendEvent, recordTicTacToeMatch]
     );
 
     const handleChatMessage = useCallback((message: string): void => {
@@ -164,11 +334,9 @@ export const Game: React.FC<{
 
         let gameMode: GameMode = 'spectator';
         let runtimeGameEventHandler:
-            | ((event: GameRuntimeEvent) => void)
-            | undefined;
+            ((event: GameRuntimeEvent) => void) | undefined;
         let runtimeDialogHandler:
-            | ((state: DialogPanelState) => void)
-            | undefined;
+            ((state: DialogPanelState) => void) | undefined;
 
         if (!isSpectator) {
             gameMode = 'player';
@@ -213,7 +381,8 @@ export const Game: React.FC<{
     ]);
 
     let spectatorExitButton: React.ReactNode = null;
-    let playerOnlyGameUIProps: Partial<React.ComponentProps<typeof GameUI>> = {};
+    let playerOnlyGameUIProps: Partial<React.ComponentProps<typeof GameUI>> =
+        {};
 
     if (isSpectator) {
         spectatorExitButton = (
@@ -248,6 +417,7 @@ export const Game: React.FC<{
                 character={character}
                 completedQuestIds={completedQuestIds}
                 events={events}
+                matchHistory={matchHistory}
                 onChatMessage={handleChatMessage}
                 {...playerOnlyGameUIProps}
                 isSpectator={isSpectator}
