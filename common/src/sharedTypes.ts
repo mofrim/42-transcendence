@@ -14,8 +14,6 @@ export enum EventType {
     CharChange = 'CharChange',
 }
 
-// TODO eventId, userId (foreign relation), eventType (class), data (chat msg,
-// playerID)
 // This will be the foundation for a new table in `eventlog-service`
 export abstract class BaseEventLog {
     abstract id: number;

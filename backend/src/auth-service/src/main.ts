@@ -18,9 +18,9 @@ import { DataSource } from 'typeorm';
 import { exit } from 'node:process';
 import cookieParser from 'cookie-parser';
 import { Logger } from 'tslog';
-import type { ILogObj } from 'tslog';
 import { body, matchedData, validationResult } from 'express-validator';
 
+import type { ILogObj } from 'tslog';
 import type { Request, Express, Response, NextFunction } from 'express';
 
 import { ORMEventLog, ORMUser } from 'common/ormTypes';
@@ -141,23 +141,14 @@ app.post(
         const userPass: string = bodyData['password'];
 
         try {
-            const exists = await DB.manager.find(ORMUser, {
-                where: {
-                    nickname: userNick,
-                },
+            const user = await DB.manager.findOneBy(ORMUser, {
+                nickname: userNick,
             });
-
-            if (
-                exists.length !== 1 ||
-                exists === undefined ||
-                exists[0] === undefined
-            ) {
+            if (user === null) {
                 loginLog.warn('Cannot find user', userNick, 'in DB');
                 res.status(401).json({ error: 'Invalid credentials' });
                 return;
             }
-
-            const user = exists[0];
 
             const isPasswordValid = await bcrypt.compare(
                 userPass,
@@ -179,10 +170,9 @@ app.post(
                 sameSite: 'strict',
                 maxAge: 60 * 60 * 1000, // 1h
             });
-
             res.json({ success: true });
-        } catch (error) {
-            loginLog.fatal(error as Error);
+        } catch (err) {
+            loginLog.fatal(err as Error);
             res.status(500).json({ error: 'Internal server error' });
         }
     }
@@ -198,12 +188,6 @@ app.post('/api/logout', authenticate, (req, res) => {
         sameSite: 'strict',
     });
     res.json({ success: true });
-});
-
-// -----------------=[ launch the express server finally ]=----------------- //
-
-app.listen(PORT, (): void => {
-    log.info('listening on port:', PORT);
 });
 
 // --------------------------------=[ misc ]=-------------------------------- //
@@ -257,8 +241,15 @@ app.get('/api/user', authenticate, async (req, res) => {
     }
 });
 
-// Fallback enpoint for catching invalid methods etc..
+// --------=[ Fallback enpoint for catching invalid methods etc.. ]=-------- //
+
 app.all('/api/login', (req: Request, res: Response) => {
-    log.warn('Invalid Request to /api/login:', req.method);
+    log.warn('Invalid Request:', req.method);
     res.status(405).json({ error: 'Unsupported Method' });
+});
+
+// -----------------=[ launch the express server finally ]=----------------- //
+
+app.listen(PORT, (): void => {
+    log.info('listening on port:', PORT);
 });

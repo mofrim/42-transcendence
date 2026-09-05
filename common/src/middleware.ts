@@ -27,10 +27,14 @@ export const authenticateMid = (
     secretKey: string
 ) => {
     const authLog = log.getSubLogger({ name: 'authenticate' });
-    const token = req.cookies['token'];
-    if (!token) {
+
+    let token;
+    try {
+        token = req.cookies['token'];
+    } catch (err) {
+        void err;
         res.status(401).json({ error: 'Unauthorized' });
-        authLog.warn('Unauthorized access');
+        authLog.warn('Unauthorized request');
         return;
     }
 
