@@ -1,10 +1,28 @@
 import { useLoginContext } from '../../hooks/useLoginContext';
-import { createCharacterPreview } from '../../game/character_preview';
-import type { CreateCharPreviewReturnType } from '../../game/character_preview';
+import {
+    createCharacterPreview,
+    type CreateCharPreviewReturnType,
+} from '../../game/character_preview';
+import type { Character } from 'common/sharedTypes';
 import React, { useEffect, useRef } from 'react';
 
-export const CharacterPreview: React.FC = () => {
-    const { avatar } = useLoginContext();
+type CharacterPreviewViewProps = {
+    readonly character: Character;
+    readonly className: string;
+    readonly canvasClassName?: string;
+    readonly id?: string;
+    readonly canvasId?: string;
+    readonly labelId?: string;
+};
+
+export const CharacterPreviewView: React.FC<CharacterPreviewViewProps> = ({
+    character,
+    className,
+    canvasClassName,
+    id,
+    canvasId,
+    labelId,
+}) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const labelRef = useRef<HTMLDivElement>(null);
     const charPreviewRef = useRef<CreateCharPreviewReturnType>(null);
@@ -14,7 +32,7 @@ export const CharacterPreview: React.FC = () => {
     useEffect(() => {
         const canvas = canvasRef.current;
         const label = labelRef.current;
-        if (!canvas || !label) return;
+        if (!canvas) return;
 
         const preview = createCharacterPreview({ canvas, label });
         charPreviewRef.current = preview;
@@ -28,28 +46,49 @@ export const CharacterPreview: React.FC = () => {
         };
     }, []); // empty dependency array => runs once on mount!
 
-    // update avatar on radio change
+    // update preview when the selected character changes
     useEffect(() => {
-        if (charPreviewRef.current) {
-            charPreviewRef.current.setCharacter(avatar === 'true');
-        }
-    }, [avatar]); // runs when avatar changes
+        charPreviewRef.current?.setCharacter(character);
+    }, [character]);
+
+    let label: React.ReactNode = null;
+    if (labelId !== undefined) {
+        label = (
+            <div ref={labelRef} id={labelId}>
+                Main_Male.glb
+            </div>
+        );
+    }
 
     return (
         <div
-            id='character-preview'
-            className='character-preview'
+            id={id}
+            className={className}
             role='img'
             aria-label='Selected player character 3D preview'
         >
             <canvas
                 ref={canvasRef}
-                id='character-preview-canvas'
+                id={canvasId}
+                className={canvasClassName}
                 aria-hidden='true'
-            ></canvas>
-            <div ref={labelRef} id='character-preview-label'>
-                Main_Male.glb
-            </div>
+            />
+            {label}
         </div>
+    );
+};
+
+/** Add selected character preview to login */
+export const CharacterPreview: React.FC = () => {
+    const { avatar } = useLoginContext();
+
+    return (
+        <CharacterPreviewView
+            character={avatar === 'true'}
+            className='character-preview'
+            id='character-preview'
+            canvasId='character-preview-canvas'
+            labelId='character-preview-label'
+        />
     );
 };
