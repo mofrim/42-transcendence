@@ -5,7 +5,6 @@ import { AuthProvider } from './ui/login/AuthProvider.tsx';
 import App from './App.tsx';
 
 createRoot(document.getElementById('root')!).render(
-    // <StrictMode>
     <AuthProvider>
         <LoginProvider>
             <App
@@ -60,5 +59,4 @@ createRoot(document.getElementById('root')!).render(
             />
         </LoginProvider>
     </AuthProvider>
-    // </StrictMode>
 );

@@ -26,8 +26,6 @@ export abstract class BaseEventLog {
 // A `ORMUser` class is derived as child in backend services
 export abstract class BaseUser {
     abstract id: number;
-    // abstract firstName: string;
-    // abstract lastName: string;
     abstract nickname: string;
     abstract character: boolean;
     abstract email: string;
@@ -37,8 +35,6 @@ export abstract class BaseUser {
 // this is the child class of BaseUser for use in frontend
 export class User extends BaseUser {
     id: number = 0;
-    // firstName: string = "";
-    // lastName: string = "";
     nickname: string = '';
     email: string = '';
     character: boolean = true;
