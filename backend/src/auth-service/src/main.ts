@@ -225,16 +225,14 @@ if (process.env['NODE_ENV'] === 'development') {
 app.get('/api/user', authenticate, async (req, res) => {
     const { nickname } = req.user!;
     try {
-        const user = await DB.manager.find(ORMUser, {
-            where: {
-                nickname: nickname,
-            },
+        const user = await DB.manager.findOneBy(ORMUser, {
+            nickname: nickname,
         });
-        if (user.length !== 1 || user === undefined || user[0] === undefined) {
+        if (user === null) {
             res.status(401).json({ error: 'User not found' });
             return;
         }
-        res.json(user[0]);
+        res.json(user);
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: 'Internal server error' });
