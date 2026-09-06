@@ -4,7 +4,7 @@ import jwt from 'jsonwebtoken';
 import type { Request, Response, NextFunction } from 'express';
 import { Logger, type ILogObj } from 'tslog';
 
-const verifyToken = (
+export const verifyToken = (
     token: string,
     secretKey: string
 ): { nickname: string } => {

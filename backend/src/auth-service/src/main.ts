@@ -24,7 +24,7 @@ import type { ILogObj } from 'tslog';
 import type { Request, Express, Response, NextFunction } from 'express';
 
 import { ORMEventLog, ORMUser } from 'common/ormTypes';
-import { authenticateMid } from 'common/middleware';
+import { authenticateMid, verifyToken } from 'common/middleware';
 import { setupDefaultUsers } from './defaultUserSetup.ts';
 import 'common/expressTypes';
 
@@ -237,6 +237,23 @@ app.get('/api/user', authenticate, async (req, res) => {
         console.error(err);
         res.status(500).json({ error: 'Internal server error' });
     }
+});
+
+// endpoint for validating if a valid Session-Cookie is still set. Used in
+// restoreSession-logic in AuthProvider
+app.get('/api/validateSession', async (req, res) => {
+    const logValidate = log.getSubLogger({ name: 'validateSession' });
+
+    try {
+        const token = req.cookies['token'];
+        verifyToken(token, SECRET_KEY);
+    } catch (err) {
+        void err;
+        res.status(200).json({ valid: false });
+        logValidate.info('validateSession failed');
+        return;
+    }
+    res.status(200).json({ valid: true });
 });
 
 // --------=[ Fallback enpoint for catching invalid methods etc.. ]=-------- //

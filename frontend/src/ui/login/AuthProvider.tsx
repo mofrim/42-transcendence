@@ -18,6 +18,26 @@ const getAuthenticatedUser = async (signal?: AbortSignal): Promise<User> => {
     return userResponse.data;
 };
 
+// validate session cookie without risking a 401 response. querying
+// /api/user with no avlid `token` cookie set would cause a console error
+// because of the 401 response. with the `/api/validateSession` endpoint we can
+// now safely query the backend for session validation
+const isValidSession = async (signal?: AbortSignal): Promise<boolean> => {
+    const config: AxiosRequestConfig = {
+        withCredentials: true,
+    };
+
+    if (signal !== undefined) {
+        config.signal = signal;
+    }
+
+    const res = await axios.get<{ valid: boolean }>(
+        '/api/validateSession',
+        config
+    );
+    return res.data.valid;
+};
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     children,
 }) => {
@@ -28,6 +48,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         const controller = new AbortController();
 
         const restoreSession = async (): Promise<void> => {
+            // first check for valid token cookie
+            if (!(await isValidSession(controller.signal))) {
+                console.log('no valid token cookie found!');
+                setUser(null);
+                if (!controller.signal.aborted) {
+                    setIsInitializing(false);
+                }
+                return;
+            }
+
+            // this should now safely succeed. only possible failure (401) can
+            // happen if token expires just in between both requests :/
             try {
                 const currentUser = await getAuthenticatedUser(
                     controller.signal
@@ -35,6 +67,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
                 if (!controller.signal.aborted) {
                     setUser(currentUser);
                 }
+                console.log('session restored from valid token cookie');
             } catch (error) {
                 if (controller.signal.aborted) {
                     return;
