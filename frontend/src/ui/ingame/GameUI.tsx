@@ -18,6 +18,8 @@ import {
 } from './QuestLog';
 import type { Character } from 'common/sharedTypes';
 import { CharacterPreviewView } from '../login/CharacterPreview';
+import { EventLogItems, type EventLogEntry } from './EventLogItems';
+import { MatchHistory } from './MatchHistory';
 
 import './GameUI.css';
 
@@ -26,12 +28,6 @@ const PROFILE_PANEL_ID = 'game-profile-panel';
 const EVENT_LOG_TITLE_ID = 'game-event-log-title';
 
 export const MAX_EVENT_LOG_ENTRIES = 10;
-
-export type EventLogEntry = {
-    readonly id: string;
-    readonly timestamp: string;
-    readonly description: string;
-};
 
 export type DialogPanelState = {
     readonly isOpen: boolean;
@@ -67,19 +63,6 @@ type HudPanelToggleProps = {
     readonly panelLabel: string;
     readonly onToggle: () => void;
 };
-
-type EventLogItemsProps = {
-    readonly entries: readonly EventLogEntry[];
-};
-
-function EventLogItems({ entries }: EventLogItemsProps) {
-    return entries.map((entry) => (
-        <li key={entry.id} className='hud-event-item'>
-            <time className='hud-event-time'>{entry.timestamp}</time>
-            <span>{entry.description}</span>
-        </li>
-    ));
-}
 
 function HudPanelToggle({
     questProgress,
@@ -412,19 +395,7 @@ export function GameUI({
                     <p className='hud-profile-email'>
                         <strong>Email:</strong> {email}
                     </p>
-                    <h3 className='hud-profile-stats-title'>
-                        Tic-Tac-Toe Match History:
-                    </h3>
-                    {matchHistory.length === 0 && (
-                        <p className='hud-profile-match-empty'>
-                            No Tic-Tac-Toe matches yet.
-                        </p>
-                    )}
-                    {matchHistory.length > 0 && (
-                        <ol className='hud-event-list hud-profile-match-history'>
-                            <EventLogItems entries={matchHistory} />
-                        </ol>
-                    )}
+                    <MatchHistory entries={matchHistory} />
                     <button
                         type='button'
                         className='hud-profile-logout'

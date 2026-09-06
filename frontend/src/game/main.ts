@@ -76,7 +76,10 @@ type ActiveTTTPlayers = {
     readonly playerTwo: NamedPlayer;
 };
 
-type GameResultEvent = Extract<GameRuntimeEvent, { type: 'game_result' }>;
+export type GameResultEvent = Extract<
+    GameRuntimeEvent,
+    { type: 'game_result' }
+>;
 type RemotePlayerUpdate = Pick<PlayerUpdatePayload, 'x' | 'y' | 'z' | 'state'>;
 export type GameMode = 'player' | 'spectator';
 
