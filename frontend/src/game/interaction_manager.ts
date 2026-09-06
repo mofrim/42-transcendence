@@ -77,13 +77,13 @@ export class InteractionManager {
 
     enableInteraction(typeID: string): void {
         this.interactions
-            .find(interaction => interaction.typeID === typeID)
+            .find((interaction) => interaction.typeID === typeID)
             ?.enableInteraction();
     }
 
     disableInteraction(typeID: string): void {
         this.interactions
-            .find(interaction => interaction.typeID === typeID)
+            .find((interaction) => interaction.typeID === typeID)
             ?.disableInteraction();
     }
 
@@ -102,7 +102,10 @@ export class InteractionManager {
         this.currentInteraction = null;
 
         for (const interaction of this.interactions) {
-            if (interaction.zone.containsPoint(playerPosition) && interaction.enabled) {
+            if (
+                interaction.zone.containsPoint(playerPosition) &&
+                interaction.enabled
+            ) {
                 // console.log(`Interaction triggered: ${interaction.typeID}`);
                 this.currentInteraction = interaction;
                 this.interact();
@@ -113,7 +116,10 @@ export class InteractionManager {
 
     update(playerPosition: THREE.Vector3): void {
         for (const interaction of this.interactions) {
-            if (interaction.zone.containsPoint(playerPosition) && interaction.enabled)
+            if (
+                interaction.zone.containsPoint(playerPosition) &&
+                interaction.enabled
+            )
                 interaction.showEngageButton();
             else interaction.removeEngageButton();
         }
