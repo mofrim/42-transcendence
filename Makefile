@@ -71,6 +71,11 @@ backend-dev:
 	cd backend && docker compose -f ./compose-db.yaml up -d && npm run dev:all
 	$(call log_msg_end,Done.)
 
+frontend-dev:
+	$(call log_msg_start,Launching frontend for dev...)
+	npm run dev:frontend
+	$(call log_msg_end,Done.)
+
 # for Windows development
 backend-dev-win:
 	$(call log_msg_start,Launching all backend for dev-win...)
