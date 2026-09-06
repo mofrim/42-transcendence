@@ -5,7 +5,6 @@
         "module": "NodeNext",
         "target": "ES2023",
         "declaration": true,
-        "strict": true,
         "composite": true,
 
         // linting
@@ -35,6 +34,6 @@
         // for typeorm
         "emitDecoratorMetadata": true,
         "experimentalDecorators": true
-  },
-  "include": ["src/**/*"]
+    },
+    "include": ["src/**/*"]
 }
