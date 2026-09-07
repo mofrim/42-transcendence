@@ -532,6 +532,20 @@ export class Story_Manager {
         this.enableInteraction('FIND_EVALUATING_STUDENT');
     }
 
+    async handleESDoorInteraction(): Promise<void> {
+        await this.playDialogInteraction(
+            'I\'ve got an evaluation to finish first. The championship can wait a little longer.', 
+            PlayerState.Angry
+        );
+
+        // TODO: JUST INFO: REMOVE THAT LATER
+        await this.playDialogInteraction(
+            'DEV NOTE: Door opens now for testing purposes. Remove this later.', 
+            PlayerState.Angry
+        );
+        return;
+    }
+
     async handlePreparationQuest(typeID: string): Promise<void> {
         switch (typeID) {
             case 'FIND_RUBBERDUCK':
@@ -577,6 +591,14 @@ export class Story_Manager {
     async handleInteraction(interaction: Interaction): Promise<void> {
         //console.log(`Interaction triggered: ${interaction.typeID}`);
         this.onQuestComplete = null;
+        
+        // Event Space Door Interaction
+        switch (interaction.typeID) {
+            case 'ES_DOOR_A':
+            case 'ES_DOOR_B':
+                await this.handleESDoorInteraction();
+                return;
+        }
 
         // Checklist Preparation
         switch (interaction.typeID) {
@@ -618,6 +640,20 @@ export class Story_Manager {
                 "Evaluation is starting. Let's go!",
                 PlayerState.Strong
             );
+
+            // TODO: Do small quiz or something here to simulate evaluation. For now, just wait a few seconds.
+            await this.caseInteraction(
+                'START_EVALUATION',
+                "Evaluation is DONE! Let's go to the championship!",
+                PlayerState.Victory
+            );
+
+            // TODO: after eval finished, doors will open
+            this.disableInteraction('ES_DOOR_A');
+            this.disableInteraction('ES_DOOR_B');
+
+            this.questFinished();
+
             return;
         }
     }
@@ -628,9 +664,14 @@ export class Story_Manager {
         }
     }
 
+    questFinished(): void {
+        this.onQuestFinished?.();
+    }
+
     // Callback
     // TODO: If Questlog Id is enum, than change also here?
     onQuestInteraction?: (questId: string) => void;
+    onQuestFinished?: () => void;
 
     // ===================================================
     // TESTING FUNCTIONS. Delete if not needed anymore

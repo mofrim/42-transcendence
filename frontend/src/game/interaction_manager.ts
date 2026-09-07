@@ -60,6 +60,21 @@ export class InteractionManager {
             false
         );
 
+        const interaction8 = new Interaction(
+            scene,
+            'ES_DOOR_A',
+            new THREE.Vector3(15.5, 3.72, -16.85),
+            new THREE.Vector3(1, 2, 1),
+            true
+        );
+        const interaction9 = new Interaction(
+            scene,
+            'ES_DOOR_B',
+            new THREE.Vector3(16.7, 3.72, -8.5),
+            new THREE.Vector3(1, 2, 1),
+            true
+        );
+
         this.add(interaction1);
         this.add(interaction2);
         this.add(interaction3);
@@ -67,6 +82,9 @@ export class InteractionManager {
         this.add(interaction5);
         this.add(interaction6);
         this.add(interaction7);
+
+        this.add(interaction8);
+        this.add(interaction9);
 
         this.interactionStartingState();
     }

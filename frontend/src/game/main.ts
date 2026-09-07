@@ -14,7 +14,7 @@ import { RPS_Game } from './rps_game.js';
 import { createThreeResourceDisposer } from './ThreeResourceDisposer.js';
 import { Story_Manager } from './story_manager.js';
 import { InteractionManager } from './interaction_manager.js';
-import { getPlayerModelPath, MAP_MODEL_PATH } from './Assets.js';
+import { getPlayerModelPath, MAP_MODEL_PATH, ES_DOOR_A_PATH, ES_DOOR_B_PATH, CLOUDS_PATH, ROCKS_BORDER_PATH  } from './Assets.js';
 
 import { io } from 'socket.io-client';
 
@@ -136,6 +136,7 @@ export function startGame(
     let playerUpdateIntervalId: number | null = null;
     const knownPlayerNicknames = new Map<string, string>();
     const blockedPlayerUpdates = new Set<string>();
+    const doorMeshesNames: string[] = [];
 
     socket.on('connect', () => {
         const socketId = socket.id;
@@ -747,6 +748,9 @@ export function startGame(
     const dirLight = new THREE.DirectionalLight(0xffffff, 1.25);
     const fillLight = new THREE.DirectionalLight(0xffffff, 1.25);
 
+    const groupDoorA = new THREE.Group();
+    const groupDoorB = new THREE.Group();
+
     const npcs = new Map();
 
     let envLoaded: boolean = false;
@@ -855,6 +859,7 @@ export function startGame(
     //const OctreeSpawn = new Octree();
 
     const mesh_col: GLBMesh[] = [];
+    const mesh_Octree: THREE.Object3D[] = [];
     const mesh_RP: THREE.Mesh[] = [];
     const tttBox: TTTMeshBoard = new TTTMeshBoard();
     const tttPointer = new THREE.Vector2();
@@ -887,6 +892,12 @@ export function startGame(
 
         //followGroup = new THREE.Group();
         scene.add(followGroup);
+
+        // Door A and B positions from Blender 3D scene
+        groupDoorA.position.set(15.913, 3.72467, -17.421);
+        groupDoorB.position.set(16.0871, 3.72467, -9.1304);
+        scene.add(groupDoorA);
+        scene.add(groupDoorB);
 
         //dirLight = new THREE.DirectionalLight(0xffffff, 2.5);
         // initial position (local to followGroup) - matches previous values
@@ -1023,6 +1034,11 @@ export function startGame(
             interactionManager.onInteraction = (interaction) => {
                 storyManager?.handleInteraction(interaction);
                 //onQuestComplete?.(interaction);
+
+                if(interaction.typeID === 'ES_DOOR_A' || interaction.typeID === 'ES_DOOR_B') {
+                    openDoors()
+                }
+
             };
 
             storyManager = new Story_Manager(
@@ -1039,14 +1055,22 @@ export function startGame(
             storyManager.onQuestInteraction = (interaction) => {
                 console.log('Quest interaction:', interaction);
             };
+            storyManager.onQuestFinished = () => {
+                console.log('Quest finished');
+                openDoors();
+            };
         }
 
         await loadMesh(MAP_MODEL_PATH, [0, 0, 0]);
         if (runtimeDisposed) return;
         startPlayerUpdateLoop();
-        await loadMeshSky('glb/Clouds.glb', [0, 0, 0]);
+        await loadMeshSky(CLOUDS_PATH, [0, 0, 0]);
         if (runtimeDisposed) return;
-        await loadMeshSky('glb/RocksBorder3.glb', [0, 0, 0]);
+        await loadMeshSky(ROCKS_BORDER_PATH, [0, 0, 0]);
+        if (runtimeDisposed) return;
+        await loadMesh(ES_DOOR_A_PATH, [0, 0, 0]);
+        if (runtimeDisposed) return;
+        await loadMesh(ES_DOOR_B_PATH, [0, 0, 0]);
         if (runtimeDisposed) return;
 
         storyManager?.GameIntro();
@@ -1102,6 +1126,18 @@ export function startGame(
                 //console.log("Adding collider for: " + child.name);
                 mesh_col.push(child);
             }
+            
+            // Add Doors to group so we can open/close them
+            if (path === ES_DOOR_A_PATH){
+                console.log(child.name + " added to groupDoorA");
+                doorMeshesNames.push(child.name);
+                groupDoorA.add(obj);
+            }
+            if (path === ES_DOOR_B_PATH){
+                console.log(child.name + " added to groupDoorB");
+                doorMeshesNames.push(child.name);
+                groupDoorB.add(obj);
+            }
 
             if (child.name.includes('TTT_Board')) {
                 if (tttBox.cellCnt >= 9)
@@ -1109,7 +1145,7 @@ export function startGame(
                 tttBox.cells[tttBox.cellCnt] = child;
                 tttBox.cellCnt++;
             }
-            child.scale.setScalar(1.15);
+            // child.scale.setScalar(1.15);
 
             if (child.material.name === 'Glass_mtl') {
                 child.material = new THREE.MeshToonMaterial({
@@ -1158,10 +1194,15 @@ export function startGame(
             return;
         }
 
-        scene.add(obj);
-        //mesh_col.push(obj);
+        if(path !== ES_DOOR_A_PATH && path !== ES_DOOR_B_PATH){
+            scene.add(obj);
+            mesh_Octree.push(obj);
+        }
 
         worldOctree.fromGraphNode(obj);
+        //mesh_col.push(obj);
+
+        //worldOctree.fromGraphNode(obj);
 
         envLoaded = true;
     }
@@ -1190,7 +1231,7 @@ export function startGame(
         obj.position.fromArray(pos);
         const meshes = obj.getObjectsByProperty('isMesh', true) as GLBMesh[];
         for (const child of meshes) {
-            child.scale.setScalar(1.15);
+            // child.scale.setScalar(1.15);
 
             // outline
             const edges = new THREE.EdgesGeometry(child.geometry, 50);
@@ -1291,6 +1332,32 @@ export function startGame(
     //loadMesh('glb/Floor.glb', [0,0,0]);
 
     //tttGame.board = tttBox;
+
+    function openDoors(): void {
+        // TODO: Play door opening animation
+        groupDoorA.rotation.y = -1.83;
+        groupDoorB.rotation.y = 1.42;
+
+        removefromColliderAndOctree(doorMeshesNames);
+    }
+
+    function removefromColliderAndOctree(objects: string[]): void {
+        for (const obj of objects) {
+            const index = mesh_col.findIndex((mesh) => mesh.name === obj);
+            if (index !== -1) {
+                mesh_col.splice(index, 1);
+                // console.log(`Removed ${obj} from collider meshes.`);
+            }
+        }
+
+        // TODO: NOT VERY EFFICIENT
+        // But can not remove single mesh from octree, so we have to clear and re-add all meshes
+        worldOctree.clear();
+        for (const mesh of mesh_Octree) {
+            worldOctree.fromGraphNode(mesh);
+        }
+
+    }
 
     function initNPC(): void {
         // NPCs at the entrance of the 42WOB building
@@ -1548,7 +1615,7 @@ export function startGame(
         const firstHit = tttRaycastHits[0];
         if (firstHit) {
             //console.log("Clicked on TTT box:" + hits[0].object.name);
-            //console.log("Clicked on: " + hits[0].object.name );
+            console.log("Clicked on: " + firstHit.object.name );
             if (firstHit.object.name.includes('TTT_Board')) {
                 //tttGame.markField(hits[0].object.name, socket.id);
                 emitTTTmark(firstHit.object.name);

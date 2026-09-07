@@ -29,7 +29,9 @@ export class Interaction {
             | 'LOGIN_COMPUTER'
             | 'WHERE_IS_EVALUATOR'
             | 'FIND_EVALUATING_STUDENT'
-            | 'START_EVALUATION',
+            | 'START_EVALUATION'
+            | 'ES_DOOR_A'
+            | 'ES_DOOR_B',
         position: THREE.Vector3,
         size: THREE.Vector3,
         enabled: boolean
