@@ -1,3 +1,5 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/compose-spec/compose-spec/master/schema/compose-spec.json
+
 # set the project name. doing this in all sub-compose-files will make `docker
 # compose up --build` recognize the containers as belonging to the same proj
 # which will avoid the `name already in use` error.
