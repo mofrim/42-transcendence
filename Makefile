@@ -84,10 +84,5 @@ backend-dev-win:
 	cd backend && start powershell -NoExit -Command "npm --prefix .\src\auth-service run dev-win"
 	$(call log_msg_end,Done.)
 
-certs:
-	$(call log_msg_start,Generating TLS certificates using Docker...)
-	docker compose run --rm cert-generator
-	$(call log_msg_end,Done.)
-
 .phony: all dock-clean dock-fclean dock-backend dock-frontend dock-db \
 	dock-db-down backend-dev certs

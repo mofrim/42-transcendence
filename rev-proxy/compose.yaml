@@ -46,7 +46,6 @@ services:
   cert-generator:
     container_name: ftr-cert-generator
     image: alpine/openssl
-    # restart: "no"
     network_mode: none
     read_only: true
     environment:
