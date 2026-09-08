@@ -347,14 +347,12 @@ export class Story_Manager {
         }
     }
 
-    async showDialog(message: string = ''): Promise<void> {
+    showDialog(message: string = ''): Promise<void> {
         this.onDialogChange?.({ isOpen: true, message });
 
-        return new Promise((resolve) => {
-            this.dialogResolver = () => {
-                resolve();
-            };
-        });
+        const { promise, resolve } = Promise.withResolvers<void>();
+        this.dialogResolver = resolve;
+        return promise;
     }
 
     startCutscene(): void {

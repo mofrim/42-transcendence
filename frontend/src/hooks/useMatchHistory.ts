@@ -6,6 +6,10 @@ import type { EventLogEntry } from '../ui/ingame/EventLogItems';
 
 const EVENT_LOG_HISTORY_LIMIT = 50;
 const MAX_MATCH_HISTORY_ENTRIES = 10;
+const MATCH_HISTORY_DATE_TIME_FORMAT = new Intl.DateTimeFormat(undefined, {
+    dateStyle: 'short',
+    timeStyle: 'short',
+});
 
 type StoredTicTacToeResult = Pick<
     GameResultEvent,
@@ -32,10 +36,9 @@ function createMatchHistoryEntry(
 
     return {
         id: String(id),
-        timestamp: new Date(data.playedAt).toLocaleString(undefined, {
-            dateStyle: 'short',
-            timeStyle: 'short',
-        }),
+        timestamp: MATCH_HISTORY_DATE_TIME_FORMAT.format(
+            new Date(data.playedAt)
+        ),
         description: `${data.game}: ${result} vs ${data.opponentNickname}`,
     };
 }

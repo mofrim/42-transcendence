@@ -1,5 +1,6 @@
 import {
     useEffect,
+    useEffectEvent,
     useRef,
     useState,
     type ReactNode,
@@ -235,6 +236,31 @@ export function GameUI({
         event.stopPropagation();
     };
 
+    const handleChatToggle = useEffectEvent((event: KeyboardEvent): void => {
+        const isReturnOrEnter =
+            event.key === 'Enter' || event.code === 'NumpadEnter';
+
+        if (!isReturnOrEnter || event.repeat || event.isComposing) {
+            return;
+        }
+
+        event.preventDefault();
+        event.stopPropagation();
+
+        if (isChatOpen) {
+            const submittedMessage = chatMessage.trim();
+            if (submittedMessage) {
+                onChatMessage?.(submittedMessage);
+            }
+            // empty the chat input and close the chat window after sending a message
+            setChatMessage('');
+            setIsChatOpen(false);
+            return;
+        }
+
+        setIsChatOpen(true);
+    });
+
     const displayedEvents = events.slice(-MAX_EVENT_LOG_ENTRIES);
     const latestEventId = displayedEvents.at(-1)?.id;
     let blackHoleHourglass = '⌛';
@@ -312,37 +338,12 @@ export function GameUI({
     }, [isChatOpen]);
 
     useEffect(() => {
-        const handleChatToggle = (event: KeyboardEvent): void => {
-            const isReturnOrEnter =
-                event.key === 'Enter' || event.code === 'NumpadEnter';
-
-            if (!isReturnOrEnter || event.repeat || event.isComposing) {
-                return;
-            }
-
-            event.preventDefault();
-            event.stopPropagation();
-
-            if (isChatOpen) {
-                const submittedMessage = chatMessage.trim();
-                if (submittedMessage) {
-                    onChatMessage?.(submittedMessage);
-                }
-                //  empty the chat input and close the chat window after sending a message
-                setChatMessage('');
-                setIsChatOpen(false);
-                return;
-            }
-
-            setIsChatOpen(true);
-        };
-
         window.addEventListener('keydown', handleChatToggle, true);
 
         return () => {
             window.removeEventListener('keydown', handleChatToggle, true);
         };
-    }, [chatMessage, isChatOpen, onChatMessage]);
+    }, []);
 
     let hudClassName = 'hud';
     if (isSpectator) {

@@ -23,6 +23,13 @@ import {
 } from '../ingame/QuestLog';
 import * as THREE from 'three';
 
+const EVENT_TIME_FORMAT = new Intl.DateTimeFormat('en-GB', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hourCycle: 'h23',
+});
+
 function describeGameEvent(event: GameRuntimeEvent): string {
     switch (event.type) {
         case 'player_joined':
@@ -63,7 +70,6 @@ export const Game: React.FC<{
     // using ref here a lot because th
     const mountRef = useRef<HTMLDivElement>(null);
     const gameRuntimeRef = useRef<GameRuntime | null>(null);
-    const eventSequenceRef = useRef(0);
     const [events, setEvents] = useState<EventLogEntry[]>([]);
     const { matchHistory, saveTicTacToeMatch } = useMatchHistory({
         nickname,
@@ -78,8 +84,8 @@ export const Game: React.FC<{
     const appendEvent = useCallback((description: string): void => {
         const now = new Date();
         const event: EventLogEntry = {
-            id: `${now.getTime()}-${eventSequenceRef.current++}`,
-            timestamp: now.toTimeString().slice(0, 8),
+            id: crypto.randomUUID(),
+            timestamp: EVENT_TIME_FORMAT.format(now),
             description,
         };
 
