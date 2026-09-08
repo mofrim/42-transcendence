@@ -225,7 +225,10 @@ export function startGame(
         onChatMessage?.(data);
         if (data.senderId === socket.id) {
             player?.showChatMessage(data.message);
+            return;
         }
+
+        multiplayer?.players.get(data.senderId)?.showChatMessage(data.message);
     });
 
     socket.on('player_disconnected', (id) => {
