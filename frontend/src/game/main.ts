@@ -7,7 +7,10 @@ import { FlyControls } from 'three/addons/controls/FlyControls.js';
 
 import { MultiplayerManager } from './multiplayer.js';
 import { NPC } from './npc.js';
-import { FloatingTextSprite } from './FloatingTextSprite.js';
+import {
+    CHAT_BUBBLE_HEIGHT,
+    FloatingTextSprite,
+} from './FloatingTextSprite.js';
 import { Player } from './player.js';
 import { Camera } from './camera.js';
 import { TTT_Game } from './ttt_game.js';
@@ -53,7 +56,6 @@ import type {
 
 const FRONTDESK_GREETING_TEXT = '🗨️ Welcome to 42 Wolfsburg Campus! 👋🏻';
 const FRONTDESK_GREETING_SIZE = 42;
-const FRONTDESK_GREETING_HEIGHT = 2.15;
 const FRONTDESK_GREETING_SCALE = 0.28;
 
 /** event log msgs */
@@ -1473,7 +1475,7 @@ export function startGame(
         const frontdeskGreeting = new FloatingTextSprite(
             FRONTDESK_GREETING_TEXT,
             FRONTDESK_GREETING_SIZE,
-            new THREE.Vector3(0, FRONTDESK_GREETING_HEIGHT, 0)
+            new THREE.Vector3(0, CHAT_BUBBLE_HEIGHT, 0)
         );
         frontdeskGreeting.scale.multiplyScalar(FRONTDESK_GREETING_SCALE);
         scene.add(frontdesk.group, frontdeskGreeting);

@@ -2,6 +2,8 @@ import * as THREE from 'three';
 
 import { CanvasTextSprite } from './CanvasTextSprite';
 
+export const CHAT_BUBBLE_HEIGHT = 1.85;
+
 /**
  * World-space canvas text that follows a Three.js object with a fixed offset.
  * Text an einem 3D-Objekt as a Sprite, the text automatically faces the active camera.

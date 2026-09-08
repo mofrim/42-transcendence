@@ -14,7 +14,10 @@ import {
     createPlayerResourceDisposer,
     replacePlayerModelMaterials,
 } from './PlayerModelMaterials.js';
-import { FloatingTextSprite } from './FloatingTextSprite.js';
+import {
+    CHAT_BUBBLE_HEIGHT,
+    FloatingTextSprite,
+} from './FloatingTextSprite.js';
 import { PlayerState } from 'common/sharedTypes';
 
 export type PlayerAnimationState = ReturnType<typeof transitionPlayerAnimation>;
@@ -22,7 +25,6 @@ export type PlayerAnimationState = ReturnType<typeof transitionPlayerAnimation>;
 const PLAYER_FORWARD = new THREE.Vector3(0, 0, 1);
 const COLLISION_STEP_RADIUS_FACTOR = 0.5;
 const PLAYER_CHAT_SIZE = 42;
-const PLAYER_CHAT_HEIGHT = 2.15;
 const PLAYER_CHAT_SCALE = 0.28;
 // ms also 5 Sekunden
 const PLAYER_CHAT_DURATION_MS = 10_000; // ms also 10 Sekunden
@@ -90,7 +92,7 @@ export class Player {
         this.chatBubble = new FloatingTextSprite(
             '',
             PLAYER_CHAT_SIZE,
-            new THREE.Vector3(0, PLAYER_CHAT_HEIGHT, 0)
+            new THREE.Vector3(0, CHAT_BUBBLE_HEIGHT, 0)
         );
         this.chatBubble.scale.multiplyScalar(PLAYER_CHAT_SCALE);
         this.chatBubbleTimeout = null;
