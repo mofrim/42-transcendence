@@ -19,7 +19,6 @@
     z-index: 1000;
     flex-direction: row-reverse;
     color: #ffffff;
-    font-family: 'Segoe UI', sans-serif;
 }
 
 .hud.spectator-hud > :is(
@@ -86,7 +85,6 @@
     border-radius: 999px;
     background: rgba(14, 22, 32, 0.92);
     color: #ffffff;
-    font-family: ui-monospace, Consolas, monospace;
     font-size: 11px;
     font-variant-numeric: tabular-nums;
     font-weight: 700;
@@ -165,7 +163,6 @@
 .hud-black-hole-timer {
     flex: 0 0 auto;
     margin-left: auto;
-    font-family: ui-monospace, Consolas, monospace;
     font-variant-numeric: tabular-nums;
     font-weight: 700;
     white-space: nowrap;
@@ -319,7 +316,6 @@
 }
 
 .hud-event-time {
-    font-family: ui-monospace, Consolas, monospace;
     font-variant-numeric: tabular-nums;
     opacity: 0.75;
     white-space: nowrap;

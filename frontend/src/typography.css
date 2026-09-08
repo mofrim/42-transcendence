@@ -1,0 +1,18 @@
+@import '@fontsource-variable/atkinson-hyperlegible-next/wght.css';
+
+:root {
+    --app-font-family: 'Atkinson Hyperlegible Next Variable', sans-serif;
+    font-family: var(--app-font-family);
+}
+
+button,
+input,
+select,
+textarea,
+optgroup,
+code,
+kbd,
+samp,
+pre {
+    font-family: inherit;
+}

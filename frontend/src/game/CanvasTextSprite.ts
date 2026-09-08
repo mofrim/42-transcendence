@@ -1,5 +1,7 @@
 import * as THREE from 'three';
 
+import { APP_FONT_WEIGHT_STRONG, getAppFontFamily } from '../typography';
+
 const TEXT_SPRITE_WIDTH = 2048;
 const TEXT_SPRITE_HEIGHT = 256;
 const TEXT_LINE_HEIGHT_FACTOR = 1.2;
@@ -48,7 +50,7 @@ export class CanvasTextSprite extends THREE.Sprite {
 
     setText(text: string, size: number): void {
         this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
-        this.context.font = `${size}px Segoe UI Black`;
+        this.context.font = `${APP_FONT_WEIGHT_STRONG} ${size}px ${getAppFontFamily()}`;
 
         const lines = text.split('\n');
         const lineHeight = size * TEXT_LINE_HEIGHT_FACTOR;
