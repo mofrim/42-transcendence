@@ -532,13 +532,13 @@ export class Story_Manager {
 
     async handleESDoorInteraction(): Promise<void> {
         await this.playDialogInteraction(
-            'I\'ve got an evaluation to finish first. The championship can wait a little longer.', 
+            "I've got an evaluation to finish first. The championship can wait a little longer.",
             PlayerState.Angry
         );
 
         // TODO: JUST INFO: REMOVE THAT LATER
         await this.playDialogInteraction(
-            'DEV NOTE: Door opens now for testing purposes. Remove this later.', 
+            'DEV NOTE: Door opens now for testing purposes. Remove this later.',
             PlayerState.Angry
         );
         return;
@@ -589,7 +589,7 @@ export class Story_Manager {
     async handleInteraction(interaction: Interaction): Promise<void> {
         //console.log(`Interaction triggered: ${interaction.typeID}`);
         this.onQuestComplete = null;
-        
+
         // Event Space Door Interaction
         switch (interaction.typeID) {
             case 'ES_DOOR_A':
