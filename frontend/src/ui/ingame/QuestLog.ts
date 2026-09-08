@@ -6,6 +6,13 @@ export const MEET_PLAYER_QUEST_ID = 'meet-player';
 export const RPS_WIN_QUEST_ID = 'win-rps-minigame';
 export const TTT_WIN_QUEST_ID = 'win-ttt-minigame';
 
+const COUNTDOWN_FORMAT = new Intl.DurationFormat('en', {
+    style: 'digital',
+    hoursDisplay: 'auto',
+    minutes: '2-digit',
+    seconds: '2-digit',
+});
+
 export type QuestLogEntry = {
     readonly id: string;
     readonly text: string;
@@ -77,7 +84,7 @@ export function formatQuestCountdown(totalSeconds: number): string {
     const minutes = Math.floor(totalSeconds / 60);
     const seconds = totalSeconds % 60;
 
-    return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+    return COUNTDOWN_FORMAT.format({ minutes, seconds });
 }
 
 function isQuestCompleted(
