@@ -1,7 +1,6 @@
 import type { GameRuntimeEvent } from '../../game/main';
 
 export const BLACK_HOLE_QUEST_ID = 'avoid-blackhole';
-export const BLACK_HOLE_DURATION_SECONDS = 5 * 60; // 5 minutes in seconds (05:00)
 export const MEET_PLAYER_QUEST_ID = 'meet-player';
 export const RPS_WIN_QUEST_ID = 'win-rps-minigame';
 export const TTT_WIN_QUEST_ID = 'win-ttt-minigame';

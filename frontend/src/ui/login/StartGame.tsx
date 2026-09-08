@@ -77,6 +77,7 @@ export const Game: React.FC<{
     });
     const [completedQuestIds, setCompletedQuestIds] = useState<string[]>([]);
     const [gameResetVersion, setGameResetVersion] = useState(0);
+    const [isGameplayReady, setIsGameplayReady] = useState(false);
     const [dialog, setDialog] = useState<DialogPanelState>({
         isOpen: false,
         message: '',
@@ -185,12 +186,14 @@ export const Game: React.FC<{
         let runtimeDialogHandler:
             ((state: DialogPanelState) => void) | undefined;
         let runtimeGameResetHandler: (() => void) | undefined;
+        let runtimeGameplayReadyHandler: (() => void) | undefined;
 
         if (!isSpectator) {
             gameMode = 'player';
             runtimeGameEventHandler = handleGameEvent;
             runtimeDialogHandler = setDialog;
             runtimeGameResetHandler = handleGameReset;
+            runtimeGameplayReadyHandler = () => setIsGameplayReady(true);
         }
 
         const runtime: GameRuntime = startGame(
@@ -202,7 +205,8 @@ export const Game: React.FC<{
             runtimeDialogHandler,
             gameMode,
             handleReceivedChatMessage,
-            runtimeGameResetHandler
+            runtimeGameResetHandler,
+            runtimeGameplayReadyHandler
         );
         gameRuntimeRef.current = runtime;
 
@@ -251,6 +255,7 @@ export const Game: React.FC<{
             onLogout: handleLogout,
             dialog,
             onDialogNext: handleDialogNext,
+            blackHoleCountdownActive: isGameplayReady,
         };
     }
 

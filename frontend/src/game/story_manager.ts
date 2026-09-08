@@ -468,7 +468,6 @@ export class Story_Manager {
         this.resetModelPosition();
         this.player.PlayerToStartPosition();
         this.resetGameState();
-        this.onGameReset?.();
 
         this.moveCameraDialog(
             new THREE.Vector3(16.3, 1.1, 13),
@@ -491,6 +490,7 @@ export class Story_Manager {
         await this.returnCameraToPlayer(1.0);
 
         this.endCutscene();
+        this.onGameReset?.();
     }
 
     async playDialogInteraction(

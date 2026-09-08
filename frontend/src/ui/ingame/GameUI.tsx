@@ -7,7 +7,6 @@ import {
     type SyntheticEvent,
 } from 'react';
 import {
-    BLACK_HOLE_DURATION_SECONDS,
     BLACK_HOLE_QUEST_ID,
     DEFAULT_QUESTS,
     formatQuestCountdown,
@@ -17,6 +16,10 @@ import {
     type QuestStatusChange,
     type ResolvedQuestLogEntry,
 } from './QuestLog';
+import {
+    BLACK_HOLE_DURATION_SECONDS,
+    getBlackHoleCountdownDeadline,
+} from './BlackHoleCountdown';
 import type { Character } from 'common/sharedTypes';
 import { CharacterPreviewView } from '../login/CharacterPreview';
 import { EventLogItems, type EventLogEntry } from './EventLogItems';
@@ -48,6 +51,7 @@ type GameUIProps = {
     readonly onLogout?: () => Promise<void>;
     readonly dialog?: DialogPanelState;
     readonly onDialogNext?: () => void;
+    readonly blackHoleCountdownActive?: boolean;
     readonly isSpectator?: boolean;
 };
 
@@ -194,6 +198,7 @@ export function GameUI({
     onLogout,
     dialog,
     onDialogNext,
+    blackHoleCountdownActive = true,
     isSpectator = false,
 }: GameUIProps) {
     const [isQuestLogOpen, setIsQuestLogOpen] = useState(false);
@@ -280,8 +285,15 @@ export function GameUI({
 
     /** blackhole timer */
     useEffect(() => {
-        const blackHoleDeadline =
-            Date.now() + BLACK_HOLE_DURATION_SECONDS * 1_000;
+        const blackHoleDeadline = getBlackHoleCountdownDeadline(
+            blackHoleCountdownActive,
+            Date.now()
+        );
+
+        if (blackHoleDeadline === null) {
+            return;
+        }
+
         let intervalId: number | undefined;
 
         const updateBlackHoleTimer = (): void => {
@@ -307,7 +319,7 @@ export function GameUI({
                 window.clearInterval(intervalId);
             }
         };
-    }, []);
+    }, [blackHoleCountdownActive]);
 
     /** Meldet ausschließlich tatsächliche Änderungen eines Quest-Status. */
     useEffect(() => {
