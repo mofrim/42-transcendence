@@ -441,7 +441,9 @@ export class Story_Manager {
 
         this.transformModelForCutscene(16, 15, -5);
 
-        this.showDialog('OH NO... THE BLACK HOLE IS PULLING ME IN!');
+        const continueAfterBlackHole = this.showDialog(
+            'OH NO... THE BLACK HOLE IS PULLING ME IN!'
+        );
 
         await this.moveCameraAndLookAt(
             new THREE.Vector3(15.5, 11, -5),
@@ -450,6 +452,8 @@ export class Story_Manager {
             new THREE.Vector3(16, 15, -5),
             new THREE.Vector3(16, 15, -5)
         );
+
+        await continueAfterBlackHole;
 
         this.resetModelPosition();
         this.player.PlayerToStartPosition();
