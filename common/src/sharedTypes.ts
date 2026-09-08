@@ -63,6 +63,15 @@ export enum CharacterModel {
     female = 'female',
 }
 
+export enum NPCState {
+    Talking_1 = 'Talking_1',
+    Talking_2 = 'Talking_2',
+    Talking_3 = 'Talking_3',
+    Standing = 'Standing',
+    Nod = 'Nod',
+    ComputerSitting = 'ComputerSitting',
+}
+
 export const SPECTATOR_NAME = '42Staff' as const;
 
 /** 30 server fps */

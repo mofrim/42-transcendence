@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { NPCState } from 'common/sharedTypes';
 
 /** ohne jump bisher */
 type NPCAnimationActions = {
@@ -33,7 +34,7 @@ export class NPC {
         path: string,
         id: number,
         scene: THREE.Scene,
-        animation: string
+        animation: NPCState
     ) {
         this.scene = scene;
         this.id = id;
@@ -84,6 +85,10 @@ export class NPC {
             }
 
             const mix = new THREE.AnimationMixer(this.model);
+
+            /* for (const clip of gltf.animations) {
+                console.log("NPC has animation:", clip.name);
+            } */
 
             const clip = THREE.AnimationClip.findByName(
                 gltf.animations,

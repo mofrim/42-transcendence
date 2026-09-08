@@ -29,6 +29,7 @@ import {
     PLAYER_NETWORK_UPDATE_INTERVAL_MS,
     RPSChoice,
     TTTMeshBoard,
+    NPCState,
 } from 'common/sharedTypes';
 import type {
     GLBMesh,
@@ -1369,9 +1370,9 @@ export function startGame(
 
     function initNPC(): void {
         // NPCs at the entrance of the 42WOB building
-        const entry1 = new NPC('glb/NPC_Man_1.glb', 2, scene, 'Nod');
-        const entry2 = new NPC('glb/NPC_Man_1.glb', 3, scene, 'Talking_2');
-        const entry3 = new NPC('glb/NPC_Man_1.glb', 4, scene, 'Nod');
+        const entry1 = new NPC('glb/NPC_Man_1.glb', 2, scene, NPCState.Nod);
+        const entry2 = new NPC('glb/NPC_Man_1.glb', 3, scene, NPCState.Talking_2);
+        const entry3 = new NPC('glb/NPC_Man_1.glb', 4, scene, NPCState.Nod);
 
         entry1.group.position.set(6.5, 0, 1);
         entry2.group.position.set(8, 0, 1.5);
@@ -1386,6 +1387,12 @@ export function startGame(
         npcs.set(entry1.id, entry1);
         npcs.set(entry2.id, entry2);
         npcs.set(entry3.id, entry3);
+
+        const frontdesk = new NPC('glb/NPC_Man_1.glb', 5, scene, NPCState.Standing);
+        frontdesk.group.position.set(12.1, 0, -5.8);
+        frontdesk.rotateCharacter(frontdesk.group.position, new THREE.Vector3(frontdesk.group.position.x, frontdesk.group.position.y, frontdesk.group.position.z+1));
+        scene.add(frontdesk.group);
+        npcs.set(frontdesk.id, frontdesk);
 
         // NPCs 1Floor doing the Spiderman meme
         /* const spider1 = new NPC('glb/SpidermanMeme.glb', 2, scene, 1);
