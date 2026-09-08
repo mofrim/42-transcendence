@@ -17,6 +17,7 @@ import {
 import type { EventLogEntry } from '../ingame/EventLogItems';
 import {
     applyQuestCompletionEvent,
+    BLACK_HOLE_QUEST_ID,
     describeQuestStatusChange,
     type QuestStatusChange,
 } from '../ingame/QuestLog';
@@ -115,7 +116,10 @@ export const Game: React.FC<{
     const handleQuestStatusChange = useCallback(
         (statusChange: QuestStatusChange): void => {
             appendEvent(describeQuestStatusChange(statusChange));
-            if (statusChange.questId === 'avoid-blackhole') {
+            if (
+                statusChange.questId === BLACK_HOLE_QUEST_ID &&
+                !statusChange.completed
+            ) {
                 gameRuntimeRef.current?.triggerBlackHoleCutscene();
                 //console.log('### Quest status change:', statusChange);
             }
@@ -135,10 +139,6 @@ export const Game: React.FC<{
         },
         [appendEvent]
     );
-
-    const handleBlackHoleExpired = useCallback((): void => {
-        void exitLocalPlayer(`${nickname} 🕳️ was sucked into the Black Hole`);
-    }, [exitLocalPlayer, nickname]);
 
     const handleLogout = useCallback(async (): Promise<void> => {
         try {
@@ -231,7 +231,6 @@ export const Game: React.FC<{
     } else {
         playerOnlyGameUIProps = {
             onQuestStatusChange: handleQuestStatusChange,
-            onBlackHoleExpired: handleBlackHoleExpired,
             onLogout: handleLogout,
             dialog,
             onDialogNext: handleDialogNext,

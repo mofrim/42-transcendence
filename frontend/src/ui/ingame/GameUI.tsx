@@ -44,7 +44,6 @@ type GameUIProps = {
     readonly matchHistory?: readonly EventLogEntry[];
     readonly onChatMessage?: (message: string) => void;
     readonly onQuestStatusChange?: (change: QuestStatusChange) => void;
-    readonly onBlackHoleExpired?: () => void;
     readonly onLogout?: () => Promise<void>;
     readonly dialog?: DialogPanelState;
     readonly onDialogNext?: () => void;
@@ -191,7 +190,6 @@ export function GameUI({
     matchHistory = [],
     onChatMessage,
     onQuestStatusChange,
-    onBlackHoleExpired,
     onLogout,
     dialog,
     onDialogNext,
@@ -201,7 +199,6 @@ export function GameUI({
     const [isProfileOpen, setIsProfileOpen] = useState(false);
     const [isChatOpen, setIsChatOpen] = useState(false);
     const [chatMessage, setChatMessage] = useState('');
-    const [isBlackHoleVisible, setIsBlackHoleVisible] = useState(false);
     const [isLoggingOut, setIsLoggingOut] = useState(false);
     const [blackHoleSecondsRemaining, setBlackHoleSecondsRemaining] = useState(
         BLACK_HOLE_DURATION_SECONDS
@@ -211,7 +208,6 @@ export function GameUI({
     const previousResolvedQuestsRef = useRef<
         readonly ResolvedQuestLogEntry[] | null
     >(null);
-    const hasBlackHoleExpiredRef = useRef(false);
 
     const handleQuestLogToggle = (): void => {
         setIsQuestLogOpen((isOpen) => !isOpen);
@@ -241,8 +237,12 @@ export function GameUI({
 
     const displayedEvents = events.slice(-MAX_EVENT_LOG_ENTRIES);
     const latestEventId = displayedEvents.at(-1)?.id;
+    let blackHoleHourglass = '⌛';
+    if (blackHoleSecondsRemaining % 2 !== 0) {
+        blackHoleHourglass = '⏳';
+    }
     const blackHoleCountdown =
-        '⌛⏳' + formatQuestCountdown(blackHoleSecondsRemaining);
+        blackHoleHourglass + formatQuestCountdown(blackHoleSecondsRemaining);
     const resolvedQuests = resolveQuestLogEntries(
         quests,
         completedQuestIds,
@@ -282,16 +282,6 @@ export function GameUI({
             }
         };
     }, []);
-
-    useEffect(() => {
-        if (blackHoleSecondsRemaining > 0 || hasBlackHoleExpiredRef.current) {
-            return;
-        }
-
-        hasBlackHoleExpiredRef.current = true;
-        setIsBlackHoleVisible(true);
-        onBlackHoleExpired?.();
-    }, [blackHoleSecondsRemaining, onBlackHoleExpired]);
 
     /** Meldet ausschließlich tatsächliche Änderungen eines Quest-Status. */
     useEffect(() => {
@@ -523,18 +513,6 @@ export function GameUI({
                     onKeyUp={stopGameInteraction}
                 />
             </div>
-
-            {isBlackHoleVisible && (
-                <div
-                    className='hud-black-hole-overlay'
-                    role='alert'
-                    aria-label='Du wurdest vom Black Hole eingesogen'
-                >
-                    <span className='hud-black-hole-icon' aria-hidden='true'>
-                        🕳️
-                    </span>
-                </div>
-            )}
         </div>
     );
 }
