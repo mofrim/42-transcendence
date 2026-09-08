@@ -42,6 +42,10 @@ export const DEFAULT_QUESTS: readonly QuestLogEntry[] = [
         text: 'Log In to Computer c2r12s6',
     },
     {
+        id: MEET_PLAYER_QUEST_ID,
+        text: 'Find a other Student',
+    },
+    {
         id: 'FIND_EVALUATING_STUDENT',
         text: 'Find the Evaluating Student',
     },
@@ -50,25 +54,22 @@ export const DEFAULT_QUESTS: readonly QuestLogEntry[] = [
         text: 'Start Evaluation',
     },
     {
-        id: BLACK_HOLE_QUEST_ID,
-        text: "Don't get blackholed",
+        id: 'ENTER_EVENT_SPACE',
+        text: 'Enter the Event Space',
     },
-
     // Secondary quests, once blackhole is disabled ?
-    /* 
     {
         id: RPS_WIN_QUEST_ID,
-        text: 'Gewinne eine Runde Schere, Stein, Papier',
+        text: 'Win Rock-Paper-Scissors',
     },
     {
         id: TTT_WIN_QUEST_ID,
-        text: 'Gewinne eine Runde Tic-Tac-Toe',
+        text: 'Win Tic-Tac-Toe',
     },
     {
-        id: MEET_PLAYER_QUEST_ID,
-        text: 'Finde einen anderen Student',
+        id: BLACK_HOLE_QUEST_ID,
+        text: "Don't get blackholed",
     },
-    */
 ];
 
 /** blackhole timer */
@@ -76,9 +77,7 @@ export function formatQuestCountdown(totalSeconds: number): string {
     const minutes = Math.floor(totalSeconds / 60);
     const seconds = totalSeconds % 60;
 
-    return [minutes, seconds]
-        .map((part) => String(part).padStart(2, '0'))
-        .join(':');
+    return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 }
 
 function isQuestCompleted(

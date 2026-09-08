@@ -241,7 +241,8 @@ export function GameUI({
 
     const displayedEvents = events.slice(-MAX_EVENT_LOG_ENTRIES);
     const latestEventId = displayedEvents.at(-1)?.id;
-    const blackHoleCountdown = formatQuestCountdown(blackHoleSecondsRemaining);
+    const blackHoleCountdown =
+        '⌛⏳' + formatQuestCountdown(blackHoleSecondsRemaining);
     const resolvedQuests = resolveQuestLogEntries(
         quests,
         completedQuestIds,
