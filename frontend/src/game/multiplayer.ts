@@ -188,7 +188,6 @@ export class MultiplayerManager {
             getPlayerModelPath(character),
             id,
             nickname,
-            this.scene,
             this.mesh_RP
         );
         this.players.set(newPlayer.id, newPlayer);
