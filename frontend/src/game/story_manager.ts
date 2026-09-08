@@ -28,6 +28,7 @@ export class Story_Manager {
     // Keep dialogue handling internal and prevent accidental reassignment.
     private dialogResolver: (() => void) | null;
     private readonly onDialogChange: ((state: DialogState) => void) | undefined;
+    private readonly onGameReset: (() => void) | undefined;
 
     onQuestComplete: string | null = null;
 
@@ -42,7 +43,8 @@ export class Story_Manager {
         keyStates: { [key: string]: boolean },
         keys: [number, number],
         interactionManager: InteractionManager,
-        onDialogChange?: (state: DialogState) => void
+        onDialogChange?: (state: DialogState) => void,
+        onGameReset?: () => void
     ) {
         this.scene = scene;
         this.player = player;
@@ -53,6 +55,7 @@ export class Story_Manager {
         this.keys = keys;
         this.interactionManager = interactionManager;
         this.onDialogChange = onDialogChange;
+        this.onGameReset = onGameReset;
 
         this.onQuestComplete = null;
 
@@ -72,6 +75,13 @@ export class Story_Manager {
         this.questState.set('GET_COFFEE', false);
         this.questState.set('GET_PAPER', false);
         this.questState.set('LOGIN_COMPUTER', false);
+    }
+
+    resetGameState(): void {
+        this.questState.clear();
+        this.initQuestState();
+        this.onQuestComplete = null;
+        this.interactionManager.interactionStartingState();
     }
 
     releaseAllKeys(): void {
@@ -457,6 +467,8 @@ export class Story_Manager {
 
         this.resetModelPosition();
         this.player.PlayerToStartPosition();
+        this.resetGameState();
+        this.onGameReset?.();
 
         this.moveCameraDialog(
             new THREE.Vector3(16.3, 1.1, 13),
@@ -475,8 +487,6 @@ export class Story_Manager {
         await this.showDialog('I need to finish. Now!');
 
         this.stopCurrentDialogueCamera();
-
-        // TODO: Kompletter Reset? Alle Quests zurücksetzen etc.
 
         await this.returnCameraToPlayer(1.0);
 

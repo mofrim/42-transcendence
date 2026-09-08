@@ -174,7 +174,9 @@ export class Player {
         this.playerCollider.end.set(X, Y + Player.colEndY, Z);
     }
 
-    PlayerToStartPosition() {
+    PlayerToStartPosition(): void {
+        this.playerVelocity.setScalar(0);
+        this.playerOnFloor = false;
         this.setPlayerPosition(Player.playerStartX, 0, Player.playerStartZ);
     }
 

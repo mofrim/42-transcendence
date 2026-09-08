@@ -99,7 +99,8 @@ export function startGame(
     onGameEvent?: (event: GameRuntimeEvent) => void,
     onDialogChange?: (state: { isOpen: boolean; message: string }) => void,
     mode: GameMode = 'player',
-    onChatMessage?: (message: ReceivedChatPayload) => void
+    onChatMessage?: (message: ReceivedChatPayload) => void,
+    onGameReset?: () => void
 ): GameRuntime {
     // ============================================================================
     // SERVER CONNECTION
@@ -1059,7 +1060,8 @@ export function startGame(
                 keyStates,
                 controls.key,
                 interactionManager,
-                onDialogChange
+                onDialogChange,
+                resetGameStateAfterBlackHole
             );
 
             storyManager.onQuestInteraction = (interaction) => {
@@ -1374,6 +1376,35 @@ export function startGame(
         groupDoorB.rotation.y = 1.42;
 
         removefromColliderAndOctree(doorMeshesNames);
+    }
+
+    function resetDoorsState(): void {
+        groupDoorA.rotation.set(0, 0, 0);
+        groupDoorB.rotation.set(0, 0, 0);
+
+        for (const doorGroup of [groupDoorA, groupDoorB]) {
+            const doorMeshes = doorGroup.getObjectsByProperty(
+                'isMesh',
+                true
+            ) as GLBMesh[];
+            for (const doorMesh of doorMeshes) {
+                if (!mesh_col.includes(doorMesh)) {
+                    mesh_col.push(doorMesh);
+                }
+            }
+        }
+
+        worldOctree.clear();
+        for (const mesh of mesh_Octree) {
+            worldOctree.fromGraphNode(mesh);
+        }
+        worldOctree.fromGraphNode(groupDoorA);
+        worldOctree.fromGraphNode(groupDoorB);
+    }
+
+    function resetGameStateAfterBlackHole(): void {
+        resetDoorsState();
+        onGameReset?.();
     }
 
     function removefromColliderAndOctree(objects: string[]): void {

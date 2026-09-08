@@ -76,6 +76,7 @@ export const Game: React.FC<{
         isSpectator,
     });
     const [completedQuestIds, setCompletedQuestIds] = useState<string[]>([]);
+    const [gameResetVersion, setGameResetVersion] = useState(0);
     const [dialog, setDialog] = useState<DialogPanelState>({
         isOpen: false,
         message: '',
@@ -137,6 +138,12 @@ export const Game: React.FC<{
         gameRuntimeRef.current?.continueDialogue();
     }, []);
 
+    const handleGameReset = useCallback((): void => {
+        setCompletedQuestIds([]);
+        setEvents([]);
+        setGameResetVersion((currentVersion) => currentVersion + 1);
+    }, []);
+
     /** suck up */
     const exitLocalPlayer = useCallback(
         async (description: string): Promise<void> => {
@@ -177,11 +184,13 @@ export const Game: React.FC<{
             ((event: GameRuntimeEvent) => void) | undefined;
         let runtimeDialogHandler:
             ((state: DialogPanelState) => void) | undefined;
+        let runtimeGameResetHandler: (() => void) | undefined;
 
         if (!isSpectator) {
             gameMode = 'player';
             runtimeGameEventHandler = handleGameEvent;
             runtimeDialogHandler = setDialog;
+            runtimeGameResetHandler = handleGameReset;
         }
 
         const runtime: GameRuntime = startGame(
@@ -192,7 +201,8 @@ export const Game: React.FC<{
             runtimeGameEventHandler,
             runtimeDialogHandler,
             gameMode,
-            handleReceivedChatMessage
+            handleReceivedChatMessage,
+            runtimeGameResetHandler
         );
         gameRuntimeRef.current = runtime;
 
@@ -214,6 +224,7 @@ export const Game: React.FC<{
     }, [
         character,
         handleGameEvent,
+        handleGameReset,
         handleReceivedChatMessage,
         isSpectator,
         nickname,
@@ -248,6 +259,7 @@ export const Game: React.FC<{
             <div ref={mountRef} className='game-canvas-container' />
             {spectatorExitButton}
             <GameUI
+                key={gameResetVersion}
                 // NOTE now we can just use the users nickname from DB here..
                 // this might change when we want to allow change user-prefs
                 // from a in-game ui

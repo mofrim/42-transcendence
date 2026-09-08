@@ -106,10 +106,17 @@ export class InteractionManager {
     }
 
     interactionStartingState(): void {
+        this.currentInteraction = null;
+        for (const interaction of this.interactions) {
+            interaction.removeEngageButton();
+        }
+
         this.enableInteraction('FIND_RUBBERDUCK');
         this.enableInteraction('GET_COFFEE');
         this.enableInteraction('GET_PAPER');
         this.enableInteraction('LOGIN_COMPUTER');
+        this.enableInteraction('ES_DOOR_A');
+        this.enableInteraction('ES_DOOR_B');
 
         this.disableInteraction('WHERE_IS_EVALUATOR');
         this.disableInteraction('FIND_EVALUATING_STUDENT');
