@@ -14,7 +14,14 @@ import { RPS_Game } from './rps_game.js';
 import { createThreeResourceDisposer } from './ThreeResourceDisposer.js';
 import { Story_Manager } from './story_manager.js';
 import { InteractionManager } from './interaction_manager.js';
-import { getPlayerModelPath, MAP_MODEL_PATH, ES_DOOR_A_PATH, ES_DOOR_B_PATH, CLOUDS_PATH, ROCKS_BORDER_PATH  } from './Assets.js';
+import {
+    getPlayerModelPath,
+    MAP_MODEL_PATH,
+    ES_DOOR_A_PATH,
+    ES_DOOR_B_PATH,
+    CLOUDS_PATH,
+    ROCKS_BORDER_PATH,
+} from './Assets.js';
 
 import { io } from 'socket.io-client';
 
@@ -1035,10 +1042,12 @@ export function startGame(
                 storyManager?.handleInteraction(interaction);
                 //onQuestComplete?.(interaction);
 
-                if(interaction.typeID === 'ES_DOOR_A' || interaction.typeID === 'ES_DOOR_B') {
-                    openDoors()
+                if (
+                    interaction.typeID === 'ES_DOOR_A' ||
+                    interaction.typeID === 'ES_DOOR_B'
+                ) {
+                    openDoors();
                 }
-
             };
 
             storyManager = new Story_Manager(
@@ -1126,15 +1135,15 @@ export function startGame(
                 //console.log("Adding collider for: " + child.name);
                 mesh_col.push(child);
             }
-            
+
             // Add Doors to group so we can open/close them
-            if (path === ES_DOOR_A_PATH){
-                console.log(child.name + " added to groupDoorA");
+            if (path === ES_DOOR_A_PATH) {
+                console.log(child.name + ' added to groupDoorA');
                 doorMeshesNames.push(child.name);
                 groupDoorA.add(obj);
             }
-            if (path === ES_DOOR_B_PATH){
-                console.log(child.name + " added to groupDoorB");
+            if (path === ES_DOOR_B_PATH) {
+                console.log(child.name + ' added to groupDoorB');
                 doorMeshesNames.push(child.name);
                 groupDoorB.add(obj);
             }
@@ -1194,7 +1203,7 @@ export function startGame(
             return;
         }
 
-        if(path !== ES_DOOR_A_PATH && path !== ES_DOOR_B_PATH){
+        if (path !== ES_DOOR_A_PATH && path !== ES_DOOR_B_PATH) {
             scene.add(obj);
             mesh_Octree.push(obj);
         }
@@ -1356,7 +1365,6 @@ export function startGame(
         for (const mesh of mesh_Octree) {
             worldOctree.fromGraphNode(mesh);
         }
-
     }
 
     function initNPC(): void {
@@ -1615,7 +1623,7 @@ export function startGame(
         const firstHit = tttRaycastHits[0];
         if (firstHit) {
             //console.log("Clicked on TTT box:" + hits[0].object.name);
-            console.log("Clicked on: " + firstHit.object.name );
+            console.log('Clicked on: ' + firstHit.object.name);
             if (firstHit.object.name.includes('TTT_Board')) {
                 //tttGame.markField(hits[0].object.name, socket.id);
                 emitTTTmark(firstHit.object.name);
