@@ -5,6 +5,7 @@ export const CLOUDS_PATH = '/glb/Clouds1.glb';
 export const ROCKS_BORDER_PATH = '/glb/RocksBorder4.glb';
 export const DUCK_DOWN_PATH = '/glb/Duck_down.glb';
 export const DUCK_UP_PATH = '/glb/Duck_up.glb';
+export const Display_PATH = '/glb/Display.glb';
 
 /** all both gender */
 export function getPlayerModelPath(character: boolean): string {

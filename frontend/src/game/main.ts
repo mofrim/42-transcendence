@@ -28,6 +28,7 @@ import {
     ROCKS_BORDER_PATH,
     DUCK_DOWN_PATH,
     DUCK_UP_PATH,
+    Display_PATH
 } from './Assets.js';
 
 import { io } from 'socket.io-client';
@@ -804,6 +805,7 @@ export function startGame(
 
     let duck_down: THREE.Object3D | null = null;
     let duck_up: THREE.Object3D | null = null;
+    let display: THREE.Object3D | null = null;
 
     const npcs = new Map();
 
@@ -1114,14 +1116,26 @@ export function startGame(
             };
             storyManager.onQuestDuckFound = async () => {
                 duck_up = await loadMesh(DUCK_UP_PATH, [0, 0, 0]);
+                void duck_up;
                 if (duck_down) {
                     scene.remove(duck_down);
                     runtimeResourceDisposer.disposeObject3D(duck_down);
                     duck_down = null;
-                }
+                };
+            };
+            storyManager.onQuestLogin = async () => {
+                display = await loadMesh(Display_PATH, [0, 0, 0]);  
+                changeObjectTexture(display, "textures/42_Display_intra.jpg");              
+            };
+            storyManager.onQuestEvaluator = async () => {
+                changeObjectTexture(display, "textures/42_Display_booking.jpg");              
+            };
+            storyManager.onQuestStartEvaluation = async () => {
+                changeObjectTexture(display, "textures/42_Display_eval.jpg");
             };
             storyManager.onQuestFinished = () => {
                 console.log('Quest finished');
+                changeObjectTexture(display, "textures/42_Display_graph.jpg");
                 openDoors();
             };
             storyManager.onEvaluatingStudentAvailabilityChange = (
@@ -1168,6 +1182,22 @@ export function startGame(
         scene.add(testCube);
 
         scene.add(new THREE.AmbientLight(0xffffff, 12)); */
+    }
+
+    function changeObjectTexture(mesh: THREE.Object3D | null, texturePath: string): void {
+        mesh?.traverse((child) => {
+            if (child instanceof THREE.Mesh) {
+                const material = child.material as THREE.MeshStandardMaterial;
+                const texture = new THREE.TextureLoader().load(
+                    texturePath
+                );
+
+                texture.flipY = false;
+
+                material.map = texture;
+                material.needsUpdate = true;
+            }
+        });
     }
 
     function addBlackhole() {

@@ -588,6 +588,7 @@ export class Story_Manager {
                 break;
 
             case 'LOGIN_COMPUTER':
+                this.onQuestLogin?.();
                 await this.caseInteraction(
                     'LOGIN_COMPUTER',
                     'Great, the computer is ready. Just a few more steps to go!',
@@ -628,6 +629,7 @@ export class Story_Manager {
         // Find Evaluating Student
         switch (interaction.typeID) {
             case 'WHERE_IS_EVALUATOR':
+                this.onQuestEvaluator?.();
                 await this.playDialogInteraction(
                     "Someone's been assigned to my evaluation. They're at c1r12s2. Let's go.",
                     PlayerState.ThumbsUp
@@ -650,6 +652,7 @@ export class Story_Manager {
 
         // Start Evaluation
         if (interaction.typeID === 'START_EVALUATION') {
+            this.onQuestStartEvaluation?.();
             await this.caseInteraction(
                 'START_EVALUATION',
                 "Evaluation is starting. Let's go!",
@@ -666,6 +669,7 @@ export class Story_Manager {
             // TODO: after eval finished, doors will open
             this.disableInteraction('EVENT_SPACE_DOOR_A');
             this.disableInteraction('EVENT_SPACE_DOOR_B');
+            this.disableInteraction('START_EVALUATION');
 
             this.questFinished();
 
@@ -688,6 +692,9 @@ export class Story_Manager {
     onQuestInteraction?: (questId: string) => void;
     onQuestFinished?: () => void;
     onQuestDuckFound?: () => void;
+    onQuestEvaluator?: () => void;
+    onQuestLogin?: () => void;
+    onQuestStartEvaluation?: () => void;
     onEvaluatingStudentAvailabilityChange?: (available: boolean) => void;
 
     // ===================================================
