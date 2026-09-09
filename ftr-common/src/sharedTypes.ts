@@ -30,16 +30,15 @@ export type EventData = {
 export abstract class BaseEventLog {
     abstract id: number;
     abstract eventType: EventType;
-    abstract data: string;
-    // abstract logtime: Date;
-    // abstract data: EventData;
+    abstract logtime: Date;
+    abstract data: EventData;
 }
 
 export class GameEvent extends BaseEventLog {
     id: number = 0;
     eventType: EventType = EventType.None;
-    // logtime: Date = new Date();
-    data: string = '';
+    logtime: Date = new Date();
+    data: EventData = {};
 }
 
 // using an abstract class here in order to force implementation of _all_

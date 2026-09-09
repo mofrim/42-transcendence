@@ -19,6 +19,10 @@
         "./expressTypes": {
             "import": "./dist/expressTypes.js",
             "types": "./dist/expressTypes.d.ts"
+        },
+        "./utils": {
+            "import": "./dist/utils.js",
+            "types": "./dist/expressTypes.d.ts"
         }
     },
     "scripts": {
