@@ -71,6 +71,10 @@ export type GameRuntimeEvent =
           readonly nickname: string;
       }
     | {
+          readonly type: 'quest_completed';
+          readonly questId: string;
+      }
+    | {
           readonly type: 'game_result';
           readonly game: 'Tic-Tac-Toe' | 'Rock-Paper-Scissors';
           readonly outcome: 'won' | 'lost' | 'draw';
@@ -1081,8 +1085,11 @@ export function startGame(
                 resetGameStateAfterBlackHole
             );
 
-            storyManager.onQuestInteraction = (interaction) => {
-                console.log('Quest interaction:', interaction);
+            storyManager.onQuestInteraction = (questId) => {
+                onGameEvent?.({
+                    type: 'quest_completed',
+                    questId,
+                });
             };
             storyManager.onQuestFinished = () => {
                 console.log('Quest finished');

@@ -38,6 +38,8 @@ function describeGameEvent(event: GameRuntimeEvent): string {
             return `${event.nickname} 🚪 logged out`;
         case 'player_in_range':
             return `Met ${event.nickname} nearby`;
+        case 'quest_completed':
+            return `Completed quest ${event.questId}`;
         case 'game_result':
             if (event.outcome === 'draw') {
                 return `${event.playerNickname} drew a game of ${event.game} against ${event.opponentNickname}`;
@@ -107,7 +109,7 @@ export const Game: React.FC<{
                     metPlayerNicknames.add(event.nickname);
                     appendEvent(describeGameEvent(event));
                 }
-            } else {
+            } else if (event.type !== 'quest_completed') {
                 appendEvent(describeGameEvent(event));
             }
 

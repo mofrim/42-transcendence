@@ -157,6 +157,10 @@ export function describeQuestStatusChange(change: QuestStatusChange): string {
 }
 
 function getCompletedQuestId(event: GameRuntimeEvent): string | null {
+    if (event.type === 'quest_completed') {
+        return event.questId;
+    }
+
     if (event.type === 'player_in_range') {
         return MEET_PLAYER_QUEST_ID;
     }
