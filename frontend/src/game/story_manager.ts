@@ -606,8 +606,8 @@ export class Story_Manager {
 
         // Event Space Door Interaction
         switch (interaction.typeID) {
-            case 'ES_DOOR_A':
-            case 'ES_DOOR_B':
+            case 'EVENT_SPACE_DOOR_A':
+            case 'EVENT_SPACE_DOOR_B':
                 await this.handleESDoorInteraction();
                 return;
         }
@@ -661,8 +661,8 @@ export class Story_Manager {
             );
 
             // TODO: after eval finished, doors will open
-            this.disableInteraction('ES_DOOR_A');
-            this.disableInteraction('ES_DOOR_B');
+            this.disableInteraction('EVENT_SPACE_DOOR_A');
+            this.disableInteraction('EVENT_SPACE_DOOR_B');
 
             this.questFinished();
 

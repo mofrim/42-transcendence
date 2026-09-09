@@ -62,14 +62,14 @@ export class InteractionManager {
 
         const interaction8 = new Interaction(
             scene,
-            'ES_DOOR_A',
+            'EVENT_SPACE_DOOR_A',
             new THREE.Vector3(15.5, 3.72, -16.85),
             new THREE.Vector3(1, 2, 1),
             true
         );
         const interaction9 = new Interaction(
             scene,
-            'ES_DOOR_B',
+            'EVENT_SPACE_DOOR_B',
             new THREE.Vector3(16.7, 3.72, -8.5),
             new THREE.Vector3(1, 2, 1),
             true
@@ -115,8 +115,8 @@ export class InteractionManager {
         this.enableInteraction('GET_COFFEE');
         this.enableInteraction('GET_PAPER');
         this.enableInteraction('LOGIN_COMPUTER');
-        this.enableInteraction('ES_DOOR_A');
-        this.enableInteraction('ES_DOOR_B');
+        this.enableInteraction('EVENT_SPACE_DOOR_A');
+        this.enableInteraction('EVENT_SPACE_DOOR_B');
 
         this.disableInteraction('WHERE_IS_EVALUATOR');
         this.disableInteraction('FIND_EVALUATING_STUDENT');
@@ -124,30 +124,32 @@ export class InteractionManager {
     }
 
     OnActivatePress(playerPosition: THREE.Vector3): void {
-        this.currentInteraction = null;
+        this.currentInteraction =
+            this.interactions.find(
+                (interaction) =>
+                    interaction.zone.containsPoint(playerPosition) &&
+                    interaction.enabled
+            ) ?? null;
 
-        for (const interaction of this.interactions) {
-            if (
-                interaction.zone.containsPoint(playerPosition) &&
-                interaction.enabled
-            ) {
-                // console.log(`Interaction triggered: ${interaction.typeID}`);
-                this.currentInteraction = interaction;
-                this.interact();
-                break;
-            }
-        }
+        this.interact();
     }
 
-    update(playerPosition: THREE.Vector3): void {
+    update(playerPosition: THREE.Vector3): Interaction | null {
+        let interactionInZone: Interaction | null = null;
+
         for (const interaction of this.interactions) {
-            if (
-                interaction.zone.containsPoint(playerPosition) &&
-                interaction.enabled
-            )
+            const isInZone = interaction.zone.containsPoint(playerPosition);
+
+            if (interactionInZone === null && isInZone) {
+                interactionInZone = interaction;
+            }
+
+            if (isInZone && interaction.enabled)
                 interaction.showEngageButton();
             else interaction.removeEngageButton();
         }
+
+        return interactionInZone;
     }
 
     // Called when the player presses the interaction key

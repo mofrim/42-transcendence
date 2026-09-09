@@ -30,8 +30,8 @@ export class Interaction {
             | 'WHERE_IS_EVALUATOR'
             | 'FIND_EVALUATING_STUDENT'
             | 'START_EVALUATION'
-            | 'ES_DOOR_A'
-            | 'ES_DOOR_B',
+            | 'EVENT_SPACE_DOOR_A'
+            | 'EVENT_SPACE_DOOR_B',
         position: THREE.Vector3,
         size: THREE.Vector3,
         enabled: boolean

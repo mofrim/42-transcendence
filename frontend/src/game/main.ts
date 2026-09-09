@@ -21,8 +21,8 @@ import { InteractionManager } from './interaction_manager.js';
 import {
     getPlayerModelPath,
     MAP_MODEL_PATH,
-    ES_DOOR_A_PATH,
-    ES_DOOR_B_PATH,
+    EVENT_SPACE_DOOR_A_PATH,
+    EVENT_SPACE_DOOR_B_PATH,
     CLOUDS_PATH,
     ROCKS_BORDER_PATH,
 } from './Assets.js';
@@ -62,6 +62,11 @@ const ENTRY_NPC_CHAT_BUBBLE_TEXTS = [
     '🗨️ You need to challenge other Students',
     '🗨️ I must evaluate before Blackhole',
 ] as const;
+export const ENTER_EVENT_SPACE_QUEST_ID = 'ENTER_EVENT_SPACE';
+const EVENT_SPACE_DOOR_INTERACTION_IDS: ReadonlySet<string> = new Set([
+    'EVENT_SPACE_DOOR_A',
+    'EVENT_SPACE_DOOR_B',
+]);
 
 /** event log msgs */
 export type GameRuntimeEvent =
@@ -161,6 +166,9 @@ export function startGame(
     let runtimeDisposePromise: Promise<void> | null = null;
     let runtimeDisposed = false;
     let playerUpdateIntervalId: number | null = null;
+    let eventSpaceDoorsOpen = false;
+    let eventSpaceDoorTraversalStarted = false;
+    let eventSpaceQuestCompleted = false;
     const knownPlayerNicknames = new Map<string, string>();
     const blockedPlayerUpdates = new Set<string>();
     const doorMeshesNames: string[] = [];
@@ -1065,10 +1073,7 @@ export function startGame(
                 storyManager?.handleInteraction(interaction);
                 //onQuestComplete?.(interaction);
 
-                if (
-                    interaction.typeID === 'ES_DOOR_A' ||
-                    interaction.typeID === 'ES_DOOR_B'
-                ) {
+                if (EVENT_SPACE_DOOR_INTERACTION_IDS.has(interaction.typeID)) {
                     openDoors();
                 }
             };
@@ -1104,9 +1109,9 @@ export function startGame(
         if (runtimeDisposed) return;
         await loadMeshSky(ROCKS_BORDER_PATH, [0, 0, 0]);
         if (runtimeDisposed) return;
-        await loadMesh(ES_DOOR_A_PATH, [0, 0, 0]);
+        await loadMesh(EVENT_SPACE_DOOR_A_PATH, [0, 0, 0]);
         if (runtimeDisposed) return;
-        await loadMesh(ES_DOOR_B_PATH, [0, 0, 0]);
+        await loadMesh(EVENT_SPACE_DOOR_B_PATH, [0, 0, 0]);
         if (runtimeDisposed) return;
 
         addBlackhole();
@@ -1193,12 +1198,12 @@ export function startGame(
             }
 
             // Add Doors to group so we can open/close them
-            if (path === ES_DOOR_A_PATH) {
+            if (path === EVENT_SPACE_DOOR_A_PATH) {
                 console.log(child.name + ' added to groupDoorA');
                 doorMeshesNames.push(child.name);
                 groupDoorA.add(obj);
             }
-            if (path === ES_DOOR_B_PATH) {
+            if (path === EVENT_SPACE_DOOR_B_PATH) {
                 console.log(child.name + ' added to groupDoorB');
                 doorMeshesNames.push(child.name);
                 groupDoorB.add(obj);
@@ -1259,7 +1264,10 @@ export function startGame(
             return;
         }
 
-        if (path !== ES_DOOR_A_PATH && path !== ES_DOOR_B_PATH) {
+        if (
+            path !== EVENT_SPACE_DOOR_A_PATH &&
+            path !== EVENT_SPACE_DOOR_B_PATH
+        ) {
             scene.add(obj);
             mesh_Octree.push(obj);
         }
@@ -1402,6 +1410,7 @@ export function startGame(
         // TODO: Play door opening animation
         groupDoorA.rotation.y = -1.83;
         groupDoorB.rotation.y = 1.42;
+        eventSpaceDoorsOpen = true;
 
         removefromColliderAndOctree(doorMeshesNames);
     }
@@ -1409,6 +1418,9 @@ export function startGame(
     function resetDoorsState(): void {
         groupDoorA.rotation.set(0, 0, 0);
         groupDoorB.rotation.set(0, 0, 0);
+        eventSpaceDoorsOpen = false;
+        eventSpaceDoorTraversalStarted = false;
+        eventSpaceQuestCompleted = false;
 
         for (const doorGroup of [groupDoorA, groupDoorB]) {
             const doorMeshes = doorGroup.getObjectsByProperty(
@@ -1428,6 +1440,34 @@ export function startGame(
         }
         worldOctree.fromGraphNode(groupDoorA);
         worldOctree.fromGraphNode(groupDoorB);
+    }
+
+    function updateEventSpaceQuestCompletion(
+        interactionTypeID: string | null
+    ): void {
+        if (!eventSpaceDoorsOpen || eventSpaceQuestCompleted || !player) {
+            return;
+        }
+
+        const isInDoorZone =
+            interactionTypeID !== null &&
+            EVENT_SPACE_DOOR_INTERACTION_IDS.has(interactionTypeID);
+
+        if (isInDoorZone) {
+            eventSpaceDoorTraversalStarted = true;
+            return;
+        }
+
+        if (!eventSpaceDoorTraversalStarted) {
+            return;
+        }
+
+        eventSpaceQuestCompleted = true;
+        eventSpaceDoorTraversalStarted = false;
+        onGameEvent?.({
+            type: 'quest_completed',
+            questId: ENTER_EVENT_SPACE_QUEST_ID,
+        });
     }
 
     function resetGameStateAfterBlackHole(): void {
@@ -1970,7 +2010,10 @@ export function startGame(
                 rpsGame.updateCheck();
             }
 
-            interactionManager.update(player.group.position);
+            const interactionInZone = interactionManager.update(
+                player.group.position
+            );
+            updateEventSpaceQuestCompletion(interactionInZone?.typeID ?? null);
         }
 
         for (const [_id, player] of npcs) {

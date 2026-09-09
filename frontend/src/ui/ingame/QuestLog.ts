@@ -1,4 +1,7 @@
-import type { GameRuntimeEvent } from '../../game/main';
+import {
+    ENTER_EVENT_SPACE_QUEST_ID,
+    type GameRuntimeEvent,
+} from '../../game/main';
 
 export const BLACK_HOLE_QUEST_ID = 'avoid-blackhole';
 export const MEET_PLAYER_QUEST_ID = 'meet-player';
@@ -60,7 +63,7 @@ export const DEFAULT_QUESTS: readonly QuestLogEntry[] = [
         text: 'Start Evaluation',
     },
     {
-        id: 'ENTER_EVENT_SPACE',
+        id: ENTER_EVENT_SPACE_QUEST_ID,
         text: 'Enter the Event Space',
     },
     // Secondary quests, once blackhole is disabled ?
