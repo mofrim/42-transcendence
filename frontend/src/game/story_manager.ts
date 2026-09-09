@@ -82,6 +82,7 @@ export class Story_Manager {
         this.initQuestState();
         this.onQuestComplete = null;
         this.interactionManager.interactionStartingState();
+        this.onEvaluatingStudentAvailabilityChange?.(false);
     }
 
     releaseAllKeys(): void {
@@ -542,6 +543,7 @@ export class Story_Manager {
 
         this.enableInteraction('WHERE_IS_EVALUATOR');
         this.enableInteraction('FIND_EVALUATING_STUDENT');
+        this.onEvaluatingStudentAvailabilityChange?.(true);
     }
 
     async handleESDoorInteraction(): Promise<void> {
@@ -684,6 +686,7 @@ export class Story_Manager {
     // TODO: If Questlog Id is enum, than change also here?
     onQuestInteraction?: (questId: string) => void;
     onQuestFinished?: () => void;
+    onEvaluatingStudentAvailabilityChange?: (available: boolean) => void;
 
     // ===================================================
     // TESTING FUNCTIONS. Delete if not needed anymore

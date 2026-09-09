@@ -62,6 +62,8 @@ const ENTRY_NPC_CHAT_BUBBLE_TEXTS = [
     '🗨️ You need to challenge other Students',
     '🗨️ I must evaluate before Blackhole',
 ] as const;
+const EVALUATING_STUDENT_INTERACTION_ID = 'FIND_EVALUATING_STUDENT';
+const EVALUATING_STUDENT_NPC_ID = 6;
 export const ENTER_EVENT_SPACE_QUEST_ID = 'ENTER_EVENT_SPACE';
 const EVENT_SPACE_DOOR_INTERACTION_IDS: ReadonlySet<string> = new Set([
     'EVENT_SPACE_DOOR_A',
@@ -169,6 +171,7 @@ export function startGame(
     let eventSpaceDoorsOpen = false;
     let eventSpaceDoorTraversalStarted = false;
     let eventSpaceQuestCompleted = false;
+    let evaluatingStudent: NPC | null = null;
     const knownPlayerNicknames = new Map<string, string>();
     const blockedPlayerUpdates = new Set<string>();
     const doorMeshesNames: string[] = [];
@@ -1100,6 +1103,15 @@ export function startGame(
                 console.log('Quest finished');
                 openDoors();
             };
+            storyManager.onEvaluatingStudentAvailabilityChange = (
+                available
+            ) => {
+                if (available) {
+                    showEvaluatingStudent();
+                } else {
+                    hideEvaluatingStudent();
+                }
+            };
         }
 
         await loadMesh(MAP_MODEL_PATH, [0, 0, 0]);
@@ -1501,6 +1513,39 @@ export function startGame(
         chatBubble.scale.multiplyScalar(NPC_CHAT_BUBBLE_SCALE);
         scene.add(chatBubble);
         chatBubble.follow(npc.group);
+    }
+
+    function showEvaluatingStudent(): void {
+        if (evaluatingStudent) {
+            evaluatingStudent.group.visible = true;
+            npcs.set(evaluatingStudent.id, evaluatingStudent);
+            return;
+        }
+
+        const studentInteraction = interactionManager?.interactions.find(
+            (interaction) =>
+                interaction.typeID === EVALUATING_STUDENT_INTERACTION_ID
+        );
+        if (!studentInteraction) {
+            return;
+        }
+
+        evaluatingStudent = new NPC(
+            'glb/NPC_Man_1.glb',
+            EVALUATING_STUDENT_NPC_ID,
+            scene,
+            NPCState.Standing
+        );
+        evaluatingStudent.group.position.copy(studentInteraction.position);
+        scene.add(evaluatingStudent.group);
+        npcs.set(evaluatingStudent.id, evaluatingStudent);
+    }
+
+    function hideEvaluatingStudent(): void {
+        if (evaluatingStudent) {
+            evaluatingStudent.group.visible = false;
+            npcs.delete(evaluatingStudent.id);
+        }
     }
 
     function initNPC(): void {
