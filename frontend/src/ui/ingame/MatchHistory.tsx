@@ -7,16 +7,16 @@ type MatchHistoryProps = {
 export function MatchHistory({ entries }: MatchHistoryProps) {
     return (
         <>
-            <h3 className='hud-profile-stats-title'>
+            <h3 className='hud-match-history-title'>
                 Tic-Tac-Toe Match History:
             </h3>
             {entries.length === 0 && (
-                <p className='hud-profile-match-empty'>
+                <p className='hud-match-history-empty'>
                     No Tic-Tac-Toe matches yet.
                 </p>
             )}
             {entries.length > 0 && (
-                <ol className='hud-event-list hud-profile-match-history'>
+                <ol className='hud-event-list hud-match-history-list'>
                     <EventLogItems entries={entries} />
                 </ol>
             )}

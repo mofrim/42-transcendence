@@ -29,6 +29,7 @@ import './GameUI.css';
 
 const QUEST_LOG_ID = 'game-quest-log';
 const PROFILE_PANEL_ID = 'game-profile-panel';
+const MATCH_HISTORY_PANEL_ID = 'game-match-history-panel';
 const EVENT_LOG_TITLE_ID = 'game-event-log-title';
 
 export const MAX_EVENT_LOG_ENTRIES = 10;
@@ -203,6 +204,7 @@ export function GameUI({
 }: GameUIProps) {
     const [isQuestLogOpen, setIsQuestLogOpen] = useState(false);
     const [isProfileOpen, setIsProfileOpen] = useState(false);
+    const [isMatchHistoryOpen, setIsMatchHistoryOpen] = useState(false);
     const [isChatOpen, setIsChatOpen] = useState(false);
     const [chatMessage, setChatMessage] = useState('');
     const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -221,6 +223,10 @@ export function GameUI({
 
     const handleProfileToggle = (): void => {
         setIsProfileOpen((isOpen) => !isOpen);
+    };
+
+    const handleMatchHistoryToggle = (): void => {
+        setIsMatchHistoryOpen((isOpen) => !isOpen);
     };
 
     const handleLogout = async (): Promise<void> => {
@@ -370,13 +376,22 @@ export function GameUI({
             onPointerDown={stopGameInteraction}
         >
             <div className='hud-profile'>
-                <HudPanelToggle
-                    controls={PROFILE_PANEL_ID}
-                    icon='👤'
-                    isOpen={isProfileOpen}
-                    panelLabel='Profil'
-                    onToggle={handleProfileToggle}
-                />
+                <div className='hud-profile-toggles'>
+                    <HudPanelToggle
+                        controls={PROFILE_PANEL_ID}
+                        icon='👤'
+                        isOpen={isProfileOpen}
+                        panelLabel='Profil'
+                        onToggle={handleProfileToggle}
+                    />
+                    <HudPanelToggle
+                        controls={MATCH_HISTORY_PANEL_ID}
+                        icon='📊'
+                        isOpen={isMatchHistoryOpen}
+                        panelLabel='Match History'
+                        onToggle={handleMatchHistoryToggle}
+                    />
+                </div>
 
                 <aside
                     id={PROFILE_PANEL_ID}
@@ -399,7 +414,6 @@ export function GameUI({
                     <p className='hud-profile-email'>
                         <strong>Email:</strong> {email}
                     </p>
-                    <MatchHistory entries={matchHistory} />
                     <button
                         type='button'
                         className='hud-profile-logout'
@@ -409,6 +423,16 @@ export function GameUI({
                     >
                         {isLoggingOut ? 'Logging out…' : '🚪 Logout'}
                     </button>
+                </aside>
+
+                <aside
+                    id={MATCH_HISTORY_PANEL_ID}
+                    className='hud-panel hud-match-history-panel'
+                    aria-label='Match History'
+                    hidden={!isMatchHistoryOpen}
+                >
+                    <h2 className='hud-title'>Match History</h2>
+                    <MatchHistory entries={matchHistory} />
                 </aside>
             </div>
 
