@@ -54,9 +54,14 @@ import type {
     TTTGame,
 } from 'common/sharedTypes';
 
+const NPC_CHAT_BUBBLE_SIZE = 42;
+const NPC_CHAT_BUBBLE_SCALE = 0.28;
 const FRONTDESK_GREETING_TEXT = '🗨️ Welcome to 42 Wolfsburg Campus! 👋🏻';
-const FRONTDESK_GREETING_SIZE = 42;
-const FRONTDESK_GREETING_SCALE = 0.28;
+const ENTRY_NPC_CHAT_BUBBLE_TEXTS = [
+    '🗨️ The Event Space opens after the evaluation',
+    '🗨️ You need to challenge other Students',
+    '🗨️ I must evaluate before Blackhole',
+] as const;
 
 /** event log msgs */
 export type GameRuntimeEvent =
@@ -1440,6 +1445,17 @@ export function startGame(
         }
     }
 
+    function addNPCChatBubble(npc: NPC, text: string): void {
+        const chatBubble = new FloatingTextSprite(
+            text,
+            NPC_CHAT_BUBBLE_SIZE,
+            new THREE.Vector3(0, CHAT_BUBBLE_HEIGHT, 0)
+        );
+        chatBubble.scale.multiplyScalar(NPC_CHAT_BUBBLE_SCALE);
+        scene.add(chatBubble);
+        chatBubble.follow(npc.group);
+    }
+
     function initNPC(): void {
         // NPCs at the entrance of the 42WOB building
         const entry1 = new NPC('glb/NPC_Man_1.glb', 2, scene, NPCState.Nod);
@@ -1461,6 +1477,10 @@ export function startGame(
 
         scene.add(entry1.group, entry2.group, entry3.group);
 
+        addNPCChatBubble(entry1, ENTRY_NPC_CHAT_BUBBLE_TEXTS[0]);
+        addNPCChatBubble(entry2, ENTRY_NPC_CHAT_BUBBLE_TEXTS[1]);
+        addNPCChatBubble(entry3, ENTRY_NPC_CHAT_BUBBLE_TEXTS[2]);
+
         npcs.set(entry1.id, entry1);
         npcs.set(entry2.id, entry2);
         npcs.set(entry3.id, entry3);
@@ -1477,14 +1497,8 @@ export function startGame(
             frontdesk.group.position.y,
             frontdesk.group.position.z + 1
         );
-        const frontdeskGreeting = new FloatingTextSprite(
-            FRONTDESK_GREETING_TEXT,
-            FRONTDESK_GREETING_SIZE,
-            new THREE.Vector3(0, CHAT_BUBBLE_HEIGHT, 0)
-        );
-        frontdeskGreeting.scale.multiplyScalar(FRONTDESK_GREETING_SCALE);
-        scene.add(frontdesk.group, frontdeskGreeting);
-        frontdeskGreeting.follow(frontdesk.group);
+        scene.add(frontdesk.group);
+        addNPCChatBubble(frontdesk, FRONTDESK_GREETING_TEXT);
         npcs.set(frontdesk.id, frontdesk);
 
         // NPCs 1Floor doing the Spiderman meme
