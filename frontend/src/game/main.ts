@@ -97,7 +97,7 @@ export type GameResultEvent = Extract<
     { type: 'game_result' }
 >;
 type RemotePlayerUpdate = Pick<PlayerUpdatePayload, 'x' | 'y' | 'z' | 'state'>;
-export type GameMode = 'player' | 'spectator';
+export type GameMode = NonNullable<SocketAuth['role']>;
 
 export function startGame(
     whichCharacter: boolean = true,
@@ -108,7 +108,8 @@ export function startGame(
     onDialogChange?: (state: { isOpen: boolean; message: string }) => void,
     mode: GameMode = 'player',
     onChatMessage?: (message: ReceivedChatPayload) => void,
-    onGameReset?: () => void
+    onGameReset?: () => void,
+    onGameplayReady?: () => void
 ): GameRuntime {
     // ============================================================================
     // SERVER CONNECTION
@@ -1098,7 +1099,11 @@ export function startGame(
 
         addBlackhole();
 
-        storyManager?.GameIntro();
+        if (storyManager) {
+            await storyManager.GameIntro();
+            if (runtimeDisposed) return;
+            onGameplayReady?.();
+        }
         /* const testCube = new THREE.Mesh(
             new THREE.BoxGeometry(1, 1, 1),
             new THREE.MeshBasicMaterial({ color: 0xff0000 })
@@ -1450,9 +1455,9 @@ export function startGame(
         entry2.group.position.set(8, 0, 1.5);
         entry3.group.position.set(6.5, 0, 2.5);
 
-        entry1.rotateCharacter(entry1.group.position, entry2.group.position);
-        entry2.rotateCharacter(entry2.group.position, entry3.group.position);
-        entry3.rotateCharacter(entry3.group.position, entry2.group.position);
+        entry1.group.lookAt(entry2.group.position);
+        entry2.group.lookAt(entry3.group.position);
+        entry3.group.lookAt(entry2.group.position);
 
         scene.add(entry1.group, entry2.group, entry3.group);
 
@@ -1467,13 +1472,10 @@ export function startGame(
             NPCState.Standing
         );
         frontdesk.group.position.set(12.1, 0, -5.8);
-        frontdesk.rotateCharacter(
-            frontdesk.group.position,
-            new THREE.Vector3(
-                frontdesk.group.position.x,
-                frontdesk.group.position.y,
-                frontdesk.group.position.z + 1
-            )
+        frontdesk.group.lookAt(
+            frontdesk.group.position.x,
+            frontdesk.group.position.y,
+            frontdesk.group.position.z + 1
         );
         const frontdeskGreeting = new FloatingTextSprite(
             FRONTDESK_GREETING_TEXT,
@@ -1493,9 +1495,9 @@ export function startGame(
         spider3.group.position.set(9.5, 3.71-0.1, -5.6);
         spider1.group.position.set(11.3, 3.71-0.1, -6.5);
 
-        spider1.rotateCharacter(spider1.group.position, spider3.group.position);
-        spider2.rotateCharacter(spider2.group.position, spider1.group.position);
-        spider3.rotateCharacter(spider3.group.position, spider2.group.position);
+        spider1.group.lookAt(spider3.group.position);
+        spider2.group.lookAt(spider1.group.position);
+        spider3.group.lookAt(spider2.group.position);
 
         scene.add(spider1.group, spider2.group, spider3.group);
 

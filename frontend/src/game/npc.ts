@@ -9,8 +9,6 @@ type NPCAnimationActions = {
     Run: THREE.AnimationAction;
 };
 
-const NPC_FORWARD = new THREE.Vector3(0, 0, 1);
-const rotationDirection = new THREE.Vector3();
 const NPC_LOADER = new GLTFLoader();
 
 export class NPC {
@@ -111,19 +109,6 @@ export class NPC {
 
             this.mixer = mix;
         });
-    }
-
-    rotateCharacter(startPos: THREE.Vector3, endPos: THREE.Vector3): void {
-        rotationDirection.subVectors(endPos, startPos).setY(0);
-        if (rotationDirection.lengthSq() === 0) {
-            this.group.quaternion.identity();
-            return;
-        }
-
-        this.group.quaternion.setFromUnitVectors(
-            NPC_FORWARD,
-            rotationDirection.normalize()
-        );
     }
 
     updateAnimation(delta: number): void {
