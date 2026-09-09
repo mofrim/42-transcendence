@@ -11,6 +11,7 @@ import {
     CHAT_BUBBLE_HEIGHT,
     FloatingTextSprite,
 } from './FloatingTextSprite.js';
+import { CanvasTextSprite } from './CanvasTextSprite.js';
 import { Player } from './player.js';
 import { Camera } from './camera.js';
 import { TTT_Game } from './ttt_game.js';
@@ -64,6 +65,12 @@ const ENTRY_NPC_CHAT_BUBBLE_TEXTS = [
 ] as const;
 const EVALUATING_STUDENT_INTERACTION_ID = 'FIND_EVALUATING_STUDENT';
 const EVALUATING_STUDENT_NPC_ID = 6;
+const EVALUATING_STUDENT_NICKNAME = 'Idle Student';
+const EVALUATING_STUDENT_CHAT_BUBBLE_TEXT = '🗨️ Ready for Evaluation?';
+const EVALUATING_STUDENT_NAME_SIZE = 48;
+const EVALUATING_STUDENT_NAME_HEIGHT = 1.9;
+const EVALUATING_STUDENT_NAME_SCALE = 0.3;
+const EVALUATING_STUDENT_CHAT_BUBBLE_HEIGHT = CHAT_BUBBLE_HEIGHT + 0.4;
 export const ENTER_EVENT_SPACE_QUEST_ID = 'ENTER_EVENT_SPACE';
 const EVENT_SPACE_DOOR_INTERACTION_IDS: ReadonlySet<string> = new Set([
     'EVENT_SPACE_DOOR_A',
@@ -172,6 +179,7 @@ export function startGame(
     let eventSpaceDoorTraversalStarted = false;
     let eventSpaceQuestCompleted = false;
     let evaluatingStudent: NPC | null = null;
+    let evaluatingStudentAvailable = false;
     const knownPlayerNicknames = new Map<string, string>();
     const blockedPlayerUpdates = new Set<string>();
     const doorMeshesNames: string[] = [];
@@ -1516,9 +1524,10 @@ export function startGame(
     }
 
     function showEvaluatingStudent(): void {
+        evaluatingStudentAvailable = true;
+
         if (evaluatingStudent) {
-            evaluatingStudent.group.visible = true;
-            npcs.set(evaluatingStudent.id, evaluatingStudent);
+            syncNPCEvaluatingStudentVisibility();
             return;
         }
 
@@ -1530,22 +1539,52 @@ export function startGame(
             return;
         }
 
-        evaluatingStudent = new NPC(
+        const student = new NPC(
             'glb/NPC_Man_1.glb',
             EVALUATING_STUDENT_NPC_ID,
             scene,
             NPCState.Standing
         );
-        evaluatingStudent.group.position.copy(studentInteraction.position);
-        scene.add(evaluatingStudent.group);
-        npcs.set(evaluatingStudent.id, evaluatingStudent);
+        student.group.position.copy(studentInteraction.position);
+
+        const nameLabel = new CanvasTextSprite(
+            EVALUATING_STUDENT_NICKNAME,
+            EVALUATING_STUDENT_NAME_SIZE
+        );
+        nameLabel.position.set(0, EVALUATING_STUDENT_NAME_HEIGHT, 0);
+        nameLabel.scale.multiplyScalar(EVALUATING_STUDENT_NAME_SCALE);
+
+        const chatBubble = new CanvasTextSprite(
+            EVALUATING_STUDENT_CHAT_BUBBLE_TEXT,
+            NPC_CHAT_BUBBLE_SIZE
+        );
+        chatBubble.position.set(0, EVALUATING_STUDENT_CHAT_BUBBLE_HEIGHT, 0);
+        chatBubble.scale.multiplyScalar(NPC_CHAT_BUBBLE_SCALE);
+
+        student.group.add(nameLabel, chatBubble);
+        evaluatingStudent = student;
+        student.group.addEventListener(
+            'childadded',
+            syncNPCEvaluatingStudentVisibility
+        );
+        scene.add(student.group);
+        npcs.set(student.id, student);
+        syncNPCEvaluatingStudentVisibility();
     }
 
     function hideEvaluatingStudent(): void {
-        if (evaluatingStudent) {
-            evaluatingStudent.group.visible = false;
-            npcs.delete(evaluatingStudent.id);
+        evaluatingStudentAvailable = false;
+        syncNPCEvaluatingStudentVisibility();
+    }
+
+    function syncNPCEvaluatingStudentVisibility(): void {
+        if (!evaluatingStudent) {
+            return;
         }
+
+        const visible =
+            evaluatingStudentAvailable && evaluatingStudent.model !== null;
+        evaluatingStudent.group.visible = visible;
     }
 
     function initNPC(): void {
@@ -2061,9 +2100,10 @@ export function startGame(
             updateEventSpaceQuestCompletion(interactionInZone?.typeID ?? null);
         }
 
-        for (const [_id, player] of npcs) {
-            void _id;
-            player.updateAnimation(delta);
+        for (const npc of npcs.values()) {
+            if (npc.group.visible) {
+                npc.updateAnimation(delta);
+            }
         }
     }
 
