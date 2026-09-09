@@ -568,6 +568,7 @@ export class Story_Manager {
                     'Found the duck 🦆! One less thing to worry about.',
                     PlayerState.Surprised
                 );
+                this.onQuestDuckFound?.();
                 break;
 
             case 'GET_COFFEE':
@@ -686,6 +687,7 @@ export class Story_Manager {
     // TODO: If Questlog Id is enum, than change also here?
     onQuestInteraction?: (questId: string) => void;
     onQuestFinished?: () => void;
+    onQuestDuckFound?: () => void;
     onEvaluatingStudentAvailabilityChange?: (available: boolean) => void;
 
     // ===================================================

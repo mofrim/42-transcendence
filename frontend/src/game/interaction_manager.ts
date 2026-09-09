@@ -27,8 +27,8 @@ export class InteractionManager {
         const interaction3 = new Interaction(
             scene,
             'GET_PAPER',
-            new THREE.Vector3(12.5, 0, -10.5),
-            new THREE.Vector3(1, 2, 1),
+            new THREE.Vector3(12.2, 0, -10.5),
+            new THREE.Vector3(1.3, 2, 1.3),
             true
         );
         const interaction4 = new Interaction(

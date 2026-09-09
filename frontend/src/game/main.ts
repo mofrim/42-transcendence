@@ -26,6 +26,8 @@ import {
     EVENT_SPACE_DOOR_B_PATH,
     CLOUDS_PATH,
     ROCKS_BORDER_PATH,
+    DUCK_DOWN_PATH,
+    DUCK_UP_PATH,
 } from './Assets.js';
 
 import { io } from 'socket.io-client';
@@ -800,6 +802,9 @@ export function startGame(
     const groupDoorA = new THREE.Group();
     const groupDoorB = new THREE.Group();
 
+    let duck_down: THREE.Object3D | null = null;
+    let duck_up: THREE.Object3D | null = null;
+
     const npcs = new Map();
 
     let envLoaded: boolean = false;
@@ -1107,6 +1112,14 @@ export function startGame(
                     questId,
                 });
             };
+            storyManager.onQuestDuckFound = async () => {
+                duck_up = await loadMesh(DUCK_UP_PATH, [0, 0, 0]);
+                if (duck_down) {
+                    scene.remove(duck_down);
+                    runtimeResourceDisposer.disposeObject3D(duck_down);
+                    duck_down = null;
+                }
+            };
             storyManager.onQuestFinished = () => {
                 console.log('Quest finished');
                 openDoors();
@@ -1132,6 +1145,11 @@ export function startGame(
         await loadMesh(EVENT_SPACE_DOOR_A_PATH, [0, 0, 0]);
         if (runtimeDisposed) return;
         await loadMesh(EVENT_SPACE_DOOR_B_PATH, [0, 0, 0]);
+        if (runtimeDisposed) return;
+
+        // TODO: Need to check with quest state. 
+        // If duck already found, than show duck_up, else show duck_down.
+        duck_down = await loadMesh(DUCK_DOWN_PATH, [0, 0, 0]);
         if (runtimeDisposed) return;
 
         addBlackhole();
@@ -1189,7 +1207,7 @@ export function startGame(
     async function loadMesh(
         path: string,
         pos: [number, number, number] = [0, 0, 0]
-    ): Promise<void> {
+    ): Promise<THREE.Object3D | null> {
         let gltf: Awaited<ReturnType<GLTFLoader['loadAsync']>>;
         try {
             gltf = await loader.loadAsync(path);
@@ -1197,14 +1215,14 @@ export function startGame(
             if (!runtimeDisposed) {
                 console.error(`Map model loading failed for "${path}":`, error);
             }
-            return;
+            return null;
         }
 
         const obj = gltf.scene;
 
         if (runtimeDisposed) {
             runtimeResourceDisposer.disposeObject3D(obj);
-            return;
+            return null;
         }
 
         //console.log("Adding collider for: " + obj.name);
@@ -1281,7 +1299,7 @@ export function startGame(
         }
         if (runtimeDisposed) {
             runtimeResourceDisposer.disposeObject3D(obj);
-            return;
+            return null;
         }
 
         if (
@@ -1298,6 +1316,8 @@ export function startGame(
         //worldOctree.fromGraphNode(obj);
 
         envLoaded = true;
+
+        return obj;
     }
 
     async function loadMeshSky(

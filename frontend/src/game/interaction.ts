@@ -43,9 +43,8 @@ export class Interaction {
 
         this.zone = this.createInteractionBox(position, size);
 
-        const helper = new THREE.Box3Helper(this.zone, 0xff0000);
-        this.scene = scene;
-        this.scene.add(helper);
+        /* const helper = new THREE.Box3Helper(this.zone, 0xff0000);
+        this.scene.add(helper); */
     }
 
     createInteractionBox(
