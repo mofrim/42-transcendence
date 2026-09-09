@@ -150,10 +150,10 @@ export function getQuestStatusChanges(
 
 export function describeQuestStatusChange(change: QuestStatusChange): string {
     if (change.completed) {
-        return `✅ Quest abgeschlossen: ${change.questText}`;
+        return `✅ Quest succeeded: ${change.questText}`;
     }
 
-    return `❌ Quest fehlgeschlagen: ${change.questText}`;
+    return `❌ Quest failed: ${change.questText}`;
 }
 
 function getCompletedQuestId(event: GameRuntimeEvent): string | null {
