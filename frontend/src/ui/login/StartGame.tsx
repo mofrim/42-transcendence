@@ -70,6 +70,7 @@ export const Game: React.FC<{
     // using ref here a lot because th
     const mountRef = useRef<HTMLDivElement>(null);
     const gameRuntimeRef = useRef<GameRuntime | null>(null);
+    const metPlayerNicknamesRef = useRef(new Set<string>());
     const [events, setEvents] = useState<EventLogEntry[]>([]);
     const { matchHistory, saveTicTacToeMatch } = useMatchHistory({
         nickname,
@@ -99,7 +100,17 @@ export const Game: React.FC<{
     /** Runtime-Ereignisse bleiben auch außerhalb des Sichtfelds sichtbar. */
     const handleGameEvent = useCallback(
         (event: GameRuntimeEvent): void => {
-            appendEvent(describeGameEvent(event));
+            if (event.type === 'player_in_range') {
+                const metPlayerNicknames = metPlayerNicknamesRef.current;
+                // only log the first time we meet a player, not every time again
+                if (!metPlayerNicknames.has(event.nickname)) {
+                    metPlayerNicknames.add(event.nickname);
+                    appendEvent(describeGameEvent(event));
+                }
+            } else {
+                appendEvent(describeGameEvent(event));
+            }
+
             if (event.type === 'game_result') {
                 void saveTicTacToeMatch(event);
             }
@@ -140,6 +151,7 @@ export const Game: React.FC<{
     }, []);
 
     const handleGameReset = useCallback((): void => {
+        metPlayerNicknamesRef.current.clear();
         setCompletedQuestIds([]);
         setEvents([]);
         setGameResetVersion((currentVersion) => currentVersion + 1);
