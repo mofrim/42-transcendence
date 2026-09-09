@@ -17,7 +17,7 @@
         "@fontsource-variable/atkinson-hyperlegible-next": "^5.3.0",
         "antd": "^6.5.3",
         "axios": "^1.19.0",
-        "common": "*",
+        "ftr-common": "*",
         "react": "^19.2.6",
         "react-dom": "^19.2.6",
         "socket.io": "^4.8.3",

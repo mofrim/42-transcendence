@@ -7,7 +7,7 @@ import {
     type GameRuntime,
     type GameRuntimeEvent,
 } from '../../game/main';
-import type { ReceivedChatPayload } from 'common/sharedTypes';
+import type { ReceivedChatPayload } from 'ftr-common/sharedTypes';
 import { useMatchHistory } from '../../hooks/useMatchHistory';
 import {
     GameUI,

@@ -3,7 +3,7 @@ import {
     createCharacterPreview,
     type CreateCharPreviewReturnType,
 } from '../../game/character_preview';
-import type { Character } from 'common/sharedTypes';
+import type { Character } from 'ftr-common/sharedTypes';
 import React, { useEffect, useRef } from 'react';
 
 type CharacterPreviewViewProps = {

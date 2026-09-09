@@ -1,5 +1,5 @@
 {
-    "name": "common",
+    "name": "ftr-common",
     "version": "1.0.0",
     "private": true,
     "type": "module",
@@ -18,6 +18,10 @@
         },
         "./expressTypes": {
             "import": "./dist/expressTypes.js",
+            "types": "./dist/expressTypes.d.ts"
+        },
+        "./utils": {
+            "import": "./dist/utils.js",
             "types": "./dist/expressTypes.d.ts"
         }
     },

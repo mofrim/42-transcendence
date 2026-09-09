@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { NPCState } from 'common/sharedTypes';
+import { NPCState } from 'ftr-common/sharedTypes';
 
 /** ohne jump bisher */
 type NPCAnimationActions = {

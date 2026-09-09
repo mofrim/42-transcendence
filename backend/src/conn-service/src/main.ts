@@ -15,9 +15,9 @@ import type {
     PlayerConnectedPayload,
     PlayerUpdatePayload,
     TTTMarkPayload,
-} from 'common/sharedTypes';
+} from 'ftr-common/sharedTypes';
 
-import { SPECTATOR_NAME, TTTGameState, TTTMark } from 'common/sharedTypes';
+import { SPECTATOR_NAME, TTTGameState, TTTMark } from 'ftr-common/sharedTypes';
 
 const PORT = 3000;
 const app: Express = express();

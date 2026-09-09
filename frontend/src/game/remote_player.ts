@@ -19,7 +19,7 @@ import {
 import { CanvasTextSprite } from './CanvasTextSprite.js';
 import { CHAT_BUBBLE_HEIGHT } from './FloatingTextSprite.js';
 import { SmootherMovement } from './SmootherMovement.js';
-import { PlayerState } from 'common/sharedTypes';
+import { PlayerState } from 'ftr-common/sharedTypes';
 
 type PlayerAnimationState = ReturnType<typeof normalizePlayerAnimationState>;
 type RemotePlayerState = PlayerState | PlayerAnimationState;

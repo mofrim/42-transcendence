@@ -1,4 +1,4 @@
-import { ORMUser } from 'common/ormTypes';
+import { ORMUser } from 'ftr-common/ormTypes';
 import bcrypt from 'bcryptjs';
 import { exit } from 'node:process';
 import { DataSource } from 'typeorm';

@@ -7,7 +7,7 @@ import { PlayerSelect } from './ui/login/PlayerSelect';
 import { Agreements } from './ui/login/Agreements';
 import { useLoginContext } from './hooks/useLoginContext';
 import { useAuth } from './hooks/useAuthContext';
-import { SPECTATOR_NAME } from 'common/sharedTypes';
+import { SPECTATOR_NAME } from 'ftr-common/sharedTypes';
 import axios from 'axios';
 
 import './App.css';

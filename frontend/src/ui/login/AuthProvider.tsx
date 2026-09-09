@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { AuthContext } from '../../contexts/AuthContext';
-import type { User } from 'common/sharedTypes';
+import type { User } from 'ftr-common/sharedTypes';
 import axios from 'axios';
 import type { AxiosRequestConfig } from 'axios';
 

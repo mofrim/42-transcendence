@@ -20,7 +20,7 @@ import {
     BLACK_HOLE_DURATION_SECONDS,
     getBlackHoleCountdownDeadline,
 } from './BlackHoleCountdown';
-import type { Character } from 'common/sharedTypes';
+import type { Character } from 'ftr-common/sharedTypes';
 import { CharacterPreviewView } from '../login/CharacterPreview';
 import { EventLogItems, type EventLogEntry } from './EventLogItems';
 import { MatchHistory } from './MatchHistory';

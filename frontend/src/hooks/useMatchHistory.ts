@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import axios from 'axios';
-import { EventType, type BaseEventLog } from 'common/sharedTypes';
+import { EventType, type BaseEventLog } from 'ftr-common/sharedTypes';
 import type { GameResultEvent } from '../game/main';
 import type { EventLogEntry } from '../ui/ingame/EventLogItems';
 

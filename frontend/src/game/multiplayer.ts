@@ -4,8 +4,8 @@ import * as THREE from 'three';
 import { Remote_Player } from './remote_player.js';
 import { getPlayerModelPath } from './Assets.js';
 
-import { PlayerState } from 'common/sharedTypes';
-import type { Character } from 'common/sharedTypes';
+import { PlayerState } from 'ftr-common/sharedTypes';
+import type { Character } from 'ftr-common/sharedTypes';
 
 export class MultiplayerManager {
     scene: THREE.Scene;

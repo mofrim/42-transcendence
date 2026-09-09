@@ -4,7 +4,7 @@ import {
     RPSGameState,
     PlayerState,
     TTTMark,
-} from 'common/sharedTypes';
+} from 'ftr-common/sharedTypes';
 
 import type {
     RPSGame,
@@ -12,7 +12,7 @@ import type {
     PlayerData,
     RPSRequestDataPayload,
     RPSBattleChoicePayload,
-} from 'common/sharedTypes';
+} from 'ftr-common/sharedTypes';
 
 export class GameManager {
     players: Map<string, PlayerData>;

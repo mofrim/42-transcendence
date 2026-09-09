@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import type { Character } from 'common/sharedTypes';
+import type { Character } from 'ftr-common/sharedTypes';
 import { createThreeResourceDisposer } from './ThreeResourceDisposer.js';
 import { getPlayerModelPath } from './Assets.js';
 

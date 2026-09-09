@@ -5,7 +5,7 @@ import {
     OneToMany,
     ManyToOne,
 } from 'typeorm';
-import { BaseUser, BaseEventLog, EventType } from 'common/sharedTypes';
+import { BaseUser, BaseEventLog, EventType } from 'ftr-common/sharedTypes';
 
 @Entity('users')
 export class ORMUser extends BaseUser {
@@ -46,8 +46,11 @@ export class ORMEventLog extends BaseEventLog {
     @Column({ type: 'enum', enum: EventType })
     declare eventType: EventType;
 
-    @Column({ type: 'text' })
+    @Column('text')
     declare data: string;
+
+    @Column({ type: 'timestamptz', precision: 6 })
+    declare logtime: Date;
 
     @ManyToOne(() => ORMUser, (user) => user.eventLogs)
     declare user: ORMUser;

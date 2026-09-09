@@ -18,7 +18,7 @@ import {
     CHAT_BUBBLE_HEIGHT,
     FloatingTextSprite,
 } from './FloatingTextSprite.js';
-import { PlayerState } from 'common/sharedTypes';
+import { PlayerState } from 'ftr-common/sharedTypes';
 
 export type PlayerAnimationState = ReturnType<typeof transitionPlayerAnimation>;
 

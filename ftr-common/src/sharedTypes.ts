@@ -6,19 +6,40 @@ import type * as THREE from 'three';
 export enum EventType {
     PlayerJoined = 'PlayerJoined',
     PlayerLeft = 'PlayerLeft',
+    PlayerInRange = 'PlayerInRange',
     GameResult = 'GameResult',
     ChatMsg = 'ChatMsg',
     QuestProgress = 'QuestProgress',
     Blackholed = 'Blackholed',
     NickChange = 'NickChange',
     CharChange = 'CharChange',
+    None = 'None',
 }
+
+export type EventData = {
+    readonly playerId?: string;
+    readonly nickname?: string;
+    readonly game?: 'Tic-Tac-Toe' | 'Rock-Paper-Scissors';
+    readonly outcome?: 'won' | 'lost' | 'draw';
+    readonly playerNickname?: string;
+    readonly opponentNickname?: string;
+    readonly chatmsg?: string;
+};
 
 // This will be the foundation for a new table in `eventlog-service`
 export abstract class BaseEventLog {
     abstract id: number;
     abstract eventType: EventType;
     abstract data: string;
+    // abstract logtime: Date;
+    // abstract data: EventData;
+}
+
+export class GameEvent extends BaseEventLog {
+    id: number = 0;
+    eventType: EventType = EventType.None;
+    // logtime: Date = new Date();
+    data: string = '';
 }
 
 // using an abstract class here in order to force implementation of _all_

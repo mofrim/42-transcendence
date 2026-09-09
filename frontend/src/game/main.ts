@@ -35,7 +35,7 @@ import {
     RPSChoice,
     TTTMeshBoard,
     NPCState,
-} from 'common/sharedTypes';
+} from 'ftr-common/sharedTypes';
 import type {
     GLBMesh,
     RPSInvalidPayload,
@@ -53,7 +53,7 @@ import type {
     ReceivedChatPayload,
     SocketAuth,
     TTTGame,
-} from 'common/sharedTypes';
+} from 'ftr-common/sharedTypes';
 
 const NPC_CHAT_BUBBLE_SIZE = 42;
 const NPC_CHAT_BUBBLE_SCALE = 0.28;
@@ -80,21 +80,21 @@ const EVENT_SPACE_DOOR_INTERACTION_IDS: ReadonlySet<string> = new Set([
 /** event log msgs */
 export type GameRuntimeEvent =
     | {
-          readonly type: 'player_joined' | 'player_left' | 'player_in_range';
-          readonly playerId: string;
-          readonly nickname: string;
-      }
+        readonly type: 'player_joined' | 'player_left' | 'player_in_range';
+        readonly playerId: string;
+        readonly nickname: string;
+    }
     | {
-          readonly type: 'quest_completed';
-          readonly questId: string;
-      }
+        readonly type: 'quest_completed';
+        readonly questId: string;
+    }
     | {
-          readonly type: 'game_result';
-          readonly game: 'Tic-Tac-Toe' | 'Rock-Paper-Scissors';
-          readonly outcome: 'won' | 'lost' | 'draw';
-          readonly playerNickname: string;
-          readonly opponentNickname: string;
-      };
+        readonly type: 'game_result';
+        readonly game: 'Tic-Tac-Toe' | 'Rock-Paper-Scissors';
+        readonly outcome: 'won' | 'lost' | 'draw';
+        readonly playerNickname: string;
+        readonly opponentNickname: string;
+    };
 
 export type GameRuntime = {
     readonly sendChatMessage: (message: string) => void;
@@ -1718,7 +1718,7 @@ export function startGame(
             if (rpsGame.battleRequestedPlayer) {
                 console.log(
                     'Sending accept request to player ' +
-                        rpsGame.battleRequestedPlayer
+                    rpsGame.battleRequestedPlayer
                 );
                 console.log('BATTLE START!');
                 emitBattleAccept(rpsGame.battleRequestedPlayer);
@@ -1742,7 +1742,7 @@ export function startGame(
             if (rpsGame.battleRequestedPlayer) {
                 console.log(
                     'Sending decline request to player ' +
-                        rpsGame.battleRequestedPlayer
+                    rpsGame.battleRequestedPlayer
                 );
                 console.log('BATTLE DECLINED!');
                 emitBattleDecline(rpsGame.battleRequestedPlayer);
@@ -2006,11 +2006,11 @@ export function startGame(
 
         console.log(
             'Player position: x=' +
-                player.group.position.x.toFixed(2) +
-                ', y=' +
-                player.group.position.y.toFixed(2) +
-                ', z=' +
-                player.group.position.z.toFixed(2)
+            player.group.position.x.toFixed(2) +
+            ', y=' +
+            player.group.position.y.toFixed(2) +
+            ', z=' +
+            player.group.position.z.toFixed(2)
         );
     }
 

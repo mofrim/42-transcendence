@@ -10,7 +10,7 @@ import {
     resizeOverlay,
 } from './GameOverlay';
 import { createThreeResourceDisposer } from './ThreeResourceDisposer';
-import { TTTGameState, TTTMark, TTTMeshBoard } from 'common/sharedTypes';
+import { TTTGameState, TTTMark, TTTMeshBoard } from 'ftr-common/sharedTypes';
 
 // Type-only import: exists only during TypeScript compilation, not at runtime.
 // The type is removed after compilation, so it must be imported using `import type`.
@@ -18,7 +18,7 @@ import type {
     TTTBoard,
     PlayerSlot,
     TTTInitGamePayload,
-} from 'common/sharedTypes';
+} from 'ftr-common/sharedTypes';
 
 const TTT_TEXTURE_LOADER = new THREE.TextureLoader();
 

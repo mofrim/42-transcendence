@@ -1,5 +1,5 @@
 import { createContext } from 'react';
-import type { User } from 'common/sharedTypes';
+import type { User } from 'ftr-common/sharedTypes';
 
 interface AuthContextType {
     user: User | null;

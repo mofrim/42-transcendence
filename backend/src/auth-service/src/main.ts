@@ -23,10 +23,10 @@ import { body, matchedData, validationResult } from 'express-validator';
 import type { ILogObj } from 'tslog';
 import type { Request, Express, Response, NextFunction } from 'express';
 
-import { ORMEventLog, ORMUser } from 'common/ormTypes';
-import { authenticateMid, verifyToken } from 'common/middleware';
+import { ORMEventLog, ORMUser } from 'ftr-common/ormTypes';
+import { authenticateMid, verifyToken } from 'ftr-common/middleware';
 import { setupDefaultUsers } from './defaultUserSetup.ts';
-import 'common/expressTypes';
+import 'ftr-common/expressTypes';
 
 // Initialize main tslog-logger
 const log = new Logger<ILogObj>({ name: 'auth', minLevel: 'INFO' });

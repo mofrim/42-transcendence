@@ -10,9 +10,9 @@ import { body, validationResult } from 'express-validator';
 import type { ILogObj } from 'tslog';
 import type { Express, Request, Response, NextFunction } from 'express';
 
-import { ORMEventLog, ORMUser } from 'common/ormTypes';
-import { EventType } from 'common/sharedTypes';
-import { authenticateMid } from 'common/middleware';
+import { ORMEventLog, ORMUser } from 'ftr-common/ormTypes';
+import { EventType } from 'ftr-common/sharedTypes';
+import { authenticateMid } from 'ftr-common/middleware';
 
 // Initialize main tslog-logger
 const log = new Logger<ILogObj>({ name: 'eventlog', minLevel: 'INFO' });

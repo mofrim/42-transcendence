@@ -6,14 +6,14 @@
     "type": "module",
     "scripts": {
         "build": "tsc -b",
-        "type-check": "tsc -b ../common/tsconfig.json && tsc --noEmit",
-        "type-check:watch": "tsc -b ../common/tsconfig.json && tsc --noEmit --watch",
+        "type-check": "tsc -b ../ftr-common/tsconfig.json && tsc --noEmit",
+        "type-check:watch": "tsc -b ../ftr-common/tsconfig.json && tsc --noEmit --watch",
         "lint": "eslint .",
         "lint-fix": "eslint . --fix",
         "dev:all": "concurrently \"npm --prefix ./src/conn-service run dev\" \"npm --prefix ./src/auth-service run dev\" \"npm --prefix ./src/user-service run dev\""
     },
     "dependencies": {
-        "common": "*",
+        "ftr-common": "*",
         "cookie-parser": "^1.4.7",
         "express": "^5.2.1",
         "reflect-metadata": "^0.2.2",
