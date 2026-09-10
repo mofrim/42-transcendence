@@ -24,6 +24,7 @@ export type EventData = {
     readonly playerNickname?: string;
     readonly opponentNickname?: string;
     readonly chatmsg?: string;
+    readonly questText?: string;
     readonly questId?: string;
 };
 
