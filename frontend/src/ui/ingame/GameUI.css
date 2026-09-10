@@ -168,6 +168,10 @@
     min-width: 0;
 }
 
+.hud-quest-text-completed {
+    text-decoration: line-through;
+}
+
 .hud-black-hole-timer {
     flex: 0 0 auto;
     margin-left: auto;

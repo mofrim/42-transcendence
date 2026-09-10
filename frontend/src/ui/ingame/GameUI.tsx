@@ -541,7 +541,13 @@ export function GameUI({
                                 >
                                     {marker}
                                 </span>
-                                <span className='hud-quest-text'>
+                                <span
+                                    className={
+                                        quest.completed
+                                            ? 'hud-quest-text hud-quest-text-completed'
+                                            : 'hud-quest-text'
+                                    }
+                                >
                                     {quest.text}
                                 </span>
                                 {blackHoleTimer}
