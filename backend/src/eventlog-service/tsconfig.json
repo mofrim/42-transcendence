@@ -2,7 +2,7 @@
     "extends": "../../tsconfig.base.json",
     "compilerOptions": {
         "rootDir": "./src",
-        "outDir": "../../dist/auth-service"
+        "outDir": "../../dist/eventlog-service"
     },
     "include": ["./src/**/*.ts"]
 }
