@@ -51,7 +51,7 @@ export const DEFAULT_QUESTS: readonly QuestLogEntry[] = [
     },
     {
         id: MEET_PLAYER_QUEST_ID,
-        text: 'Find a other Student',
+        text: 'Find another Student',
     },
     {
         id: 'FIND_EVALUATING_STUDENT',
