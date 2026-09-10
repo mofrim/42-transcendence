@@ -53,6 +53,7 @@ type GameUIProps = {
     readonly matchHistory?: readonly EventLogEntry[];
     readonly onChatMessage?: (message: string) => void;
     readonly onQuestStatusChange?: (change: QuestStatusChange) => void;
+    readonly onBlackHoleCountdownExpired?: () => void;
     readonly onLogout?: () => Promise<void>;
     readonly dialog?: DialogPanelState;
     readonly onDialogNext?: () => void;
@@ -200,6 +201,7 @@ export function GameUI({
     matchHistory = [],
     onChatMessage,
     onQuestStatusChange,
+    onBlackHoleCountdownExpired,
     onLogout,
     dialog,
     onDialogNext,
@@ -286,6 +288,10 @@ export function GameUI({
         setIsChatOpen(true);
     });
 
+    const handleBlackHoleCountdownExpired = useEffectEvent((): void => {
+        onBlackHoleCountdownExpired?.();
+    });
+
     const displayedEvents = events.slice(-MAX_EVENT_LOG_ENTRIES);
     const latestEventId = displayedEvents.at(-1)?.id;
     let blackHoleHourglass = '⌛';
@@ -294,18 +300,21 @@ export function GameUI({
     }
     const blackHoleCountdown =
         blackHoleHourglass + formatQuestCountdown(blackHoleSecondsRemaining);
+    const isBlackHoleCountdownRunning =
+        blackHoleCountdownActive &&
+        !completedQuestIds.includes(START_EVALUATION_QUEST_ID);
+    const isBlackHoleQuestCompleted =
+        blackHoleCountdownActive &&
+        !isBlackHoleCountdownRunning &&
+        blackHoleSecondsRemaining > 0;
     const resolvedQuests = resolveQuestLogEntries(
         quests,
         completedQuestIds,
-        blackHoleSecondsRemaining
+        isBlackHoleQuestCompleted
     );
     const completedQuestCount = resolvedQuests.filter(
         (quest) => quest.completed
     ).length;
-    const isBlackHoleCountdownRunning =
-        blackHoleCountdownActive &&
-        !completedQuestIds.includes(START_EVALUATION_QUEST_ID);
-
     /** blackhole timer */
     useEffect(() => {
         const blackHoleDeadline = getBlackHoleCountdownDeadline(
@@ -331,6 +340,7 @@ export function GameUI({
             if (secondsRemaining === 0 && intervalId !== undefined) {
                 window.clearInterval(intervalId);
                 intervalId = undefined;
+                handleBlackHoleCountdownExpired();
             }
         };
 

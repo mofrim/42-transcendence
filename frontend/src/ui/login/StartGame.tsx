@@ -12,7 +12,6 @@ import { useMatchHistory } from '../../hooks/useMatchHistory';
 import { GameUI, type DialogPanelState } from '../ingame/GameUI';
 import {
     applyQuestCompletionEvent,
-    BLACK_HOLE_QUEST_ID,
     type QuestStatusChange,
 } from '../ingame/QuestLog';
 import * as THREE from 'three';
@@ -125,15 +124,6 @@ export const Game: React.FC<{
     const handleQuestStatusChange = useCallback(
         (statusChange: QuestStatusChange): void => {
             if (!statusChange.completed) {
-                if (statusChange.questId === BLACK_HOLE_QUEST_ID) {
-                    appendEvent({
-                        eventType: EventType.Blackholed,
-                        data: { nickname: user!.nickname },
-                        logtime: new Date(),
-                    });
-                    gameRuntimeRef.current?.triggerBlackHoleCutscene();
-                    //console.log('### Quest status change:', statusChange);
-                }
                 return;
             }
 
@@ -149,6 +139,15 @@ export const Game: React.FC<{
         },
         [appendEvent, user]
     );
+
+    const handleBlackHoleCountdownExpired = useCallback((): void => {
+        appendEvent({
+            eventType: EventType.Blackholed,
+            data: { nickname: user!.nickname },
+            logtime: new Date(),
+        });
+        gameRuntimeRef.current?.triggerBlackHoleCutscene();
+    }, [appendEvent, user]);
 
     const handleDialogNext = useCallback((): void => {
         gameRuntimeRef.current?.continueDialogue();
@@ -270,6 +269,7 @@ export const Game: React.FC<{
     } else {
         playerOnlyGameUIProps = {
             onQuestStatusChange: handleQuestStatusChange,
+            onBlackHoleCountdownExpired: handleBlackHoleCountdownExpired,
             onLogout: handleLogout,
             dialog,
             onDialogNext: handleDialogNext,

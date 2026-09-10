@@ -90,11 +90,11 @@ export function formatQuestCountdown(totalSeconds: number): string {
 
 function isQuestCompleted(
     quest: QuestLogEntry,
-    blackHoleSecondsRemaining: number,
+    blackHoleQuestCompleted: boolean,
     completedQuestIds: ReadonlySet<string>
 ): boolean {
     if (quest.id === BLACK_HOLE_QUEST_ID) {
-        return blackHoleSecondsRemaining > 0;
+        return blackHoleQuestCompleted;
     }
 
     return quest.completed === true || completedQuestIds.has(quest.id);
@@ -103,7 +103,7 @@ function isQuestCompleted(
 export function resolveQuestLogEntries(
     quests: readonly QuestLogEntry[],
     completedQuestIds: readonly string[],
-    blackHoleSecondsRemaining: number
+    blackHoleQuestCompleted: boolean
 ): ResolvedQuestLogEntry[] {
     const completedQuestIdSet = new Set(completedQuestIds);
 
@@ -111,7 +111,7 @@ export function resolveQuestLogEntries(
         ...quest,
         completed: isQuestCompleted(
             quest,
-            blackHoleSecondsRemaining,
+            blackHoleQuestCompleted,
             completedQuestIdSet
         ),
     }));
