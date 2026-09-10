@@ -38,6 +38,9 @@ import {
     RPSChoice,
     TTTMeshBoard,
     NPCState,
+    GameEvent,
+    EventType,
+    type EventData,
 } from 'ftr-common/sharedTypes';
 import type {
     GLBMesh,
@@ -81,23 +84,23 @@ const EVENT_SPACE_DOOR_INTERACTION_IDS: ReadonlySet<string> = new Set([
 ]);
 
 /** event log msgs */
-export type GameRuntimeEvent =
-    | {
-        readonly type: 'player_joined' | 'player_left' | 'player_in_range';
-        readonly playerId: string;
-        readonly nickname: string;
-    }
-    | {
-        readonly type: 'quest_completed';
-        readonly questId: string;
-    }
-    | {
-        readonly type: 'game_result';
-        readonly game: 'Tic-Tac-Toe' | 'Rock-Paper-Scissors';
-        readonly outcome: 'won' | 'lost' | 'draw';
-        readonly playerNickname: string;
-        readonly opponentNickname: string;
-    };
+// export type GameRuntimeEvent =
+//     | {
+//           readonly type: 'player_joined' | 'player_left' | 'player_in_range';
+//           readonly playerId: string;
+//           readonly nickname: string;
+//       }
+//     | {
+//           readonly type: 'quest_completed';
+//           readonly questId: string;
+//       }
+//     | {
+//           readonly type: 'game_result';
+//           readonly game: 'Tic-Tac-Toe' | 'Rock-Paper-Scissors';
+//           readonly outcome: 'won' | 'lost' | 'draw';
+//           readonly playerNickname: string;
+//           readonly opponentNickname: string;
+//       };
 
 export type GameRuntime = {
     readonly sendChatMessage: (message: string) => void;
@@ -118,10 +121,11 @@ type ActiveTTTPlayers = {
     readonly playerTwo: NamedPlayer;
 };
 
-export type GameResultEvent = Extract<
-    GameRuntimeEvent,
-    { type: 'game_result' }
->;
+// export type GameResultEvent = Extract<
+//     GameRuntimeEvent,
+//     { type: 'game_result' }
+// >;
+
 type RemotePlayerUpdate = Pick<PlayerUpdatePayload, 'x' | 'y' | 'z' | 'state'>;
 export type GameMode = NonNullable<SocketAuth['role']>;
 
@@ -130,7 +134,7 @@ export function startGame(
     localNickname: string,
     serverUrl: string,
     renderer: THREE.WebGLRenderer,
-    onGameEvent?: (event: GameRuntimeEvent) => void,
+    onGameEvent?: (event: GameEvent) => void,
     onDialogChange?: (state: { isOpen: boolean; message: string }) => void,
     mode: GameMode = 'player',
     onChatMessage?: (message: ReceivedChatPayload) => void,
@@ -267,9 +271,15 @@ export function startGame(
         console.log('someone left:', id);
         const disconnectedPlayer = multiplayer?.players.get(id);
         onGameEvent?.({
-            type: 'player_left',
-            playerId: id,
-            nickname: resolvePlayerNickname(id, disconnectedPlayer?.nickname),
+            eventType: EventType.PlayerLeft,
+            data: {
+                playerId: id,
+                playerNickname: resolvePlayerNickname(
+                    id,
+                    disconnectedPlayer?.nickname
+                ),
+            },
+            logtime: new Date(),
         });
 
         blockedPlayerUpdates.add(id);
@@ -652,7 +662,7 @@ export function startGame(
         const localPlayerId = player?.id;
         const opponent = getActiveTTTOpponent(localPlayerId);
         if (localPlayerId && opponent) {
-            let outcome: GameResultEvent['outcome'] = 'lost';
+            let outcome: EventData['outcome'] = 'lost';
             if (data.id === localPlayerId) {
                 outcome = 'won';
             }
@@ -684,16 +694,19 @@ export function startGame(
     }
 
     function emitLocalGameResult(
-        game: GameResultEvent['game'],
-        outcome: GameResultEvent['outcome'],
+        game: EventData['game'],
+        outcome: EventData['outcome'],
         opponentNickname: string
     ): void {
         onGameEvent?.({
-            type: 'game_result',
-            game,
-            outcome,
-            playerNickname: localNickname,
-            opponentNickname,
+            eventType: EventType.GameResult,
+            data: {
+                game: game!,
+                outcome: outcome!,
+                playerNickname: localNickname,
+                opponentNickname: opponentNickname,
+            },
+            logtime: new Date(),
         });
     }
 
@@ -758,9 +771,12 @@ export function startGame(
             return;
         }
         onGameEvent?.({
-            type: 'player_joined',
-            playerId: id,
-            nickname: resolvedNickname,
+            eventType: EventType.PlayerJoined,
+            data: {
+                playerId: id,
+                nickname: resolvedNickname,
+            },
+            logtime: new Date(),
         });
     }
 
@@ -1075,12 +1091,16 @@ export function startGame(
                 // Connecting RPS range detection to meet student Quest
                 (nearbyPlayer) => {
                     onGameEvent?.({
-                        type: 'player_in_range',
-                        playerId: nearbyPlayer.id,
-                        nickname: resolvePlayerNickname(
-                            nearbyPlayer.id,
-                            nearbyPlayer.nickname
-                        ),
+                        id: 0,
+                        eventType: EventType.PlayerInRange,
+                        data: {
+                            playerId: nearbyPlayer.id,
+                            nickname: resolvePlayerNickname(
+                                nearbyPlayer.id,
+                                nearbyPlayer.nickname
+                            ),
+                        },
+                        logtime: new Date(),
                     });
                 }
             );
@@ -1110,8 +1130,9 @@ export function startGame(
 
             storyManager.onQuestInteraction = (questId) => {
                 onGameEvent?.({
-                    type: 'quest_completed',
-                    questId,
+                    eventType: EventType.QuestCompleted,
+                    data: { questId: questId },
+                    logtime: new Date(),
                 });
             };
             storyManager.onQuestDuckFound = async () => {
@@ -1535,8 +1556,11 @@ export function startGame(
         eventSpaceQuestCompleted = true;
         eventSpaceDoorTraversalStarted = false;
         onGameEvent?.({
-            type: 'quest_completed',
-            questId: ENTER_EVENT_SPACE_QUEST_ID,
+            eventType: EventType.QuestCompleted,
+            data: {
+                questId: ENTER_EVENT_SPACE_QUEST_ID,
+            },
+            logtime: new Date(),
         });
     }
 
@@ -1768,7 +1792,7 @@ export function startGame(
             if (rpsGame.battleRequestedPlayer) {
                 console.log(
                     'Sending accept request to player ' +
-                    rpsGame.battleRequestedPlayer
+                        rpsGame.battleRequestedPlayer
                 );
                 console.log('BATTLE START!');
                 emitBattleAccept(rpsGame.battleRequestedPlayer);
@@ -1792,7 +1816,7 @@ export function startGame(
             if (rpsGame.battleRequestedPlayer) {
                 console.log(
                     'Sending decline request to player ' +
-                    rpsGame.battleRequestedPlayer
+                        rpsGame.battleRequestedPlayer
                 );
                 console.log('BATTLE DECLINED!');
                 emitBattleDecline(rpsGame.battleRequestedPlayer);
@@ -2056,11 +2080,11 @@ export function startGame(
 
         console.log(
             'Player position: x=' +
-            player.group.position.x.toFixed(2) +
-            ', y=' +
-            player.group.position.y.toFixed(2) +
-            ', z=' +
-            player.group.position.z.toFixed(2)
+                player.group.position.x.toFixed(2) +
+                ', y=' +
+                player.group.position.y.toFixed(2) +
+                ', z=' +
+                player.group.position.z.toFixed(2)
         );
     }
 

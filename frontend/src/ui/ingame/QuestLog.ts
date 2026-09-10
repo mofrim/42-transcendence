@@ -1,7 +1,5 @@
-import {
-    ENTER_EVENT_SPACE_QUEST_ID,
-    type GameRuntimeEvent,
-} from '../../game/main';
+import { ENTER_EVENT_SPACE_QUEST_ID } from '../../game/main';
+import { GameEvent, EventType } from 'ftr-common/sharedTypes';
 
 export const BLACK_HOLE_QUEST_ID = 'avoid-blackhole';
 export const MEET_PLAYER_QUEST_ID = 'meet-player';
@@ -160,20 +158,23 @@ export function describeQuestStatusChange(change: QuestStatusChange): string {
     return `❌ Quest failed: ${change.questText}`;
 }
 
-function getCompletedQuestId(event: GameRuntimeEvent): string | null {
-    if (event.type === 'quest_completed') {
-        return event.questId;
+function getCompletedQuestId(event: GameEvent): string | null {
+    if (event.eventType === EventType.QuestCompleted) {
+        return event.data.questId!;
     }
 
-    if (event.type === 'player_in_range') {
+    if (event.eventType === EventType.PlayerInRange) {
         return MEET_PLAYER_QUEST_ID;
     }
 
-    if (event.type !== 'game_result' || event.outcome !== 'won') {
+    if (
+        event.eventType !== EventType.GameResult ||
+        event.data.outcome !== 'won'
+    ) {
         return null;
     }
 
-    if (event.game === 'Rock-Paper-Scissors') {
+    if (event.data.game === 'Rock-Paper-Scissors') {
         return RPS_WIN_QUEST_ID;
     }
 
@@ -182,7 +183,7 @@ function getCompletedQuestId(event: GameRuntimeEvent): string | null {
 
 export function applyQuestCompletionEvent(
     currentQuestIds: string[],
-    event: GameRuntimeEvent
+    event: GameEvent
 ): string[] {
     const completedQuestId = getCompletedQuestId(event);
 

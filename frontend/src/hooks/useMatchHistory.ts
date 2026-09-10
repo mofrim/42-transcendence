@@ -1,7 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
 import axios from 'axios';
-import { EventType, type BaseEventLog } from 'ftr-common/sharedTypes';
-import type { GameResultEvent } from '../game/main';
+import {
+    EventType,
+    GameEvent,
+    type BaseEventLog,
+    type EventData,
+} from 'ftr-common/sharedTypes';
 import type { EventLogEntry } from '../ui/ingame/EventLogItems';
 
 const EVENT_LOG_HISTORY_LIMIT = 50;
@@ -11,21 +15,15 @@ const MATCH_HISTORY_DATE_TIME_FORMAT = new Intl.DateTimeFormat(undefined, {
     timeStyle: 'short',
 });
 
-type StoredTicTacToeResult = Pick<
-    GameResultEvent,
-    'game' | 'outcome' | 'opponentNickname'
-> & {
-    readonly playedAt: string;
-};
-
 type UseMatchHistoryOptions = {
-    readonly nickname: string;
+    readonly userId: number;
     readonly isSpectator: boolean;
 };
 
 function createMatchHistoryEntry(
     id: number,
-    data: StoredTicTacToeResult
+    data: EventData,
+    tstamp: Date
 ): EventLogEntry {
     let result = 'Draw';
     if (data.outcome === 'won') {
@@ -36,9 +34,7 @@ function createMatchHistoryEntry(
 
     return {
         id: String(id),
-        timestamp: MATCH_HISTORY_DATE_TIME_FORMAT.format(
-            new Date(data.playedAt)
-        ),
+        timestamp: MATCH_HISTORY_DATE_TIME_FORMAT.format(tstamp),
         description: `${data.game}: ${result} vs ${data.opponentNickname}`,
     };
 }
@@ -49,11 +45,9 @@ function parseTicTacToeMatch(event: BaseEventLog): EventLogEntry | null {
     }
 
     try {
-        const data = JSON.parse(event.data) as Partial<StoredTicTacToeResult>;
+        const data: EventData = event.data;
         if (
             data.game !== 'Tic-Tac-Toe' ||
-            typeof data.playedAt !== 'string' ||
-            Number.isNaN(Date.parse(data.playedAt)) ||
             (data.outcome !== 'won' &&
                 data.outcome !== 'lost' &&
                 data.outcome !== 'draw') ||
@@ -63,19 +57,23 @@ function parseTicTacToeMatch(event: BaseEventLog): EventLogEntry | null {
             return null;
         }
 
-        return createMatchHistoryEntry(event.id, {
-            game: data.game,
-            playedAt: data.playedAt,
-            outcome: data.outcome,
-            opponentNickname: data.opponentNickname,
-        });
+        return createMatchHistoryEntry(
+            // as all events come from DB they will safely have an id
+            event.id!,
+            {
+                game: data.game,
+                outcome: data.outcome,
+                opponentNickname: data.opponentNickname,
+            },
+            event.logtime
+        );
     } catch {
         return null;
     }
 }
 
 export function useMatchHistory({
-    nickname,
+    userId,
     isSpectator,
 }: UseMatchHistoryOptions) {
     const [matchHistory, setMatchHistory] = useState<EventLogEntry[]>([]);
@@ -94,7 +92,7 @@ export function useMatchHistory({
                     {
                         params: {
                             limit: EVENT_LOG_HISTORY_LIMIT,
-                            user: nickname,
+                            uid: userId,
                         },
                         signal: controller.signal,
                     }
@@ -124,34 +122,37 @@ export function useMatchHistory({
         return () => {
             controller.abort();
         };
-    }, [isSpectator, nickname]);
+    }, [isSpectator, userId]);
 
     const saveTicTacToeMatch = useCallback(
-        async (event: GameResultEvent): Promise<void> => {
-            if (isSpectator || event.game !== 'Tic-Tac-Toe') {
+        async (event: GameEvent): Promise<void> => {
+            if (isSpectator || event.data.game !== 'Tic-Tac-Toe') {
                 return;
             }
 
-            const storedResult: StoredTicTacToeResult = {
-                game: event.game,
-                playedAt: new Date().toISOString(),
-                outcome: event.outcome,
-                opponentNickname: event.opponentNickname,
+            // QUESTION is this really so clear that all fields will be set?
+            const storedResult: EventData = {
+                game: event.data.game!,
+                outcome: event.data.outcome!,
+                opponentNickname: event.data.opponentNickname!,
             };
+
+            const timestamp = new Date();
 
             try {
                 const response = await axios.post<BaseEventLog>(
                     '/api/eventlog',
                     {
                         eventType: EventType.GameResult,
-                        data: JSON.stringify(storedResult),
-                        user: nickname,
+                        data: storedResult,
+                        logtime: timestamp,
                     }
                 );
 
                 const savedMatch = createMatchHistoryEntry(
-                    response.data.id,
-                    storedResult
+                    response.data.id!,
+                    storedResult,
+                    timestamp
                 );
 
                 setMatchHistory((currentHistory) =>
@@ -166,7 +167,7 @@ export function useMatchHistory({
                 );
             }
         },
-        [isSpectator, nickname]
+        [isSpectator]
     );
 
     return { matchHistory, saveTicTacToeMatch };

@@ -1,52 +1,22 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useLoginContext } from '../../hooks/useLoginContext';
 import { useAuth } from '../../hooks/useAuthContext';
+import { startGame, type GameMode, type GameRuntime } from '../../game/main';
 import {
-    startGame,
-    type GameMode,
-    type GameRuntime,
-    type GameRuntimeEvent,
-} from '../../game/main';
-import type { ReceivedChatPayload } from 'ftr-common/sharedTypes';
+    type ReceivedChatPayload,
+    GameEvent,
+    EventType,
+} from 'ftr-common/sharedTypes';
 import { useMatchHistory } from '../../hooks/useMatchHistory';
-import {
-    GameUI,
-    type DialogPanelState,
-    MAX_EVENT_LOG_ENTRIES,
-} from '../ingame/GameUI';
-import type { EventLogEntry } from '../ingame/EventLogItems';
+import { GameUI, type DialogPanelState } from '../ingame/GameUI';
 import {
     applyQuestCompletionEvent,
     BLACK_HOLE_QUEST_ID,
-    describeQuestStatusChange,
     type QuestStatusChange,
 } from '../ingame/QuestLog';
 import * as THREE from 'three';
 
-const EVENT_TIME_FORMAT = new Intl.DateTimeFormat('en-GB', {
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hourCycle: 'h23',
-});
-
-function describeGameEvent(event: GameRuntimeEvent): string {
-    switch (event.type) {
-        case 'player_joined':
-            return `${event.nickname} 👋🏻 joined`;
-        case 'player_left':
-            return `${event.nickname} 🚪 logged out`;
-        case 'player_in_range':
-            return `Met ${event.nickname} nearby`;
-        case 'quest_completed':
-            return `Completed quest ${event.questId}`;
-        case 'game_result':
-            if (event.outcome === 'draw') {
-                return `${event.playerNickname} drew a game of ${event.game} against ${event.opponentNickname}`;
-            }
-            return `${event.playerNickname} ${event.outcome} a game of ${event.game} against ${event.opponentNickname}`;
-    }
-}
+import { useEventLog } from '../../hooks/useEventLog';
 
 // the start-button. all this does is setting the gameRunning state var
 export const StartButton: React.FC = () => {
@@ -60,24 +30,17 @@ export const StartButton: React.FC = () => {
 };
 
 export const Game: React.FC<{
-    nickname: string;
-    email: string;
     isSpectator?: boolean;
-}> = ({ nickname, email, isSpectator = false }) => {
+}> = ({ isSpectator = false }) => {
     const { avatar, serverAddrRef, setGameRunning, setIsSpectator } =
         useLoginContext();
-    const { logout } = useAuth();
+    const { user, logout } = useAuth();
     const [character] = useState(() => avatar === 'true');
 
     // using ref here a lot because th
     const mountRef = useRef<HTMLDivElement>(null);
     const gameRuntimeRef = useRef<GameRuntime | null>(null);
     const metPlayerNicknamesRef = useRef(new Set<string>());
-    const [events, setEvents] = useState<EventLogEntry[]>([]);
-    const { matchHistory, saveTicTacToeMatch } = useMatchHistory({
-        nickname,
-        isSpectator,
-    });
     const [completedQuestIds, setCompletedQuestIds] = useState<string[]>([]);
     const [gameResetVersion, setGameResetVersion] = useState(0);
     const [isGameplayReady, setIsGameplayReady] = useState(false);
@@ -86,34 +49,28 @@ export const Game: React.FC<{
         message: '',
     });
 
-    const appendEvent = useCallback((description: string): void => {
-        const now = new Date();
-        const event: EventLogEntry = {
-            id: THREE.MathUtils.generateUUID(),
-            timestamp: EVENT_TIME_FORMAT.format(now),
-            description,
-        };
 
-        setEvents((currentEvents) =>
-            [...currentEvents, event].slice(-MAX_EVENT_LOG_ENTRIES)
-        );
-    }, []);
+    const { matchHistory, saveTicTacToeMatch } = useMatchHistory({
+        userId: user !== null ? user.id : 0,
+        isSpectator,
+    });
+    const { events, appendEvent } = useEventLog();
 
     /** Runtime-Ereignisse bleiben auch außerhalb des Sichtfelds sichtbar. */
     const handleGameEvent = useCallback(
-        (event: GameRuntimeEvent): void => {
-            if (event.type === 'player_in_range') {
+        (event: GameEvent): void => {
+            if (event.eventType === 'PlayerInRange') {
                 const metPlayerNicknames = metPlayerNicknamesRef.current;
                 // only log the first time we meet a player, not every time again
-                if (!metPlayerNicknames.has(event.nickname)) {
-                    metPlayerNicknames.add(event.nickname);
-                    appendEvent(describeGameEvent(event));
+                if (!metPlayerNicknames.has(event.data.nickname!)) {
+                    metPlayerNicknames.add(event.data.nickname!);
+                    appendEvent(event);
                 }
-            } else if (event.type !== 'quest_completed') {
-                appendEvent(describeGameEvent(event));
+            } else if (event.eventType !== 'QuestCompleted') {
+                appendEvent(event);
             }
 
-            if (event.type === 'game_result') {
+            if (event.eventType === 'GameResult') {
                 void saveTicTacToeMatch(event);
             }
             setCompletedQuestIds((currentQuestIds) =>
@@ -129,23 +86,49 @@ export const Game: React.FC<{
 
     const handleReceivedChatMessage = useCallback(
         (message: ReceivedChatPayload): void => {
-            appendEvent(`${message.senderName} 💬 ${message.message}`);
+            const event: GameEvent = {
+                eventType: EventType.ChatMsg,
+                data: {
+                    nickname: message.senderName,
+                    chatmsg: message.message,
+                },
+                logtime: new Date(),
+            };
+            appendEvent(event);
         },
         [appendEvent]
     );
 
     const handleQuestStatusChange = useCallback(
         (statusChange: QuestStatusChange): void => {
-            appendEvent(describeQuestStatusChange(statusChange));
             if (
                 statusChange.questId === BLACK_HOLE_QUEST_ID &&
                 !statusChange.completed
             ) {
+                const event: GameEvent = {
+                    eventType: EventType.Blackholed,
+                    data: {
+                        nickname: user!.nickname,
+                    },
+                    logtime: new Date(),
+                };
+                appendEvent(event);
+
                 gameRuntimeRef.current?.triggerBlackHoleCutscene();
                 //console.log('### Quest status change:', statusChange);
             }
+            const event: GameEvent = {
+                eventType: EventType.QuestCompleted,
+                data: {
+                    nickname: user!.nickname,
+                    questText: statusChange.questText,
+                    questId: statusChange.questId,
+                },
+                logtime: new Date(),
+            };
+            appendEvent(event);
         },
-        [appendEvent]
+        [appendEvent, user]
     );
 
     const handleDialogNext = useCallback((): void => {
@@ -155,22 +138,25 @@ export const Game: React.FC<{
     const handleGameReset = useCallback((): void => {
         metPlayerNicknamesRef.current.clear();
         setCompletedQuestIds([]);
-        setEvents([]);
         setGameResetVersion((currentVersion) => currentVersion + 1);
     }, []);
 
     /** suck up */
-    const exitLocalPlayer = useCallback(
-        async (description: string): Promise<void> => {
-            appendEvent(description);
-            await gameRuntimeRef.current?.despawnLocalPlayer();
-        },
-        [appendEvent]
-    );
+    const exitLocalPlayer = useCallback(async (): Promise<void> => {
+        const event: GameEvent = {
+            eventType: EventType.PlayerLeft,
+            data: {
+                nickname: user!.nickname,
+            },
+            logtime: new Date(),
+        };
+        appendEvent(event);
+        await gameRuntimeRef.current?.despawnLocalPlayer();
+    }, [appendEvent, user]);
 
     const handleLogout = useCallback(async (): Promise<void> => {
         try {
-            await exitLocalPlayer(`${nickname} 🚪 logged out`);
+            await exitLocalPlayer();
         } catch (error) {
             console.error(
                 'Failed to despawn local player during logout:',
@@ -179,7 +165,7 @@ export const Game: React.FC<{
         }
 
         await logout();
-    }, [exitLocalPlayer, logout, nickname]);
+    }, [exitLocalPlayer, logout]);
 
     const handleSpectatorExit = useCallback((): void => {
         setIsSpectator(false);
@@ -195,8 +181,7 @@ export const Game: React.FC<{
         mount.appendChild(renderer.domElement);
 
         let gameMode: GameMode = 'spectator';
-        let runtimeGameEventHandler:
-            ((event: GameRuntimeEvent) => void) | undefined;
+        let runtimeGameEventHandler: ((event: GameEvent) => void) | undefined;
         let runtimeDialogHandler:
             ((state: DialogPanelState) => void) | undefined;
         let runtimeGameResetHandler: (() => void) | undefined;
@@ -212,7 +197,7 @@ export const Game: React.FC<{
 
         const runtime: GameRuntime = startGame(
             character,
-            nickname,
+            user!.nickname,
             serverAddrRef.current,
             renderer,
             runtimeGameEventHandler,
@@ -245,7 +230,7 @@ export const Game: React.FC<{
         handleGameReset,
         handleReceivedChatMessage,
         isSpectator,
-        nickname,
+        user,
         serverAddrRef,
     ]);
 
@@ -282,8 +267,8 @@ export const Game: React.FC<{
                 // NOTE now we can just use the users nickname from DB here..
                 // this might change when we want to allow change user-prefs
                 // from a in-game ui
-                nickname={nickname}
-                email={email}
+                nickname={user!.nickname}
+                email={user!.email}
                 character={character}
                 completedQuestIds={completedQuestIds}
                 events={events}

@@ -7,8 +7,8 @@ import { PlayerSelect } from './ui/login/PlayerSelect';
 import { Agreements } from './ui/login/Agreements';
 import { useLoginContext } from './hooks/useLoginContext';
 import { useAuth } from './hooks/useAuthContext';
-import { SPECTATOR_NAME } from 'ftr-common/sharedTypes';
 import axios from 'axios';
+import { EventLogProvider } from './contexts/EventLogProvider.tsx';
 
 import './App.css';
 
@@ -60,11 +60,7 @@ const App: React.FC<AppProps> = (props: AppProps) => {
         console.log('spectator mode running');
         return (
             <React.Suspense fallback={null}>
-                <LoadGame
-                    nickname={SPECTATOR_NAME}
-                    email=''
-                    isSpectator={true}
-                />
+                <LoadGame isSpectator={true} />
             </React.Suspense>
         );
     }
@@ -73,11 +69,9 @@ const App: React.FC<AppProps> = (props: AppProps) => {
         console.log('game running');
         return (
             <React.Suspense fallback={null}>
-                <LoadGame
-                    nickname={user.nickname}
-                    email={user.email}
-                    isSpectator={false}
-                />
+                <EventLogProvider>
+                    <LoadGame isSpectator={false} />
+                </EventLogProvider>
             </React.Suspense>
         );
     }

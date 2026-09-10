@@ -144,8 +144,7 @@ export class InteractionManager {
                 interactionInZone = interaction;
             }
 
-            if (isInZone && interaction.enabled)
-                interaction.showEngageButton();
+            if (isInZone && interaction.enabled) interaction.showEngageButton();
             else interaction.removeEngageButton();
         }
 

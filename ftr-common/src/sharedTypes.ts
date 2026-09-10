@@ -9,7 +9,7 @@ export enum EventType {
     PlayerInRange = 'PlayerInRange',
     GameResult = 'GameResult',
     ChatMsg = 'ChatMsg',
-    QuestProgress = 'QuestProgress',
+    QuestCompleted = 'QuestCompleted',
     Blackholed = 'Blackholed',
     NickChange = 'NickChange',
     CharChange = 'CharChange',
@@ -24,18 +24,19 @@ export type EventData = {
     readonly playerNickname?: string;
     readonly opponentNickname?: string;
     readonly chatmsg?: string;
+    readonly questId?: string;
 };
 
 // This will be the foundation for a new table in `eventlog-service`
 export abstract class BaseEventLog {
-    abstract id: number;
+    abstract id?: number;
     abstract eventType: EventType;
     abstract logtime: Date;
     abstract data: EventData;
 }
 
 export class GameEvent extends BaseEventLog {
-    id: number = 0;
+    id?: number;
     eventType: EventType = EventType.None;
     logtime: Date = new Date();
     data: EventData = {};
