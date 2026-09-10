@@ -4,11 +4,18 @@ import 'reflect-metadata';
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import type { Express, Request, Response } from 'express';
+import type { Express, NextFunction, Request, Response } from 'express';
 import { DataSource } from 'typeorm';
 import { exit } from 'node:process';
 import cookieParser from 'cookie-parser';
-import { ORMUserProfile, ORMMatchHistory } from './orm_types.js';
+import { Logger, type ILogObj } from 'tslog';
+import { ORMEventLog, ORMUser } from 'common/ormTypes';
+import { authenticateMid } from 'common/middleware';
+import {
+    MatchResult,
+    ORMMatchHistory,
+    ORMUserProfile,
+} from './orm_types.js';
 
 // load env vars from global dotenv (correct when running from backend/src/user-service)
 if (process.env['NODE_ENV'] === 'development') {
@@ -17,11 +24,16 @@ if (process.env['NODE_ENV'] === 'development') {
 }
 
 const PORT = Number(process.env['USER_SERVICE_PORT']) || 3003;
+const SECRET_KEY: string = process.env['JWT_SECRET'] || 'FooBarBaz';
+const log = new Logger<ILogObj>({ name: 'user', minLevel: 'INFO' });
 const app: Express = express();
 
 app.use(cors({ credentials: true }));
 app.use(express.json());
 app.use(cookieParser());
+
+const authenticate = (req: Request, res: Response, next: NextFunction) =>
+    authenticateMid(req, res, next, log, SECRET_KEY);
 
 // -------------------------=[ DB initialization ]=------------------------- //
 const DB = new DataSource({
@@ -34,7 +46,7 @@ const DB = new DataSource({
     username: process.env['DB_USER'] || 'postgres',
     password: process.env['DB_PASSWD'] || 'postgres',
     database: process.env['DB_NAME'] || 'postgres',
-    entities: [ORMUserProfile, ORMMatchHistory],
+    entities: [ORMUserProfile, ORMMatchHistory, ORMUser, ORMEventLog],
     synchronize: true,
     logging: false,
 });
@@ -44,52 +56,189 @@ try {
     console.log('Database connected');
 
     const userProfileRepo = DB.getRepository(ORMUserProfile);
+    const matchHistoryRepo = DB.getRepository(ORMMatchHistory);
+    const userRepo = DB.getRepository(ORMUser);
 
-    // Create user profile
-    app.post('/api/user-profiles', async (req: Request, res: Response) => {
-        try {
-            const body = req.body as {
-                userId?: unknown;
-                character?: unknown;
-            };
+    const getCurrentUser = async (req: Request) => {
+        if (!req.user) {
+            return null;
+        }
 
-            if (!Number.isInteger(body.userId)) {
-                return res
-                    .status(400)
-                    .json({ error: 'userId must be an integer' });
-            }
-            if (typeof body.character !== 'boolean') {
-                return res
-                    .status(400)
-                    .json({ error: 'character must be a boolean' });
-            }
+        return userRepo.findOne({
+            where: { nickname: req.user.nickname },
+            select: {
+                id: true,
+                nickname: true,
+                character: true,
+                email: true,
+            },
+        });
+    };
 
-            const userId = body.userId as number;
-            const character = body.character as boolean;
+    const ensureProfile = async (user: ORMUser) => {
+        let profile = await userProfileRepo.findOne({
+            where: { userId: user.id },
+        });
 
-            const existing = await userProfileRepo.findOne({
-                where: { userId },
+        if (!profile) {
+            profile = userProfileRepo.create({
+                userId: user.id,
+                character: user.character,
             });
-            if (existing) {
-                return res
-                    .status(409)
-                    .json({ error: 'Profile already exists for this userId' });
-            }
-
-            const profile = userProfileRepo.create({ userId, character });
             await userProfileRepo.save(profile);
-            return res.status(201).json(profile);
+        }
+
+        return profile;
+    };
+
+    app.get('/api/user', authenticate, async (req: Request, res: Response) => {
+        try {
+            const user = await getCurrentUser(req);
+            if (!user) {
+                res.status(404).json({ error: 'User not found' });
+                return;
+            }
+
+            const profile = await ensureProfile(user);
+            res.json({ ...user, character: profile.character });
         } catch (err) {
-            return res.status(500).json({
-                error: 'Failed to create user profile',
-                details: String(err),
-            });
+            log.error(err as Error);
+            res.status(500).json({ error: 'Failed to fetch user' });
         }
     });
+
+    app.get(
+        '/api/match-history',
+        authenticate,
+        async (req: Request, res: Response) => {
+            const limit = Number(req.query['limit'] ?? 50);
+            if (!Number.isInteger(limit) || limit <= 0 || limit > 100) {
+                res.status(400).json({
+                    error: 'limit must be an integer between 1 and 100',
+                });
+                return;
+            }
+
+            try {
+                const user = await getCurrentUser(req);
+                if (!user) {
+                    res.status(404).json({ error: 'User not found' });
+                    return;
+                }
+
+                const history = await matchHistoryRepo.find({
+                    where: { userId: user.id },
+                    order: { finishedAt: 'DESC' },
+                    take: limit,
+                });
+                res.json(history);
+            } catch (err) {
+                log.error(err as Error);
+                res.status(500).json({ error: 'Failed to fetch match history' });
+            }
+        }
+    );
+
+    app.post(
+        '/api/match-history',
+        authenticate,
+        async (req: Request, res: Response) => {
+            const body = req.body as {
+                game?: unknown;
+                outcome?: unknown;
+                opponentNickname?: unknown;
+                playedAt?: unknown;
+            };
+
+            if (
+                body.game !== 'Tic-Tac-Toe' ||
+                (body.outcome !== 'won' &&
+                    body.outcome !== 'lost' &&
+                    body.outcome !== 'draw') ||
+                typeof body.opponentNickname !== 'string' ||
+                body.opponentNickname.trim().length === 0 ||
+                typeof body.playedAt !== 'string' ||
+                Number.isNaN(Date.parse(body.playedAt))
+            ) {
+                res.status(400).json({ error: 'Invalid match history entry' });
+                return;
+            }
+
+            try {
+                const user = await getCurrentUser(req);
+                if (!user) {
+                    res.status(404).json({ error: 'User not found' });
+                    return;
+                }
+
+                const result =
+                    body.outcome === 'won'
+                        ? MatchResult.WIN
+                        : body.outcome === 'lost'
+                          ? MatchResult.LOSS
+                          : MatchResult.DRAW;
+                const match = matchHistoryRepo.create({
+                    userId: user.id,
+                    gameMode: body.game,
+                    result,
+                    opponentNickname: body.opponentNickname.trim(),
+                    finishedAt: new Date(body.playedAt),
+                });
+                const savedMatch = await matchHistoryRepo.save(match);
+                res.status(201).json(savedMatch);
+            } catch (err) {
+                log.error(err as Error);
+                res.status(500).json({ error: 'Failed to save match history' });
+            }
+        }
+    );
+
+    // Create user profile
+    app.post(
+        '/api/user-profiles',
+        authenticate,
+        async (req: Request, res: Response) => {
+            try {
+                const user = await getCurrentUser(req);
+                if (!user) {
+                    return res.status(404).json({ error: 'User not found' });
+                }
+
+                const body = req.body as { character?: unknown };
+                if (typeof body.character !== 'boolean') {
+                    return res
+                        .status(400)
+                        .json({ error: 'character must be a boolean' });
+                }
+
+                const existing = await userProfileRepo.findOne({
+                    where: { userId: user.id },
+                });
+                if (existing) {
+                    return res
+                        .status(409)
+                        .json({ error: 'Profile already exists for this user' });
+                }
+
+                const profile = userProfileRepo.create({
+                    userId: user.id,
+                    character: body.character,
+                });
+                await userProfileRepo.save(profile);
+                return res.status(201).json(profile);
+            } catch (err) {
+                log.error(err as Error);
+                return res
+                    .status(500)
+                    .json({ error: 'Failed to create user profile' });
+            }
+        }
+    );
 
     // Get user profile by userId
     app.get(
         '/api/user-profiles/:userId',
+        authenticate,
         async (req: Request, res: Response) => {
             const userId = Number(req.params['userId']);
             if (!Number.isInteger(userId)) {
@@ -99,6 +248,11 @@ try {
             }
 
             try {
+                const user = await getCurrentUser(req);
+                if (!user || user.id !== userId) {
+                    return res.status(403).json({ error: 'Forbidden' });
+                }
+
                 const profile = await userProfileRepo.findOne({
                     where: { userId },
                 });
@@ -109,10 +263,8 @@ try {
                 }
                 return res.json(profile);
             } catch (err) {
-                return res.status(500).json({
-                    error: 'Failed to fetch user profile',
-                    details: String(err),
-                });
+                log.error(err as Error);
+                return res.status(500).json({ error: 'Failed to fetch user profile' });
             }
         }
     );
@@ -120,6 +272,7 @@ try {
     // Update user profile by userId
     app.put(
         '/api/user-profiles/:userId',
+        authenticate,
         async (req: Request, res: Response) => {
             const userId = Number(req.params['userId']);
             if (!Number.isInteger(userId)) {
@@ -129,6 +282,11 @@ try {
             }
 
             try {
+                const user = await getCurrentUser(req);
+                if (!user || user.id !== userId) {
+                    return res.status(403).json({ error: 'Forbidden' });
+                }
+
                 const profile = await userProfileRepo.findOne({
                     where: { userId },
                 });
@@ -151,14 +309,12 @@ try {
                 if (typeof body.character === 'boolean') {
                     profile.character = body.character;
                 }
-
                 await userProfileRepo.save(profile);
+                await userRepo.update(userId, { character: profile.character });
                 return res.json(profile);
             } catch (err) {
-                return res.status(500).json({
-                    error: 'Failed to update user profile',
-                    details: String(err),
-                });
+                log.error(err as Error);
+                return res.status(500).json({ error: 'Failed to update user profile' });
             }
         }
     );
@@ -166,6 +322,7 @@ try {
     // Delete user profile by userId
     app.delete(
         '/api/user-profiles/:userId',
+        authenticate,
         async (req: Request, res: Response) => {
             const userId = Number(req.params['userId']);
             if (!Number.isInteger(userId)) {
@@ -175,6 +332,11 @@ try {
             }
 
             try {
+                const user = await getCurrentUser(req);
+                if (!user || user.id !== userId) {
+                    return res.status(403).json({ error: 'Forbidden' });
+                }
+
                 const result = await userProfileRepo.delete({ userId });
                 if (result.affected !== 1) {
                     return res
@@ -183,10 +345,8 @@ try {
                 }
                 return res.status(204).send();
             } catch (err) {
-                return res.status(500).json({
-                    error: 'Failed to delete user profile',
-                    details: String(err),
-                });
+                log.error(err as Error);
+                return res.status(500).json({ error: 'Failed to delete user profile' });
             }
         }
     );

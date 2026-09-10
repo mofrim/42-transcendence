@@ -41,9 +41,7 @@ export class ORMUserProfile {
 }
 
 @Entity('match_history')
-@Index(['userId', 'matchId'], {
-    unique: true,
-})
+@Index(['userId', 'finishedAt'])
 export class ORMMatchHistory {
     @PrimaryGeneratedColumn()
     declare id: number;
@@ -52,7 +50,7 @@ export class ORMMatchHistory {
     declare userId: number;
 
     @Column('text')
-    declare matchId: string;
+    declare gameMode: string;
 
     @Column({
         type: 'enum',
@@ -60,37 +58,16 @@ export class ORMMatchHistory {
     })
     declare result: MatchResult;
 
-    @Column('integer', {
-        default: 0,
-    })
-    declare score: number;
-
-    @Column('integer', {
-        default: 0,
-    })
-    declare kills: number;
-
-    @Column('integer', {
-        default: 0,
-    })
-    declare deaths: number;
-
     @Column('text')
-    declare gameMode: string;
-
-    @Column('integer', {
-        default: 0,
-    })
-    declare playtime: number;
-
-    @CreateDateColumn()
-    declare createdAt: Date;
+    declare opponentNickname: string;
 
     @Column({
         type: 'timestamptz',
-        default: () => 'CURRENT_TIMESTAMP',
     })
     declare finishedAt: Date;
+
+    @CreateDateColumn()
+    declare createdAt: Date;
 
     constructor(data?: Partial<ORMMatchHistory>) {
         if (data) {

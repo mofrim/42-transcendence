@@ -11,13 +11,14 @@
         "type-check:watch": "tsc -b ../../../ftr-common/tsconfig.json && tsc --noEmit --watch",
         "lint": "eslint .",
         "lint-fix": "eslint . --fix",
-        "start": "NODE_ENV=production node ../../dist/user-service/main.js"
+        "start": "NODE_ENV=production node ../../dist/user-service/src/main.js"
     },
     "dependencies": {
         "dotenv": "^17.4.2",
         "jsonwebtoken": "^9.0.3",
         "pg": "^8.22.0",
         "reflect-metadata": "^0.2.2",
+        "tslog": "^5.1.0",
         "typeorm": "^1.1.0"
     },
     "devDependencies": {
