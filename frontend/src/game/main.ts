@@ -28,7 +28,7 @@ import {
     ROCKS_BORDER_PATH,
     DUCK_DOWN_PATH,
     DUCK_UP_PATH,
-    Display_PATH
+    Display_PATH,
 } from './Assets.js';
 
 import { io } from 'socket.io-client';
@@ -1142,21 +1142,21 @@ export function startGame(
                     scene.remove(duck_down);
                     runtimeResourceDisposer.disposeObject3D(duck_down);
                     duck_down = null;
-                };
+                }
             };
             storyManager.onQuestLogin = async () => {
-                display = await loadMesh(Display_PATH, [0, 0, 0]);  
-                changeObjectTexture(display, "textures/42_Display_intra.jpg");              
+                display = await loadMesh(Display_PATH, [0, 0, 0]);
+                changeObjectTexture(display, 'textures/42_Display_intra.jpg');
             };
             storyManager.onQuestEvaluator = async () => {
-                changeObjectTexture(display, "textures/42_Display_booking.jpg");              
+                changeObjectTexture(display, 'textures/42_Display_booking.jpg');
             };
             storyManager.onQuestStartEvaluation = async () => {
-                changeObjectTexture(display, "textures/42_Display_eval.jpg");
+                changeObjectTexture(display, 'textures/42_Display_eval.jpg');
             };
             storyManager.onQuestFinished = () => {
                 console.log('Quest finished');
-                changeObjectTexture(display, "textures/42_Display_graph.jpg");
+                changeObjectTexture(display, 'textures/42_Display_graph.jpg');
                 openDoors();
             };
             storyManager.onEvaluatingStudentAvailabilityChange = (
@@ -1182,7 +1182,7 @@ export function startGame(
         await loadMesh(EVENT_SPACE_DOOR_B_PATH, [0, 0, 0]);
         if (runtimeDisposed) return;
 
-        // TODO: Need to check with quest state. 
+        // TODO: Need to check with quest state.
         // If duck already found, than show duck_up, else show duck_down.
         duck_down = await loadMesh(DUCK_DOWN_PATH, [0, 0, 0]);
         if (runtimeDisposed) return;
@@ -1205,13 +1205,14 @@ export function startGame(
         scene.add(new THREE.AmbientLight(0xffffff, 12)); */
     }
 
-    function changeObjectTexture(mesh: THREE.Object3D | null, texturePath: string): void {
+    function changeObjectTexture(
+        mesh: THREE.Object3D | null,
+        texturePath: string
+    ): void {
         mesh?.traverse((child) => {
             if (child instanceof THREE.Mesh) {
                 const material = child.material as THREE.MeshStandardMaterial;
-                const texture = new THREE.TextureLoader().load(
-                    texturePath
-                );
+                const texture = new THREE.TextureLoader().load(texturePath);
 
                 texture.flipY = false;
 

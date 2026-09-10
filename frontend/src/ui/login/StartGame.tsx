@@ -6,6 +6,7 @@ import {
     type ReceivedChatPayload,
     GameEvent,
     EventType,
+    User,
 } from 'ftr-common/sharedTypes';
 import { useMatchHistory } from '../../hooks/useMatchHistory';
 import { GameUI, type DialogPanelState } from '../ingame/GameUI';
@@ -34,7 +35,16 @@ export const Game: React.FC<{
 }> = ({ isSpectator = false }) => {
     const { avatar, serverAddrRef, setGameRunning, setIsSpectator } =
         useLoginContext();
-    const { user, logout } = useAuth();
+    const { user: authUser, logout } = useAuth();
+
+    let user: User | null;
+    if (isSpectator) {
+        user = new User();
+        user.nickname = 'Spectator';
+    } else {
+        user = authUser;
+    }
+
     const [character] = useState(() => avatar === 'true');
 
     // using ref here a lot because th
@@ -54,7 +64,21 @@ export const Game: React.FC<{
         userId: user !== null ? user.id : 0,
         isSpectator,
     });
-    const { events, appendEvent } = useEventLog();
+
+    // FIXME unfortunately useEventLog() cannot be loaded conditionally (leads
+    // to lint-error) so we have to handle it like this for spectator-mode
+    const { events: realEvents, appendEvent: realAppendEvent } = useEventLog();
+
+    // dummies for spectator mode
+    const spectatorEventLog = {
+        events: [],
+        appendEvent: () => {},
+    };
+
+    // set events, appendEvent conditionally
+    const { events, appendEvent } = isSpectator
+        ? spectatorEventLog
+        : { events: realEvents, appendEvent: realAppendEvent };
 
     /** Runtime-Ereignisse bleiben auch außerhalb des Sichtfelds sichtbar. */
     const handleGameEvent = useCallback(

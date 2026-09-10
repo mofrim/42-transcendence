@@ -56,11 +56,16 @@ const App: React.FC<AppProps> = (props: AppProps) => {
         return null;
     }
 
+    // FIXME unfortunately we still have to load EventLogProvider in
+    // spectator-moe to have it available in Game component. but do we really
+    // have to?
     if (gameRunning && isSpectator) {
         console.log('spectator mode running');
         return (
             <React.Suspense fallback={null}>
-                <LoadGame isSpectator={true} />
+                <EventLogProvider>
+                    <LoadGame isSpectator={true} />
+                </EventLogProvider>
             </React.Suspense>
         );
     }
