@@ -394,6 +394,10 @@
     list-style: none;
 }
 
+.hud-event-log .hud-event-list {
+    pointer-events: auto;
+}
+
 .hud-event-item {
     display: grid;
     grid-template-columns: auto minmax(0, 1fr);
