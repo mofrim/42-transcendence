@@ -1,0 +1,22 @@
+{
+    "name": "backend-tests",
+    "description": "ft_transcendence backend tests",
+    "private": true,
+    "type": "module",
+    "version": "0.0.0",
+    "scripts": {
+        "test-all": "tsc -b && NODE_OPTIONS=\"$NODE_OPTIONS --experimental-vm-modules --no-warnings\" npx jest",
+        "test-event": "tsc -b && NODE_OPTIONS=\"$NODE_OPTIONS --experimental-vm-modules --no-warnings\" npx jest -- event.test.ts",
+        "test-auth": "tsc -b && NODE_OPTIONS=\"$NODE_OPTIONS --experimental-vm-modules --no-warnings\" npx jest -- auth.test.js",
+        "lint": "eslint .",
+        "lint-fix": "eslint . --fix"
+    },
+    "devDependencies": {
+        "jest": "^30.5.1",
+        "supertest": "^7.2.2",
+        "ts-jest": "^29.4.12"
+    },
+    "dependencies": {
+        "ftr-common": "*"
+    }
+}

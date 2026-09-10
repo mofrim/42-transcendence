@@ -1,0 +1,18 @@
+{
+    "name": "backend-utils",
+    "description": "ft_transcendence backend-utils",
+    "private": true,
+    "version": "0.0.0",
+    "type": "module",
+    "main": "dist/main.js",
+    "types": "dist/main.d.ts",
+    "scripts": {
+        "build": "tsc -b",
+        "lint": "eslint .",
+        "lint-fix": "eslint . --fix"
+    },
+    "dependencies": {
+        "ftr-common": "^1.0.0",
+        "typeorm": "^1.1.0"
+    }
+}
