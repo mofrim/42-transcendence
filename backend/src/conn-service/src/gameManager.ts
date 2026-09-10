@@ -409,6 +409,29 @@ export class GameManager {
         return true;
     }
 
+    resetTTTGameForPlayer(playerID: string): boolean {
+        if (!this.tttGame.players.includes(playerID)) {
+            return false;
+        }
+
+        for (const tttPlayerID of this.tttGame.players) {
+            if (tttPlayerID === null) {
+                continue;
+            }
+
+            const tttPlayer = this.players.get(tttPlayerID);
+            if (!tttPlayer) {
+                continue;
+            }
+
+            tttPlayer.inGame = false;
+            tttPlayer.gameID = null;
+        }
+
+        this.tttGame = this.createTTTGame();
+        return true;
+    }
+
     tttMarkField(playerID: string, field: string): TTTMark {
         //console.log("Current Mark: " + this.tttGame.currentMark);
         if (this.tttGame.state !== TTTGameState.InGame) {

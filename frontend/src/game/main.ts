@@ -1205,21 +1205,22 @@ export function startGame(
         scene.add(new THREE.AmbientLight(0xffffff, 12)); */
     }
 
-    function changeObjectTexture(
-        mesh: THREE.Object3D | null,
-        texturePath: string
-    ): void {
-        mesh?.traverse((child) => {
-            if (child instanceof THREE.Mesh) {
-                const material = child.material as THREE.MeshStandardMaterial;
-                const texture = new THREE.TextureLoader().load(texturePath);
+    function changeObjectTexture(mesh: THREE.Object3D | null, texturePath: string): void {
+        if (!mesh) {
+            return;
+        }
 
-                texture.flipY = false;
+        const meshes = mesh.getObjectsByProperty('isMesh', true) as THREE.Mesh<
+            THREE.BufferGeometry,
+            THREE.MeshStandardMaterial
+        >[];
+        for (const child of meshes) {
+            const texture = textureLoader.load(texturePath);
+            texture.flipY = false;
 
-                material.map = texture;
-                material.needsUpdate = true;
-            }
-        });
+            child.material.map = texture;
+            child.material.needsUpdate = true;
+        }
     }
 
     function addBlackhole() {
@@ -2199,6 +2200,16 @@ export function startGame(
             storyManager?.continueDialogue();
         },
         triggerBlackHoleCutscene(): void {
+            if (runtimeDisposed) {
+                return;
+            }
+
+            if (socket.connected) {
+                socket.emit('update', {
+                    type: 'game_reset',
+                });
+            }
+
             storyManager?.blackHoleCutscene();
         },
     };

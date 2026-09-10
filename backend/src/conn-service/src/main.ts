@@ -148,27 +148,6 @@ io.on('connection', (socket) => {
     // dissconnect and remove player from gameManager
     socket.on('disconnect', () => {
         console.log('Client disconnected:', socket.id);
-        // Check if the player is still in the Tic Tac Toe game and reset if necessary
-        if (gameManager.tttGame.players.includes(socket.id)) {
-            const [playerOneID, playerTwoID] = gameManager.tttGame.players;
-
-            for (const playerID of [playerOneID, playerTwoID]) {
-                if (!playerID) continue;
-
-                const tttPlayer = gameManager.players.get(playerID);
-                if (!tttPlayer) continue;
-
-                tttPlayer.inGame = false;
-                tttPlayer.gameID = null;
-            }
-
-            console.log('Player still exists after disconnect: ' + socket.id);
-            gameManager.tttGame = gameManager.createTTTGame();
-            io.emit('update', {
-                type: 'ttt_reset',
-            });
-        }
-
         playerGameReset(socket.id);
 
         gameManager.removePlayer(socket.id);
@@ -443,6 +422,13 @@ function handleTTTMark(socket: Socket, data: TTTMarkPayload) {
 }
 
 function playerGameReset(playerID: string) {
+    if (gameManager.resetTTTGameForPlayer(playerID)) {
+        io.emit('update', {
+            type: 'ttt_reset',
+        });
+        return;
+    }
+
     const player = gameManager.players.get(playerID);
 
     if (!player) return;
