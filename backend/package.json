@@ -10,7 +10,8 @@
         "type-check:watch": "tsc -b ../ftr-common/tsconfig.json && tsc --noEmit --watch",
         "lint": "eslint .",
         "lint-fix": "eslint . --fix",
-        "dev:all": "concurrently \"npm --prefix ./src/conn-service run dev\" \"npm --prefix ./src/auth-service run dev\" \"npm --prefix ./src/user-service run dev\""
+        "dev:all": "concurrently \"npm --prefix ./src/conn-service run dev\" \"npm --prefix ./src/auth-service run dev\" \"npm --prefix ./src/user-service run dev\" \"npm --prefix ./src/eventlog-service run dev\"",
+        "dev:event": "concurrently \"npm --prefix ./src/auth-service run dev\" \"npm --prefix ./src/eventlog-service run dev\""
     },
     "dependencies": {
         "ftr-common": "*",

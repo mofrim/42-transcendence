@@ -4,16 +4,14 @@ import jwt from 'jsonwebtoken';
 import type { Request, Response, NextFunction } from 'express';
 import { Logger, type ILogObj } from 'tslog';
 
-export const verifyToken = (
-    token: string,
-    secretKey: string
-): { nickname: string } => {
+export const verifyToken = (token: string, secretKey: string): number => {
     try {
         const decoded = jwt.verify(token, secretKey);
-        if (typeof decoded === 'string' || !decoded['nickname']) {
+        console.log('decoded: ', decoded);
+        if (typeof decoded === 'string' || !decoded['userId']) {
             throw new Error('Invalid token');
         }
-        return decoded as { nickname: string };
+        return Number(decoded['userId']);
     } catch (err) {
         throw new Error('Invalid token', { cause: err });
     }
@@ -39,8 +37,7 @@ export const authenticateMid = (
     }
 
     try {
-        const decoded = verifyToken(token, secretKey);
-        req.user = decoded;
+        req.userId = verifyToken(token, secretKey);
         next();
     } catch (err) {
         void err;

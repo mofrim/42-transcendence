@@ -26,6 +26,7 @@ import type { Request, Express, Response, NextFunction } from 'express';
 import { ORMEventLog, ORMUser } from 'ftr-common/ormTypes';
 import { authenticateMid, verifyToken } from 'ftr-common/middleware';
 import { setupDefaultUsers } from './defaultUserSetup.ts';
+import { getUserById } from 'backend-utils';
 import 'ftr-common/expressTypes';
 
 // Initialize main tslog-logger
@@ -159,7 +160,7 @@ app.post(
                 return;
             }
 
-            const token = jwt.sign({ nickname: user.nickname }, SECRET_KEY, {
+            const token = jwt.sign({ userId: user.id }, SECRET_KEY, {
                 algorithm: 'HS256',
                 expiresIn: '1h',
             });
@@ -207,10 +208,27 @@ app.post('/api/logout', authenticate, (req, res) => {
 
 if (process.env['NODE_ENV'] === 'development') {
     // this is only a demo endpoint
-    app.get('/api/protected', authenticate, (req: Request, res: Response) => {
-        const nickname = req.user!.nickname;
-        res.json({ msg: `hello ${nickname}!` });
-    });
+    app.get(
+        '/api/protected',
+        authenticate,
+        async (req: Request, res: Response) => {
+            if (req.userId === undefined) {
+                res.status(500).json({
+                    error: 'token verification malfunction',
+                });
+                return;
+            }
+            const userId = Number(req.userId);
+            const user = await getUserById(DB, userId);
+            if (user === null) {
+                res.status(500).json({
+                    error: 'Invalid userId in token or DB error',
+                });
+                return;
+            }
+            res.json({ msg: `hello ${user.nickname}!` });
+        }
+    );
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -223,11 +241,8 @@ if (process.env['NODE_ENV'] === 'development') {
 // (definitely nothing we want for production!). retrieve a valid auth cookie
 // then use: `curl -v localhost:3001/api/user -H 'Cookie: token=.....'`
 app.get('/api/user', authenticate, async (req, res) => {
-    const { nickname } = req.user!;
     try {
-        const user = await DB.manager.findOneBy(ORMUser, {
-            nickname: nickname,
-        });
+        const user = await getUserById(DB, req.userId!);
         if (user === null) {
             res.status(401).json({ error: 'User not found' });
             return;

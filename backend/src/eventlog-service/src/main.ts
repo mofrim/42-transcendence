@@ -13,6 +13,8 @@ import type { Express, Request, Response, NextFunction } from 'express';
 import { ORMEventLog, ORMUser } from 'ftr-common/ormTypes';
 import { EventType } from 'ftr-common/sharedTypes';
 import { authenticateMid } from 'ftr-common/middleware';
+import { getUserById } from 'backend-utils';
+import 'ftr-common/expressTypes';
 
 // Initialize main tslog-logger
 const log = new Logger<ILogObj>({ name: 'eventlog', minLevel: 'INFO' });
@@ -71,17 +73,6 @@ try {
     exit(1);
 }
 
-// get the id belonging to a nickname string
-const getUserId = async (nick: string): Promise<number | null> => {
-    try {
-        const exists = await DB.manager.findOneBy(ORMUser, { nickname: nick });
-        return exists === null ? null : exists.id;
-    } catch (err) {
-        console.error(err);
-        return null;
-    }
-};
-
 // -------------------------=[ the POST endpoint ]=------------------------- //
 
 // the data-validation for the POST endpoint. what do we want here? what do we
@@ -104,7 +95,7 @@ app.post(
             return;
         }
 
-        const { eventType, data, user } = req.body;
+        const { eventType, data, logtime } = req.body;
 
         if (!Object.values(EventType).includes(eventType)) {
             res.status(400).json({
@@ -113,17 +104,17 @@ app.post(
             return;
         }
 
-        const userId = await getUserId(user);
-        if (userId === null) {
+        const user = await getUserById(DB, req.userId!);
+        if (user === null) {
             res.status(400).json({
-                error: `User ${user} not found`,
+                error: `UID ${req.userId} not found`,
             });
             return;
         }
 
-        if (typeof data !== 'string') {
+        if (typeof data !== 'object') {
             res.status(400).json({
-                error: 'Event data must be a string',
+                error: 'Event data must be an object',
             });
             return;
         }
@@ -132,8 +123,8 @@ app.post(
             const event = DB.manager.create(ORMEventLog, {
                 eventType: eventType,
                 data: data,
-                // this has to be Partial<ORMUser> so...
-                user: { id: userId },
+                logtime: logtime,
+                user: { id: user.id },
             });
 
             const savedEvent = await DB.manager.save(event);
@@ -161,16 +152,28 @@ app.post(
 // - limit=[number] will output the last `number` logs
 // - user=[nickname] will filter the logs for the given nickname
 //
+
+// TODO maybe get user from token
 app.get(
     '/api/eventlog',
     authenticate,
     async (req: Request, res: Response): Promise<void> => {
         const logGet = log.getSubLogger({ name: 'GET' });
 
-        const limit = Number(req.query['limit'] ?? 50);
-        const queryUser = req.query['user'];
+        const queryUser = req.query['uid'];
+        let queryUID;
 
-        if (!Number.isInteger(limit) || limit <= 0) {
+        let limit: number | undefined;
+        if (queryUser) {
+            limit =
+                req.query['limit'] != null
+                    ? Number(req.query['limit'])
+                    : undefined;
+        } else {
+            limit = Number(req.query['limit'] ?? 10);
+        }
+
+        if (!(limit === undefined) && !(Number.isInteger(limit) && limit > 0)) {
             res.status(400).json({
                 error: 'limit must be a positive integer',
             });
@@ -178,57 +181,47 @@ app.get(
         }
 
         if (queryUser != null) {
-            if ((await getUserId(String(queryUser))) === null) {
+            if ((await getUserById(DB, Number(queryUser))) === null) {
                 res.status(400).json({
                     error: `User ${queryUser} not found`,
                 });
                 return;
             }
+            queryUID = Number(queryUser);
         }
 
         try {
-            let events;
-            if (queryUser == null) {
-                events = await DB.manager.find(ORMEventLog, {
-                    order: {
-                        id: 'DESC',
-                    },
-                    take: limit,
-                    relations: { user: true },
-                    select: {
+            const events = await DB.manager.find(ORMEventLog, {
+                order: {
+                    id: 'DESC', // get entries starting from most recent
+                },
+                take: limit,
+                // @ts-expect-error exactOptionalPropertyTypes
+                //
+                // NOTE: we would get code-dup because TS does ot want `where`
+                // attribute to be undefined. writing it like this here is just
+                // shorter and still correct.
+                where:
+                    queryUser != null
+                        ? {
+                              user: {
+                                  id: queryUID,
+                              },
+                          }
+                        : undefined,
+                relations: { user: true },
+                select: {
+                    id: true,
+                    eventType: true,
+                    data: true,
+                    user: {
+                        nickname: true,
                         id: true,
-                        eventType: true,
-                        data: true,
-                        user: {
-                            nickname: true,
-                        },
                     },
-                });
-            } else {
-                events = await DB.manager.find(ORMEventLog, {
-                    order: {
-                        id: 'DESC',
-                    },
-                    take: limit,
-                    where: {
-                        user: {
-                            nickname: String(queryUser),
-                        },
-                    },
-                    relations: { user: true },
-                    select: {
-                        id: true,
-                        eventType: true,
-                        data: true,
-                        user: {
-                            nickname: true,
-                        },
-                    },
-                });
-                // ordering from descending
-                events.reverse();
-            }
-
+                    logtime: true,
+                },
+            });
+            events.reverse(); // make order in slice ascending again
             res.status(200).json(events);
         } catch (err) {
             logGet.error(err as Error);

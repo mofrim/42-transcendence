@@ -15,6 +15,7 @@
         "start": "NODE_ENV=production node --enable-source-maps --import tsx src/main.ts"
     },
     "dependencies": {
+        "backend-utils": "*",
         "bcryptjs": "^3.0.3",
         "dotenv": "^17.4.2",
         "express-validator": "^7.3.2",
