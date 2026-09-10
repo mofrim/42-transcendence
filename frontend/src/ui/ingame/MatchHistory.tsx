@@ -5,21 +5,13 @@ type MatchHistoryProps = {
 };
 
 export function MatchHistory({ entries }: MatchHistoryProps) {
+    if (entries.length === 0) {
+        return <p className='hud-match-history-empty'>No matches yet.</p>;
+    }
+
     return (
-        <>
-            <h3 className='hud-match-history-title'>
-                Tic-Tac-Toe Match History:
-            </h3>
-            {entries.length === 0 && (
-                <p className='hud-match-history-empty'>
-                    No Tic-Tac-Toe matches yet.
-                </p>
-            )}
-            {entries.length > 0 && (
-                <ol className='hud-event-list hud-match-history-list'>
-                    <EventLogItems entries={entries} />
-                </ol>
-            )}
-        </>
+        <ol className='hud-event-list hud-match-history-list'>
+            <EventLogItems entries={entries} />
+        </ol>
     );
 }

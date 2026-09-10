@@ -20,10 +20,38 @@ type UseMatchHistoryOptions = {
     readonly isSpectator: boolean;
 };
 
+type MatchResultData = Required<
+    Pick<EventData, 'game' | 'outcome' | 'opponentNickname'>
+>;
+
+function getMatchResultData(data: EventData): MatchResultData | null {
+    if (data.game !== 'Tic-Tac-Toe' && data.game !== 'Rock-Paper-Scissors') {
+        return null;
+    }
+    if (
+        data.outcome !== 'won' &&
+        data.outcome !== 'lost' &&
+        data.outcome !== 'draw'
+    ) {
+        return null;
+    }
+
+    const opponentNickname = data.opponentNickname?.trim();
+    if (!opponentNickname) {
+        return null;
+    }
+
+    return {
+        game: data.game,
+        outcome: data.outcome,
+        opponentNickname,
+    };
+}
+
 function createMatchHistoryEntry(
     id: number,
-    data: EventData,
-    tstamp: Date
+    data: MatchResultData,
+    tstamp: Date | string
 ): EventLogEntry {
     let result = 'Draw';
     if (data.outcome === 'won') {
@@ -32,41 +60,27 @@ function createMatchHistoryEntry(
         result = 'Loss';
     }
 
+    const matchDate = new Date(tstamp.valueOf());
+
     return {
         id: String(id),
-        timestamp: MATCH_HISTORY_DATE_TIME_FORMAT.format(tstamp),
+        timestamp: MATCH_HISTORY_DATE_TIME_FORMAT.format(matchDate),
         description: `${data.game}: ${result} vs ${data.opponentNickname}`,
     };
 }
 
-function parseTicTacToeMatch(event: BaseEventLog): EventLogEntry | null {
+function parseMatchHistoryEntry(event: BaseEventLog): EventLogEntry | null {
     if (event.eventType !== EventType.GameResult) {
         return null;
     }
 
     try {
-        const data: EventData = event.data;
-        if (
-            data.game !== 'Tic-Tac-Toe' ||
-            (data.outcome !== 'won' &&
-                data.outcome !== 'lost' &&
-                data.outcome !== 'draw') ||
-            typeof data.opponentNickname !== 'string' ||
-            data.opponentNickname.trim().length === 0
-        ) {
+        const data = getMatchResultData(event.data);
+        if (!data || event.id === undefined) {
             return null;
         }
 
-        return createMatchHistoryEntry(
-            // as all events come from DB they will safely have an id
-            event.id!,
-            {
-                game: data.game,
-                outcome: data.outcome,
-                opponentNickname: data.opponentNickname,
-            },
-            event.logtime
-        );
+        return createMatchHistoryEntry(event.id, data, event.logtime);
     } catch {
         return null;
     }
@@ -103,16 +117,13 @@ export function useMatchHistory({
                 }
 
                 const history = response.data
-                    .map(parseTicTacToeMatch)
+                    .map(parseMatchHistoryEntry)
                     .filter((match): match is EventLogEntry => match !== null);
 
                 setMatchHistory(history.slice(-MAX_MATCH_HISTORY_ENTRIES));
             } catch (error) {
                 if (!controller.signal.aborted) {
-                    console.error(
-                        'Failed to load Tic-Tac-Toe match history:',
-                        error
-                    );
+                    console.error('Failed to load match history:', error);
                 }
             }
         };
@@ -124,20 +135,16 @@ export function useMatchHistory({
         };
     }, [isSpectator, userId]);
 
-    const saveTicTacToeMatch = useCallback(
+    const saveMatchResult = useCallback(
         async (event: GameEvent): Promise<void> => {
-            if (isSpectator || event.data.game !== 'Tic-Tac-Toe') {
+            if (isSpectator || event.eventType !== EventType.GameResult) {
                 return;
             }
 
-            // QUESTION is this really so clear that all fields will be set?
-            const storedResult: EventData = {
-                game: event.data.game!,
-                outcome: event.data.outcome!,
-                opponentNickname: event.data.opponentNickname!,
-            };
-
-            const timestamp = new Date();
+            const storedResult = getMatchResultData(event.data);
+            if (!storedResult) {
+                return;
+            }
 
             try {
                 const response = await axios.post<BaseEventLog>(
@@ -145,15 +152,14 @@ export function useMatchHistory({
                     {
                         eventType: EventType.GameResult,
                         data: storedResult,
-                        logtime: timestamp,
+                        logtime: event.logtime,
                     }
                 );
 
-                const savedMatch = createMatchHistoryEntry(
-                    response.data.id!,
-                    storedResult,
-                    timestamp
-                );
+                const savedMatch = parseMatchHistoryEntry(response.data);
+                if (!savedMatch) {
+                    throw new Error('Saved match result is invalid');
+                }
 
                 setMatchHistory((currentHistory) =>
                     [...currentHistory, savedMatch].slice(
@@ -161,14 +167,11 @@ export function useMatchHistory({
                     )
                 );
             } catch (error) {
-                console.error(
-                    'Failed to save Tic-Tac-Toe match result:',
-                    error
-                );
+                console.error('Failed to save match result:', error);
             }
         },
         [isSpectator]
     );
 
-    return { matchHistory, saveTicTacToeMatch };
+    return { matchHistory, saveMatchResult };
 }

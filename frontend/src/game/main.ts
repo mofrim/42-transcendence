@@ -523,6 +523,16 @@ export function startGame(
             rpsGame.yourChoice = data.choice;
             rpsGame.opponentChoice = data.choice;
 
+            let opponentId = data.playerOne;
+            if (data.playerOne === player.id) {
+                opponentId = data.playerTwo;
+            }
+            emitLocalGameResult(
+                'Rock-Paper-Scissors',
+                'draw',
+                resolvePlayerNickname(opponentId)
+            );
+
             rpsGame.solutionRPSAnimation();
             /* if(rpsGame.playChoiceAnimation == false)
                 rpsGame.solutionRPSAnimation();
@@ -533,34 +543,36 @@ export function startGame(
 
     function handleRPSWinner(data: RPSWinnerPayload) {
         if (!player || !rpsGame) return;
+
+        let outcome: NonNullable<EventData['outcome']>;
+        let opponentId: string;
+        let yourChoice: RPSChoice;
+        let opponentChoice: RPSChoice;
+
         if (data.winner === player.id) {
             console.log('You won the RPS game!');
-            emitLocalGameResult(
-                'Rock-Paper-Scissors',
-                'won',
-                resolvePlayerNickname(data.loser)
-            );
-            rpsGame.yourChoice = data.winnerChoice;
-            rpsGame.opponentChoice = data.loserChoice;
-
-            rpsGame.solutionRPSAnimation();
-            /* rpsGame.playChoiceAnimation = false;
-            rpsGame.solutionRPSAnimation(); */
+            outcome = 'won';
+            opponentId = data.loser;
+            yourChoice = data.winnerChoice;
+            opponentChoice = data.loserChoice;
         } else if (data.loser === player.id) {
             console.log('You lost the RPS game!');
-            emitLocalGameResult(
-                'Rock-Paper-Scissors',
-                'lost',
-                resolvePlayerNickname(data.winner)
-            );
-
-            rpsGame.yourChoice = data.loserChoice;
-            rpsGame.opponentChoice = data.winnerChoice;
-
-            rpsGame.solutionRPSAnimation();
-            /* rpsGame.playChoiceAnimation = false;
-            rpsGame.solutionRPSAnimation(); */
+            outcome = 'lost';
+            opponentId = data.winner;
+            yourChoice = data.loserChoice;
+            opponentChoice = data.winnerChoice;
+        } else {
+            return;
         }
+
+        emitLocalGameResult(
+            'Rock-Paper-Scissors',
+            outcome,
+            resolvePlayerNickname(opponentId)
+        );
+        rpsGame.yourChoice = yourChoice;
+        rpsGame.opponentChoice = opponentChoice;
+        rpsGame.solutionRPSAnimation();
     }
     /* function handleChoice(data){
         if(data.requestedPlayerID !== player.id)
@@ -968,8 +980,7 @@ export function startGame(
         // Door A and B positions from Blender 3D scene
         groupDoorA.position.set(15.913, 3.72467, -17.421);
         groupDoorB.position.set(16.0871, 3.72467, -9.1304);
-        scene.add(groupDoorA);
-        scene.add(groupDoorB);
+        scene.add(groupDoorA, groupDoorB);
 
         //dirLight = new THREE.DirectionalLight(0xffffff, 2.5);
         // initial position (local to followGroup) - matches previous values
@@ -1139,7 +1150,6 @@ export function startGame(
                 duck_up = await loadMesh(DUCK_UP_PATH, [0, 0, 0]);
                 void duck_up;
                 if (duck_down) {
-                    scene.remove(duck_down);
                     runtimeResourceDisposer.disposeObject3D(duck_down);
                     duck_down = null;
                 }
@@ -1253,8 +1263,7 @@ export function startGame(
         sphere.position.set(16, 25, -5);
         outerSphere.position.copy(sphere.position);
 
-        scene.add(sphere);
-        scene.add(outerSphere);
+        scene.add(sphere, outerSphere);
     }
 
     async function loadMesh(

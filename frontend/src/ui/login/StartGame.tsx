@@ -59,8 +59,8 @@ export const Game: React.FC<{
         message: '',
     });
 
-    const { matchHistory, saveTicTacToeMatch } = useMatchHistory({
-        userId: user !== null ? user.id : 0,
+    const { matchHistory, saveMatchResult } = useMatchHistory({
+        userId: user?.id ?? 0,
         isSpectator,
     });
 
@@ -94,13 +94,13 @@ export const Game: React.FC<{
             }
 
             if (event.eventType === EventType.GameResult) {
-                void saveTicTacToeMatch(event);
+                void saveMatchResult(event);
             }
             setCompletedQuestIds((currentQuestIds) =>
                 applyQuestCompletionEvent(currentQuestIds, event)
             );
         },
-        [appendEvent, saveTicTacToeMatch]
+        [appendEvent, saveMatchResult]
     );
 
     const handleChatMessage = useCallback((message: string): void => {
