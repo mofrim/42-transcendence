@@ -89,7 +89,7 @@ export const Game: React.FC<{
     const appendEvent = useCallback((description: string): void => {
         const now = new Date();
         const event: EventLogEntry = {
-            id: crypto.randomUUID(),
+            id: THREE.MathUtils.generateUUID(),
             timestamp: EVENT_TIME_FORMAT.format(now),
             description,
         };
