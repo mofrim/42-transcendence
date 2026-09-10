@@ -12,6 +12,7 @@ import {
     formatQuestCountdown,
     getQuestStatusChanges,
     resolveQuestLogEntries,
+    START_EVALUATION_QUEST_ID,
     type QuestLogEntry,
     type QuestStatusChange,
     type ResolvedQuestLogEntry,
@@ -295,11 +296,14 @@ export function GameUI({
     const completedQuestCount = resolvedQuests.filter(
         (quest) => quest.completed
     ).length;
+    const isBlackHoleCountdownRunning =
+        blackHoleCountdownActive &&
+        !completedQuestIds.includes(START_EVALUATION_QUEST_ID);
 
     /** blackhole timer */
     useEffect(() => {
         const blackHoleDeadline = getBlackHoleCountdownDeadline(
-            blackHoleCountdownActive,
+            isBlackHoleCountdownRunning,
             Date.now()
         );
 
@@ -332,7 +336,7 @@ export function GameUI({
                 window.clearInterval(intervalId);
             }
         };
-    }, [blackHoleCountdownActive]);
+    }, [isBlackHoleCountdownRunning]);
 
     /** Meldet ausschließlich tatsächliche Änderungen eines Quest-Status. */
     useEffect(() => {

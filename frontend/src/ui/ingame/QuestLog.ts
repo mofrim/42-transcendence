@@ -6,6 +6,7 @@ import {
 export const BLACK_HOLE_QUEST_ID = 'avoid-blackhole';
 export const MEET_PLAYER_QUEST_ID = 'meet-player';
 export const RPS_WIN_QUEST_ID = 'win-rps-minigame';
+export const START_EVALUATION_QUEST_ID = 'START_EVALUATION';
 export const TTT_WIN_QUEST_ID = 'win-ttt-minigame';
 
 const COUNTDOWN_FORMAT = new Intl.DurationFormat('en', {
@@ -59,7 +60,7 @@ export const DEFAULT_QUESTS: readonly QuestLogEntry[] = [
         text: 'Find the Evaluating Student',
     },
     {
-        id: 'START_EVALUATION',
+        id: START_EVALUATION_QUEST_ID,
         text: 'Start Evaluation',
     },
     {
