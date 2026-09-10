@@ -59,7 +59,6 @@ export const Game: React.FC<{
         message: '',
     });
 
-
     const { matchHistory, saveTicTacToeMatch } = useMatchHistory({
         userId: user !== null ? user.id : 0,
         isSpectator,
@@ -83,18 +82,18 @@ export const Game: React.FC<{
     /** Runtime-Ereignisse bleiben auch außerhalb des Sichtfelds sichtbar. */
     const handleGameEvent = useCallback(
         (event: GameEvent): void => {
-            if (event.eventType === 'PlayerInRange') {
+            if (event.eventType === EventType.PlayerInRange) {
                 const metPlayerNicknames = metPlayerNicknamesRef.current;
                 // only log the first time we meet a player, not every time again
                 if (!metPlayerNicknames.has(event.data.nickname!)) {
                     metPlayerNicknames.add(event.data.nickname!);
                     appendEvent(event);
                 }
-            } else if (event.eventType !== 'QuestCompleted') {
+            } else if (event.eventType !== EventType.QuestCompleted) {
                 appendEvent(event);
             }
 
-            if (event.eventType === 'GameResult') {
+            if (event.eventType === EventType.GameResult) {
                 void saveTicTacToeMatch(event);
             }
             setCompletedQuestIds((currentQuestIds) =>
@@ -125,23 +124,20 @@ export const Game: React.FC<{
 
     const handleQuestStatusChange = useCallback(
         (statusChange: QuestStatusChange): void => {
-            if (
-                statusChange.questId === BLACK_HOLE_QUEST_ID &&
-                !statusChange.completed
-            ) {
-                const event: GameEvent = {
-                    eventType: EventType.Blackholed,
-                    data: {
-                        nickname: user!.nickname,
-                    },
-                    logtime: new Date(),
-                };
-                appendEvent(event);
-
-                gameRuntimeRef.current?.triggerBlackHoleCutscene();
-                //console.log('### Quest status change:', statusChange);
+            if (!statusChange.completed) {
+                if (statusChange.questId === BLACK_HOLE_QUEST_ID) {
+                    appendEvent({
+                        eventType: EventType.Blackholed,
+                        data: { nickname: user!.nickname },
+                        logtime: new Date(),
+                    });
+                    gameRuntimeRef.current?.triggerBlackHoleCutscene();
+                    //console.log('### Quest status change:', statusChange);
+                }
+                return;
             }
-            const event: GameEvent = {
+
+            appendEvent({
                 eventType: EventType.QuestCompleted,
                 data: {
                     nickname: user!.nickname,
@@ -149,8 +145,7 @@ export const Game: React.FC<{
                     questId: statusChange.questId,
                 },
                 logtime: new Date(),
-            };
-            appendEvent(event);
+            });
         },
         [appendEvent, user]
     );
