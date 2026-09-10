@@ -251,6 +251,40 @@ export class GameManager {
         return 1;
     }
 
+    /**
+     * validate RPS timeouts before invalidating games the client
+     * expired choice as a timeout request.
+     */
+    rpsTimeout(playerID: string): RPSGame | null {
+        const player = this.players.get(playerID);
+
+        if (!player || !player.gameID) {
+            return null;
+        }
+
+        const rpsGame = this.rpsGame.get(player.gameID);
+
+        if (!rpsGame || rpsGame.state !== RPSGameState.InGame) {
+            return null;
+        }
+
+        let playerChoice: RPSChoice;
+        if (rpsGame.playerOne === playerID) {
+            playerChoice = rpsGame.playerOneChoice;
+        } else if (rpsGame.playerTwo === playerID) {
+            playerChoice = rpsGame.playerTwoChoice;
+        } else {
+            return null;
+        }
+
+        if (playerChoice !== RPSChoice.None) {
+            return null;
+        }
+
+        this.removeRPSGame(rpsGame.gameID);
+        return rpsGame;
+    }
+
     resultDraw(playerOneID: string, playerTwoID: string, choice: string) {
         return {
             playerOne: playerOneID,

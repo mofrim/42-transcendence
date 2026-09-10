@@ -449,27 +449,15 @@ function handleGameReset(socket: Socket) {
 }
 
 function handleRPSInvalid(socket: Socket) {
-    const player = gameManager.players.get(socket.id);
+    const timedOutGame = gameManager.rpsTimeout(socket.id);
 
-    if (!player) return;
+    if (!timedOutGame) return;
 
-    const gameID = player.gameID;
-
-    if (!gameID) return;
-
-    const rpsGame = gameManager.rpsGame.get(gameID);
-
-    if (!rpsGame) return;
-
-    const playerOne = rpsGame.playerOne;
-    const playerTwo = rpsGame.playerTwo;
-
-    io.emit('update', {
+    io.to([timedOutGame.playerOne, timedOutGame.playerTwo]).emit('update', {
         type: 'rps_invalid',
-        playerOne: playerOne,
-        playerTwo: playerTwo,
+        playerOne: timedOutGame.playerOne,
+        playerTwo: timedOutGame.playerTwo,
     });
-    //gameManager.removeRPSGame(gameID);
 }
 
 function handleRPSChoice(socket: Socket, data: RPSBattleChoicePayload): void {
