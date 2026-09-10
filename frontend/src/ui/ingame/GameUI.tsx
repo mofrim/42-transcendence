@@ -23,6 +23,7 @@ import {
 import type { Character } from 'ftr-common/sharedTypes';
 import { CharacterPreviewView } from '../login/CharacterPreview';
 import { EventLogItems, type EventLogEntry } from './EventLogItems';
+import { Leaderboard } from './Leaderboard';
 import { MatchHistory } from './MatchHistory';
 
 import './GameUI.css';
@@ -30,6 +31,7 @@ import './GameUI.css';
 const QUEST_LOG_ID = 'game-quest-log';
 const PROFILE_PANEL_ID = 'game-profile-panel';
 const MATCH_HISTORY_PANEL_ID = 'game-match-history-panel';
+const LEADERBOARD_PANEL_ID = 'game-leaderboard-panel';
 const EVENT_LOG_TITLE_ID = 'game-event-log-title';
 
 export const MAX_EVENT_LOG_ENTRIES = 10;
@@ -205,6 +207,7 @@ export function GameUI({
     const [isQuestLogOpen, setIsQuestLogOpen] = useState(false);
     const [isProfileOpen, setIsProfileOpen] = useState(false);
     const [isMatchHistoryOpen, setIsMatchHistoryOpen] = useState(false);
+    const [isLeaderboardOpen, setIsLeaderboardOpen] = useState(false);
     const [isChatOpen, setIsChatOpen] = useState(false);
     const [chatMessage, setChatMessage] = useState('');
     const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -227,6 +230,10 @@ export function GameUI({
 
     const handleMatchHistoryToggle = (): void => {
         setIsMatchHistoryOpen((isOpen) => !isOpen);
+    };
+
+    const handleLeaderboardToggle = (): void => {
+        setIsLeaderboardOpen((isOpen) => !isOpen);
     };
 
     const handleLogout = async (): Promise<void> => {
@@ -391,6 +398,13 @@ export function GameUI({
                         panelLabel='Match History'
                         onToggle={handleMatchHistoryToggle}
                     />
+                    <HudPanelToggle
+                        controls={LEADERBOARD_PANEL_ID}
+                        icon='🏆'
+                        isOpen={isLeaderboardOpen}
+                        panelLabel='Leaderboard'
+                        onToggle={handleLeaderboardToggle}
+                    />
                 </div>
 
                 <aside
@@ -433,6 +447,16 @@ export function GameUI({
                 >
                     <h2 className='hud-title'>Match History</h2>
                     <MatchHistory entries={matchHistory} />
+                </aside>
+
+                <aside
+                    id={LEADERBOARD_PANEL_ID}
+                    className='hud-panel hud-leaderboard-panel'
+                    aria-label='Leaderboard'
+                    hidden={!isLeaderboardOpen}
+                >
+                    <h2 className='hud-title'>Leaderboard</h2>
+                    <Leaderboard />
                 </aside>
             </div>
 
