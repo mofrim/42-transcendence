@@ -23,8 +23,11 @@ export const describeGameEvent = (event: GameEvent): string => {
             return `${event.data.nickname} 🚪 logged out`;
         case 'PlayerInRange':
             return `Met ${event.data.nickname} nearby`;
-        case 'QuestCompleted':
-            return `${event.data.nickname} completed quest ${event.data.questId}`;
+        case 'QuestCompleted': {
+            const questDescription =
+                event.data.questText ?? event.data.questId ?? 'unknown quest';
+            return `${event.data.nickname} completed quest ${questDescription}`;
+        }
         case 'GameResult':
             if (event.data.outcome === 'draw') {
                 return `${event.data.playerNickname} drew a game of ${event.data.game} against ${event.data.opponentNickname}`;
