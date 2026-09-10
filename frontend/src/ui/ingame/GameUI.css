@@ -177,14 +177,20 @@
 }
 
 .hud-profile-panel,
+.hud-friends-panel,
 .hud-match-history-panel,
 .hud-leaderboard-panel {
     background: rgba(14, 22, 32, 0.25);
     text-align: left;
 }
 
-.hud-profile-panel {
+.hud-profile-panel,
+.hud-friends-panel {
     width: min(300px, calc(100vw - 94px));
+}
+
+.hud-friends-placeholder {
+    margin: 0;
 }
 
 .hud-match-history-panel {

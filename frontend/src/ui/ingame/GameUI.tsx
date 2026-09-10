@@ -31,6 +31,7 @@ import './GameUI.css';
 
 const QUEST_LOG_ID = 'game-quest-log';
 const PROFILE_PANEL_ID = 'game-profile-panel';
+const FRIENDS_PANEL_ID = 'game-friends-panel';
 const MATCH_HISTORY_PANEL_ID = 'game-match-history-panel';
 const LEADERBOARD_PANEL_ID = 'game-leaderboard-panel';
 const EVENT_LOG_TITLE_ID = 'game-event-log-title';
@@ -207,6 +208,7 @@ export function GameUI({
 }: GameUIProps) {
     const [isQuestLogOpen, setIsQuestLogOpen] = useState(false);
     const [isProfileOpen, setIsProfileOpen] = useState(false);
+    const [isFriendsOpen, setIsFriendsOpen] = useState(false);
     const [isMatchHistoryOpen, setIsMatchHistoryOpen] = useState(false);
     const [isLeaderboardOpen, setIsLeaderboardOpen] = useState(false);
     const [isChatOpen, setIsChatOpen] = useState(false);
@@ -227,6 +229,10 @@ export function GameUI({
 
     const handleProfileToggle = (): void => {
         setIsProfileOpen((isOpen) => !isOpen);
+    };
+
+    const handleFriendsToggle = (): void => {
+        setIsFriendsOpen((isOpen) => !isOpen);
     };
 
     const handleMatchHistoryToggle = (): void => {
@@ -396,6 +402,13 @@ export function GameUI({
                         onToggle={handleProfileToggle}
                     />
                     <HudPanelToggle
+                        controls={FRIENDS_PANEL_ID}
+                        icon='👥'
+                        isOpen={isFriendsOpen}
+                        panelLabel='Friendlist'
+                        onToggle={handleFriendsToggle}
+                    />
+                    <HudPanelToggle
                         controls={MATCH_HISTORY_PANEL_ID}
                         icon='📊'
                         isOpen={isMatchHistoryOpen}
@@ -441,6 +454,18 @@ export function GameUI({
                     >
                         {isLoggingOut ? 'Logging out…' : '🚪 Logout'}
                     </button>
+                </aside>
+
+                <aside
+                    id={FRIENDS_PANEL_ID}
+                    className='hud-panel hud-friends-panel'
+                    aria-label='Friendlist'
+                    hidden={!isFriendsOpen}
+                >
+                    <h2 className='hud-title'>Friendlist</h2>
+                    <p className='hud-friends-placeholder'>
+                        Sample Friendlist Panel
+                    </p>
                 </aside>
 
                 <aside
