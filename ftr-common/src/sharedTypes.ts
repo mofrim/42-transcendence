@@ -161,11 +161,13 @@ export type PlayerData = {
     inGame: boolean;
 };
 
-export type PlayerUpdatePayload = Pick<PlayerData, 'id' | 'state'> &
+export type PlayerMovementPayload = Pick<PlayerData, 'state'> &
     PlayerPosition & {
         type: 'player_update';
-        character: Character;
     };
+
+export type PlayerUpdatePayload = PlayerMovementPayload &
+    Pick<PlayerData, 'id'>;
 
 export type PlayerConnectedPayload = Pick<PlayerData, 'id' | 'nickname'> & {
     character: Character;

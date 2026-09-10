@@ -41,24 +41,23 @@ import {
     GameEvent,
     EventType,
     type EventData,
-} from 'ftr-common/sharedTypes';
-import type {
-    GLBMesh,
-    RPSInvalidPayload,
-    RPSDrawPayload,
-    RPSWinnerPayload,
-    RPSAcceptDeclinePayload,
-    RPSRequestDataPayload,
-    TTTMarkPayload,
-    TTTStartPayload,
-    TTTWinPayload,
-    TTTDrawPayload,
-    ChatSendPayload,
-    PlayerConnectedPayload,
-    PlayerUpdatePayload,
-    ReceivedChatPayload,
-    SocketAuth,
-    TTTGame,
+    type GLBMesh,
+    type RPSInvalidPayload,
+    type RPSDrawPayload,
+    type RPSWinnerPayload,
+    type RPSAcceptDeclinePayload,
+    type RPSRequestDataPayload,
+    type TTTMarkPayload,
+    type TTTStartPayload,
+    type TTTWinPayload,
+    type TTTDrawPayload,
+    type ChatSendPayload,
+    type PlayerMovementPayload,
+    type PlayerConnectedPayload,
+    type PlayerUpdatePayload,
+    type ReceivedChatPayload,
+    type SocketAuth,
+    type TTTGame,
 } from 'ftr-common/sharedTypes';
 
 const NPC_CHAT_BUBBLE_SIZE = 42;
@@ -77,6 +76,8 @@ const EVALUATING_STUDENT_NAME_SIZE = 48;
 const EVALUATING_STUDENT_NAME_HEIGHT = 1.9;
 const EVALUATING_STUDENT_NAME_SCALE = 0.3;
 const EVALUATING_STUDENT_CHAT_BUBBLE_HEIGHT = CHAT_BUBBLE_HEIGHT + 0.4;
+const MIN_POSITION_CHANGE = 0.001;
+const PLAYER_NETWORK_INTERVAL_MS = 1_000; // 1s
 export const ENTER_EVENT_SPACE_QUEST_ID = 'ENTER_EVENT_SPACE';
 const EVENT_SPACE_DOOR_INTERACTION_IDS: ReadonlySet<string> = new Set([
     'EVENT_SPACE_DOOR_A',
@@ -182,6 +183,8 @@ export function startGame(
     let runtimeDisposePromise: Promise<void> | null = null;
     let runtimeDisposed = false;
     let playerUpdateIntervalId: number | null = null;
+    let lastSentPlayerState: PlayerMovementPayload['state'] | null = null;
+    let lastPlayerKeyframeMilliseconds = 0;
     let eventSpaceDoorsOpen = false;
     let eventSpaceDoorTraversalStarted = false;
     let eventSpaceQuestCompleted = false;
@@ -189,6 +192,7 @@ export function startGame(
     let evaluatingStudentAvailable = false;
     const knownPlayerNicknames = new Map<string, string>();
     const blockedPlayerUpdates = new Set<string>();
+    const lastSentPlayerPosition = new THREE.Vector3();
     const doorMeshesNames: string[] = [];
 
     socket.on('connect', () => {
@@ -207,6 +211,9 @@ export function startGame(
         if (player) {
             player.id = socketId;
         }
+
+        lastSentPlayerState = null;
+        sendLocalPlayerUpdate();
     });
 
     socket.on('player_connected', (data: string | PlayerConnectedPayload) => {
@@ -397,15 +404,37 @@ export function startGame(
             return;
         }
 
-        const { x, y, z } = player.group.position;
-        socket.emit('update', {
+        const position = player.group.position;
+        const state = player.controls.current;
+        const positionChanged =
+            lastSentPlayerPosition.distanceTo(position) > MIN_POSITION_CHANGE;
+        const stateChanged = lastSentPlayerState !== state;
+        const nowMilliseconds = performance.now();
+        const keyframeDue =
+            nowMilliseconds - lastPlayerKeyframeMilliseconds >=
+            PLAYER_NETWORK_INTERVAL_MS;
+
+        if (!positionChanged && !stateChanged && !keyframeDue) {
+            return;
+        }
+
+        const payload: PlayerMovementPayload = {
             type: 'player_update',
-            x,
-            y,
-            z,
-            state: player.controls.current,
-            character: whichCharacter,
-        });
+            x: position.x,
+            y: position.y,
+            z: position.z,
+            state,
+        };
+
+        if (stateChanged || keyframeDue) {
+            socket.emit('update', payload);
+            lastPlayerKeyframeMilliseconds = nowMilliseconds;
+        } else {
+            socket.volatile.emit('update', payload);
+        }
+
+        lastSentPlayerPosition.copy(position);
+        lastSentPlayerState = state;
     }
 
     function startPlayerUpdateLoop(): void {
@@ -807,10 +836,6 @@ export function startGame(
                 data.z,
                 data.state
             );
-        } else {
-            console.log('new player joined:', data.id);
-            //multiplayer.spawnPlayer(data.id, normalizeCharacter(data.character));
-            spawnRemotePlayer(data.id, data.character, true, undefined, data);
         }
     }
 
@@ -1215,7 +1240,10 @@ export function startGame(
         scene.add(new THREE.AmbientLight(0xffffff, 12)); */
     }
 
-    function changeObjectTexture(mesh: THREE.Object3D | null, texturePath: string): void {
+    function changeObjectTexture(
+        mesh: THREE.Object3D | null,
+        texturePath: string
+    ): void {
         if (!mesh) {
             return;
         }

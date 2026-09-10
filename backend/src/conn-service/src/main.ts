@@ -12,6 +12,7 @@ import type {
     ReceivedChatPayload,
     RPSBattleChoicePayload,
     RPSRequestDataPayload,
+    PlayerMovementPayload,
     PlayerConnectedPayload,
     PlayerUpdatePayload,
     TTTMarkPayload,
@@ -232,7 +233,7 @@ function handleRPSRequest(socket: Socket, data: RPSRequestDataPayload) {
     });
 }
 
-function handlePlayerUpdate(socket: Socket, data: PlayerUpdatePayload) {
+function handlePlayerUpdate(socket: Socket, data: PlayerMovementPayload) {
     const player = gameManager.players.get(socket.id);
     if (!player) {
         console.log('Player not found for id: ' + socket.id);
@@ -241,16 +242,16 @@ function handlePlayerUpdate(socket: Socket, data: PlayerUpdatePayload) {
 
     gameManager.updatePlayer(socket.id, data.x, data.y, data.z, data.state);
 
-    socket.broadcast.emit('update', {
+    const playerUpdate: PlayerUpdatePayload = {
         type: 'player_update',
         id: socket.id,
         x: data.x,
         y: data.y,
         z: data.z,
         state: data.state,
-        // Das Backend entfernte character aus normalen Positionsupdates
-        character: socket.data.character,
-    });
+    };
+
+    socket.broadcast.volatile.emit('update', playerUpdate);
 }
 
 function handleTTTStart(socket: Socket) {
