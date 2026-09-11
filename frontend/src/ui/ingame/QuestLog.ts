@@ -1,5 +1,8 @@
 import { ENTER_EVENT_SPACE_QUEST_ID } from '../../game/main';
-import { ENTER_CAMPUS_TOKEN_QUEST_ID } from '../../game/interaction';
+import {
+    ENTER_CAMPUS_TOKEN_QUEST_ID,
+    FIND_LOST_DROPPED_TOKEN_QUEST_ID,
+} from '../../game/interaction';
 import { GameEvent, EventType } from 'ftr-common/sharedTypes';
 
 export const BLACK_HOLE_QUEST_ID = 'avoid-blackhole';
@@ -33,6 +36,10 @@ export type QuestStatusChange = {
 
 /** Beispielaufgaben für das Quest Log. */
 export const DEFAULT_QUESTS: readonly QuestLogEntry[] = [
+    {
+        id: FIND_LOST_DROPPED_TOKEN_QUEST_ID,
+        text: 'Find lost dropped Token',
+    },
     {
         id: ENTER_CAMPUS_TOKEN_QUEST_ID,
         text: 'Enter 42 campus via token',

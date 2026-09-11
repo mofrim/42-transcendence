@@ -16,6 +16,9 @@ import {
 } from './PlayerModelMaterials.js';
 import {
     CHAT_BUBBLE_HEIGHT,
+    CHAT_BUBBLE_PREFIX,
+    CHAT_BUBBLE_SCALE,
+    CHAT_BUBBLE_SIZE,
     FloatingTextSprite,
 } from './FloatingTextSprite.js';
 import { PlayerState } from 'ftr-common/sharedTypes';
@@ -24,10 +27,8 @@ export type PlayerAnimationState = ReturnType<typeof transitionPlayerAnimation>;
 
 const PLAYER_FORWARD = new THREE.Vector3(0, 0, 1);
 const COLLISION_STEP_RADIUS_FACTOR = 0.5;
-const PLAYER_CHAT_SIZE = 42;
-const PLAYER_CHAT_SCALE = 0.28;
-// ms also 5 Sekunden
-const PLAYER_CHAT_DURATION_MS = 10_000; // ms also 10 Sekunden
+/** ms also 10 Sekunden */
+const PLAYER_CHAT_DURATION_MS = 10_000;
 
 export class Player {
     static colRad: number = 0.35;
@@ -91,10 +92,10 @@ export class Player {
         this.group = new THREE.Group();
         this.chatBubble = new FloatingTextSprite(
             '',
-            PLAYER_CHAT_SIZE,
+            CHAT_BUBBLE_SIZE,
             new THREE.Vector3(0, CHAT_BUBBLE_HEIGHT, 0)
         );
-        this.chatBubble.scale.multiplyScalar(PLAYER_CHAT_SCALE);
+        this.chatBubble.scale.multiplyScalar(CHAT_BUBBLE_SCALE);
         this.chatBubbleTimeout = null;
         this.loadGeneration = 0;
         this.finalized = false;
@@ -192,7 +193,10 @@ export class Player {
         if (!trimmedMessage) {
             return;
         }
-        this.chatBubble.setText(`🗨️ ${trimmedMessage}`, PLAYER_CHAT_SIZE);
+        this.chatBubble.setText(
+            `${CHAT_BUBBLE_PREFIX}${trimmedMessage}`,
+            CHAT_BUBBLE_SIZE
+        );
         this.chatBubble.follow(this.group);
 
         this.clearChatBubbleTimeout();

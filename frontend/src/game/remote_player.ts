@@ -17,7 +17,12 @@ import {
     replacePlayerModelMaterials,
 } from './PlayerModelMaterials.js';
 import { CanvasTextSprite } from './CanvasTextSprite.js';
-import { CHAT_BUBBLE_HEIGHT } from './FloatingTextSprite.js';
+import {
+    CHAT_BUBBLE_HEIGHT,
+    CHAT_BUBBLE_PREFIX,
+    CHAT_BUBBLE_SCALE,
+    CHAT_BUBBLE_SIZE,
+} from './FloatingTextSprite.js';
 import { SmootherMovement } from './SmootherMovement.js';
 import { PlayerState } from 'ftr-common/sharedTypes';
 
@@ -34,8 +39,6 @@ const REMOTE_PLAYER_LOADER = new GLTFLoader();
 const PLAYER_NAME_SIZE = 48;
 const PLAYER_NAME_HEIGHT = 1.9;
 const PLAYER_NAME_SCALE = 0.3;
-const REMOTE_CHAT_SIZE = 42;
-const REMOTE_CHAT_SCALE = 0.28;
 const REMOTE_CHAT_DURATION_MS = 30_000;
 
 const RemotePlayerImplementation = class Remote_Player {
@@ -83,9 +86,9 @@ const RemotePlayerImplementation = class Remote_Player {
         this.nameLabel.position.set(0, PLAYER_NAME_HEIGHT, 0);
         this.nameLabel.scale.multiplyScalar(PLAYER_NAME_SCALE);
         this.nameLabel.visible = false;
-        this.chatBubble = new CanvasTextSprite('', REMOTE_CHAT_SIZE);
+        this.chatBubble = new CanvasTextSprite('', CHAT_BUBBLE_SIZE);
         this.chatBubble.position.set(0, CHAT_BUBBLE_HEIGHT, 0);
-        this.chatBubble.scale.multiplyScalar(REMOTE_CHAT_SCALE);
+        this.chatBubble.scale.multiplyScalar(CHAT_BUBBLE_SCALE);
         this.chatBubble.visible = false;
         this.chatBubbleTimeout = null;
         this.group.add(this.nameLabel, this.chatBubble);
@@ -163,7 +166,10 @@ const RemotePlayerImplementation = class Remote_Player {
         }
 
         this.clearChatBubbleTimeout();
-        this.chatBubble.setText(`🗨️ ${trimmedMessage}`, REMOTE_CHAT_SIZE);
+        this.chatBubble.setText(
+            `${CHAT_BUBBLE_PREFIX}${trimmedMessage}`,
+            CHAT_BUBBLE_SIZE
+        );
         this.chatBubble.visible = true;
 
         const timeout = setTimeout(() => {

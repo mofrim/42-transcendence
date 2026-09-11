@@ -2,7 +2,11 @@ import * as THREE from 'three';
 import { Player, type PlayerAnimationState } from './player';
 import { Camera } from './camera';
 import { InteractionManager } from './interaction_manager';
-import { ENTER_CAMPUS_TOKEN_QUEST_ID, Interaction } from './interaction';
+import {
+    ENTER_CAMPUS_TOKEN_QUEST_ID,
+    FIND_LOST_DROPPED_TOKEN_QUEST_ID,
+    Interaction,
+} from './interaction';
 import { PlayerState } from 'ftr-common/sharedTypes';
 
 // TODO: move this to sharedTypes.ts
@@ -607,6 +611,16 @@ export class Story_Manager {
     async handleInteraction(interaction: Interaction): Promise<void> {
         //console.log(`Interaction triggered: ${interaction.typeID}`);
         this.onQuestComplete = null;
+
+        if (interaction.typeID === FIND_LOST_DROPPED_TOKEN_QUEST_ID) {
+            await this.caseInteraction(
+                FIND_LOST_DROPPED_TOKEN_QUEST_ID,
+                'There it is 🔑! I found my lost campus token. Now I can finally unlock the frontdoor.',
+                PlayerState.ThumbsUp
+            );
+            this.interactionManager.collectLostToken();
+            return;
+        }
 
         if (interaction.typeID === ENTER_CAMPUS_TOKEN_QUEST_ID) {
             await this.caseInteraction(

@@ -1,13 +1,33 @@
 import * as THREE from 'three';
-import { ENTER_CAMPUS_TOKEN_QUEST_ID, Interaction } from './interaction';
+import { CanvasTextSprite } from './CanvasTextSprite';
+import {
+    ENTER_CAMPUS_TOKEN_QUEST_ID,
+    FIND_LOST_DROPPED_TOKEN_QUEST_ID,
+    Interaction,
+} from './interaction';
 
 const INTERACTION_RANGE = new THREE.Vector3(1, 2, 1);
+const LOST_TOKEN_POSITION = new THREE.Vector3(
+    1.2922068884555726,
+    0.0019360798741439034,
+    -12.941452087852168
+);
+const LOST_TOKEN_MARKER_HEIGHT = 0.65;
+const LOST_TOKEN_MARKER_SCALE = 0.5;
 
 export class InteractionManager {
     interactions: Interaction[] = [];
     currentInteraction: Interaction | null = null;
+    private readonly lostTokenMarker: CanvasTextSprite;
 
     constructor(scene: THREE.Scene) {
+        this.lostTokenMarker = new CanvasTextSprite('🔑', 64);
+        this.lostTokenMarker.position
+            .copy(LOST_TOKEN_POSITION)
+            .setY(LOST_TOKEN_POSITION.y + LOST_TOKEN_MARKER_HEIGHT);
+        this.lostTokenMarker.scale.multiplyScalar(LOST_TOKEN_MARKER_SCALE);
+        scene.add(this.lostTokenMarker);
+
         this.initInteractions(scene);
     }
 
@@ -78,6 +98,13 @@ export class InteractionManager {
         );
         const interaction10 = new Interaction(
             scene,
+            FIND_LOST_DROPPED_TOKEN_QUEST_ID,
+            LOST_TOKEN_POSITION.clone(),
+            INTERACTION_RANGE,
+            true
+        );
+        const interaction11 = new Interaction(
+            scene,
             ENTER_CAMPUS_TOKEN_QUEST_ID,
             new THREE.Vector3(
                 11.188980389089282,
@@ -98,7 +125,8 @@ export class InteractionManager {
             interaction7,
             interaction8,
             interaction9,
-            interaction10
+            interaction10,
+            interaction11
         );
 
         this.interactionStartingState();
@@ -128,11 +156,19 @@ export class InteractionManager {
         this.enableInteraction('LOGIN_COMPUTER');
         this.enableInteraction('EVENT_SPACE_DOOR_A');
         this.enableInteraction('EVENT_SPACE_DOOR_B');
-        this.enableInteraction(ENTER_CAMPUS_TOKEN_QUEST_ID);
+        this.enableInteraction(FIND_LOST_DROPPED_TOKEN_QUEST_ID);
+        this.lostTokenMarker.visible = true;
 
         this.disableInteraction('WHERE_IS_EVALUATOR');
         this.disableInteraction('FIND_EVALUATING_STUDENT');
         this.disableInteraction('START_EVALUATION');
+        this.disableInteraction(ENTER_CAMPUS_TOKEN_QUEST_ID);
+    }
+
+    collectLostToken(): void {
+        this.disableInteraction(FIND_LOST_DROPPED_TOKEN_QUEST_ID);
+        this.lostTokenMarker.visible = false;
+        this.enableInteraction(ENTER_CAMPUS_TOKEN_QUEST_ID);
     }
 
     OnActivatePress(playerPosition: THREE.Vector3): void {

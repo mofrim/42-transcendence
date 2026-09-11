@@ -9,6 +9,9 @@ import { MultiplayerManager } from './multiplayer.js';
 import { NPC } from './npc.js';
 import {
     CHAT_BUBBLE_HEIGHT,
+    CHAT_BUBBLE_PREFIX,
+    CHAT_BUBBLE_SCALE,
+    CHAT_BUBBLE_SIZE,
     FloatingTextSprite,
 } from './FloatingTextSprite.js';
 import { CanvasTextSprite } from './CanvasTextSprite.js';
@@ -19,6 +22,7 @@ import { RPS_Game } from './rps_game.js';
 import { createThreeResourceDisposer } from './ThreeResourceDisposer.js';
 import { Story_Manager } from './story_manager.js';
 import { InteractionManager } from './interaction_manager.js';
+import { TokenQuestFrontdesk } from './QuestToken.js';
 import {
     getPlayerModelPath,
     MAP_MODEL_PATH,
@@ -60,18 +64,15 @@ import {
     type TTTGame,
 } from 'ftr-common/sharedTypes';
 
-const NPC_CHAT_BUBBLE_SIZE = 42;
-const NPC_CHAT_BUBBLE_SCALE = 0.28;
-const FRONTDESK_GREETING_TEXT = '🗨️ Welcome to 42 Wolfsburg Campus! 👋🏻';
 const ENTRY_NPC_CHAT_BUBBLE_TEXTS = [
-    '🗨️ The Event Space opens after the evaluation',
-    '🗨️ You need to challenge other Students',
-    '🗨️ I must evaluate before Blackhole',
+    `${CHAT_BUBBLE_PREFIX}The Event Space opens after finishing evaluation`,
+    `${CHAT_BUBBLE_PREFIX}Letting someone in without a token is not allowed`,
+    `${CHAT_BUBBLE_PREFIX}I must evaluate before Blackhole`,
 ] as const;
 const EVALUATING_STUDENT_INTERACTION_ID = 'FIND_EVALUATING_STUDENT';
 const EVALUATING_STUDENT_NPC_ID = 6;
 const EVALUATING_STUDENT_NICKNAME = 'Idle Student';
-const EVALUATING_STUDENT_CHAT_BUBBLE_TEXT = '🗨️ Ready for Evaluation?';
+const EVALUATING_STUDENT_CHAT_BUBBLE_TEXT = `${CHAT_BUBBLE_PREFIX}Ready for Evaluation?`;
 const EVALUATING_STUDENT_NAME_SIZE = 48;
 const EVALUATING_STUDENT_NAME_HEIGHT = 1.9;
 const EVALUATING_STUDENT_NAME_SCALE = 0.3;
@@ -190,6 +191,7 @@ export function startGame(
     let eventSpaceQuestCompleted = false;
     let evaluatingStudent: NPC | null = null;
     let evaluatingStudentAvailable = false;
+    const tokenQuestFrontdesk = new TokenQuestFrontdesk(onGameEvent);
     const knownPlayerNicknames = new Map<string, string>();
     const blockedPlayerUpdates = new Set<string>();
     const lastSentPlayerPosition = new THREE.Vector3();
@@ -1170,6 +1172,7 @@ export function startGame(
                     data: { questId: questId },
                     logtime: new Date(),
                 });
+                tokenQuestFrontdesk.handleQuestCompletion(questId);
             };
             storyManager.onQuestDuckFound = async () => {
                 duck_up = await loadMesh(DUCK_UP_PATH, [0, 0, 0]);
@@ -1605,6 +1608,7 @@ export function startGame(
 
     function resetGameStateAfterBlackHole(): void {
         resetDoorsState();
+        tokenQuestFrontdesk.reset();
         onGameReset?.();
     }
 
@@ -1625,15 +1629,16 @@ export function startGame(
         }
     }
 
-    function addNPCChatBubble(npc: NPC, text: string): void {
+    function addNPCChatBubble(npc: NPC, text: string): FloatingTextSprite {
         const chatBubble = new FloatingTextSprite(
             text,
-            NPC_CHAT_BUBBLE_SIZE,
+            CHAT_BUBBLE_SIZE,
             new THREE.Vector3(0, CHAT_BUBBLE_HEIGHT, 0)
         );
-        chatBubble.scale.multiplyScalar(NPC_CHAT_BUBBLE_SCALE);
+        chatBubble.scale.multiplyScalar(CHAT_BUBBLE_SCALE);
         scene.add(chatBubble);
         chatBubble.follow(npc.group);
+        return chatBubble;
     }
 
     function showEvaluatingStudent(): void {
@@ -1669,10 +1674,10 @@ export function startGame(
 
         const chatBubble = new CanvasTextSprite(
             EVALUATING_STUDENT_CHAT_BUBBLE_TEXT,
-            NPC_CHAT_BUBBLE_SIZE
+            CHAT_BUBBLE_SIZE
         );
         chatBubble.position.set(0, EVALUATING_STUDENT_CHAT_BUBBLE_HEIGHT, 0);
-        chatBubble.scale.multiplyScalar(NPC_CHAT_BUBBLE_SCALE);
+        chatBubble.scale.multiplyScalar(CHAT_BUBBLE_SCALE);
 
         student.group.add(nameLabel, chatBubble);
         evaluatingStudent = student;
@@ -1742,7 +1747,11 @@ export function startGame(
             frontdesk.group.position.z + 1
         );
         scene.add(frontdesk.group);
-        addNPCChatBubble(frontdesk, FRONTDESK_GREETING_TEXT);
+        const frontdeskChatBubble = addNPCChatBubble(
+            frontdesk,
+            tokenQuestFrontdesk.chatBubbleText
+        );
+        tokenQuestFrontdesk.setChatBubble(frontdeskChatBubble);
         npcs.set(frontdesk.id, frontdesk);
 
         // NPCs 1Floor doing the Spiderman meme

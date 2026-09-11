@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { CanvasTextSprite } from './CanvasTextSprite';
 
+export const FIND_LOST_DROPPED_TOKEN_QUEST_ID = 'FIND_LOST_DROPPED_TOKEN';
 export const ENTER_CAMPUS_TOKEN_QUEST_ID = 'ENTER_42_CAMPUS_VIA_TOKEN';
 
 /* import { Player } from './player';
@@ -34,6 +35,7 @@ export class Interaction {
             | 'START_EVALUATION'
             | 'EVENT_SPACE_DOOR_A'
             | 'EVENT_SPACE_DOOR_B'
+            | typeof FIND_LOST_DROPPED_TOKEN_QUEST_ID
             | typeof ENTER_CAMPUS_TOKEN_QUEST_ID,
         position: THREE.Vector3,
         size: THREE.Vector3,
