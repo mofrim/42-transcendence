@@ -1,7 +1,82 @@
 // in this file we collect types that are shared at least among multiple files.
 import type * as THREE from 'three';
 
-// -------------------=[ database backend related types ]=------------------- //
+// ----------------------------=[ quest types ]=---------------------------- //
+
+export const FIND_LOST_DROPPED_TOKEN_QUEST_ID = 'FIND_LOST_DROPPED_TOKEN';
+export const ENTER_CAMPUS_TOKEN_QUEST_ID = 'ENTER_42_CAMPUS_VIA_TOKEN';
+export const BLACK_HOLE_QUEST_ID = 'avoid-blackhole';
+export const MEET_PLAYER_QUEST_ID = 'meet-player';
+export const RPS_WIN_QUEST_ID = 'win-rps-minigame';
+export const START_EVALUATION_QUEST_ID = 'START_EVALUATION';
+export const TTT_WIN_QUEST_ID = 'win-ttt-minigame';
+export const ENTER_EVENT_SPACE_QUEST_ID = 'ENTER_EVENT_SPACE';
+
+export type QuestLogEntry = {
+    readonly id: string;
+    readonly text: string;
+    readonly completed?: boolean;
+};
+
+// our quests... users-table will have another column to keep track of them, per
+// user either as simple-json array or another type
+export const QUESTS: readonly QuestLogEntry[] = [
+    {
+        id: FIND_LOST_DROPPED_TOKEN_QUEST_ID,
+        text: 'Find lost dropped Token',
+    },
+    {
+        id: ENTER_CAMPUS_TOKEN_QUEST_ID,
+        text: 'Enter 42 campus via token',
+    },
+    {
+        id: 'FIND_RUBBERDUCK',
+        text: 'Find the Rubber Duck',
+    },
+    {
+        id: 'GET_COFFEE',
+        text: 'Get a Coffee',
+    },
+    {
+        id: 'GET_PAPER',
+        text: 'Get a Piece of Paper',
+    },
+    {
+        id: 'LOGIN_COMPUTER',
+        text: 'Log In to Computer c2r12s6',
+    },
+    {
+        id: MEET_PLAYER_QUEST_ID,
+        text: 'Find another Student',
+    },
+    {
+        id: 'FIND_EVALUATING_STUDENT',
+        text: 'Find the Evaluating Student',
+    },
+    {
+        id: START_EVALUATION_QUEST_ID,
+        text: 'Start Evaluation',
+    },
+    {
+        id: ENTER_EVENT_SPACE_QUEST_ID,
+        text: 'Enter the Event Space',
+    },
+    // Secondary quests, once blackhole is disabled ?
+    {
+        id: RPS_WIN_QUEST_ID,
+        text: 'Win Rock-Paper-Scissors',
+    },
+    {
+        id: TTT_WIN_QUEST_ID,
+        text: 'Win Tic-Tac-Toe',
+    },
+    {
+        id: BLACK_HOLE_QUEST_ID,
+        text: "Don't get blackholed",
+    },
+];
+
+// ---------------------=[ eventlog types and classes ]=--------------------- //
 
 export enum EventType {
     PlayerJoined = 'PlayerJoined',
@@ -42,6 +117,8 @@ export class GameEvent extends BaseEventLog {
     logtime: Date = new Date();
     data: EventData = {};
 }
+
+// -----------------------=[ user types and classes ]=----------------------- //
 
 // using an abstract class here in order to force implementation of _all_
 // properties in children

@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { CanvasTextSprite } from './CanvasTextSprite';
-import { FIND_LOST_DROPPED_TOKEN_QUEST_ID, Interaction } from './interaction';
+import { Interaction } from './interaction';
+import { FIND_LOST_DROPPED_TOKEN_QUEST_ID } from 'ftr-common/sharedTypes';
 import { FrontDoorQuest } from './QuestFrontDoor';
 
 const INTERACTION_RANGE = new THREE.Vector3(1, 2, 1);

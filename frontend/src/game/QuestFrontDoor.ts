@@ -1,7 +1,10 @@
 import * as THREE from 'three';
-import { PlayerState } from 'ftr-common/sharedTypes';
+import {
+    PlayerState,
+    ENTER_CAMPUS_TOKEN_QUEST_ID,
+} from 'ftr-common/sharedTypes';
 
-import { ENTER_CAMPUS_TOKEN_QUEST_ID, Interaction } from './interaction';
+import { Interaction } from './interaction';
 import type { PlayerAnimationState } from './player';
 
 /** auf der Map Plane209 ist rechts neben der Eingangstür (haustür) des Gebäudes. */

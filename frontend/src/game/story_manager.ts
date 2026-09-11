@@ -2,8 +2,11 @@ import * as THREE from 'three';
 import { Player, type PlayerAnimationState } from './player';
 import { Camera } from './camera';
 import { InteractionManager } from './interaction_manager';
-import { FIND_LOST_DROPPED_TOKEN_QUEST_ID, Interaction } from './interaction';
-import { PlayerState } from 'ftr-common/sharedTypes';
+import { Interaction } from './interaction';
+import {
+    PlayerState,
+    FIND_LOST_DROPPED_TOKEN_QUEST_ID,
+} from 'ftr-common/sharedTypes';
 
 // TODO: move this to sharedTypes.ts
 type DialogState = {

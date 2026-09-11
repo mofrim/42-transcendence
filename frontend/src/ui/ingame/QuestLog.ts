@@ -1,15 +1,12 @@
-import { ENTER_EVENT_SPACE_QUEST_ID } from '../../game/main';
 import {
-    ENTER_CAMPUS_TOKEN_QUEST_ID,
-    FIND_LOST_DROPPED_TOKEN_QUEST_ID,
-} from '../../game/interaction';
-import { GameEvent, EventType } from 'ftr-common/sharedTypes';
-
-export const BLACK_HOLE_QUEST_ID = 'avoid-blackhole';
-export const MEET_PLAYER_QUEST_ID = 'meet-player';
-export const RPS_WIN_QUEST_ID = 'win-rps-minigame';
-export const START_EVALUATION_QUEST_ID = 'START_EVALUATION';
-export const TTT_WIN_QUEST_ID = 'win-ttt-minigame';
+    BLACK_HOLE_QUEST_ID,
+    MEET_PLAYER_QUEST_ID,
+    RPS_WIN_QUEST_ID,
+    TTT_WIN_QUEST_ID,
+    GameEvent,
+    EventType,
+    type QuestLogEntry,
+} from 'ftr-common/sharedTypes';
 
 const COUNTDOWN_FORMAT = new Intl.DurationFormat('en', {
     style: 'digital',
@@ -17,12 +14,6 @@ const COUNTDOWN_FORMAT = new Intl.DurationFormat('en', {
     minutes: '2-digit',
     seconds: '2-digit',
 });
-
-export type QuestLogEntry = {
-    readonly id: string;
-    readonly text: string;
-    readonly completed?: boolean;
-};
 
 export type ResolvedQuestLogEntry = QuestLogEntry & {
     readonly completed: boolean;
@@ -33,63 +24,6 @@ export type QuestStatusChange = {
     readonly questText: string;
     readonly completed: boolean;
 };
-
-/** Beispielaufgaben für das Quest Log. */
-export const DEFAULT_QUESTS: readonly QuestLogEntry[] = [
-    {
-        id: FIND_LOST_DROPPED_TOKEN_QUEST_ID,
-        text: 'Find lost dropped Token',
-    },
-    {
-        id: ENTER_CAMPUS_TOKEN_QUEST_ID,
-        text: 'Enter 42 campus via token',
-    },
-    {
-        id: 'FIND_RUBBERDUCK',
-        text: 'Find the Rubber Duck',
-    },
-    {
-        id: 'GET_COFFEE',
-        text: 'Get a Coffee',
-    },
-    {
-        id: 'GET_PAPER',
-        text: 'Get a Piece of Paper',
-    },
-    {
-        id: 'LOGIN_COMPUTER',
-        text: 'Log In to Computer c2r12s6',
-    },
-    {
-        id: MEET_PLAYER_QUEST_ID,
-        text: 'Find another Student',
-    },
-    {
-        id: 'FIND_EVALUATING_STUDENT',
-        text: 'Find the Evaluating Student',
-    },
-    {
-        id: START_EVALUATION_QUEST_ID,
-        text: 'Start Evaluation',
-    },
-    {
-        id: ENTER_EVENT_SPACE_QUEST_ID,
-        text: 'Enter the Event Space',
-    },
-    // Secondary quests, once blackhole is disabled ?
-    {
-        id: RPS_WIN_QUEST_ID,
-        text: 'Win Rock-Paper-Scissors',
-    },
-    {
-        id: TTT_WIN_QUEST_ID,
-        text: 'Win Tic-Tac-Toe',
-    },
-    {
-        id: BLACK_HOLE_QUEST_ID,
-        text: "Don't get blackholed",
-    },
-];
 
 /** blackhole timer */
 export function formatQuestCountdown(totalSeconds: number): string {

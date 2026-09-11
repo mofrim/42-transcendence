@@ -1,8 +1,9 @@
 import * as THREE from 'three';
 import { CanvasTextSprite } from './CanvasTextSprite';
-
-export const FIND_LOST_DROPPED_TOKEN_QUEST_ID = 'FIND_LOST_DROPPED_TOKEN';
-export const ENTER_CAMPUS_TOKEN_QUEST_ID = 'ENTER_42_CAMPUS_VIA_TOKEN';
+import {
+    FIND_LOST_DROPPED_TOKEN_QUEST_ID,
+    ENTER_CAMPUS_TOKEN_QUEST_ID,
+} from 'ftr-common/sharedTypes';
 
 /* import { Player } from './player';
 import { Camera } from './camera'; */

@@ -1,11 +1,12 @@
-import { EventType, type GameEvent } from 'ftr-common/sharedTypes';
+import {
+    EventType,
+    type GameEvent,
+    ENTER_CAMPUS_TOKEN_QUEST_ID,
+    FIND_LOST_DROPPED_TOKEN_QUEST_ID,
+} from 'ftr-common/sharedTypes';
 
 import type { CanvasTextSprite } from './CanvasTextSprite.js';
 import { CHAT_BUBBLE_PREFIX, CHAT_BUBBLE_SIZE } from './FloatingTextSprite.js';
-import {
-    ENTER_CAMPUS_TOKEN_QUEST_ID,
-    FIND_LOST_DROPPED_TOKEN_QUEST_ID,
-} from './interaction.js';
 
 /** Als virtueller Name dieses Frontesk NPCs Nickname der im Chat angezeigt werden soll */
 const FRONTDESK_NICKNAME = 'Frontdesk Staff:';

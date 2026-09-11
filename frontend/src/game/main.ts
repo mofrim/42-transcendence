@@ -68,6 +68,7 @@ import {
     type ReceivedChatPayload,
     type SocketAuth,
     type TTTGame,
+    ENTER_EVENT_SPACE_QUEST_ID,
 } from 'ftr-common/sharedTypes';
 
 const ENTRY_NPC_CHAT_BUBBLE_TEXTS = [
@@ -85,7 +86,6 @@ const EVALUATING_STUDENT_NAME_SCALE = 0.3;
 const EVALUATING_STUDENT_CHAT_BUBBLE_HEIGHT = CHAT_BUBBLE_HEIGHT + 0.4;
 const MIN_POSITION_CHANGE = 0.001;
 const PLAYER_NETWORK_INTERVAL_MS = 1_000; // 1s
-export const ENTER_EVENT_SPACE_QUEST_ID = 'ENTER_EVENT_SPACE';
 const EVENT_SPACE_DOOR_INTERACTION_IDS: ReadonlySet<string> = new Set([
     'EVENT_SPACE_DOOR_A',
     'EVENT_SPACE_DOOR_B',

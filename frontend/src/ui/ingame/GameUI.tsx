@@ -6,22 +6,28 @@ import {
     type ReactNode,
     type SyntheticEvent,
 } from 'react';
+
 import {
-    BLACK_HOLE_QUEST_ID,
-    DEFAULT_QUESTS,
     formatQuestCountdown,
     getQuestStatusChanges,
     resolveQuestLogEntries,
-    START_EVALUATION_QUEST_ID,
-    type QuestLogEntry,
     type QuestStatusChange,
     type ResolvedQuestLogEntry,
 } from './QuestLog';
+
 import {
     BLACK_HOLE_DURATION_SECONDS,
     getBlackHoleCountdownDeadline,
 } from './BlackHoleCountdown';
-import type { Character } from 'ftr-common/sharedTypes';
+
+import {
+    type Character,
+    QUESTS,
+    BLACK_HOLE_QUEST_ID,
+    START_EVALUATION_QUEST_ID,
+    type QuestLogEntry,
+} from 'ftr-common/sharedTypes';
+
 import { CharacterPreviewView } from '../login/CharacterPreview';
 import { EventLogItems, type EventLogEntry } from './EventLogItems';
 import { Leaderboard } from './Leaderboard';
@@ -195,7 +201,7 @@ export function GameUI({
     nickname,
     email,
     character,
-    quests = DEFAULT_QUESTS,
+    quests = QUESTS,
     completedQuestIds = [],
     events = [],
     matchHistory = [],
