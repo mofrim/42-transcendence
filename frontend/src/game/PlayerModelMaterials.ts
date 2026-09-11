@@ -1,14 +1,13 @@
 import * as THREE from 'three';
 
+import { IMG_GRADIENT } from './Assets.js';
 import {
     createThreeResourceDisposer,
     type ThreeResourceDisposer,
 } from './ThreeResourceDisposer';
 
 const PLAYER_GRADIENT_TEXTURE = (() => {
-    const texture = new THREE.TextureLoader().load(
-        '/textures/gradientMaps/twoTone2.jpg'
-    );
+    const texture = new THREE.TextureLoader().load(IMG_GRADIENT);
     texture.minFilter = THREE.NearestFilter;
     texture.magFilter = THREE.NearestFilter;
     return texture;

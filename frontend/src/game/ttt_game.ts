@@ -11,6 +11,14 @@ import {
     setPlayerOverlaySprites,
 } from './GameOverlay';
 import { createThreeResourceDisposer } from './ThreeResourceDisposer';
+import {
+    IMG_DRAW,
+    IMG_EMPTY,
+    IMG_O,
+    IMG_VS,
+    IMG_VS_BEAM,
+    IMG_X,
+} from './Assets.js';
 import { TTTGameState, TTTMark, TTTMeshBoard } from 'ftr-common/sharedTypes';
 
 // Type-only import: exists only during TypeScript compilation, not at runtime.
@@ -100,9 +108,9 @@ export class TTT_Game {
 
         this.currentTextState = [];
 
-        this.texX = TTT_TEXTURE_LOADER.load('textures/X.jpg');
-        this.texO = TTT_TEXTURE_LOADER.load('textures/O.jpg');
-        this.texEmpty = TTT_TEXTURE_LOADER.load('textures/Empty.jpg');
+        this.texX = TTT_TEXTURE_LOADER.load(IMG_X);
+        this.texO = TTT_TEXTURE_LOADER.load(IMG_O);
+        this.texEmpty = TTT_TEXTURE_LOADER.load(IMG_EMPTY);
 
         this.overlayScene = new THREE.Scene();
         this.overlayCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
@@ -117,20 +125,11 @@ export class TTT_Game {
         this.disposed = false;
 
         //this.vsSprite.set("A", this.addVSSprite('textures/X.jpg'));
-        this.vsSprite.set(
-            'Beam',
-            createOverlaySprite('textures/VS_Beam2.jpg', 10, 0.5)
-        );
+        this.vsSprite.set('Beam', createOverlaySprite(IMG_VS_BEAM, 10, 0.5));
         this.vsSprite.get('Beam')?.position.set(0, -0.25, 0);
 
-        this.vsSprite.set(
-            'VS',
-            createOverlaySprite('textures/VS_2.png', 0.5, 0.5)
-        );
-        this.vsSprite.set(
-            'Draw',
-            createOverlaySprite('textures/Draw.png', 0.5, 0.5)
-        );
+        this.vsSprite.set('VS', createOverlaySprite(IMG_VS, 0.5, 0.5));
+        this.vsSprite.set('Draw', createOverlaySprite(IMG_DRAW, 0.5, 0.5));
 
         console.log('TTT Game initialized.');
     }

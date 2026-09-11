@@ -13,6 +13,7 @@ import {
     setPlayerOverlaySprites,
 } from './GameOverlay';
 import { createThreeResourceDisposer } from './ThreeResourceDisposer';
+import { IMG_DRAW, IMG_VS, IMG_VS_BEAM } from './Assets.js';
 import type { Socket } from 'socket.io-client';
 import { RPSChoice } from 'ftr-common/sharedTypes';
 
@@ -95,20 +96,11 @@ export class RPS_Game {
 
         this.animationFrameSlot = new AnimationFrameSlot(() => !this.disposed);
 
-        this.rpsSprite.set(
-            'Beam',
-            createOverlaySprite('textures/VS_Beam2.jpg', 10, 0.5)
-        );
+        this.rpsSprite.set('Beam', createOverlaySprite(IMG_VS_BEAM, 10, 0.5));
         this.rpsSprite.get('Beam')!.position.set(0, -0.25, 0);
 
-        this.rpsSprite.set(
-            'VS',
-            createOverlaySprite('textures/VS_2.png', 0.5, 0.5)
-        );
-        this.rpsSprite.set(
-            'Draw',
-            createOverlaySprite('textures/Draw.png', 0.5, 0.5)
-        );
+        this.rpsSprite.set('VS', createOverlaySprite(IMG_VS, 0.5, 0.5));
+        this.rpsSprite.set('Draw', createOverlaySprite(IMG_DRAW, 0.5, 0.5));
     }
 
     /**

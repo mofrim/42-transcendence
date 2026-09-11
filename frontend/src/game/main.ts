@@ -25,15 +25,20 @@ import { InteractionManager } from './interaction_manager.js';
 import { TokenQuestFrontdesk } from './QuestToken.js';
 import {
     getPlayerModelPath,
-    MAP,
-    DOOR_A,
-    DOOR_B,
-    CLOUDS,
-    ROCKS,
-    DUCK_DOWN,
-    DUCK_UP,
-    DISPLAY,
-    NPC_MAN,
+    IMG_DISPLAY_BOOKING,
+    IMG_DISPLAY_EVAL,
+    IMG_DISPLAY_GRAPH,
+    IMG_DISPLAY_INTRA,
+    IMG_GRADIENT,
+    MODEL_CLOUDS,
+    MODEL_DISPLAY,
+    MODEL_DOOR_A,
+    MODEL_DOOR_B,
+    MODEL_DUCK_DOWN,
+    MODEL_DUCK_UP,
+    MODEL_MAP,
+    MODEL_NPC,
+    MODEL_ROCKS,
 } from './Assets.js';
 
 import { io } from 'socket.io-client';
@@ -882,7 +887,7 @@ export function startGame(
 
     let envLoaded: boolean = false;
     const textureLoader = new THREE.TextureLoader();
-    const texture = textureLoader.load('textures/gradientMaps/twoTone2.jpg');
+    const texture = textureLoader.load(IMG_GRADIENT);
     const loader = new GLTFLoader();
     // const texture = new THREE.TextureLoader().load('textures/gradientMaps/twoTone2.jpg');
     texture.minFilter = THREE.NearestFilter;
@@ -1190,7 +1195,7 @@ export function startGame(
                 tokenQuestFrontdesk.handleQuestCompletion(questId);
             };
             storyManager.onQuestDuckFound = async () => {
-                duck_up = await loadMesh(DUCK_UP, [0, 0, 0]);
+                duck_up = await loadMesh(MODEL_DUCK_UP, [0, 0, 0]);
                 void duck_up;
                 if (duck_down) {
                     runtimeResourceDisposer.disposeObject3D(duck_down);
@@ -1198,18 +1203,18 @@ export function startGame(
                 }
             };
             storyManager.onQuestLogin = async () => {
-                display = await loadMesh(DISPLAY, [0, 0, 0]);
-                changeObjectTexture(display, 'textures/42_Display_intra.jpg');
+                display = await loadMesh(MODEL_DISPLAY, [0, 0, 0]);
+                changeObjectTexture(display, IMG_DISPLAY_INTRA);
             };
             storyManager.onQuestEvaluator = async () => {
-                changeObjectTexture(display, 'textures/42_Display_booking.jpg');
+                changeObjectTexture(display, IMG_DISPLAY_BOOKING);
             };
             storyManager.onQuestStartEvaluation = async () => {
-                changeObjectTexture(display, 'textures/42_Display_eval.jpg');
+                changeObjectTexture(display, IMG_DISPLAY_EVAL);
             };
             storyManager.onQuestFinished = () => {
                 console.log('Quest finished');
-                changeObjectTexture(display, 'textures/42_Display_graph.jpg');
+                changeObjectTexture(display, IMG_DISPLAY_GRAPH);
                 openDoors();
             };
             storyManager.onEvaluatingStudentAvailabilityChange = (
@@ -1223,21 +1228,21 @@ export function startGame(
             };
         }
 
-        await loadMesh(MAP, [0, 0, 0]);
+        await loadMesh(MODEL_MAP, [0, 0, 0]);
         if (runtimeDisposed) return;
         startPlayerUpdateLoop();
-        await loadMeshSky(CLOUDS, [0, 0, 0]);
+        await loadMeshSky(MODEL_CLOUDS, [0, 0, 0]);
         if (runtimeDisposed) return;
-        await loadMeshSky(ROCKS, [0, 0, 0]);
+        await loadMeshSky(MODEL_ROCKS, [0, 0, 0]);
         if (runtimeDisposed) return;
-        await loadMesh(DOOR_A, [0, 0, 0]);
+        await loadMesh(MODEL_DOOR_A, [0, 0, 0]);
         if (runtimeDisposed) return;
-        await loadMesh(DOOR_B, [0, 0, 0]);
+        await loadMesh(MODEL_DOOR_B, [0, 0, 0]);
         if (runtimeDisposed) return;
 
         // TODO: Need to check with quest state.
         // If duck already found, than show duck_up, else show duck_down.
-        duck_down = await loadMesh(DUCK_DOWN, [0, 0, 0]);
+        duck_down = await loadMesh(MODEL_DUCK_DOWN, [0, 0, 0]);
         if (runtimeDisposed) return;
 
         addBlackhole();
@@ -1344,12 +1349,12 @@ export function startGame(
             }
 
             // Add Doors to group so we can open/close them
-            if (path === DOOR_A) {
+            if (path === MODEL_DOOR_A) {
                 console.log(child.name + ' added to groupDoorA');
                 doorMeshesNames.push(child.name);
                 groupDoorA.add(obj);
             }
-            if (path === DOOR_B) {
+            if (path === MODEL_DOOR_B) {
                 console.log(child.name + ' added to groupDoorB');
                 doorMeshesNames.push(child.name);
                 groupDoorB.add(obj);
@@ -1410,7 +1415,7 @@ export function startGame(
             return null;
         }
 
-        if (path !== DOOR_A && path !== DOOR_B) {
+        if (path !== MODEL_DOOR_A && path !== MODEL_DOOR_B) {
             scene.add(obj);
             mesh_Octree.push(obj);
         }
@@ -1667,7 +1672,7 @@ export function startGame(
         }
 
         const student = new NPC(
-            NPC_MAN,
+            MODEL_NPC,
             EVALUATING_STUDENT_NPC_ID,
             scene,
             NPCState.Standing
@@ -1716,9 +1721,9 @@ export function startGame(
 
     function initNPC(): void {
         // NPCs at the entrance of the 42WOB building
-        const entry1 = new NPC(NPC_MAN, 2, scene, NPCState.Nod);
-        const entry2 = new NPC(NPC_MAN, 3, scene, NPCState.Talking_2);
-        const entry3 = new NPC(NPC_MAN, 4, scene, NPCState.Nod);
+        const entry1 = new NPC(MODEL_NPC, 2, scene, NPCState.Nod);
+        const entry2 = new NPC(MODEL_NPC, 3, scene, NPCState.Talking_2);
+        const entry3 = new NPC(MODEL_NPC, 4, scene, NPCState.Nod);
 
         entry1.group.position.set(6.5, 0, 1);
         entry2.group.position.set(8, 0, 1.5);
@@ -1738,7 +1743,7 @@ export function startGame(
         npcs.set(entry2.id, entry2);
         npcs.set(entry3.id, entry3);
 
-        const frontdesk = new NPC(NPC_MAN, 5, scene, NPCState.Standing);
+        const frontdesk = new NPC(MODEL_NPC, 5, scene, NPCState.Standing);
         frontdesk.group.position.set(12.1, 0, -5.8);
         frontdesk.group.lookAt(
             frontdesk.group.position.x,

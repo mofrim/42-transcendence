@@ -2,6 +2,7 @@ import * as THREE from 'three';
 
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { NPCState } from 'ftr-common/sharedTypes';
+import { IMG_GRADIENT } from './Assets.js';
 
 /** ohne jump bisher */
 type NPCAnimationActions = {
@@ -13,9 +14,7 @@ const NPC_LOADER = new GLTFLoader();
 
 export class NPC {
     static gradientTexture = (() => {
-        const texture = new THREE.TextureLoader().load(
-            '/textures/gradientMaps/twoTone2.jpg'
-        );
+        const texture = new THREE.TextureLoader().load(IMG_GRADIENT);
         texture.minFilter = THREE.NearestFilter;
         texture.magFilter = THREE.NearestFilter;
         return texture;
