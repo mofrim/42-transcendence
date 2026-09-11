@@ -2,11 +2,7 @@ import * as THREE from 'three';
 import { Player, type PlayerAnimationState } from './player';
 import { Camera } from './camera';
 import { InteractionManager } from './interaction_manager';
-import {
-    ENTER_CAMPUS_TOKEN_QUEST_ID,
-    FIND_LOST_DROPPED_TOKEN_QUEST_ID,
-    Interaction,
-} from './interaction';
+import { FIND_LOST_DROPPED_TOKEN_QUEST_ID, Interaction } from './interaction';
 import { PlayerState } from 'ftr-common/sharedTypes';
 
 // TODO: move this to sharedTypes.ts
@@ -622,13 +618,13 @@ export class Story_Manager {
             return;
         }
 
-        if (interaction.typeID === ENTER_CAMPUS_TOKEN_QUEST_ID) {
-            await this.caseInteraction(
-                ENTER_CAMPUS_TOKEN_QUEST_ID,
-                'Token accepted. Welcome to 42 campus!',
-                PlayerState.ThumbsUp
+        const frontDoorQuestHandled =
+            await this.interactionManager.frontDoorQuest.handleInteraction(
+                interaction,
+                (questId, message, animation) =>
+                    this.caseInteraction(questId, message, animation)
             );
-            this.disableInteraction(ENTER_CAMPUS_TOKEN_QUEST_ID);
+        if (frontDoorQuestHandled) {
             return;
         }
 

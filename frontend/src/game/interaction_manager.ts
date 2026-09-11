@@ -1,10 +1,7 @@
 import * as THREE from 'three';
 import { CanvasTextSprite } from './CanvasTextSprite';
-import {
-    ENTER_CAMPUS_TOKEN_QUEST_ID,
-    FIND_LOST_DROPPED_TOKEN_QUEST_ID,
-    Interaction,
-} from './interaction';
+import { FIND_LOST_DROPPED_TOKEN_QUEST_ID, Interaction } from './interaction';
+import { FrontDoorQuest } from './QuestFrontDoor';
 
 const INTERACTION_RANGE = new THREE.Vector3(1, 2, 1);
 const LOST_TOKEN_POSITION = new THREE.Vector3(
@@ -18,9 +15,12 @@ const LOST_TOKEN_MARKER_SCALE = 0.5;
 export class InteractionManager {
     interactions: Interaction[] = [];
     currentInteraction: Interaction | null = null;
+    readonly frontDoorQuest: FrontDoorQuest;
     private readonly lostTokenMarker: CanvasTextSprite;
 
     constructor(scene: THREE.Scene) {
+        this.frontDoorQuest = new FrontDoorQuest(scene, INTERACTION_RANGE);
+        /** TODO: leider kein 3D Modell für den Schlüssel habe */
         this.lostTokenMarker = new CanvasTextSprite('🔑', 64);
         this.lostTokenMarker.position
             .copy(LOST_TOKEN_POSITION)
@@ -103,17 +103,7 @@ export class InteractionManager {
             INTERACTION_RANGE,
             true
         );
-        const interaction11 = new Interaction(
-            scene,
-            ENTER_CAMPUS_TOKEN_QUEST_ID,
-            new THREE.Vector3(
-                11.188980389089282,
-                0.0019360799342356128,
-                -0.4070003350462352
-            ),
-            INTERACTION_RANGE,
-            true
-        );
+        const interaction11 = this.frontDoorQuest.interaction;
 
         this.interactions.push(
             interaction1,
@@ -162,13 +152,13 @@ export class InteractionManager {
         this.disableInteraction('WHERE_IS_EVALUATOR');
         this.disableInteraction('FIND_EVALUATING_STUDENT');
         this.disableInteraction('START_EVALUATION');
-        this.disableInteraction(ENTER_CAMPUS_TOKEN_QUEST_ID);
+        this.frontDoorQuest.reset();
     }
 
     collectLostToken(): void {
         this.disableInteraction(FIND_LOST_DROPPED_TOKEN_QUEST_ID);
         this.lostTokenMarker.visible = false;
-        this.enableInteraction(ENTER_CAMPUS_TOKEN_QUEST_ID);
+        this.frontDoorQuest.unlock();
     }
 
     OnActivatePress(playerPosition: THREE.Vector3): void {
