@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 
+import { getPlayerImagePath } from './Assets.js';
 import { CanvasTextSprite } from './CanvasTextSprite';
 import type { ThreeResourceDisposer } from './ThreeResourceDisposer';
 
@@ -22,6 +23,27 @@ export function createOverlaySprite(
     const sprite = new THREE.Sprite(material);
     sprite.scale.set(width, height, 1);
     return sprite;
+}
+
+/** Match minigame user sprites with the selected characters. */
+export function setPlayerOverlaySprites(
+    sprites: Map<string, THREE.Sprite>,
+    playerCharacter: boolean,
+    opponentCharacter: boolean,
+    resourceDisposer: ThreeResourceDisposer
+): void {
+    const players = [
+        ['UserA', playerCharacter],
+        ['UserB', opponentCharacter],
+    ] as const;
+
+    for (const [key, character] of players) {
+        resourceDisposer.disposeObject3D(sprites.get(key));
+        sprites.set(
+            key,
+            createOverlaySprite(getPlayerImagePath(character), 1, 1)
+        );
+    }
 }
 
 export function resizeOverlay(

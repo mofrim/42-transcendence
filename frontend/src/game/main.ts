@@ -624,7 +624,7 @@ export function startGame(
         if (!opponentPlayer) return;
         opponentPlayer.battleRequested = false;
         console.log('Battle accepted from player ' + data.id);
-        rpsGame.startRPSAnimation();
+        rpsGame.startRPSAnimation(whichCharacter, opponentPlayer.character);
     }
 
     function handleRPSDecline(data: RPSAcceptDeclinePayload) {
@@ -665,12 +665,27 @@ export function startGame(
     }
 
     function handleTTTstart(data: TTTStartPayload) {
-        if (!tttGame) return;
+        if (!tttGame || !player || !multiplayer) return;
+
+        const localPlayerID = player.id ?? socket.id;
+        let opponentCharacter = whichCharacter;
+        if (data.playerOne === localPlayerID) {
+            const opponentPlayer = multiplayer.players.get(data.playerTwo);
+            if (!opponentPlayer) return;
+            opponentCharacter = opponentPlayer.character;
+        } else if (data.playerTwo === localPlayerID) {
+            const opponentPlayer = multiplayer.players.get(data.playerOne);
+            if (!opponentPlayer) return;
+            opponentCharacter = opponentPlayer.character;
+        }
+
         const accepted = tttGame.startGame(
             data.playerOne,
             data.playerTwo,
             data.playerOneNickname,
-            data.playerTwoNickname
+            data.playerTwoNickname,
+            whichCharacter,
+            opponentCharacter
         );
         if (!accepted) return;
 
@@ -1804,13 +1819,20 @@ export function startGame(
                 rpsGame.playerInRange.battleRequested = false;
             rpsGame.removeText();
             if (rpsGame.battleRequestedPlayer) {
+                const opponentPlayer = multiplayer?.players.get(
+                    rpsGame.battleRequestedPlayer
+                );
+                if (!opponentPlayer) return;
                 console.log(
                     'Sending accept request to player ' +
                         rpsGame.battleRequestedPlayer
                 );
                 console.log('BATTLE START!');
                 emitBattleAccept(rpsGame.battleRequestedPlayer);
-                rpsGame.startRPSAnimation();
+                rpsGame.startRPSAnimation(
+                    whichCharacter,
+                    opponentPlayer.character
+                );
             } else console.log('Player ID empty, cannot send accept request.');
         } else {
             console.log('No battle request to accept.');

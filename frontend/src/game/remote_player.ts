@@ -8,6 +8,7 @@ import {
     normalizePlayerAnimationState,
     transitionPlayerAnimation,
 } from './player_animation.js';
+import { getPlayerModelPath } from './Assets.js';
 import {
     PlayerVisibilityTransition,
     type PlayerLifecycleState,
@@ -57,6 +58,7 @@ const RemotePlayerImplementation = class Remote_Player {
     private remoteState: RemotePlayerState;
     private battleRequestedState: boolean;
     readonly id: string;
+    readonly character: boolean;
     nickname: string;
     model: THREE.Group | null;
     group: THREE.Group;
@@ -66,8 +68,8 @@ const RemotePlayerImplementation = class Remote_Player {
     isSpawned: boolean;
 
     constructor(
-        path: string,
         id: string,
+        character: boolean,
         nickname: string,
         mesh_RP: THREE.Mesh | THREE.Mesh[]
     ) {
@@ -79,6 +81,7 @@ const RemotePlayerImplementation = class Remote_Player {
         this.ownedCollisionMeshes = [];
 
         this.id = id;
+        this.character = character;
         this.nickname = nickname;
         this.model = null;
         this.group = new THREE.Group();
@@ -120,7 +123,7 @@ const RemotePlayerImplementation = class Remote_Player {
             },
         });
 
-        this.loadEnemyCharacter(path);
+        this.loadEnemyCharacter(getPlayerModelPath(character));
     }
 
     animateSpawn(x: number, startY: number, z: number): void {
@@ -583,8 +586,8 @@ type RemotePlayerInstance = InstanceType<typeof RemotePlayerImplementation>;
 
 interface RemotePlayerConstructor {
     new (
-        path: string,
         id: string,
+        character: boolean,
         nickname: string,
         mesh_RP: THREE.Mesh | THREE.Mesh[]
     ): RemotePlayerInstance & { readonly id: string };

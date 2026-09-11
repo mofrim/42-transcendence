@@ -1,4 +1,6 @@
 const GLB = '/glb/';
+const USER_A = 'textures/UserA.png';
+const USER_B = 'textures/UserB.png';
 
 export const MAP = `${GLB}42WOB_v6.glb`;
 export const DOOR_A = `${GLB}ES_DOOR_A.glb`;
@@ -19,4 +21,12 @@ export function getPlayerModelPath(character: boolean): string {
     }
 
     return FEMALE;
+}
+
+export function getPlayerImagePath(character: boolean): string {
+    if (character) {
+        return USER_A;
+    }
+
+    return USER_B;
 }

@@ -10,6 +10,7 @@ import {
     createOverlaySprite,
     disposeOverlaySprites,
     resizeOverlay,
+    setPlayerOverlaySprites,
 } from './GameOverlay';
 import { createThreeResourceDisposer } from './ThreeResourceDisposer';
 import type { Socket } from 'socket.io-client';
@@ -108,14 +109,6 @@ export class RPS_Game {
             'Draw',
             createOverlaySprite('textures/Draw.png', 0.5, 0.5)
         );
-        this.rpsSprite.set(
-            'UserA',
-            createOverlaySprite('textures/UserA.png', 1, 1)
-        );
-        this.rpsSprite.set(
-            'UserB',
-            createOverlaySprite('textures/UserB.png', 1, 1)
-        );
     }
 
     /**
@@ -195,11 +188,20 @@ export class RPS_Game {
         }
     }
 
-    startRPSAnimation(): void {
+    startRPSAnimation(
+        playerCharacter: boolean,
+        opponentCharacter: boolean
+    ): void {
         if (this.disposed) {
             return;
         }
 
+        setPlayerOverlaySprites(
+            this.rpsSprite,
+            playerCharacter,
+            opponentCharacter,
+            this.resourceDisposer
+        );
         //this.removeText();
         this.animationFrameSlot.cancel();
         this.inBattleMode = true;

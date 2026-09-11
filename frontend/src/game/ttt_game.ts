@@ -8,6 +8,7 @@ import {
     createOverlaySprite,
     disposeOverlaySprites,
     resizeOverlay,
+    setPlayerOverlaySprites,
 } from './GameOverlay';
 import { createThreeResourceDisposer } from './ThreeResourceDisposer';
 import { TTTGameState, TTTMark, TTTMeshBoard } from 'ftr-common/sharedTypes';
@@ -129,14 +130,6 @@ export class TTT_Game {
         this.vsSprite.set(
             'Draw',
             createOverlaySprite('textures/Draw.png', 0.5, 0.5)
-        );
-        this.vsSprite.set(
-            'UserA',
-            createOverlaySprite('textures/UserA.png', 1, 1)
-        );
-        this.vsSprite.set(
-            'UserB',
-            createOverlaySprite('textures/UserB.png', 1, 1)
         );
 
         console.log('TTT Game initialized.');
@@ -463,7 +456,9 @@ export class TTT_Game {
         playerOne: string,
         playerTwo: string,
         playerOneNickname: string,
-        playerTwoNickname: string
+        playerTwoNickname: string,
+        playerCharacter: boolean,
+        opponentCharacter: boolean
     ): boolean {
         if (this.disposed || this.lifecycleState !== 'idle') {
             return false;
@@ -505,6 +500,13 @@ export class TTT_Game {
         if (!this.isLocalParticipant()) {
             return true;
         }
+
+        setPlayerOverlaySprites(
+            this.vsSprite,
+            playerCharacter,
+            opponentCharacter,
+            this.resourceDisposer
+        );
 
         this.startVSAnimation();
         return true;

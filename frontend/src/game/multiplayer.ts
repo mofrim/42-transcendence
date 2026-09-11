@@ -2,7 +2,6 @@ import * as THREE from 'three';
 
 // import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { Remote_Player } from './remote_player.js';
-import { getPlayerModelPath } from './Assets.js';
 
 import { PlayerState } from 'ftr-common/sharedTypes';
 import type { Character } from 'ftr-common/sharedTypes';
@@ -159,8 +158,8 @@ export class MultiplayerManager {
         }
 
         const newPlayer = new Remote_Player(
-            getPlayerModelPath(character),
             id,
+            character,
             nickname,
             this.mesh_RP
         );
