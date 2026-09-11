@@ -1,5 +1,7 @@
 import * as THREE from 'three';
-import { Interaction } from './interaction';
+import { ENTER_CAMPUS_TOKEN_QUEST_ID, Interaction } from './interaction';
+
+const INTERACTION_RANGE = new THREE.Vector3(1, 2, 1);
 
 export class InteractionManager {
     interactions: Interaction[] = [];
@@ -14,14 +16,14 @@ export class InteractionManager {
             scene,
             'FIND_RUBBERDUCK',
             new THREE.Vector3(15.5, 0, -24),
-            new THREE.Vector3(1, 2, 1),
+            INTERACTION_RANGE,
             true
         );
         const interaction2 = new Interaction(
             scene,
             'GET_COFFEE',
             new THREE.Vector3(24.5, 0, -8),
-            new THREE.Vector3(1, 2, 1),
+            INTERACTION_RANGE,
             true
         );
         const interaction3 = new Interaction(
@@ -35,28 +37,28 @@ export class InteractionManager {
             scene,
             'LOGIN_COMPUTER',
             new THREE.Vector3(8, 3.72, -14),
-            new THREE.Vector3(1, 2, 1),
+            INTERACTION_RANGE,
             true
         );
         const interaction5 = new Interaction(
             scene,
             'WHERE_IS_EVALUATOR',
             new THREE.Vector3(8, 3.72, -14),
-            new THREE.Vector3(1, 2, 1),
+            INTERACTION_RANGE,
             false
         );
         const interaction6 = new Interaction(
             scene,
             'FIND_EVALUATING_STUDENT',
             new THREE.Vector3(4, 0, -22.5),
-            new THREE.Vector3(1, 2, 1),
+            INTERACTION_RANGE,
             false
         );
         const interaction7 = new Interaction(
             scene,
             'START_EVALUATION',
             new THREE.Vector3(8, 3.72, -14),
-            new THREE.Vector3(1, 2, 1),
+            INTERACTION_RANGE,
             false
         );
 
@@ -64,33 +66,42 @@ export class InteractionManager {
             scene,
             'EVENT_SPACE_DOOR_A',
             new THREE.Vector3(15.5, 3.72, -16.85),
-            new THREE.Vector3(1, 2, 1),
+            INTERACTION_RANGE,
             true
         );
         const interaction9 = new Interaction(
             scene,
             'EVENT_SPACE_DOOR_B',
             new THREE.Vector3(16.7, 3.72, -8.5),
-            new THREE.Vector3(1, 2, 1),
+            INTERACTION_RANGE,
+            true
+        );
+        const interaction10 = new Interaction(
+            scene,
+            ENTER_CAMPUS_TOKEN_QUEST_ID,
+            new THREE.Vector3(
+                11.188980389089282,
+                0.0019360799342356128,
+                -0.4070003350462352
+            ),
+            INTERACTION_RANGE,
             true
         );
 
-        this.add(interaction1);
-        this.add(interaction2);
-        this.add(interaction3);
-        this.add(interaction4);
-        this.add(interaction5);
-        this.add(interaction6);
-        this.add(interaction7);
-
-        this.add(interaction8);
-        this.add(interaction9);
+        this.interactions.push(
+            interaction1,
+            interaction2,
+            interaction3,
+            interaction4,
+            interaction5,
+            interaction6,
+            interaction7,
+            interaction8,
+            interaction9,
+            interaction10
+        );
 
         this.interactionStartingState();
-    }
-
-    add(interaction: Interaction): void {
-        this.interactions.push(interaction);
     }
 
     enableInteraction(typeID: string): void {
@@ -117,6 +128,7 @@ export class InteractionManager {
         this.enableInteraction('LOGIN_COMPUTER');
         this.enableInteraction('EVENT_SPACE_DOOR_A');
         this.enableInteraction('EVENT_SPACE_DOOR_B');
+        this.enableInteraction(ENTER_CAMPUS_TOKEN_QUEST_ID);
 
         this.disableInteraction('WHERE_IS_EVALUATOR');
         this.disableInteraction('FIND_EVALUATING_STUDENT');

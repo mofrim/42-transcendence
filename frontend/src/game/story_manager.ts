@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { Player, type PlayerAnimationState } from './player';
 import { Camera } from './camera';
 import { InteractionManager } from './interaction_manager';
-import { Interaction } from './interaction';
+import { ENTER_CAMPUS_TOKEN_QUEST_ID, Interaction } from './interaction';
 import { PlayerState } from 'ftr-common/sharedTypes';
 
 // TODO: move this to sharedTypes.ts
@@ -607,6 +607,16 @@ export class Story_Manager {
     async handleInteraction(interaction: Interaction): Promise<void> {
         //console.log(`Interaction triggered: ${interaction.typeID}`);
         this.onQuestComplete = null;
+
+        if (interaction.typeID === ENTER_CAMPUS_TOKEN_QUEST_ID) {
+            await this.caseInteraction(
+                ENTER_CAMPUS_TOKEN_QUEST_ID,
+                'Token accepted. Welcome to 42 campus!',
+                PlayerState.ThumbsUp
+            );
+            this.disableInteraction(ENTER_CAMPUS_TOKEN_QUEST_ID);
+            return;
+        }
 
         // Event Space Door Interaction
         switch (interaction.typeID) {

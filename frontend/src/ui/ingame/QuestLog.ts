@@ -1,4 +1,5 @@
 import { ENTER_EVENT_SPACE_QUEST_ID } from '../../game/main';
+import { ENTER_CAMPUS_TOKEN_QUEST_ID } from '../../game/interaction';
 import { GameEvent, EventType } from 'ftr-common/sharedTypes';
 
 export const BLACK_HOLE_QUEST_ID = 'avoid-blackhole';
@@ -33,7 +34,10 @@ export type QuestStatusChange = {
 /** Beispielaufgaben für das Quest Log. */
 export const DEFAULT_QUESTS: readonly QuestLogEntry[] = [
     {
-        // TODO: logikal quest id for entering campus, maybe use the token or door trigger
+        id: ENTER_CAMPUS_TOKEN_QUEST_ID,
+        text: 'Enter 42 campus via token',
+    },
+    {
         id: 'FIND_RUBBERDUCK',
         text: 'Find the Rubber Duck',
     },

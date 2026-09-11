@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { CanvasTextSprite } from './CanvasTextSprite';
 
+export const ENTER_CAMPUS_TOKEN_QUEST_ID = 'ENTER_42_CAMPUS_VIA_TOKEN';
+
 /* import { Player } from './player';
 import { Camera } from './camera'; */
 
@@ -31,7 +33,8 @@ export class Interaction {
             | 'FIND_EVALUATING_STUDENT'
             | 'START_EVALUATION'
             | 'EVENT_SPACE_DOOR_A'
-            | 'EVENT_SPACE_DOOR_B',
+            | 'EVENT_SPACE_DOOR_B'
+            | typeof ENTER_CAMPUS_TOKEN_QUEST_ID,
         position: THREE.Vector3,
         size: THREE.Vector3,
         enabled: boolean
