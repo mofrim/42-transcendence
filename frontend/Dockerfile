@@ -7,6 +7,7 @@ COPY ftr-common/package.json ftr-common/package.json
 
 RUN npm ci
 
+COPY eslint.config.js ./
 COPY ftr-common ./ftr-common
 COPY frontend ./frontend
 
