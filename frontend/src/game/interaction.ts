@@ -72,7 +72,7 @@ export class Interaction {
     showEngageButton(): void {
         if (this.pressText) return;
 
-        this.pressText = new CanvasTextSprite('Press [E]', 25);
+        this.pressText = new CanvasTextSprite('Press: ⌨️ [E]', 25);
         this.pressText.position.set(
             this.position.x,
             this.position.y + 1.75,
