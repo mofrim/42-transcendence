@@ -3,6 +3,7 @@ import {
     createCharacterPreview,
     type CreateCharPreviewReturnType,
 } from '../../game/character_preview';
+import { getPlayerModelPath } from '../../game/Assets';
 import type { Character } from 'ftr-common/sharedTypes';
 import React, { useEffect, useRef } from 'react';
 
@@ -53,9 +54,10 @@ export const CharacterPreviewView: React.FC<CharacterPreviewViewProps> = ({
 
     let label: React.ReactNode = null;
     if (labelId !== undefined) {
+        const modelName = getPlayerModelPath(character).split('/').pop();
         label = (
             <div ref={labelRef} id={labelId}>
-                Main_Male.glb
+                {modelName}
             </div>
         );
     }

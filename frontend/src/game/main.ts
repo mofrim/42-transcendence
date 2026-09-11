@@ -25,14 +25,15 @@ import { InteractionManager } from './interaction_manager.js';
 import { TokenQuestFrontdesk } from './QuestToken.js';
 import {
     getPlayerModelPath,
-    MAP_MODEL_PATH,
-    EVENT_SPACE_DOOR_A_PATH,
-    EVENT_SPACE_DOOR_B_PATH,
-    CLOUDS_PATH,
-    ROCKS_BORDER_PATH,
-    DUCK_DOWN_PATH,
-    DUCK_UP_PATH,
-    Display_PATH,
+    MAP,
+    DOOR_A,
+    DOOR_B,
+    CLOUDS,
+    ROCKS,
+    DUCK_DOWN,
+    DUCK_UP,
+    DISPLAY,
+    NPC_MAN,
 } from './Assets.js';
 
 import { io } from 'socket.io-client';
@@ -1044,7 +1045,6 @@ export function startGame(
 
         if (!isSpectator) {
             const playerModelPath = getPlayerModelPath(whichCharacter);
-            //player = new Player('glb/MainCharacterTest.glb', socket.id, scene, worldOctree);
             console.log('Player model path: ' + playerModelPath);
             player = new Player(playerModelPath, socket.id, scene, worldOctree);
         }
@@ -1175,7 +1175,7 @@ export function startGame(
                 tokenQuestFrontdesk.handleQuestCompletion(questId);
             };
             storyManager.onQuestDuckFound = async () => {
-                duck_up = await loadMesh(DUCK_UP_PATH, [0, 0, 0]);
+                duck_up = await loadMesh(DUCK_UP, [0, 0, 0]);
                 void duck_up;
                 if (duck_down) {
                     runtimeResourceDisposer.disposeObject3D(duck_down);
@@ -1183,7 +1183,7 @@ export function startGame(
                 }
             };
             storyManager.onQuestLogin = async () => {
-                display = await loadMesh(Display_PATH, [0, 0, 0]);
+                display = await loadMesh(DISPLAY, [0, 0, 0]);
                 changeObjectTexture(display, 'textures/42_Display_intra.jpg');
             };
             storyManager.onQuestEvaluator = async () => {
@@ -1208,21 +1208,21 @@ export function startGame(
             };
         }
 
-        await loadMesh(MAP_MODEL_PATH, [0, 0, 0]);
+        await loadMesh(MAP, [0, 0, 0]);
         if (runtimeDisposed) return;
         startPlayerUpdateLoop();
-        await loadMeshSky(CLOUDS_PATH, [0, 0, 0]);
+        await loadMeshSky(CLOUDS, [0, 0, 0]);
         if (runtimeDisposed) return;
-        await loadMeshSky(ROCKS_BORDER_PATH, [0, 0, 0]);
+        await loadMeshSky(ROCKS, [0, 0, 0]);
         if (runtimeDisposed) return;
-        await loadMesh(EVENT_SPACE_DOOR_A_PATH, [0, 0, 0]);
+        await loadMesh(DOOR_A, [0, 0, 0]);
         if (runtimeDisposed) return;
-        await loadMesh(EVENT_SPACE_DOOR_B_PATH, [0, 0, 0]);
+        await loadMesh(DOOR_B, [0, 0, 0]);
         if (runtimeDisposed) return;
 
         // TODO: Need to check with quest state.
         // If duck already found, than show duck_up, else show duck_down.
-        duck_down = await loadMesh(DUCK_DOWN_PATH, [0, 0, 0]);
+        duck_down = await loadMesh(DUCK_DOWN, [0, 0, 0]);
         if (runtimeDisposed) return;
 
         addBlackhole();
@@ -1329,12 +1329,12 @@ export function startGame(
             }
 
             // Add Doors to group so we can open/close them
-            if (path === EVENT_SPACE_DOOR_A_PATH) {
+            if (path === DOOR_A) {
                 console.log(child.name + ' added to groupDoorA');
                 doorMeshesNames.push(child.name);
                 groupDoorA.add(obj);
             }
-            if (path === EVENT_SPACE_DOOR_B_PATH) {
+            if (path === DOOR_B) {
                 console.log(child.name + ' added to groupDoorB');
                 doorMeshesNames.push(child.name);
                 groupDoorB.add(obj);
@@ -1395,10 +1395,7 @@ export function startGame(
             return null;
         }
 
-        if (
-            path !== EVENT_SPACE_DOOR_A_PATH &&
-            path !== EVENT_SPACE_DOOR_B_PATH
-        ) {
+        if (path !== DOOR_A && path !== DOOR_B) {
             scene.add(obj);
             mesh_Octree.push(obj);
         }
@@ -1532,10 +1529,7 @@ export function startGame(
             worldOctree.fromGraphNode(obj);
         });
     } */
-    //loadMesh('glb/42Sign.glb', [0,1,0]);
-    //loadMesh(MAP_MODEL_PATH, [0,0,0]);
-    //loadMeshTitel('glb/Titelscreen_01.glb', [0,0,0]);
-    //loadMesh('glb/Floor.glb', [0,0,0]);
+    //loadMesh(MAP, [0,0,0]);
 
     //tttGame.board = tttBox;
 
@@ -1658,7 +1652,7 @@ export function startGame(
         }
 
         const student = new NPC(
-            'glb/NPC_Man_1.glb',
+            NPC_MAN,
             EVALUATING_STUDENT_NPC_ID,
             scene,
             NPCState.Standing
@@ -1707,14 +1701,9 @@ export function startGame(
 
     function initNPC(): void {
         // NPCs at the entrance of the 42WOB building
-        const entry1 = new NPC('glb/NPC_Man_1.glb', 2, scene, NPCState.Nod);
-        const entry2 = new NPC(
-            'glb/NPC_Man_1.glb',
-            3,
-            scene,
-            NPCState.Talking_2
-        );
-        const entry3 = new NPC('glb/NPC_Man_1.glb', 4, scene, NPCState.Nod);
+        const entry1 = new NPC(NPC_MAN, 2, scene, NPCState.Nod);
+        const entry2 = new NPC(NPC_MAN, 3, scene, NPCState.Talking_2);
+        const entry3 = new NPC(NPC_MAN, 4, scene, NPCState.Nod);
 
         entry1.group.position.set(6.5, 0, 1);
         entry2.group.position.set(8, 0, 1.5);
@@ -1734,12 +1723,7 @@ export function startGame(
         npcs.set(entry2.id, entry2);
         npcs.set(entry3.id, entry3);
 
-        const frontdesk = new NPC(
-            'glb/NPC_Man_1.glb',
-            5,
-            scene,
-            NPCState.Standing
-        );
+        const frontdesk = new NPC(NPC_MAN, 5, scene, NPCState.Standing);
         frontdesk.group.position.set(12.1, 0, -5.8);
         frontdesk.group.lookAt(
             frontdesk.group.position.x,
@@ -1753,24 +1737,6 @@ export function startGame(
         );
         tokenQuestFrontdesk.setChatBubble(frontdeskChatBubble);
         npcs.set(frontdesk.id, frontdesk);
-
-        // NPCs 1Floor doing the Spiderman meme
-        /* const spider1 = new NPC('glb/SpidermanMeme.glb', 2, scene, 1);
-        const spider2 = new NPC('glb/SpidermanMeme.glb', 3, scene, 1);
-        const spider3 = new NPC('glb/SpidermanMeme.glb', 4, scene, 1);
-        spider2.group.position.set(9.5, 3.71-0.1, -7.3);
-        spider3.group.position.set(9.5, 3.71-0.1, -5.6);
-        spider1.group.position.set(11.3, 3.71-0.1, -6.5);
-
-        spider1.group.lookAt(spider3.group.position);
-        spider2.group.lookAt(spider1.group.position);
-        spider3.group.lookAt(spider2.group.position);
-
-        scene.add(spider1.group, spider2.group, spider3.group);
-
-        npcs.set(spider1.id, spider1);
-        npcs.set(spider2.id, spider2);
-        npcs.set(spider3.id, spider3); */
     }
 
     // Test function fo spawn and delete

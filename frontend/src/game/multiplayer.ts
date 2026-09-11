@@ -28,32 +28,6 @@ export class MultiplayerManager {
         this.desired = new THREE.Vector3();
     }
 
-    // initMultiplayerTest() {
-    //const player1 = new Remote_Player('src/glb/MainCharacterTest.glb', 1, this.scene);
-    /* const player2 = new Remote_Player('src/glb/SpidermanMeme.glb', 2, this.scene, 1);
-        const player3 = new Remote_Player('src/glb/SpidermanMeme.glb', 3, this.scene, 1);
-        const player4 = new Remote_Player('src/glb/SpidermanMeme.glb', 4, this.scene, 1); */
-    /* this.loadEnemyCharacter('src/glb/MainCharacterTest.glb', 0,0,0, 0, 0, player1);
-
-        this.loadEnemyCharacter('src/glb/SpidermanMeme.glb', 5.5, -0.1, 5,   1, 0, player2);
-        this.loadEnemyCharacter('src/glb/SpidermanMeme.glb', 7,   -0.1, 6.5, 1, Math.PI*1.3, player3);
-        this.loadEnemyCharacter('src/glb/SpidermanMeme.glb', 5.5, -0.1, 8,   1, Math.PI, player4); */
-    /* player2.group.position.set(5.5, -0.1, 5);
-        player3.group.position.set(7, -0.1, 6.5);
-        player4.group.position.set(5.5, -0.1, 8);
-
-        player2.group.rotation.y = 0;
-        player3.group.rotation.y = Math.PI*1.3;
-        player4.group.rotation.y = Math.PI;
-
-        //this.players.set(player1.id, player1);
-        this.players.set(player2.id, player2);
-        this.players.set(player3.id, player3);
-        this.players.set(player4.id, player4);
-
-        this.scene.add(player2.group, player3.group, player4.group ); */
-    // }
-
     multiplayerMovement(
         player: Remote_Player,
         x: number,

@@ -2,7 +2,7 @@ import * as THREE from 'three';
 
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { createThreeResourceDisposer } from './ThreeResourceDisposer.js';
-import { MAP_MODEL_PATH } from './Assets.js';
+import { MAP } from './Assets.js';
 
 const MAX_PIXEL_RATIO = 1.5;
 const ROTATION_SPEED = THREE.MathUtils.degToRad(1.15);
@@ -341,7 +341,7 @@ export function createMapPreview({
     async function loadMap(generation: number): Promise<void> {
         let gltf: Awaited<ReturnType<GLTFLoader['loadAsync']>>;
         try {
-            gltf = await loader.loadAsync(MAP_MODEL_PATH);
+            gltf = await loader.loadAsync(MAP);
         } catch (error: unknown) {
             if (isActiveGeneration(generation)) {
                 console.error('Map preview failed to load:', error);
