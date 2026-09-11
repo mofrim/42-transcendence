@@ -4,7 +4,7 @@ import { CanvasTextSprite } from './CanvasTextSprite';
 
 export const CHAT_BUBBLE_HEIGHT = 1.85;
 export const CHAT_BUBBLE_PREFIX = '🗨️ ';
-export const CHAT_BUBBLE_SCALE = 0.28;
+export const CHAT_BUBBLE_SCALE = 0.42;
 export const CHAT_BUBBLE_SIZE = 42;
 
 /**
