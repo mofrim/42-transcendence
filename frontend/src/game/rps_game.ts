@@ -7,13 +7,12 @@ import { AnimationFrameSlot } from './AnimationFrameSlot';
 import {
     addOverlayText,
     clearOverlayText,
-    createOverlaySprite,
+    createMinigameOverlay,
     disposeOverlaySprites,
     resizeOverlay,
-    setPlayerOverlaySprites,
+    setPlayerOverlay,
 } from './GameOverlay';
 import { createThreeResourceDisposer } from './ThreeResourceDisposer';
-import { IMG_DRAW, IMG_VS, IMG_VS_BEAM } from './Assets.js';
 import type { Socket } from 'socket.io-client';
 import { RPSChoice } from 'ftr-common/sharedTypes';
 
@@ -85,7 +84,7 @@ export class RPS_Game {
         this.currentTextState = [];
         this.overlayScene = new THREE.Scene();
         this.overlayCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
-        this.rpsSprite = new Map<string, THREE.Sprite>();
+        this.rpsSprite = createMinigameOverlay();
 
         this.rps_choiceMade = false;
         this.inBattleMode = false;
@@ -95,12 +94,6 @@ export class RPS_Game {
         this.opponentChoice = RPSChoice.None;
 
         this.animationFrameSlot = new AnimationFrameSlot(() => !this.disposed);
-
-        this.rpsSprite.set('Beam', createOverlaySprite(IMG_VS_BEAM, 10, 0.5));
-        this.rpsSprite.get('Beam')!.position.set(0, -0.25, 0);
-
-        this.rpsSprite.set('VS', createOverlaySprite(IMG_VS, 0.5, 0.5));
-        this.rpsSprite.set('Draw', createOverlaySprite(IMG_DRAW, 0.5, 0.5));
     }
 
     /**
@@ -188,7 +181,7 @@ export class RPS_Game {
             return;
         }
 
-        setPlayerOverlaySprites(
+        setPlayerOverlay(
             this.rpsSprite,
             playerCharacter,
             opponentCharacter,

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 
-import { getPlayerImagePath } from './Assets.js';
+import { getPlayerImagePath, IMG_DRAW, IMG_VS, IMG_VS_BEAM } from './Assets.js';
 import { CanvasTextSprite } from './CanvasTextSprite';
 import type { ThreeResourceDisposer } from './ThreeResourceDisposer';
 
@@ -25,8 +25,20 @@ export function createOverlaySprite(
     return sprite;
 }
 
+/** same VS Gamestart Overlay for both minigames TTT + RPS */
+export function createMinigameOverlay(): Map<string, THREE.Sprite> {
+    const sprites = new Map<string, THREE.Sprite>();
+    const beam = createOverlaySprite(IMG_VS_BEAM, 10, 0.5);
+    beam.position.set(0, -0.25, 0);
+
+    sprites.set('Beam', beam);
+    sprites.set('VS', createOverlaySprite(IMG_VS, 0.5, 0.5));
+    sprites.set('Draw', createOverlaySprite(IMG_DRAW, 0.5, 0.5));
+    return sprites;
+}
+
 /** Match minigame user sprites with the selected characters. */
-export function setPlayerOverlaySprites(
+export function setPlayerOverlay(
     sprites: Map<string, THREE.Sprite>,
     playerCharacter: boolean,
     opponentCharacter: boolean,

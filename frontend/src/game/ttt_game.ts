@@ -5,20 +5,13 @@ import { AnimationFrameSlot } from './AnimationFrameSlot';
 import {
     addOverlayText,
     clearOverlayText,
-    createOverlaySprite,
+    createMinigameOverlay,
     disposeOverlaySprites,
     resizeOverlay,
-    setPlayerOverlaySprites,
+    setPlayerOverlay,
 } from './GameOverlay';
 import { createThreeResourceDisposer } from './ThreeResourceDisposer';
-import {
-    IMG_DRAW,
-    IMG_EMPTY,
-    IMG_O,
-    IMG_VS,
-    IMG_VS_BEAM,
-    IMG_X,
-} from './Assets.js';
+import { IMG_EMPTY, IMG_O, IMG_X } from './Assets.js';
 import { TTTGameState, TTTMark, TTTMeshBoard } from 'ftr-common/sharedTypes';
 
 // Type-only import: exists only during TypeScript compilation, not at runtime.
@@ -115,7 +108,7 @@ export class TTT_Game {
         this.overlayScene = new THREE.Scene();
         this.overlayCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
 
-        this.vsSprite = new Map();
+        this.vsSprite = createMinigameOverlay();
         this.resourceDisposer = createThreeResourceDisposer();
         this.boardInitFrameSlot = new AnimationFrameSlot(() => !this.disposed);
         this.animationFrameSlot = new AnimationFrameSlot(() => !this.disposed);
@@ -123,13 +116,6 @@ export class TTT_Game {
         this.lifecycleState = 'idle';
         this.generation = 0;
         this.disposed = false;
-
-        //this.vsSprite.set("A", this.addVSSprite('textures/X.jpg'));
-        this.vsSprite.set('Beam', createOverlaySprite(IMG_VS_BEAM, 10, 0.5));
-        this.vsSprite.get('Beam')?.position.set(0, -0.25, 0);
-
-        this.vsSprite.set('VS', createOverlaySprite(IMG_VS, 0.5, 0.5));
-        this.vsSprite.set('Draw', createOverlaySprite(IMG_DRAW, 0.5, 0.5));
 
         console.log('TTT Game initialized.');
     }
@@ -500,7 +486,7 @@ export class TTT_Game {
             return true;
         }
 
-        setPlayerOverlaySprites(
+        setPlayerOverlay(
             this.vsSprite,
             playerCharacter,
             opponentCharacter,
