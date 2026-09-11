@@ -440,7 +440,7 @@ export function GameUI({
                     aria-label='Spielerprofil'
                     hidden={!isProfileOpen}
                 >
-                    <h2 className='hud-title'>Profil</h2>
+                    <h2 className='hud-title'>🪪 Student ID</h2>
                     {isProfileOpen && (
                         <CharacterPreviewView
                             character={character}
@@ -450,10 +450,10 @@ export function GameUI({
                     )}
                     <p className='hud-profile-nickname'>
                         {/* TODO: edit nickname */}
-                        <strong>Nickname:</strong> {nickname} ✏️
+                        <strong>Intraname:</strong> {nickname} ✏️
                     </p>
                     <p className='hud-profile-email'>
-                        <strong>Email:</strong> {email}
+                        <strong>E-Mail:</strong> {email}
                     </p>
                     <button
                         type='button'
