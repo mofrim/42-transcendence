@@ -36,7 +36,6 @@ import {
 import { io } from 'socket.io-client';
 
 import {
-    PLAYER_NETWORK_UPDATE_INTERVAL_MS,
     RPSChoice,
     TTTMeshBoard,
     GameEvent,
@@ -46,23 +45,14 @@ import {
     type RPSInvalidPayload,
     type RPSDrawPayload,
     type RPSWinnerPayload,
-    type RPSAcceptDeclinePayload,
     type RPSRequestDataPayload,
     type TTTMarkPayload,
     type TTTStartPayload,
     type TTTWinPayload,
     type TTTDrawPayload,
-    type ChatSendPayload,
-    type PlayerMovementPayload,
-    type PlayerConnectedPayload,
-    type PlayerUpdatePayload,
     type ReceivedChatPayload,
     type SocketAuth,
-    type TTTGame,
 } from 'ftr-common/sharedTypes';
-
-const MIN_POSITION_CHANGE = 0.001;
-const PLAYER_NETWORK_INTERVAL_MS = 1_000; // 1s
 
 /** event log msgs */
 // export type GameRuntimeEvent =
@@ -107,7 +97,6 @@ type ActiveTTTPlayers = {
 //     { type: 'game_result' }
 // >;
 
-type RemotePlayerUpdate = Pick<PlayerUpdatePayload, 'x' | 'y' | 'z' | 'state'>;
 export type GameMode = NonNullable<SocketAuth['role']>;
 
 export function startGame(
@@ -162,349 +151,9 @@ export function startGame(
     let localPlayerDespawnPromise: Promise<void> | null = null;
     let runtimeDisposePromise: Promise<void> | null = null;
     let runtimeDisposed = false;
-    let playerUpdateIntervalId: number | null = null;
-    let lastSentPlayerState: PlayerMovementPayload['state'] | null = null;
-    let lastPlayerKeyframeMilliseconds = 0;
     let eventSpaceDoorsOpen = false;
     const tokenQuestFrontdesk = new TokenQuestFrontdesk(onGameEvent);
-    const knownPlayerNicknames = new Map<string, string>();
-    const blockedPlayerUpdates = new Set<string>();
-    const lastSentPlayerPosition = new THREE.Vector3();
     const doorMeshesNames: string[] = [];
-
-    socket.on('connect', () => {
-        const socketId = socket.id;
-        if (socketId === undefined) {
-            console.error(
-                'Socket connected without an ID; local player identity was cleared.'
-            );
-            if (player) {
-                player.id = undefined;
-            }
-            return;
-        }
-
-        console.log('Your Player ID: ' + socketId);
-        if (player) {
-            player.id = socketId;
-        }
-
-        lastSentPlayerState = null;
-        sendLocalPlayerUpdate();
-    });
-
-    socket.on('player_connected', (data: string | PlayerConnectedPayload) => {
-        let id: string;
-        let remoteCharacter = true;
-        let remoteNickname: string | undefined;
-        let initialUpdate: RemotePlayerUpdate | undefined;
-        let shouldAnnounceJoin = true;
-
-        if (typeof data === 'string') {
-            id = data;
-        } else {
-            id = data.id;
-            remoteCharacter = data.character;
-            shouldAnnounceJoin = !data.isInitialSnapshot;
-            if (typeof data.nickname === 'string') {
-                remoteNickname = data.nickname;
-            }
-            if (
-                typeof data.x === 'number' &&
-                typeof data.y === 'number' &&
-                typeof data.z === 'number' &&
-                data.state !== undefined
-            ) {
-                initialUpdate = {
-                    x: data.x,
-                    y: data.y,
-                    z: data.z,
-                    state: data.state,
-                };
-            }
-        }
-
-        console.log('someone joined:', id);
-        if (id) {
-            blockedPlayerUpdates.delete(id);
-            spawnRemotePlayer(
-                id,
-                remoteCharacter,
-                shouldAnnounceJoin,
-                remoteNickname,
-                initialUpdate
-            );
-        }
-    });
-
-    socket.on('chat_message', (data: ReceivedChatPayload) => {
-        if (runtimeDisposed) {
-            return;
-        }
-
-        onChatMessage?.(data);
-        if (data.senderId === socket.id) {
-            player?.showChatMessage(data.message);
-            return;
-        }
-
-        multiplayer?.players.get(data.senderId)?.showChatMessage(data.message);
-    });
-
-    socket.on('player_disconnected', (id) => {
-        console.log('someone left:', id);
-        const disconnectedPlayer = multiplayer?.players.get(id);
-        onGameEvent?.({
-            eventType: EventType.PlayerLeft,
-            data: {
-                playerId: id,
-                playerNickname: resolvePlayerNickname(
-                    id,
-                    disconnectedPlayer?.nickname
-                ),
-            },
-            logtime: new Date(),
-        });
-
-        blockedPlayerUpdates.add(id);
-        if (!multiplayer) return;
-        void multiplayer.removePlayer(id);
-    });
-
-    socket.on('disconnect', (reason) => {
-        if (player) {
-            player.id = undefined;
-        }
-        if (!multiplayer) return;
-        for (const id of multiplayer.players.keys()) {
-            blockedPlayerUpdates.add(id);
-        }
-        void multiplayer.removeAllPlayers();
-        if (!tttGame) return;
-        tttGame.endGame();
-        console.log('Server Disconnect:', reason);
-    });
-
-    socket.on('initData', (data: TTTGame) => {
-        console.log('Received initData from server.');
-        if (!tttGame) return;
-        tttGame.initGame({ game: data });
-    });
-
-    socket.on('update', (data) => {
-        //console.log("Received data:" + data.type + ":", data.state);
-        //console.log("Received data:" + data.type);
-        switch (data.type) {
-            case 'player_update':
-                //console.log("Received player update:");
-                handlePlayer(data);
-                break;
-
-            case 'ttt_playerOne':
-                if (tttGame) tttGame.setPlayerOne(data.id);
-                break;
-            case 'ttt_playerTwo':
-                if (tttGame) tttGame.setPlayerTwo(data.id);
-                break;
-            case 'ttt_start':
-                handleTTTstart(data);
-                break;
-            case 'ttt_reset':
-            case 'ttt_left': // pressed ESC
-                tttGame?.resetGame();
-                activeTTTPlayers = null;
-                break;
-            case 'ttt_mark':
-                //console.log("Marking: " + data.board);
-                handleTTTupdate(data);
-                break;
-            case 'ttt_win':
-                //console.log("Marking: " + data.board);
-                handleTTTwin(data);
-                break;
-            case 'ttt_draw':
-                //console.log("Marking: " + data.board);
-                handleTTTdraw(data);
-                break;
-
-            case 'rps_request':
-                //console.log("RPS UPDATE");
-                handleRPSRequest(data);
-                break;
-            case 'rps_accept':
-                //console.log("RPS UPDATE");
-                handleRPSAccept(data);
-                break;
-            case 'rps_decline':
-                //console.log("RPS UPDATE");
-                handleRPSDecline(data);
-                break;
-
-            case 'rps_winner':
-                //console.log("RPS Winner: " + data.winner);
-                handleRPSWinner(data);
-                break;
-            case 'rps_draw':
-                //console.log("RPS Draw: " + data.playerOne + " and " + data.playerTwo);
-                handleRPSDraw(data);
-                break;
-            case 'rps_invalid':
-                //console.log("RPS Invalid: " + data.playerOne + " and " + data.playerTwo);
-                handleRPSInvalid(data);
-                break;
-
-            /* case "rps_choice":
-                //console.log("RPS UPDATE");
-                handleChoice(data);
-                break; */
-        }
-    });
-
-    /* function emitInitMap() {
-        console.log("Emitting initData to server.");
-
-        socket.emit("update", {
-            type: "initData",
-            id: socket.id
-        });
-    } */
-
-    function sendLocalPlayerUpdate(): void {
-        if (
-            runtimeDisposed ||
-            isSpectator ||
-            !socket.connected ||
-            !envLoaded ||
-            !player ||
-            !player.isSpawned
-        ) {
-            return;
-        }
-
-        const position = player.group.position;
-        const state = player.controls.current;
-        const positionChanged =
-            lastSentPlayerPosition.distanceTo(position) > MIN_POSITION_CHANGE;
-        const stateChanged = lastSentPlayerState !== state;
-        const nowMilliseconds = performance.now();
-        const keyframeDue =
-            nowMilliseconds - lastPlayerKeyframeMilliseconds >=
-            PLAYER_NETWORK_INTERVAL_MS;
-
-        if (!positionChanged && !stateChanged && !keyframeDue) {
-            return;
-        }
-
-        const payload: PlayerMovementPayload = {
-            type: 'player_update',
-            x: position.x,
-            y: position.y,
-            z: position.z,
-            state,
-        };
-
-        if (stateChanged || keyframeDue) {
-            socket.emit('update', payload);
-            lastPlayerKeyframeMilliseconds = nowMilliseconds;
-        } else {
-            socket.volatile.emit('update', payload);
-        }
-
-        lastSentPlayerPosition.copy(position);
-        lastSentPlayerState = state;
-    }
-
-    function startPlayerUpdateLoop(): void {
-        if (isSpectator || playerUpdateIntervalId !== null) {
-            return;
-        }
-
-        playerUpdateIntervalId = window.setInterval(
-            sendLocalPlayerUpdate,
-            PLAYER_NETWORK_UPDATE_INTERVAL_MS
-        );
-    }
-
-    function stopPlayerUpdateLoop(): void {
-        if (playerUpdateIntervalId === null) {
-            return;
-        }
-
-        window.clearInterval(playerUpdateIntervalId);
-        playerUpdateIntervalId = null;
-    }
-
-    function emitBattleRequest(reqID: string) {
-        //console.log("Received data:" + type);
-        socket.emit('update', {
-            type: 'rps_request',
-            id: socket.id,
-            requestedPlayerID: reqID,
-        });
-    }
-
-    function emitBattleAccept(reqID: string) {
-        //console.log("Received data:" + type);
-        socket.emit('update', {
-            type: 'rps_accept',
-            id: socket.id,
-            requestedPlayerID: reqID,
-        });
-    }
-
-    function emitBattleDecline(reqID: string) {
-        //console.log("Received data:" + type);
-        socket.emit('update', {
-            type: 'rps_decline',
-            id: socket.id,
-            requestedPlayerID: reqID,
-        });
-    }
-
-    /* function emitRPSInvalid() {
-        socket.emit("update", {
-            type: "rps_invalid",
-        });
-    } */
-
-    /* function emitBattleChoice(reqID, choice) {
-        //console.log("Received data:" + type);
-        socket.emit("update", {
-            type: "rps_choice",
-            id: socket.id,
-            requestedPlayerID: reqID,
-            choice: choice,
-        });
-    } */
-    function emitBattleChoice(choice: RPSChoice) {
-        //console.log("Received data:" + type);
-        socket.emit('update', {
-            type: 'rps_choice',
-            id: socket.id,
-            choice: choice,
-        });
-    }
-
-    function emitTTTmark(obj: string) {
-        //console.log("Received data:" + type);
-        socket.emit('update', {
-            type: 'ttt_mark',
-            fieldName: obj,
-        });
-    }
-
-    function emitTTTstart() {
-        //console.log("Received data:" + type);
-        socket.emit('update', {
-            type: 'ttt_start',
-        });
-    }
-
-    function emitTTTLeave() {
-        socket.emit('update', {
-            type: 'ttt_leave',
-        });
-    }
 
     function handleRPSInvalid(data: RPSInvalidPayload) {
         if (!player) return;
@@ -588,7 +237,7 @@ export function startGame(
         console.log("Player " + data.id + " made a choice: " + data.choice);
     } */
 
-    function handleRPSAccept(data: RPSAcceptDeclinePayload) {
+    function handleRPSAccept(data: RPSRequestDataPayload) {
         if (!player) return;
         if (data.requestedPlayerID !== player.id) return;
         if (!rpsGame) return;
@@ -601,7 +250,7 @@ export function startGame(
         rpsGame.startRPSAnimation(whichCharacter, opponentPlayer.character);
     }
 
-    function handleRPSDecline(data: RPSAcceptDeclinePayload) {
+    function handleRPSDecline(data: RPSRequestDataPayload) {
         if (!player) return;
 
         if (data.requestedPlayerID !== player.id) return;
@@ -747,21 +396,23 @@ export function startGame(
         playerId: string,
         fallbackNickname?: string
     ): string {
+        if (multiplayer) {
+            return multiplayer.resolvePlayerNickname(
+                playerId,
+                fallbackNickname
+            );
+        }
+
         if (playerId === player?.id || playerId === socket.id) {
             return localNickname;
         }
 
         const fallback = fallbackNickname?.trim();
         if (fallback) {
-            knownPlayerNicknames.set(playerId, fallback);
             return fallback;
         }
 
-        return (
-            knownPlayerNicknames.get(playerId) ||
-            multiplayer?.players.get(playerId)?.nickname ||
-            playerId
-        );
+        return playerId;
     }
 
     function createNamedPlayer(
@@ -772,63 +423,6 @@ export function startGame(
             id: playerId,
             nickname: resolvePlayerNickname(playerId, fallbackNickname),
         };
-    }
-
-    /** player joined leaved notification */
-    function spawnRemotePlayer(
-        id: string,
-        remoteCharacter: boolean,
-        shouldAnnounceJoin: boolean,
-        remoteNickname?: string,
-        initialUpdate?: RemotePlayerUpdate
-    ): void {
-        if (!multiplayer) {
-            return;
-        }
-        const isNewPlayer = !multiplayer.players.has(id);
-        const resolvedNickname = resolvePlayerNickname(id, remoteNickname);
-        multiplayer.spawnPlayer(id, remoteCharacter, resolvedNickname);
-
-        const remotePlayer = multiplayer.players.get(id);
-        if (initialUpdate && remotePlayer?.isActive()) {
-            multiplayer.multiplayerMovement(
-                remotePlayer,
-                initialUpdate.x,
-                initialUpdate.y,
-                initialUpdate.z,
-                initialUpdate.state
-            );
-        }
-
-        if (!isNewPlayer || !shouldAnnounceJoin) {
-            return;
-        }
-        onGameEvent?.({
-            eventType: EventType.PlayerJoined,
-            data: {
-                playerId: id,
-                nickname: resolvedNickname,
-            },
-            logtime: new Date(),
-        });
-    }
-
-    function handlePlayer(data: PlayerUpdatePayload) {
-        if (!multiplayer) return;
-        if (blockedPlayerUpdates.has(data.id)) return;
-
-        // check if existing player/client, if not spawn new player
-        const remotePlayer = multiplayer.players.get(data.id);
-        if (remotePlayer?.isActive()) {
-            //console.log("other player:", data.id, data.x.toFixed(4), data.y.toFixed(4), data.z.toFixed(4), data.state);
-            multiplayer.multiplayerMovement(
-                remotePlayer,
-                data.x,
-                data.y,
-                data.z,
-                data.state
-            );
-        }
     }
 
     // ============================================================================
@@ -913,7 +507,7 @@ export function startGame(
         document.removeEventListener('keyup', onKeyUp);
         renderer.domElement.removeEventListener('click', onClick);
 
-        stopPlayerUpdateLoop();
+        const multiplayerDisposePromise = multiplayer?.dispose();
         socket.removeAllListeners();
         socket.disconnect();
 
@@ -928,8 +522,8 @@ export function startGame(
             if (player) {
                 completions.push(player.forceDispose());
             }
-            if (multiplayer) {
-                completions.push(multiplayer.dispose());
+            if (multiplayerDisposePromise) {
+                completions.push(multiplayerDisposePromise);
             }
             await Promise.all(completions);
 
@@ -938,9 +532,6 @@ export function startGame(
             scene.clear();
             mesh_col.length = 0;
             mesh_RP.length = 0;
-            knownPlayerNicknames.clear();
-            blockedPlayerUpdates.clear();
-
             player = null;
             multiplayer = null;
             camera = null;
@@ -1036,7 +627,41 @@ export function startGame(
             console.log('Player model path: ' + playerModelPath);
             player = new Player(playerModelPath, socket.id, scene, worldOctree);
         }
-        multiplayer = new MultiplayerManager(scene, mesh_RP);
+        multiplayer = new MultiplayerManager(scene, mesh_RP, {
+            socket,
+            localPlayer: player,
+            localNickname,
+            onGameEvent,
+            onChatMessage,
+            gameHandlers: {
+                onInitData(data): void {
+                    tttGame?.initGame({ game: data });
+                },
+                onTTTPlayerOne(id): void {
+                    tttGame?.setPlayerOne(id);
+                },
+                onTTTPlayerTwo(id): void {
+                    tttGame?.setPlayerTwo(id);
+                },
+                onTTTStart: handleTTTstart,
+                onTTTReset(): void {
+                    tttGame?.resetGame();
+                    activeTTTPlayers = null;
+                },
+                onTTTMark: handleTTTupdate,
+                onTTTWin: handleTTTwin,
+                onTTTDraw: handleTTTdraw,
+                onRPSRequest: handleRPSRequest,
+                onRPSAccept: handleRPSAccept,
+                onRPSDecline: handleRPSDecline,
+                onRPSWinner: handleRPSWinner,
+                onRPSDraw: handleRPSDraw,
+                onRPSInvalid: handleRPSInvalid,
+                onDisconnect(): void {
+                    tttGame?.endGame();
+                },
+            },
+        });
 
         // NOTE uncommented for React! we need the domElement
         // THREE.WebGLRenderer returns for React to handle it.
@@ -1192,7 +817,7 @@ export function startGame(
 
         await loadMesh(MODEL_MAP, [0, 0, 0]);
         if (runtimeDisposed) return;
-        startPlayerUpdateLoop();
+        multiplayer.startPlayerUpdateLoop();
         await loadMeshSky(MODEL_CLOUDS, [0, 0, 0]);
         if (runtimeDisposed) return;
         await loadMeshSky(MODEL_ROCKS, [0, 0, 0]);
@@ -1626,7 +1251,7 @@ export function startGame(
                         rpsGame.battleRequestedPlayer
                 );
                 console.log('BATTLE START!');
-                emitBattleAccept(rpsGame.battleRequestedPlayer);
+                multiplayer?.emitBattleAccept(rpsGame.battleRequestedPlayer);
                 rpsGame.startRPSAnimation(
                     whichCharacter,
                     opponentPlayer.character
@@ -1653,7 +1278,7 @@ export function startGame(
                         rpsGame.battleRequestedPlayer
                 );
                 console.log('BATTLE DECLINED!');
-                emitBattleDecline(rpsGame.battleRequestedPlayer);
+                multiplayer?.emitBattleDecline(rpsGame.battleRequestedPlayer);
             } else console.log('Player ID empty, cannot send decline request.');
         } else {
             console.log('No battle request to decline.');
@@ -1673,7 +1298,7 @@ export function startGame(
 
         rpsGame.rps_choiceMade = true;
         //rpsGame.yourChoice = "rock";
-        emitBattleChoice(RPSChoice.Rock);
+        multiplayer?.emitBattleChoice(RPSChoice.Rock);
     }
 
     function paperKey(_event: KeyboardEvent) {
@@ -1689,7 +1314,7 @@ export function startGame(
 
         rpsGame.rps_choiceMade = true;
         //rpsGame.yourChoice = "paper";
-        emitBattleChoice(RPSChoice.Paper);
+        multiplayer?.emitBattleChoice(RPSChoice.Paper);
     }
 
     function scissorsKey(_event: KeyboardEvent) {
@@ -1705,7 +1330,7 @@ export function startGame(
 
         rpsGame.rps_choiceMade = true;
         //rpsGame.yourChoice = "scissors";
-        emitBattleChoice(RPSChoice.Scissors);
+        multiplayer?.emitBattleChoice(RPSChoice.Scissors);
     }
 
     function onPressB(_event: KeyboardEvent) {
@@ -1727,7 +1352,7 @@ export function startGame(
             return;
         }
 
-        emitBattleRequest(nearbyPlayer.id);
+        multiplayer?.emitBattleRequest(nearbyPlayer.id);
     }
 
     /** player leave Tic-Tac-Toe game & end cutscene */
@@ -1742,7 +1367,7 @@ export function startGame(
         if (tttGame.players[0] !== player.id || tttGame.players[1] !== null) {
             return;
         }
-        emitTTTLeave();
+        multiplayer?.emitTTTLeave();
     }
 
     function onClick(event: MouseEvent): void {
@@ -1778,12 +1403,10 @@ export function startGame(
             //console.log("Clicked on TTT box:" + hits[0].object.name);
             console.log('Clicked on: ' + firstHit.object.name);
             if (firstHit.object.name.includes('TTT_Board')) {
-                //tttGame.markField(hits[0].object.name, socket.id);
-                emitTTTmark(firstHit.object.name);
+                multiplayer?.emitTTTMark(firstHit.object.name);
                 //console.log("Clicked on TTT box:" + hits[0].object.name);
             } else if (firstHit.object.name.includes('TTT_Start')) {
-                //tttGame.startGame(socket.id);
-                emitTTTstart();
+                multiplayer?.emitTTTStart();
                 //console.log("Clicked on TTT box:" + hits[0].object.name);
             }
 
@@ -2029,8 +1652,7 @@ export function startGame(
             return;
         }
 
-        const payload: ChatSendPayload = { message };
-        socket.emit('chat_message', payload);
+        multiplayer?.sendChatMessage(message);
     }
 
     return {
@@ -2045,11 +1667,7 @@ export function startGame(
                 return;
             }
 
-            if (socket.connected) {
-                socket.emit('update', {
-                    type: 'game_reset',
-                });
-            }
+            multiplayer?.emitGameReset();
 
             storyManager?.blackHoleCutscene();
         },
