@@ -6,15 +6,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { FlyControls } from 'three/addons/controls/FlyControls.js';
 
 import { MultiplayerManager } from './multiplayer.js';
-import { NPC } from './npc.js';
-import {
-    CHAT_BUBBLE_HEIGHT,
-    CHAT_BUBBLE_PREFIX,
-    CHAT_BUBBLE_SCALE,
-    CHAT_BUBBLE_SIZE,
-    FloatingTextSprite,
-} from './FloatingTextSprite.js';
-import { CanvasTextSprite } from './CanvasTextSprite.js';
+import { NPCManager } from './npc.js';
 import { Player } from './player.js';
 import { Camera } from './camera.js';
 import { TTT_Game } from './ttt_game.js';
@@ -38,7 +30,6 @@ import {
     MODEL_DUCK_DOWN,
     MODEL_DUCK_UP,
     MODEL_MAP,
-    MODEL_NPC,
     MODEL_ROCKS,
 } from './Assets.js';
 
@@ -48,7 +39,6 @@ import {
     PLAYER_NETWORK_UPDATE_INTERVAL_MS,
     RPSChoice,
     TTTMeshBoard,
-    NPCState,
     GameEvent,
     EventType,
     type EventData,
@@ -71,18 +61,6 @@ import {
     type TTTGame,
 } from 'ftr-common/sharedTypes';
 
-const ENTRY_NPC_CHAT_BUBBLE_TEXTS = [
-    `${CHAT_BUBBLE_PREFIX}The Event Space opens after finishing evaluation`,
-    `${CHAT_BUBBLE_PREFIX}Letting someone in without a token is not allowed`,
-    `${CHAT_BUBBLE_PREFIX}I must evaluate before Blackhole`,
-] as const;
-const EVALUATING_STUDENT_NPC_ID = 6;
-const EVALUATING_STUDENT_NICKNAME = 'Idle Student';
-const EVALUATING_STUDENT_CHAT_BUBBLE_TEXT = `${CHAT_BUBBLE_PREFIX}Ready for Evaluation?`;
-const EVALUATING_STUDENT_NAME_SIZE = 48;
-const EVALUATING_STUDENT_NAME_HEIGHT = 1.9;
-const EVALUATING_STUDENT_NAME_SCALE = 0.3;
-const EVALUATING_STUDENT_CHAT_BUBBLE_HEIGHT = CHAT_BUBBLE_HEIGHT + 0.4;
 const MIN_POSITION_CHANGE = 0.001;
 const PLAYER_NETWORK_INTERVAL_MS = 1_000; // 1s
 
@@ -188,8 +166,6 @@ export function startGame(
     let lastSentPlayerState: PlayerMovementPayload['state'] | null = null;
     let lastPlayerKeyframeMilliseconds = 0;
     let eventSpaceDoorsOpen = false;
-    let evaluatingStudent: NPC | null = null;
-    let evaluatingStudentAvailable = false;
     const tokenQuestFrontdesk = new TokenQuestFrontdesk(onGameEvent);
     const knownPlayerNicknames = new Map<string, string>();
     const blockedPlayerUpdates = new Set<string>();
@@ -860,6 +836,7 @@ export function startGame(
     // ============================================================================
 
     const scene = new THREE.Scene();
+    const npcManager = new NPCManager(scene, tokenQuestFrontdesk);
     // const renderer = new THREE.WebGLRenderer({ antialias: true });
     const runtimeResourceDisposer = createThreeResourceDisposer();
     const followGroup = new THREE.Group();
@@ -875,8 +852,6 @@ export function startGame(
     let duck_down: THREE.Object3D | null = null;
     let duck_up: THREE.Object3D | null = null;
     let display: THREE.Object3D | null = null;
-
-    const npcs = new Map();
 
     let envLoaded: boolean = false;
     const textureLoader = new THREE.TextureLoader();
@@ -1118,7 +1093,7 @@ export function startGame(
             renderer.domElement.addEventListener('click', onClick);
         }
 
-        initNPC();
+        npcManager.initialize();
 
         const plane = new THREE.Mesh(
             new THREE.BoxGeometry(35, 0.05, 35),
@@ -1156,7 +1131,7 @@ export function startGame(
                 }
             );
 
-            interactionManager = new InteractionManager(scene);
+            interactionManager = new InteractionManager(scene, npcManager);
 
             interactionManager.onInteraction = (interaction) => {
                 storyManager?.handleInteraction(interaction);
@@ -1212,15 +1187,6 @@ export function startGame(
                 console.log('Quest finished');
                 changeObjectTexture(display, IMG_DISPLAY_GRAPH);
                 openDoors();
-            };
-            storyManager.onEvaluatingStudentAvailabilityChange = (
-                available
-            ) => {
-                if (available) {
-                    showEvaluatingStudent();
-                } else {
-                    hideEvaluatingStudent();
-                }
             };
         }
 
@@ -1584,120 +1550,6 @@ export function startGame(
         for (const mesh of mesh_Octree) {
             worldOctree.fromGraphNode(mesh);
         }
-    }
-
-    function addNPCChatBubble(npc: NPC, text: string): FloatingTextSprite {
-        const chatBubble = new FloatingTextSprite(
-            text,
-            CHAT_BUBBLE_SIZE,
-            new THREE.Vector3(0, CHAT_BUBBLE_HEIGHT, 0)
-        );
-        chatBubble.scale.multiplyScalar(CHAT_BUBBLE_SCALE);
-        scene.add(chatBubble);
-        chatBubble.follow(npc.group);
-        return chatBubble;
-    }
-
-    function showEvaluatingStudent(): void {
-        evaluatingStudentAvailable = true;
-
-        if (evaluatingStudent) {
-            syncNPCEvaluatingStudentVisibility();
-            return;
-        }
-
-        const studentInteraction =
-            interactionManager?.evaluatingStudentQuest.studentInteraction;
-        if (!studentInteraction) {
-            return;
-        }
-
-        const student = new NPC(
-            MODEL_NPC,
-            EVALUATING_STUDENT_NPC_ID,
-            scene,
-            NPCState.Standing
-        );
-        student.group.position.copy(studentInteraction.position);
-
-        const nameLabel = new CanvasTextSprite(
-            EVALUATING_STUDENT_NICKNAME,
-            EVALUATING_STUDENT_NAME_SIZE
-        );
-        nameLabel.position.set(0, EVALUATING_STUDENT_NAME_HEIGHT, 0);
-        nameLabel.scale.multiplyScalar(EVALUATING_STUDENT_NAME_SCALE);
-
-        const chatBubble = new CanvasTextSprite(
-            EVALUATING_STUDENT_CHAT_BUBBLE_TEXT,
-            CHAT_BUBBLE_SIZE
-        );
-        chatBubble.position.set(0, EVALUATING_STUDENT_CHAT_BUBBLE_HEIGHT, 0);
-        chatBubble.scale.multiplyScalar(CHAT_BUBBLE_SCALE);
-
-        student.group.add(nameLabel, chatBubble);
-        evaluatingStudent = student;
-        student.group.addEventListener(
-            'childadded',
-            syncNPCEvaluatingStudentVisibility
-        );
-        scene.add(student.group);
-        npcs.set(student.id, student);
-        syncNPCEvaluatingStudentVisibility();
-    }
-
-    function hideEvaluatingStudent(): void {
-        evaluatingStudentAvailable = false;
-        syncNPCEvaluatingStudentVisibility();
-    }
-
-    function syncNPCEvaluatingStudentVisibility(): void {
-        if (!evaluatingStudent) {
-            return;
-        }
-
-        const visible =
-            evaluatingStudentAvailable && evaluatingStudent.model !== null;
-        evaluatingStudent.group.visible = visible;
-    }
-
-    function initNPC(): void {
-        // NPCs at the entrance of the 42WOB building
-        const entry1 = new NPC(MODEL_NPC, 2, scene, NPCState.Nod);
-        const entry2 = new NPC(MODEL_NPC, 3, scene, NPCState.Talking_2);
-        const entry3 = new NPC(MODEL_NPC, 4, scene, NPCState.Nod);
-
-        entry1.group.position.set(6.5, 0, 1);
-        entry2.group.position.set(8, 0, 1.5);
-        entry3.group.position.set(6.5, 0, 2.5);
-
-        entry1.group.lookAt(entry2.group.position);
-        entry2.group.lookAt(entry3.group.position);
-        entry3.group.lookAt(entry2.group.position);
-
-        scene.add(entry1.group, entry2.group, entry3.group);
-
-        addNPCChatBubble(entry1, ENTRY_NPC_CHAT_BUBBLE_TEXTS[0]);
-        addNPCChatBubble(entry2, ENTRY_NPC_CHAT_BUBBLE_TEXTS[1]);
-        addNPCChatBubble(entry3, ENTRY_NPC_CHAT_BUBBLE_TEXTS[2]);
-
-        npcs.set(entry1.id, entry1);
-        npcs.set(entry2.id, entry2);
-        npcs.set(entry3.id, entry3);
-
-        const frontdesk = new NPC(MODEL_NPC, 5, scene, NPCState.Standing);
-        frontdesk.group.position.set(12.1, 0, -5.8);
-        frontdesk.group.lookAt(
-            frontdesk.group.position.x,
-            frontdesk.group.position.y,
-            frontdesk.group.position.z + 1
-        );
-        scene.add(frontdesk.group);
-        const frontdeskChatBubble = addNPCChatBubble(
-            frontdesk,
-            tokenQuestFrontdesk.chatBubbleText
-        );
-        tokenQuestFrontdesk.setChatBubble(frontdeskChatBubble);
-        npcs.set(frontdesk.id, frontdesk);
     }
 
     // Test function fo spawn and delete
@@ -2169,11 +2021,7 @@ export function startGame(
             }
         }
 
-        for (const npc of npcs.values()) {
-            if (npc.group.visible) {
-                npc.updateAnimation(delta);
-            }
-        }
+        npcManager.updateAnimations(delta);
     }
 
     function sendChatMessage(message: string): void {

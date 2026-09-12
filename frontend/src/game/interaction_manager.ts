@@ -7,6 +7,7 @@ import { EventSpaceQuest } from './QuestEventSpace';
 import { PreparationQuest } from './QuestPreparation';
 import { StartEvaluationQuest } from './QuestStartEvaluation';
 import { LostTokenQuest } from './QuestToken';
+import type { NPCManager } from './npc';
 
 const INTERACTION_RANGE = new THREE.Vector3(1, 2, 1);
 
@@ -22,7 +23,7 @@ export class InteractionManager {
     readonly lostTokenQuest: LostTokenQuest;
     readonly frontDoorQuest: FrontDoorQuest;
 
-    constructor(scene: THREE.Scene) {
+    constructor(scene: THREE.Scene, npcManager: NPCManager) {
         this.preparationQuests = new Map<InteractionTypeId, PreparationQuest>(
             PREPARATION_QUEST_IDS.map(
                 (questId) =>
@@ -34,7 +35,8 @@ export class InteractionManager {
         );
         this.evaluatingStudentQuest = new EvaluatingStudentQuest(
             scene,
-            INTERACTION_RANGE
+            INTERACTION_RANGE,
+            npcManager
         );
         this.startEvaluationQuest = new StartEvaluationQuest(
             scene,

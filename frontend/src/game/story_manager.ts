@@ -81,7 +81,6 @@ export class Story_Manager {
         this.questState.clear();
         this.initQuestState();
         this.interactionManager.interactionStartingState();
-        this.onEvaluatingStudentAvailabilityChange?.(false);
     }
 
     releaseAllKeys(): void {
@@ -524,7 +523,6 @@ export class Story_Manager {
         );
 
         this.interactionManager.evaluatingStudentQuest.unlock();
-        this.onEvaluatingStudentAvailabilityChange?.(true);
     }
 
     async handleInteraction(interaction: Interaction): Promise<void> {
@@ -617,7 +615,6 @@ export class Story_Manager {
     onQuestEvaluator?: () => void;
     onQuestLogin?: () => void;
     onQuestStartEvaluation?: () => void;
-    onEvaluatingStudentAvailabilityChange?: (available: boolean) => void;
 
     // ===================================================
     // TODO: TESTING FUNCTIONS. Delete if not needed anymore
