@@ -14,6 +14,7 @@ import { RPS_Game } from './rps_game.js';
 import { createThreeResourceDisposer } from './ThreeResourceDisposer.js';
 import { Story_Manager } from './story_manager.js';
 import { InteractionManager } from './interaction_manager.js';
+import { Input } from './Input.js';
 import { TokenQuestFrontdesk } from './QuestToken.js';
 import { addBlackhole } from './QuestBlackHole.js';
 import {
@@ -455,20 +456,9 @@ export function startGame(
     texture.minFilter = THREE.NearestFilter;
     texture.magFilter = THREE.NearestFilter;
 
-    //const keyStates = {};
-    const keyStates: Record<string, boolean> = {};
-
-    const controls = {
-        key: [0, 0] as [number, number],
-    };
-
     function stopLocalInput(): void {
         isLocalPlayerDespawning = true;
-        controls.key[0] = 0;
-        controls.key[1] = 0;
-        for (const code of Object.keys(keyStates)) {
-            keyStates[code] = false;
-        }
+        input.stop();
     }
 
     function despawnLocalPlayer(): Promise<void> {
@@ -481,7 +471,7 @@ export function startGame(
         localPlayerDespawnPromise = (async () => {
             try {
                 if (player) {
-                    player.controls.key = controls.key;
+                    player.controls.key = input.keys;
                     await player.startDespawn();
                 }
             } finally {
@@ -503,9 +493,7 @@ export function startGame(
 
         renderer.setAnimationLoop(null);
         window.removeEventListener('resize', onWindowResize);
-        document.removeEventListener('keydown', onKeyDown);
-        document.removeEventListener('keyup', onKeyUp);
-        renderer.domElement.removeEventListener('click', onClick);
+        input.dispose();
 
         const multiplayerDisposePromise = multiplayer?.dispose();
         socket.removeAllListeners();
@@ -553,10 +541,19 @@ export function startGame(
     const mesh_Octree: THREE.Object3D[] = [];
     const mesh_RP: THREE.Mesh[] = [];
     const tttBox: TTTMeshBoard = new TTTMeshBoard();
-    const tttPointer = new THREE.Vector2();
-    const tttRaycaster = new THREE.Raycaster();
-    const tttRaycastHits: THREE.Intersection[] = [];
-    tttRaycaster.far = 50.0;
+    const input = new Input({
+        domElement: renderer.domElement,
+        colliders: mesh_col,
+        whichCharacter,
+        getPlayer: () => player,
+        getCamera: () => camera,
+        getMultiplayer: () => multiplayer,
+        getRPSGame: () => rpsGame,
+        getTTTGame: () => tttGame,
+        getStoryManager: () => storyManager,
+        getInteractionManager: () => interactionManager,
+        isLocalPlayerDespawning: () => isLocalPlayerDespawning,
+    });
 
     //let camDistance = 0;
 
@@ -712,10 +709,7 @@ export function startGame(
 
         window.addEventListener('resize', onWindowResize);
         if (!isSpectator) {
-            document.addEventListener('keydown', onKeyDown);
-            document.addEventListener('keyup', onKeyUp);
-            // Three.js-Raytracing clicks
-            renderer.domElement.addEventListener('click', onClick);
+            input.connect();
         }
 
         npcManager.initialize();
@@ -776,8 +770,8 @@ export function startGame(
                 player,
                 renderer,
                 camera,
-                keyStates,
-                controls.key,
+                input.keyStates,
+                input.keys,
                 interactionManager,
                 onDialogChange,
                 resetGameStateAfterBlackHole
@@ -1200,351 +1194,6 @@ export function startGame(
         }
     } */
 
-    function keyControls(deltaTime: number): void {
-        if (!player || !camera) return;
-
-        // gives a bit of air control
-        const speedDelta = deltaTime * player.controls.runVelocity;
-        if (keyStates['KeyW'] || keyStates['ArrowUp']) {
-            player.playerVelocity.addScaledVector(
-                player.getForwardVector(camera.camera),
-                speedDelta
-            );
-        }
-        if (keyStates['KeyS'] || keyStates['ArrowDown']) {
-            player.playerVelocity.addScaledVector(
-                player.getForwardVector(camera.camera),
-                -speedDelta
-            );
-        }
-        if (keyStates['KeyA'] || keyStates['ArrowLeft']) {
-            player.playerVelocity.addScaledVector(
-                player.getSideVector(camera.camera),
-                -speedDelta
-            );
-        }
-        if (keyStates['KeyD'] || keyStates['ArrowRight']) {
-            player.playerVelocity.addScaledVector(
-                player.getSideVector(camera.camera),
-                speedDelta
-            );
-        }
-    }
-
-    function onPressAccept(_event: KeyboardEvent) {
-        void _event;
-
-        if (!player || !rpsGame) return;
-
-        if (player.battleRequested) {
-            player.battleRequested = false;
-            if (rpsGame.playerInRange)
-                rpsGame.playerInRange.battleRequested = false;
-            rpsGame.removeText();
-            if (rpsGame.battleRequestedPlayer) {
-                const opponentPlayer = multiplayer?.players.get(
-                    rpsGame.battleRequestedPlayer
-                );
-                if (!opponentPlayer) return;
-                console.log(
-                    'Sending accept request to player ' +
-                        rpsGame.battleRequestedPlayer
-                );
-                console.log('BATTLE START!');
-                multiplayer?.emitBattleAccept(rpsGame.battleRequestedPlayer);
-                rpsGame.startRPSAnimation(
-                    whichCharacter,
-                    opponentPlayer.character
-                );
-            } else console.log('Player ID empty, cannot send accept request.');
-        } else {
-            console.log('No battle request to accept.');
-        }
-    }
-
-    function onPressDecline(_event: KeyboardEvent) {
-        void _event;
-
-        if (!player || !rpsGame) return;
-
-        if (player.battleRequested) {
-            player.battleRequested = false;
-            if (rpsGame.playerInRange)
-                rpsGame.playerInRange.battleRequested = false;
-            rpsGame.removeText();
-            if (rpsGame.battleRequestedPlayer) {
-                console.log(
-                    'Sending decline request to player ' +
-                        rpsGame.battleRequestedPlayer
-                );
-                console.log('BATTLE DECLINED!');
-                multiplayer?.emitBattleDecline(rpsGame.battleRequestedPlayer);
-            } else console.log('Player ID empty, cannot send decline request.');
-        } else {
-            console.log('No battle request to decline.');
-        }
-    }
-
-    function rockKey(_event: KeyboardEvent) {
-        void _event;
-
-        if (!player || !rpsGame) return;
-
-        if (rpsGame.rps_choiceMade) return;
-        if (!player.inRPSBattleMode) return;
-        if (!rpsGame.inBattleChooseMode) return;
-
-        console.log('Rock key pressed');
-
-        rpsGame.rps_choiceMade = true;
-        //rpsGame.yourChoice = "rock";
-        multiplayer?.emitBattleChoice(RPSChoice.Rock);
-    }
-
-    function paperKey(_event: KeyboardEvent) {
-        void _event;
-
-        if (!player || !rpsGame) return;
-
-        if (rpsGame.rps_choiceMade) return;
-        if (!player.inRPSBattleMode) return;
-        if (!rpsGame.inBattleChooseMode) return;
-
-        console.log('Paper key pressed');
-
-        rpsGame.rps_choiceMade = true;
-        //rpsGame.yourChoice = "paper";
-        multiplayer?.emitBattleChoice(RPSChoice.Paper);
-    }
-
-    function scissorsKey(_event: KeyboardEvent) {
-        void _event;
-
-        if (!player || !rpsGame) return;
-
-        if (rpsGame.rps_choiceMade) return;
-        if (!player.inRPSBattleMode) return;
-        if (!rpsGame.inBattleChooseMode) return;
-
-        console.log('Scissors key pressed');
-
-        rpsGame.rps_choiceMade = true;
-        //rpsGame.yourChoice = "scissors";
-        multiplayer?.emitBattleChoice(RPSChoice.Scissors);
-    }
-
-    function onPressB(_event: KeyboardEvent) {
-        void _event;
-
-        if (!rpsGame) return;
-
-        if (!rpsGame.inRange) {
-            console.log('No player in range to interact with.');
-            return;
-        }
-
-        const nearbyPlayer = rpsGame.playerInRange;
-        if (
-            !nearbyPlayer ||
-            !nearbyPlayer.isActive() ||
-            multiplayer?.players.get(nearbyPlayer.id) !== nearbyPlayer
-        ) {
-            return;
-        }
-
-        multiplayer?.emitBattleRequest(nearbyPlayer.id);
-    }
-
-    /** player leave Tic-Tac-Toe game & end cutscene */
-    function onPressEscape(_event: KeyboardEvent) {
-        void _event;
-
-        if (storyManager) storyManager.skipCameraAnimation = true;
-
-        if (!player || !tttGame) {
-            return;
-        }
-        if (tttGame.players[0] !== player.id || tttGame.players[1] !== null) {
-            return;
-        }
-        multiplayer?.emitTTTLeave();
-    }
-
-    function onClick(event: MouseEvent): void {
-        if (isLocalPlayerDespawning) return;
-
-        tttPointer.set(
-            THREE.MathUtils.mapLinear(
-                event.clientX,
-                0,
-                window.innerWidth,
-                -1,
-                1
-            ),
-            THREE.MathUtils.mapLinear(
-                event.clientY,
-                0,
-                window.innerHeight,
-                1,
-                -1
-            )
-        );
-
-        if (!camera) return;
-
-        tttRaycaster.setFromCamera(tttPointer, camera.camera);
-        tttRaycastHits.length = 0;
-        tttRaycaster.intersectObjects(mesh_col, false, tttRaycastHits);
-
-        //console.log("hits.length: " + hits.length );
-
-        const firstHit = tttRaycastHits[0];
-        if (firstHit) {
-            //console.log("Clicked on TTT box:" + hits[0].object.name);
-            console.log('Clicked on: ' + firstHit.object.name);
-            if (firstHit.object.name.includes('TTT_Board')) {
-                multiplayer?.emitTTTMark(firstHit.object.name);
-                //console.log("Clicked on TTT box:" + hits[0].object.name);
-            } else if (firstHit.object.name.includes('TTT_Start')) {
-                multiplayer?.emitTTTStart();
-                //console.log("Clicked on TTT box:" + hits[0].object.name);
-            }
-
-            // handle tic tac toe box click, e.g. send move to server
-        }
-
-        // const hitsRP = tttRaycaster.intersectObjects(mesh_RP, true);
-        // console.log("hitsRP.length: " + hitsRP.length , " , mesh_RP length: " + mesh_RP.length);
-
-        /* mesh_RP.forEach((o) => {
-            console.log(o.name, o.isMesh);
-        }); */
-
-        /* if (hitsRP.length > 0) {
-            const hit = hits[0];
-            console.log("Clicked on PLAYER:" + hits[0].object.name);
-        } */
-    }
-
-    function onKeyDown(event: KeyboardEvent) {
-        if (!player || isLocalPlayerDespawning) return;
-
-        if (storyManager && storyManager.inCutscene) return;
-
-        keyStates[event.code] = true;
-        const key: [number, number] = controls.key;
-        player.controls.key = key;
-        //console.log("Key pressed: " + event.code);
-        switch (event.code) {
-            // movement keys
-            case 'ArrowUp':
-            case 'KeyW':
-                key[0] = -1;
-                break;
-            case 'ArrowDown':
-            case 'KeyS':
-                key[0] = 1;
-                break;
-            case 'ArrowLeft':
-            case 'KeyA':
-                key[1] = -1;
-                break;
-            case 'ArrowRight':
-            case 'KeyD':
-                key[1] = 1;
-                break;
-
-            // TODO: TESTS - REMOVE IF NOT NEEDED ANYMORE
-            case 'KeyO':
-                DebugCutscene();
-                break;
-            case 'KeyP':
-                posPrintDebug();
-                break;
-        }
-    }
-
-    function onKeyUp(event: KeyboardEvent) {
-        if (!player || isLocalPlayerDespawning) return;
-
-        keyStates[event.code] = false;
-        const key: [number, number] = controls.key;
-        player.controls.key = key;
-        switch (event.code) {
-            // movement keys
-            case 'ArrowUp':
-            case 'KeyW':
-                key[0] = key[0] < 0 ? 0 : key[0];
-                break;
-            case 'ArrowDown':
-            case 'KeyS':
-                key[0] = key[0] > 0 ? 0 : key[0];
-                break;
-            case 'ArrowLeft':
-            case 'KeyA':
-                key[1] = key[1] < 0 ? 0 : key[1];
-                break;
-            case 'ArrowRight':
-            case 'KeyD':
-                key[1] = key[1] > 0 ? 0 : key[1];
-                break;
-
-            case 'Escape':
-                onPressEscape(event);
-                break;
-
-            // battle request keys
-            case 'KeyB':
-                onPressB(event);
-                break;
-            case 'KeyZ':
-            case 'KeyY':
-                onPressAccept(event);
-                break;
-            case 'KeyX':
-                onPressDecline(event);
-                break;
-
-            case 'Numpad1':
-            case 'Digit1':
-                rockKey(event);
-                break;
-            case 'Numpad2':
-            case 'Digit2':
-                paperKey(event);
-                break;
-            case 'Numpad3':
-            case 'Digit3':
-                scissorsKey(event);
-                break;
-
-            case 'KeyE':
-                interactionManager?.OnActivatePress(player.group.position);
-                break;
-        }
-    }
-
-    function DebugCutscene() {
-        if (!player) return;
-
-        if (storyManager) storyManager.blackHoleCutscene();
-    }
-
-    function posPrintDebug() {
-        if (!player) return;
-
-        // if (storyManager) storyManager.GameIntro();
-
-        console.log(
-            'Player position: x=' +
-                player.group.position.x.toFixed(2) +
-                ', y=' +
-                player.group.position.y.toFixed(2) +
-                ', z=' +
-                player.group.position.z.toFixed(2)
-        );
-    }
-
     function onWindowResize() {
         if (!activeCamera) return;
 
@@ -1581,7 +1230,7 @@ export function startGame(
 
             player.updateLifecycle(lifecycleDelta);
 
-            keyControls(delta);
+            input.update(delta);
 
             previousPlayerPosition.copy(player.group.position);
 
