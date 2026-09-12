@@ -5,18 +5,43 @@ import type * as THREE from 'three';
 
 export const FIND_LOST_DROPPED_TOKEN_QUEST_ID = 'FIND_LOST_DROPPED_TOKEN';
 export const ENTER_CAMPUS_TOKEN_QUEST_ID = 'ENTER_42_CAMPUS_VIA_TOKEN';
+export const RUBBER_DUCK_QUEST_ID = 'FIND_RUBBERDUCK';
+export const COFFEE_QUEST_ID = 'GET_COFFEE';
+export const PAPER_QUEST_ID = 'GET_PAPER';
+export const COMPUTER_LOGIN_QUEST_ID = 'LOGIN_COMPUTER';
 export const BLACK_HOLE_QUEST_ID = 'avoid-blackhole';
 export const MEET_PLAYER_QUEST_ID = 'meet-player';
 export const RPS_WIN_QUEST_ID = 'win-rps-minigame';
+export const EVALUATING_STUDENT_QUEST_ID = 'FIND_EVALUATING_STUDENT';
 export const START_EVALUATION_QUEST_ID = 'START_EVALUATION';
 export const TTT_WIN_QUEST_ID = 'win-ttt-minigame';
 export const ENTER_EVENT_SPACE_QUEST_ID = 'ENTER_EVENT_SPACE';
+
+export const PREPARATION_QUEST_IDS = [
+    RUBBER_DUCK_QUEST_ID,
+    COFFEE_QUEST_ID,
+    PAPER_QUEST_ID,
+    COMPUTER_LOGIN_QUEST_ID,
+] as const;
+
+export type PreparationQuestId = (typeof PREPARATION_QUEST_IDS)[number];
 
 export type QuestLogEntry = {
     readonly id: string;
     readonly text: string;
     readonly completed?: boolean;
 };
+
+export type QuestCompleteHandler<TAnimation> = (
+    questId: string,
+    message: string,
+    animation: TAnimation
+) => Promise<void>;
+
+export type QuestDialogHandler<TAnimation> = (
+    message: string,
+    animation: TAnimation
+) => Promise<void>;
 
 // our quests... users-table will have another column to keep track of them, per
 // user either as simple-json array or another type
@@ -30,19 +55,19 @@ export const QUESTS: readonly QuestLogEntry[] = [
         text: 'Enter 42 campus via token',
     },
     {
-        id: 'FIND_RUBBERDUCK',
+        id: RUBBER_DUCK_QUEST_ID,
         text: 'Find the Rubber Duck',
     },
     {
-        id: 'GET_COFFEE',
+        id: COFFEE_QUEST_ID,
         text: 'Get a Coffee',
     },
     {
-        id: 'GET_PAPER',
+        id: PAPER_QUEST_ID,
         text: 'Get a Piece of Paper',
     },
     {
-        id: 'LOGIN_COMPUTER',
+        id: COMPUTER_LOGIN_QUEST_ID,
         text: 'Log In to Computer c2r12s6',
     },
     {
@@ -50,7 +75,7 @@ export const QUESTS: readonly QuestLogEntry[] = [
         text: 'Find another Student',
     },
     {
-        id: 'FIND_EVALUATING_STUDENT',
+        id: EVALUATING_STUDENT_QUEST_ID,
         text: 'Find the Evaluating Student',
     },
     {

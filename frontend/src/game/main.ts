@@ -68,7 +68,6 @@ import {
     type ReceivedChatPayload,
     type SocketAuth,
     type TTTGame,
-    ENTER_EVENT_SPACE_QUEST_ID,
 } from 'ftr-common/sharedTypes';
 
 const ENTRY_NPC_CHAT_BUBBLE_TEXTS = [
@@ -76,7 +75,6 @@ const ENTRY_NPC_CHAT_BUBBLE_TEXTS = [
     `${CHAT_BUBBLE_PREFIX}Letting someone in without a token is not allowed`,
     `${CHAT_BUBBLE_PREFIX}I must evaluate before Blackhole`,
 ] as const;
-const EVALUATING_STUDENT_INTERACTION_ID = 'FIND_EVALUATING_STUDENT';
 const EVALUATING_STUDENT_NPC_ID = 6;
 const EVALUATING_STUDENT_NICKNAME = 'Idle Student';
 const EVALUATING_STUDENT_CHAT_BUBBLE_TEXT = `${CHAT_BUBBLE_PREFIX}Ready for Evaluation?`;
@@ -86,10 +84,6 @@ const EVALUATING_STUDENT_NAME_SCALE = 0.3;
 const EVALUATING_STUDENT_CHAT_BUBBLE_HEIGHT = CHAT_BUBBLE_HEIGHT + 0.4;
 const MIN_POSITION_CHANGE = 0.001;
 const PLAYER_NETWORK_INTERVAL_MS = 1_000; // 1s
-const EVENT_SPACE_DOOR_INTERACTION_IDS: ReadonlySet<string> = new Set([
-    'EVENT_SPACE_DOOR_A',
-    'EVENT_SPACE_DOOR_B',
-]);
 
 /** event log msgs */
 // export type GameRuntimeEvent =
@@ -193,8 +187,6 @@ export function startGame(
     let lastSentPlayerState: PlayerMovementPayload['state'] | null = null;
     let lastPlayerKeyframeMilliseconds = 0;
     let eventSpaceDoorsOpen = false;
-    let eventSpaceDoorTraversalStarted = false;
-    let eventSpaceQuestCompleted = false;
     let evaluatingStudent: NPC | null = null;
     let evaluatingStudentAvailable = false;
     const tokenQuestFrontdesk = new TokenQuestFrontdesk(onGameEvent);
@@ -1169,7 +1161,11 @@ export function startGame(
                 storyManager?.handleInteraction(interaction);
                 //onQuestComplete?.(interaction);
 
-                if (EVENT_SPACE_DOOR_INTERACTION_IDS.has(interaction.typeID)) {
+                if (
+                    interactionManager?.eventSpaceQuest.interactions.includes(
+                        interaction
+                    )
+                ) {
                     openDoors();
                 }
             };
@@ -1566,8 +1562,6 @@ export function startGame(
         groupDoorA.rotation.set(0, 0, 0);
         groupDoorB.rotation.set(0, 0, 0);
         eventSpaceDoorsOpen = false;
-        eventSpaceDoorTraversalStarted = false;
-        eventSpaceQuestCompleted = false;
 
         for (const doorGroup of [groupDoorA, groupDoorB]) {
             const doorMeshes = doorGroup.getObjectsByProperty(
@@ -1587,37 +1581,6 @@ export function startGame(
         }
         worldOctree.fromGraphNode(groupDoorA);
         worldOctree.fromGraphNode(groupDoorB);
-    }
-
-    function updateEventSpaceQuestCompletion(
-        interactionTypeID: string | null
-    ): void {
-        if (!eventSpaceDoorsOpen || eventSpaceQuestCompleted || !player) {
-            return;
-        }
-
-        const isInDoorZone =
-            interactionTypeID !== null &&
-            EVENT_SPACE_DOOR_INTERACTION_IDS.has(interactionTypeID);
-
-        if (isInDoorZone) {
-            eventSpaceDoorTraversalStarted = true;
-            return;
-        }
-
-        if (!eventSpaceDoorTraversalStarted) {
-            return;
-        }
-
-        eventSpaceQuestCompleted = true;
-        eventSpaceDoorTraversalStarted = false;
-        onGameEvent?.({
-            eventType: EventType.QuestCompleted,
-            data: {
-                questId: ENTER_EVENT_SPACE_QUEST_ID,
-            },
-            logtime: new Date(),
-        });
     }
 
     function resetGameStateAfterBlackHole(): void {
@@ -1663,10 +1626,8 @@ export function startGame(
             return;
         }
 
-        const studentInteraction = interactionManager?.interactions.find(
-            (interaction) =>
-                interaction.typeID === EVALUATING_STUDENT_INTERACTION_ID
-        );
+        const studentInteraction =
+            interactionManager?.evaluatingStudentQuest.studentInteraction;
         if (!studentInteraction) {
             return;
         }
@@ -2212,7 +2173,20 @@ export function startGame(
             const interactionInZone = interactionManager.update(
                 player.group.position
             );
-            updateEventSpaceQuestCompletion(interactionInZone?.typeID ?? null);
+            const completedEventSpaceQuestId =
+                interactionManager.eventSpaceQuest.updateTraversal(
+                    interactionInZone,
+                    eventSpaceDoorsOpen
+                );
+            if (completedEventSpaceQuestId !== null) {
+                onGameEvent?.({
+                    eventType: EventType.QuestCompleted,
+                    data: {
+                        questId: completedEventSpaceQuestId,
+                    },
+                    logtime: new Date(),
+                });
+            }
         }
 
         for (const npc of npcs.values()) {

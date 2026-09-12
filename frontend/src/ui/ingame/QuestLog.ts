@@ -1,19 +1,19 @@
 import {
     BLACK_HOLE_QUEST_ID,
+    EventType,
+    GameEvent,
     MEET_PLAYER_QUEST_ID,
     RPS_WIN_QUEST_ID,
     TTT_WIN_QUEST_ID,
-    GameEvent,
-    EventType,
     type QuestLogEntry,
 } from 'ftr-common/sharedTypes';
 
-const COUNTDOWN_FORMAT = new Intl.DurationFormat('en', {
-    style: 'digital',
-    hoursDisplay: 'auto',
-    minutes: '2-digit',
-    seconds: '2-digit',
-});
+type MinigameName = NonNullable<GameEvent['data']['game']>;
+
+const WIN_QUEST_ID_BY_GAME: ReadonlyMap<MinigameName, string> = new Map([
+    ['Rock-Paper-Scissors', RPS_WIN_QUEST_ID],
+    ['Tic-Tac-Toe', TTT_WIN_QUEST_ID],
+]);
 
 export type ResolvedQuestLogEntry = QuestLogEntry & {
     readonly completed: boolean;
@@ -24,14 +24,6 @@ export type QuestStatusChange = {
     readonly questText: string;
     readonly completed: boolean;
 };
-
-/** blackhole timer */
-export function formatQuestCountdown(totalSeconds: number): string {
-    const minutes = Math.floor(totalSeconds / 60);
-    const seconds = totalSeconds % 60;
-
-    return COUNTDOWN_FORMAT.format({ minutes, seconds });
-}
 
 function isQuestCompleted(
     quest: QuestLogEntry,
@@ -114,16 +106,13 @@ function getCompletedQuestId(event: GameEvent): string | null {
 
     if (
         event.eventType !== EventType.GameResult ||
-        event.data.outcome !== 'won'
+        event.data.outcome !== 'won' ||
+        event.data.game === undefined
     ) {
         return null;
     }
 
-    if (event.data.game === 'Rock-Paper-Scissors') {
-        return RPS_WIN_QUEST_ID;
-    }
-
-    return TTT_WIN_QUEST_ID;
+    return WIN_QUEST_ID_BY_GAME.get(event.data.game) ?? null;
 }
 
 export function applyQuestCompletionEvent(

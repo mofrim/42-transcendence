@@ -1,12 +1,79 @@
+import * as THREE from 'three';
 import {
     EventType,
     type GameEvent,
     ENTER_CAMPUS_TOKEN_QUEST_ID,
     FIND_LOST_DROPPED_TOKEN_QUEST_ID,
+    PlayerState,
+    type QuestCompleteHandler,
 } from 'ftr-common/sharedTypes';
 
-import type { CanvasTextSprite } from './CanvasTextSprite.js';
+import { CanvasTextSprite } from './CanvasTextSprite.js';
 import { CHAT_BUBBLE_PREFIX, CHAT_BUBBLE_SIZE } from './FloatingTextSprite.js';
+import { Interaction } from './interaction';
+import type { PlayerAnimationState } from './player';
+
+const LOST_TOKEN_POSITION = new THREE.Vector3(
+    1.2922068884555726,
+    0.0019360798741439034,
+    -12.941452087852168
+);
+const LOST_TOKEN_MARKER_HEIGHT = 0.65;
+const LOST_TOKEN_MARKER_SCALE = 0.5;
+const LOST_TOKEN_SUCCESS_MESSAGE =
+    'There it is 🔑! I found my lost campus token. Now I can finally unlock the frontdoor.';
+
+export class LostTokenQuest {
+    readonly interaction: Interaction;
+    private readonly marker: CanvasTextSprite;
+
+    constructor(scene: THREE.Scene, interactionRange: THREE.Vector3) {
+        this.interaction = new Interaction(
+            scene,
+            FIND_LOST_DROPPED_TOKEN_QUEST_ID,
+            LOST_TOKEN_POSITION,
+            interactionRange,
+            true
+        );
+
+        /** TODO: leider kein 3D Modell für den Schlüssel habe */
+        this.marker = new CanvasTextSprite('🔑', 64);
+        this.marker.position
+            .copy(LOST_TOKEN_POSITION)
+            .setY(LOST_TOKEN_POSITION.y + LOST_TOKEN_MARKER_HEIGHT);
+        this.marker.scale.multiplyScalar(LOST_TOKEN_MARKER_SCALE);
+        scene.add(this.marker);
+    }
+
+    reset(): void {
+        this.interaction.reset(true);
+        this.marker.visible = true;
+    }
+
+    collect(): void {
+        this.interaction.reset(false);
+        this.marker.visible = false;
+    }
+
+    async handleInteraction(
+        interaction: Interaction,
+        completeQuest: QuestCompleteHandler<PlayerAnimationState>,
+        onCollected?: () => void
+    ): Promise<boolean> {
+        if (interaction.typeID !== FIND_LOST_DROPPED_TOKEN_QUEST_ID) {
+            return false;
+        }
+
+        await completeQuest(
+            FIND_LOST_DROPPED_TOKEN_QUEST_ID,
+            LOST_TOKEN_SUCCESS_MESSAGE,
+            PlayerState.ThumbsUp
+        );
+        this.collect();
+        onCollected?.();
+        return true;
+    }
+}
 
 /** Als virtueller Name dieses Frontesk NPCs Nickname der im Chat angezeigt werden soll */
 const FRONTDESK_NICKNAME = 'Frontdesk Staff:';

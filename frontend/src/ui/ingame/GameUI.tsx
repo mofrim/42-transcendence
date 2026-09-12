@@ -8,12 +8,13 @@ import {
 } from 'react';
 
 import {
-    formatQuestCountdown,
     getQuestStatusChanges,
     resolveQuestLogEntries,
     type QuestStatusChange,
     type ResolvedQuestLogEntry,
 } from './QuestLog';
+
+import { formatQuestCountdown } from '../../game/QuestBlackHole';
 
 import {
     BLACK_HOLE_DURATION_SECONDS,

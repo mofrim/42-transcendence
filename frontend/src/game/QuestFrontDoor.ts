@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import {
     PlayerState,
     ENTER_CAMPUS_TOKEN_QUEST_ID,
+    type QuestCompleteHandler,
 } from 'ftr-common/sharedTypes';
 
 import { Interaction } from './interaction';
@@ -15,12 +16,6 @@ const FRONT_DOOR_POSITION = new THREE.Vector3(
 );
 const FRONT_DOOR_SUCCESS_MESSAGE = 'Token accepted. Welcome to 42 campus!';
 
-type CompleteQuest = (
-    questId: string,
-    message: string,
-    animation: PlayerAnimationState
-) => Promise<void>;
-
 /** Enter 42 campus via token */
 export class FrontDoorQuest {
     readonly interaction: Interaction;
@@ -29,7 +24,7 @@ export class FrontDoorQuest {
         this.interaction = new Interaction(
             scene,
             ENTER_CAMPUS_TOKEN_QUEST_ID,
-            FRONT_DOOR_POSITION.clone(),
+            FRONT_DOOR_POSITION,
             /**  Der Radius, in dem die Taste E gedrückt werden kann */
             interactionRange,
             /** wird erst wenn token gefunden aktiv */
@@ -37,18 +32,9 @@ export class FrontDoorQuest {
         );
     }
 
-    unlock(): void {
-        this.interaction.enableInteraction();
-    }
-
-    reset(): void {
-        this.interaction.removeEngageButton();
-        this.interaction.disableInteraction();
-    }
-
     async handleInteraction(
         interaction: Interaction,
-        completeQuest: CompleteQuest
+        completeQuest: QuestCompleteHandler<PlayerAnimationState>
     ): Promise<boolean> {
         if (interaction.typeID !== ENTER_CAMPUS_TOKEN_QUEST_ID) {
             return false;
@@ -59,7 +45,9 @@ export class FrontDoorQuest {
             FRONT_DOOR_SUCCESS_MESSAGE,
             PlayerState.ThumbsUp
         );
-        this.reset();
+        this.interaction.reset(false);
+        // TODO: add animation for opening the door
+        /** erlaube nun die Öffnung */
         return true;
     }
 }

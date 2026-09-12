@@ -4,8 +4,10 @@ import { Camera } from './camera';
 import { InteractionManager } from './interaction_manager';
 import { Interaction } from './interaction';
 import {
+    COMPUTER_LOGIN_QUEST_ID,
+    PREPARATION_QUEST_IDS,
     PlayerState,
-    FIND_LOST_DROPPED_TOKEN_QUEST_ID,
+    RUBBER_DUCK_QUEST_ID,
 } from 'ftr-common/sharedTypes';
 
 // TODO: move this to sharedTypes.ts
@@ -33,8 +35,6 @@ export class Story_Manager {
     private readonly onDialogChange: ((state: DialogState) => void) | undefined;
     private readonly onGameReset: (() => void) | undefined;
 
-    onQuestComplete: string | null = null;
-
     // TODO: TEMP - need to be changed with Database
     questState: Map<string, boolean>;
 
@@ -60,8 +60,6 @@ export class Story_Manager {
         this.onDialogChange = onDialogChange;
         this.onGameReset = onGameReset;
 
-        this.onQuestComplete = null;
-
         this.skipCameraAnimation = false;
         this.advanceDialogue = false;
         this.advanceDialogueCamera = false;
@@ -74,16 +72,14 @@ export class Story_Manager {
 
     // TODO: TEMP - need to be changed with Database
     initQuestState(): void {
-        this.questState.set('FIND_RUBBERDUCK', false);
-        this.questState.set('GET_COFFEE', false);
-        this.questState.set('GET_PAPER', false);
-        this.questState.set('LOGIN_COMPUTER', false);
+        for (const questId of PREPARATION_QUEST_IDS) {
+            this.questState.set(questId, false);
+        }
     }
 
     resetGameState(): void {
         this.questState.clear();
         this.initQuestState();
-        this.onQuestComplete = null;
         this.interactionManager.interactionStartingState();
         this.onEvaluatingStudentAvailabilityChange?.(false);
     }
@@ -518,24 +514,7 @@ export class Story_Manager {
         this.endCutscene();
 
         this.questState.set(type, true);
-        this.onQuestComplete = type;
-        this.interact();
-    }
-
-    allQuestsCompleted(): boolean {
-        for (const [quest, check] of this.questState.entries()) {
-            void quest;
-            if (!check) return false;
-        }
-        return true;
-    }
-
-    enableInteraction(typeID: string): void {
-        this.interactionManager.enableInteraction(typeID);
-    }
-
-    disableInteraction(typeID: string): void {
-        this.interactionManager.disableInteraction(typeID);
+        this.onQuestInteraction?.(type);
     }
 
     async preparationsCompleted(): Promise<void> {
@@ -544,170 +523,90 @@ export class Story_Manager {
             PlayerState.Strong
         );
 
-        this.enableInteraction('WHERE_IS_EVALUATOR');
-        this.enableInteraction('FIND_EVALUATING_STUDENT');
+        this.interactionManager.evaluatingStudentQuest.unlock();
         this.onEvaluatingStudentAvailabilityChange?.(true);
-    }
-
-    async handleESDoorInteraction(): Promise<void> {
-        await this.playDialogInteraction(
-            "I've got an evaluation to finish first. The championship can wait a little longer.",
-            PlayerState.Angry
-        );
-
-        // TODO: JUST INFO: REMOVE THAT LATER
-        await this.playDialogInteraction(
-            'DEV NOTE: Door opens now for testing purposes. Remove this later.',
-            PlayerState.Angry
-        );
-        return;
-    }
-
-    async handlePreparationQuest(typeID: string): Promise<void> {
-        switch (typeID) {
-            case 'FIND_RUBBERDUCK':
-                await this.caseInteraction(
-                    'FIND_RUBBERDUCK',
-                    'Found the duck 🦆! One less thing to worry about.',
-                    PlayerState.Surprised
-                );
-                this.onQuestDuckFound?.();
-                break;
-
-            case 'GET_COFFEE':
-                await this.caseInteraction(
-                    'GET_COFFEE',
-                    'Ahh ☕ much better... Now I can finally think!',
-                    PlayerState.Drinking
-                );
-                break;
-
-            case 'GET_PAPER':
-                await this.caseInteraction(
-                    'GET_PAPER',
-                    'I found some paper 📃! Now I can finally take some notes.',
-                    PlayerState.ThumbsUp
-                );
-                break;
-
-            case 'LOGIN_COMPUTER':
-                this.onQuestLogin?.();
-                await this.caseInteraction(
-                    'LOGIN_COMPUTER',
-                    'Great, the computer is ready. Just a few more steps to go!',
-                    PlayerState.ThumbsUp
-                );
-                break;
-        }
-
-        this.disableInteraction(typeID);
-
-        if (this.allQuestsCompleted()) {
-            await this.preparationsCompleted();
-        }
     }
 
     async handleInteraction(interaction: Interaction): Promise<void> {
         //console.log(`Interaction triggered: ${interaction.typeID}`);
-        this.onQuestComplete = null;
+        const completeQuest = this.caseInteraction.bind(this);
+        const playDialog = this.playDialogInteraction.bind(this);
 
-        if (interaction.typeID === FIND_LOST_DROPPED_TOKEN_QUEST_ID) {
-            await this.caseInteraction(
-                FIND_LOST_DROPPED_TOKEN_QUEST_ID,
-                'There it is 🔑! I found my lost campus token. Now I can finally unlock the frontdoor.',
-                PlayerState.ThumbsUp
-            );
-            this.interactionManager.collectLostToken();
+        if (
+            await this.interactionManager.lostTokenQuest.handleInteraction(
+                interaction,
+                completeQuest,
+                () =>
+                    this.interactionManager.frontDoorQuest.interaction.enableInteraction()
+            )
+        ) {
             return;
         }
 
-        const frontDoorQuestHandled =
+        if (
             await this.interactionManager.frontDoorQuest.handleInteraction(
                 interaction,
-                (questId, message, animation) =>
-                    this.caseInteraction(questId, message, animation)
-            );
-        if (frontDoorQuestHandled) {
+                completeQuest
+            )
+        ) {
             return;
         }
 
-        // Event Space Door Interaction
-        switch (interaction.typeID) {
-            case 'EVENT_SPACE_DOOR_A':
-            case 'EVENT_SPACE_DOOR_B':
-                await this.handleESDoorInteraction();
-                return;
-        }
-
-        // Checklist Preparation
-        switch (interaction.typeID) {
-            case 'FIND_RUBBERDUCK':
-            case 'GET_COFFEE':
-            case 'GET_PAPER':
-            case 'LOGIN_COMPUTER':
-                await this.handlePreparationQuest(interaction.typeID);
-                return;
-        }
-
-        // Find Evaluating Student
-        switch (interaction.typeID) {
-            case 'WHERE_IS_EVALUATOR':
-                this.onQuestEvaluator?.();
-                await this.playDialogInteraction(
-                    "Someone's been assigned to my evaluation. They're at c1r12s2. Let's go.",
-                    PlayerState.ThumbsUp
-                );
-                return;
-
-            case 'FIND_EVALUATING_STUDENT':
-                await this.caseInteraction(
-                    'FIND_EVALUATING_STUDENT',
-                    'Found him! Time to head back and kick off the evaluation.',
-                    PlayerState.Strong
-                );
-
-                this.disableInteraction('WHERE_IS_EVALUATOR');
-                this.disableInteraction('FIND_EVALUATING_STUDENT');
-                this.enableInteraction('START_EVALUATION');
-
-                return;
-        }
-
-        // Start Evaluation
-        if (interaction.typeID === 'START_EVALUATION') {
-            this.onQuestStartEvaluation?.();
-            await this.caseInteraction(
-                'START_EVALUATION',
-                "Evaluation is starting. Let's go!",
-                PlayerState.Strong
-            );
-
-            // TODO: Do small quiz or something here to simulate evaluation. For now, just wait a few seconds.
-            await this.caseInteraction(
-                'START_EVALUATION',
-                "Evaluation is DONE! Let's go to the championship!",
-                PlayerState.Victory
-            );
-
-            // TODO: after eval finished, doors will open
-            this.disableInteraction('EVENT_SPACE_DOOR_A');
-            this.disableInteraction('EVENT_SPACE_DOOR_B');
-            this.disableInteraction('START_EVALUATION');
-
-            this.questFinished();
-
+        if (
+            await this.interactionManager.eventSpaceQuest.handleInteraction(
+                interaction,
+                playDialog
+            )
+        ) {
             return;
         }
-    }
 
-    interact(): void {
-        if (this.onQuestComplete) {
-            this.onQuestInteraction?.(this.onQuestComplete);
+        const preparationQuest = this.interactionManager.preparationQuests.get(
+            interaction.typeID
+        );
+        let onPreparationHandled: (() => void) | undefined;
+        if (interaction.typeID === RUBBER_DUCK_QUEST_ID) {
+            onPreparationHandled = () => this.onQuestDuckFound?.();
+        } else if (interaction.typeID === COMPUTER_LOGIN_QUEST_ID) {
+            onPreparationHandled = () => this.onQuestLogin?.();
         }
-    }
 
-    questFinished(): void {
-        this.onQuestFinished?.();
+        if (
+            preparationQuest !== undefined &&
+            (await preparationQuest.handleInteraction(
+                interaction,
+                completeQuest,
+                onPreparationHandled
+            ))
+        ) {
+            if ([...this.questState.values()].every(Boolean)) {
+                await this.preparationsCompleted();
+            }
+            return;
+        }
+
+        if (
+            await this.interactionManager.evaluatingStudentQuest.handleInteraction(
+                interaction,
+                playDialog,
+                completeQuest,
+                () => this.onQuestEvaluator?.(),
+                () =>
+                    this.interactionManager.startEvaluationQuest.interaction.enableInteraction()
+            )
+        ) {
+            return;
+        }
+
+        await this.interactionManager.startEvaluationQuest.handleInteraction(
+            interaction,
+            completeQuest,
+            () => this.onQuestStartEvaluation?.(),
+            () => {
+                this.interactionManager.eventSpaceQuest.disableInteractions();
+                this.onQuestFinished?.();
+            }
+        );
     }
 
     // Callback
