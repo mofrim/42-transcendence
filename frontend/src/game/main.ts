@@ -23,6 +23,7 @@ import { createThreeResourceDisposer } from './ThreeResourceDisposer.js';
 import { Story_Manager } from './story_manager.js';
 import { InteractionManager } from './interaction_manager.js';
 import { TokenQuestFrontdesk } from './QuestToken.js';
+import { addBlackhole } from './QuestBlackHole.js';
 import {
     getPlayerModelPath,
     IMG_DISPLAY_BOOKING,
@@ -1240,7 +1241,7 @@ export function startGame(
         duck_down = await loadMesh(MODEL_DUCK_DOWN, [0, 0, 0]);
         if (runtimeDisposed) return;
 
-        addBlackhole();
+        addBlackhole(scene);
 
         if (storyManager) {
             await storyManager.GameIntro();
@@ -1277,39 +1278,6 @@ export function startGame(
             child.material.map = texture;
             child.material.needsUpdate = true;
         }
-    }
-
-    function addBlackhole() {
-        /* const blackholeTex = textureLoader.load('textures/Blackhole.png');
-        const material = new THREE.MeshBasicMaterial({
-            map: blackholeTex,
-            transparent: true,
-        });
-        const geometry = new THREE.PlaneGeometry(40, 40);
-        const plane = new THREE.Mesh(geometry, material);
-        plane.rotation.x = Math.PI / 2.3;
-        plane.position.set(16, 20, -5);
-        scene.add(plane); */
-
-        const sphere = new THREE.Mesh(
-            new THREE.SphereGeometry(8, 32, 32),
-            new THREE.MeshBasicMaterial({ color: 0x000000 })
-        );
-
-        const outerSphere = new THREE.Mesh(
-            new THREE.SphereGeometry(8.25, 32, 32),
-            new THREE.MeshStandardMaterial({
-                color: 0xffffff,
-                emissive: 0xffffff,
-                emissiveIntensity: 5,
-                side: THREE.BackSide,
-            })
-        );
-
-        sphere.position.set(16, 25, -5);
-        outerSphere.position.copy(sphere.position);
-
-        scene.add(sphere, outerSphere);
     }
 
     async function loadMesh(
