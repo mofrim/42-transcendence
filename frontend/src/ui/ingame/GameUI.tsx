@@ -29,7 +29,7 @@ import {
     type QuestLogEntry,
 } from 'ftr-common/sharedTypes';
 
-import { CharacterPreviewView } from '../login/CharacterPreview';
+import { CharacterPreviewView } from '../login/PreviewCharacter';
 import { EventLogItems, type EventLogEntry } from './EventLogItems';
 import { Leaderboard } from './Leaderboard';
 import { MatchHistory } from './MatchHistory';

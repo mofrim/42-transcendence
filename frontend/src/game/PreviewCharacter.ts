@@ -7,7 +7,6 @@ import { getPlayerModelPath } from './Assets.js';
 
 interface CharacterPreviewOptions {
     canvas?: HTMLCanvasElement | null;
-    label?: HTMLElement | null;
 }
 
 export interface CreateCharPreviewReturnType {
@@ -20,7 +19,6 @@ const PREVIEW_FRAME_INTERVAL = 1 / MAX_PREVIEW_FPS;
 
 export function createCharacterPreview({
     canvas,
-    label,
 }: CharacterPreviewOptions): CreateCharPreviewReturnType {
     if (!canvas) {
         return {
@@ -174,10 +172,6 @@ export function createCharacterPreview({
         }
 
         currentCharacter = character;
-
-        if (label) {
-            label.textContent = modelPath.slice(modelPath.lastIndexOf('/') + 1);
-        }
 
         clearCurrentModel();
         const serial = ++loadSerial;

@@ -1,8 +1,8 @@
 import React from 'react';
 import { UserInfo } from './ui/login/UserInfo';
 import { AuthCard } from './ui/login/AuthCard';
-import { CharacterPreview } from './ui/login/CharacterPreview';
-import { MapPreview } from './ui/login/MapPreview';
+import { CharacterPreview } from './ui/login/PreviewCharacter';
+import { MapPreview } from './ui/login/PreviewMap';
 import { PlayerSelect } from './ui/login/PlayerSelect';
 import { Agreements } from './ui/login/Agreements';
 import { useLoginContext } from './hooks/useLoginContext';

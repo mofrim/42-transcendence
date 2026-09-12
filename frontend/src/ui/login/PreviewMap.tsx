@@ -1,4 +1,4 @@
-import { createMapPreview } from '../../game/map_preview';
+import { createMapPreview } from '../../game/PreviewMap';
 import React, { useEffect, useRef } from 'react';
 
 export const MapPreview: React.FC = () => {

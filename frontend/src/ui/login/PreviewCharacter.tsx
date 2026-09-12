@@ -2,7 +2,7 @@ import { useLoginContext } from '../../hooks/useLoginContext';
 import {
     createCharacterPreview,
     type CreateCharPreviewReturnType,
-} from '../../game/character_preview';
+} from '../../game/PreviewCharacter';
 import { getPlayerModelPath } from '../../game/Assets';
 import type { Character } from 'ftr-common/sharedTypes';
 import React, { useEffect, useRef } from 'react';
@@ -25,17 +25,15 @@ export const CharacterPreviewView: React.FC<CharacterPreviewViewProps> = ({
     labelId,
 }) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
-    const labelRef = useRef<HTMLDivElement>(null);
     const charPreviewRef = useRef<CreateCharPreviewReturnType>(null);
 
     // using 2 effects here, because dispose should on be run on unmount not on
     // avatar change!
     useEffect(() => {
         const canvas = canvasRef.current;
-        const label = labelRef.current;
         if (!canvas) return;
 
-        const preview = createCharacterPreview({ canvas, label });
+        const preview = createCharacterPreview({ canvas });
         charPreviewRef.current = preview;
 
         // cleanup only on unmount!
@@ -55,11 +53,7 @@ export const CharacterPreviewView: React.FC<CharacterPreviewViewProps> = ({
     let label: React.ReactNode = null;
     if (labelId !== undefined) {
         const modelName = getPlayerModelPath(character).split('/').pop();
-        label = (
-            <div ref={labelRef} id={labelId}>
-                {modelName}
-            </div>
-        );
+        label = <div id={labelId}>{modelName}</div>;
     }
 
     return (
