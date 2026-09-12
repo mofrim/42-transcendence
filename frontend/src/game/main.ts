@@ -1192,7 +1192,6 @@ export function startGame(
             };
             storyManager.onQuestDuckFound = async () => {
                 duck_up = await loadMesh(MODEL_DUCK_UP, [0, 0, 0]);
-                void duck_up;
                 if (duck_down) {
                     runtimeResourceDisposer.disposeObject3D(duck_down);
                     duck_down = null;
@@ -1583,9 +1582,22 @@ export function startGame(
         worldOctree.fromGraphNode(groupDoorB);
     }
 
-    function resetGameStateAfterBlackHole(): void {
+    async function resetGameStateAfterBlackHole(): Promise<void> {
         resetDoorsState();
         tokenQuestFrontdesk.reset();
+
+        if (!duck_down) {
+            duck_down = await loadMesh(MODEL_DUCK_DOWN, [0, 0, 0]);
+        }
+        if (runtimeDisposed) {
+            return;
+        }
+
+        if (duck_up) {
+            runtimeResourceDisposer.disposeObject3D(duck_up);
+            duck_up = null;
+        }
+
         onGameReset?.();
     }
 

@@ -33,7 +33,7 @@ export class Story_Manager {
     // Keep dialogue handling internal and prevent accidental reassignment.
     private dialogResolver: (() => void) | null;
     private readonly onDialogChange: ((state: DialogState) => void) | undefined;
-    private readonly onGameReset: (() => void) | undefined;
+    private readonly onGameReset: (() => void | Promise<void>) | undefined;
 
     // TODO: TEMP - need to be changed with Database
     questState: Map<string, boolean>;
@@ -47,7 +47,7 @@ export class Story_Manager {
         keys: [number, number],
         interactionManager: InteractionManager,
         onDialogChange?: (state: DialogState) => void,
-        onGameReset?: () => void
+        onGameReset?: () => void | Promise<void>
     ) {
         this.scene = scene;
         this.player = player;
@@ -489,8 +489,8 @@ export class Story_Manager {
 
         await this.returnCameraToPlayer(1.0);
 
+        await this.onGameReset?.();
         this.endCutscene();
-        this.onGameReset?.();
     }
 
     async playDialogInteraction(
