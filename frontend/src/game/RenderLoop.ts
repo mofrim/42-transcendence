@@ -42,7 +42,6 @@ type RenderLoopOptions = {
     readonly getStoryManager: () => Story_Manager | null;
     readonly getInteractionManager: () => InteractionManager | null;
     readonly isLocalPlayerDespawning: () => boolean;
-    readonly isEventSpaceDoorsOpen: () => boolean;
     readonly stopLocalInput: () => void;
     readonly clearRuntimeState: () => void;
     readonly onGameEvent: ((event: GameEvent) => void) | undefined;
@@ -251,7 +250,7 @@ export class RenderLoop {
             const completedEventSpaceQuestId =
                 interactionManager.eventSpaceQuest.updateTraversal(
                     interactionInZone,
-                    this.options.isEventSpaceDoorsOpen()
+                    this.options.getWorldLoader().eventSpaceDoorsOpen
                 );
             if (completedEventSpaceQuestId !== null) {
                 this.options.onGameEvent?.({

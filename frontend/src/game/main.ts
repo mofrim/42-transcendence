@@ -126,9 +126,7 @@ export function startGame(
     let interactionManager: InteractionManager | null = null;
     let isLocalPlayerDespawning = false;
     let localPlayerDespawnPromise: Promise<void> | null = null;
-    let eventSpaceDoorsOpen = false;
     const tokenQuestFrontdesk = new TokenQuestFrontdesk(onGameEvent);
-    const doorMeshesNames: string[] = [];
     const minigameEvent = new MinigameEvent({
         localNickname,
         localCharacter: whichCharacter,
@@ -196,7 +194,6 @@ export function startGame(
     //const OctreeSpawn = new Octree();
 
     const mesh_col: GLBMesh[] = [];
-    const mesh_Octree: THREE.Object3D[] = [];
     const mesh_RP: THREE.Mesh[] = [];
     const tttBox: TTTMeshBoard = new TTTMeshBoard();
     const input = new Input({
@@ -233,7 +230,6 @@ export function startGame(
         getStoryManager: () => storyManager,
         getInteractionManager: () => interactionManager,
         isLocalPlayerDespawning: () => isLocalPlayerDespawning,
-        isEventSpaceDoorsOpen: () => eventSpaceDoorsOpen,
         stopLocalInput,
         clearRuntimeState(): void {
             player = null;
@@ -249,11 +245,9 @@ export function startGame(
         scene,
         worldOctree,
         colliders: mesh_col,
-        octreeObjects: mesh_Octree,
         tttBoard: tttBox,
         doorGroupA: groupDoorA,
         doorGroupB: groupDoorB,
-        doorMeshNames: doorMeshesNames,
         gradientTexture: texture,
         resourceDisposer: runtimeResourceDisposer,
         isDisposed: (): boolean => renderLoop.isDisposed,
@@ -405,7 +399,7 @@ export function startGame(
                         interaction
                     )
                 ) {
-                    openDoors();
+                    worldLoader.openEventSpaceDoors();
                 }
             };
 
@@ -449,7 +443,7 @@ export function startGame(
             storyManager.onQuestFinished = () => {
                 console.log('Quest finished');
                 changeObjectTexture(display, IMG_DISPLAY_GRAPH);
-                openDoors();
+                worldLoader.openEventSpaceDoors();
             };
         }
 
@@ -509,42 +503,8 @@ export function startGame(
         }
     }
 
-    function openDoors(): void {
-        // TODO: Play door opening animation
-        groupDoorA.rotation.y = -1.83;
-        groupDoorB.rotation.y = 1.42;
-        eventSpaceDoorsOpen = true;
-
-        removefromColliderAndOctree(doorMeshesNames);
-    }
-
-    function resetDoorsState(): void {
-        groupDoorA.rotation.set(0, 0, 0);
-        groupDoorB.rotation.set(0, 0, 0);
-        eventSpaceDoorsOpen = false;
-
-        for (const doorGroup of [groupDoorA, groupDoorB]) {
-            const doorMeshes = doorGroup.getObjectsByProperty(
-                'isMesh',
-                true
-            ) as GLBMesh[];
-            for (const doorMesh of doorMeshes) {
-                if (!mesh_col.includes(doorMesh)) {
-                    mesh_col.push(doorMesh);
-                }
-            }
-        }
-
-        worldOctree.clear();
-        for (const mesh of mesh_Octree) {
-            worldOctree.fromGraphNode(mesh);
-        }
-        worldOctree.fromGraphNode(groupDoorA);
-        worldOctree.fromGraphNode(groupDoorB);
-    }
-
     async function resetGameStateAfterBlackHole(): Promise<void> {
-        resetDoorsState();
+        worldLoader.resetEventSpaceDoors();
         tokenQuestFrontdesk.reset();
 
         if (!duck_down) {
@@ -560,23 +520,6 @@ export function startGame(
         }
 
         onGameReset?.();
-    }
-
-    function removefromColliderAndOctree(objects: string[]): void {
-        for (const obj of objects) {
-            const index = mesh_col.findIndex((mesh) => mesh.name === obj);
-            if (index !== -1) {
-                mesh_col.splice(index, 1);
-                // console.log(`Removed ${obj} from collider meshes.`);
-            }
-        }
-
-        // TODO: NOT VERY EFFICIENT
-        // But can not remove single mesh from octree, so we have to clear and re-add all meshes
-        worldOctree.clear();
-        for (const mesh of mesh_Octree) {
-            worldOctree.fromGraphNode(mesh);
-        }
     }
 
     // Test function fo spawn and delete

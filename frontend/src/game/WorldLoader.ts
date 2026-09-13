@@ -12,11 +12,9 @@ type WorldLoaderOptions = {
     readonly scene: THREE.Scene;
     readonly worldOctree: Octree;
     readonly colliders: GLBMesh[];
-    readonly octreeObjects: THREE.Object3D[];
     readonly tttBoard: TTTMeshBoard;
     readonly doorGroupA: THREE.Group;
     readonly doorGroupB: THREE.Group;
-    readonly doorMeshNames: string[];
     readonly gradientTexture: THREE.Texture;
     readonly resourceDisposer: ResourceDisposer;
     readonly isDisposed: () => boolean;
@@ -29,27 +27,30 @@ export class WorldLoader {
     private readonly scene: THREE.Scene;
     private readonly worldOctree: Octree;
     private readonly colliders: GLBMesh[];
-    private readonly octreeObjects: THREE.Object3D[];
+    private readonly octreeObjects: THREE.Object3D[] = [];
     private readonly tttBoard: TTTMeshBoard;
     private readonly doorGroupA: THREE.Group;
     private readonly doorGroupB: THREE.Group;
-    private readonly doorMeshNames: string[];
+    private readonly doorMeshNames: string[] = [];
     private readonly gradientTexture: THREE.Texture;
     private readonly resourceDisposer: ResourceDisposer;
     private readonly isDisposed: () => boolean;
+    private eventSpaceDoorsOpenState = false;
 
     constructor(options: WorldLoaderOptions) {
         this.scene = options.scene;
         this.worldOctree = options.worldOctree;
         this.colliders = options.colliders;
-        this.octreeObjects = options.octreeObjects;
         this.tttBoard = options.tttBoard;
         this.doorGroupA = options.doorGroupA;
         this.doorGroupB = options.doorGroupB;
-        this.doorMeshNames = options.doorMeshNames;
         this.gradientTexture = options.gradientTexture;
         this.resourceDisposer = options.resourceDisposer;
         this.isDisposed = options.isDisposed;
+    }
+
+    get eventSpaceDoorsOpen(): boolean {
+        return this.eventSpaceDoorsOpenState;
     }
 
     async loadMesh(
@@ -129,6 +130,35 @@ export class WorldLoader {
         this.scene.add(object);
     }
 
+    openEventSpaceDoors(): void {
+        // TODO: Play door opening animation
+        this.doorGroupA.rotation.y = -1.83;
+        this.doorGroupB.rotation.y = 1.42;
+        this.eventSpaceDoorsOpenState = true;
+
+        this.removeFromColliderAndOctree(this.doorMeshNames);
+    }
+
+    resetEventSpaceDoors(): void {
+        this.doorGroupA.rotation.set(0, 0, 0);
+        this.doorGroupB.rotation.set(0, 0, 0);
+        this.eventSpaceDoorsOpenState = false;
+
+        for (const doorGroup of [this.doorGroupA, this.doorGroupB]) {
+            const doorMeshes = doorGroup.getObjectsByProperty(
+                'isMesh',
+                true
+            ) as GLBMesh[];
+            for (const doorMesh of doorMeshes) {
+                if (!this.colliders.includes(doorMesh)) {
+                    this.colliders.push(doorMesh);
+                }
+            }
+        }
+
+        this.rebuildWorldOctree(this.doorGroupA, this.doorGroupB);
+    }
+
     private async loadObject(
         path: string,
         errorContext: string
@@ -155,31 +185,45 @@ export class WorldLoader {
         return object;
     }
 
+    private removeFromColliderAndOctree(objects: readonly string[]): void {
+        for (const objectName of objects) {
+            const index = this.colliders.findIndex(
+                (mesh) => mesh.name === objectName
+            );
+            if (index !== -1) {
+                this.colliders.splice(index, 1);
+            }
+        }
+
+        this.rebuildWorldOctree();
+    }
+
+    private rebuildWorldOctree(...additionalObjects: THREE.Object3D[]): void {
+        this.worldOctree.clear();
+        for (const mesh of this.octreeObjects) {
+            this.worldOctree.fromGraphNode(mesh);
+        }
+        for (const object of additionalObjects) {
+            this.worldOctree.fromGraphNode(object);
+        }
+    }
+
     private prepareWorldMesh(mesh: GLBMesh): void {
+        let glassOpacity: number | null = null;
+
         if (mesh.material.name === 'Glass_mtl') {
-            mesh.material = new THREE.MeshToonMaterial({
-                color: 0xaaddff,
-                transparent: true,
-                opacity: 0.3,
-            });
-            mesh.castShadow = false;
-            mesh.receiveShadow = false;
-            return;
+            glassOpacity = 0.3;
+        } else if (mesh.material.name === 'Glass_outside') {
+            glassOpacity = 0.8;
+        } else if (mesh.material.name === 'Glass_block') {
+            glassOpacity = 1;
         }
-        if (mesh.material.name === 'Glass_outside') {
+
+        if (glassOpacity !== null) {
             mesh.material = new THREE.MeshToonMaterial({
                 color: 0xaaddff,
-                transparent: true,
-                opacity: 0.8,
-            });
-            mesh.castShadow = false;
-            mesh.receiveShadow = false;
-            return;
-        }
-        if (mesh.material.name === 'Glass_block') {
-            mesh.material = new THREE.MeshToonMaterial({
-                color: 0xaaddff,
-                transparent: false,
+                transparent: glassOpacity < 1,
+                opacity: glassOpacity,
             });
             mesh.castShadow = false;
             mesh.receiveShadow = false;
@@ -204,7 +248,7 @@ export class WorldLoader {
 
         mesh.material = new THREE.MeshToonMaterial({
             color: mesh.material.color,
-            map: mesh.material.map || null,
+            map: mesh.material.map,
             gradientMap: this.gradientTexture,
         });
 
