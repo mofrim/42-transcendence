@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import {
     PlayerState,
-    QUESTS_OBJ,
+    QUESTS,
     type QuestCompleteHandler,
 } from 'ftr-common/sharedTypes';
 
@@ -18,7 +18,7 @@ export class StartEvaluationQuest {
     constructor(scene: THREE.Scene, interactionRange: THREE.Vector3) {
         this.interaction = new Interaction(
             scene,
-            QUESTS_OBJ.START_EVALUATION_QUEST_ID.id,
+            QUESTS.START_EVALUATION_QUEST_ID.id,
             EVALUATION_TERMINAL_POSITION,
             interactionRange,
             false
@@ -31,20 +31,20 @@ export class StartEvaluationQuest {
         onStart?: () => void,
         onFinished?: () => void
     ): Promise<boolean> {
-        if (interaction.typeID !== QUESTS_OBJ.START_EVALUATION_QUEST_ID.id) {
+        if (interaction.typeID !== QUESTS.START_EVALUATION_QUEST_ID.id) {
             return false;
         }
 
         onStart?.();
         await completeQuest(
-            QUESTS_OBJ.START_EVALUATION_QUEST_ID.id,
+            QUESTS.START_EVALUATION_QUEST_ID.id,
             START_EVALUATION_MESSAGE,
             PlayerState.Strong
         );
 
         // TODO: Do small quiz or something here to simulate evaluation. For now, just wait a few seconds.
         await completeQuest(
-            QUESTS_OBJ.START_EVALUATION_QUEST_ID.id,
+            QUESTS.START_EVALUATION_QUEST_ID.id,
             EVALUATION_COMPLETE_MESSAGE,
             PlayerState.Victory
         );

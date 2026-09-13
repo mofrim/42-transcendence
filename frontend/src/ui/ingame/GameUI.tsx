@@ -21,12 +21,7 @@ import {
     getBlackHoleCountdownDeadline,
 } from './BlackHoleCountdown';
 
-import {
-    type Character,
-    QUESTS,
-    QUESTS_OBJ,
-    type QuestLogEntry,
-} from 'ftr-common/sharedTypes';
+import { type Character, QUESTS } from 'ftr-common/sharedTypes';
 
 import { CharacterPreviewView } from '../login/PreviewCharacter';
 import { EventLogItems, type EventLogEntry } from './EventLogItems';
@@ -53,7 +48,7 @@ type GameUIProps = {
     readonly nickname: string;
     readonly email: string;
     readonly character: Character;
-    readonly quests?: readonly QuestLogEntry[];
+    readonly quests?: typeof QUESTS;
     readonly completedQuestIds?: readonly string[];
     readonly events?: readonly EventLogEntry[];
     readonly matchHistory?: readonly EventLogEntry[];
@@ -308,7 +303,7 @@ export function GameUI({
         blackHoleHourglass + formatQuestCountdown(blackHoleSecondsRemaining);
     const isBlackHoleCountdownRunning =
         blackHoleCountdownActive &&
-        !completedQuestIds.includes(QUESTS_OBJ.START_EVALUATION_QUEST_ID.id);
+        !completedQuestIds.includes(QUESTS.START_EVALUATION_QUEST_ID.id);
     const isBlackHoleQuestCompleted =
         blackHoleCountdownActive &&
         !isBlackHoleCountdownRunning &&
@@ -534,7 +529,7 @@ export function GameUI({
                             marker = '✅';
                         }
 
-                        if (quest.id === QUESTS_OBJ.BLACK_HOLE_QUEST_ID.id) {
+                        if (quest.id === QUESTS.BLACK_HOLE_QUEST_ID.id) {
                             blackHoleTimer = (
                                 <time
                                     className='hud-black-hole-timer'

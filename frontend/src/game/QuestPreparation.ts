@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import {
     PlayerState,
-    QUESTS_OBJ,
+    QUESTS,
     type PreparationQuestId,
     type QuestCompleteHandler,
 } from 'ftr-common/sharedTypes';
@@ -20,24 +20,24 @@ type PreparationQuestDefinition = {
 const PREPARATION_QUEST_DEFINITIONS: Readonly<
     Record<PreparationQuestId, PreparationQuestDefinition>
 > = {
-    [QUESTS_OBJ.RUBBER_DUCK_QUEST_ID.id]: {
+    [QUESTS.RUBBER_DUCK_QUEST_ID.id]: {
         position: new THREE.Vector3(15.5, 0, -24),
         successMessage: 'Found the duck 🦆! One less thing to worry about.',
         animation: PlayerState.Surprised,
     },
-    [QUESTS_OBJ.COFFEE_QUEST_ID.id]: {
+    [QUESTS.COFFEE_QUEST_ID.id]: {
         position: new THREE.Vector3(24.5, 0, -8),
         successMessage: 'Ahh ☕ much better... Now I can finally think!',
         animation: PlayerState.Drinking,
     },
-    [QUESTS_OBJ.PAPER_QUEST_ID.id]: {
+    [QUESTS.PAPER_QUEST_ID.id]: {
         position: new THREE.Vector3(12.2, 0, -10.5),
         interactionRange: new THREE.Vector3(1.3, 2, 1.3),
         successMessage:
             'I found some paper 📃! Now I can finally take some notes.',
         animation: PlayerState.ThumbsUp,
     },
-    [QUESTS_OBJ.COMPUTER_LOGIN_QUEST_ID.id]: {
+    [QUESTS.COMPUTER_LOGIN_QUEST_ID.id]: {
         position: EVALUATION_TERMINAL_POSITION,
         successMessage:
             'Great, the computer is ready. Just a few more steps to go!',

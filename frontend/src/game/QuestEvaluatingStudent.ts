@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import {
-    QUESTS_OBJ,
+    QUESTS,
     NPCState,
     PlayerState,
     type QuestCompleteHandler,
@@ -64,7 +64,7 @@ export class EvaluatingStudentQuest {
             ),
             new Interaction(
                 scene,
-                QUESTS_OBJ.EVALUATING_STUDENT_QUEST_ID,
+                QUESTS.EVALUATING_STUDENT_QUEST_ID,
                 EVALUATING_STUDENT_POSITION,
                 interactionRange,
                 false
@@ -153,12 +153,12 @@ export class EvaluatingStudentQuest {
             return true;
         }
 
-        if (interaction.typeID !== QUESTS_OBJ.EVALUATING_STUDENT_QUEST_ID.id) {
+        if (interaction.typeID !== QUESTS.EVALUATING_STUDENT_QUEST_ID.id) {
             return false;
         }
 
         await completeQuest(
-            QUESTS_OBJ.EVALUATING_STUDENT_QUEST_ID.id,
+            QUESTS.EVALUATING_STUDENT_QUEST_ID.id,
             EVALUATING_STUDENT_SUCCESS_MESSAGE,
             PlayerState.Strong
         );

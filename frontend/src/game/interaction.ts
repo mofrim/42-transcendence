@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { CanvasTextSprite } from './CanvasTextSprite';
-import { type PreparationQuestId, QUESTS_OBJ } from 'ftr-common/sharedTypes';
+import { type PreparationQuestId, QUESTS } from 'ftr-common/sharedTypes';
 
 /* import { Player } from './player';
 import { Camera } from './camera'; */
@@ -13,12 +13,12 @@ export const EVALUATION_TERMINAL_POSITION = new THREE.Vector3(8, 3.72, -14);
 export type InteractionTypeId =
     | PreparationQuestId
     | typeof EVALUATOR_LOCATION_INTERACTION_ID
-    | typeof QUESTS_OBJ.EVALUATING_STUDENT_QUEST_ID
-    | typeof QUESTS_OBJ.START_EVALUATION_QUEST_ID
+    | typeof QUESTS.EVALUATING_STUDENT_QUEST_ID
+    | typeof QUESTS.START_EVALUATION_QUEST_ID
     | typeof EVENT_SPACE_DOOR_A_INTERACTION_ID
     | typeof EVENT_SPACE_DOOR_B_INTERACTION_ID
-    | typeof QUESTS_OBJ.FIND_LOST_DROPPED_TOKEN_QUEST_ID
-    | typeof QUESTS_OBJ.ENTER_CAMPUS_TOKEN_QUEST_ID;
+    | typeof QUESTS.FIND_LOST_DROPPED_TOKEN_QUEST_ID
+    | typeof QUESTS.ENTER_CAMPUS_TOKEN_QUEST_ID;
 
 /* export enum IID {
     FIND_RUBBERDUCK = 'FIND_RUBBERDUCK',

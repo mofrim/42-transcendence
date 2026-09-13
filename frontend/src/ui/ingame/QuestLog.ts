@@ -1,5 +1,5 @@
 import {
-    QUESTS_OBJ,
+    QUESTS,
     EventType,
     GameEvent,
     type QuestLogEntry,
@@ -8,8 +8,8 @@ import {
 type MinigameName = NonNullable<GameEvent['data']['game']>;
 
 const WIN_QUEST_ID_BY_GAME: ReadonlyMap<MinigameName, string> = new Map([
-    ['Rock-Paper-Scissors', QUESTS_OBJ.RPS_WIN_QUEST_ID.id],
-    ['Tic-Tac-Toe', QUESTS_OBJ.TTT_WIN_QUEST_ID.id],
+    ['Rock-Paper-Scissors', QUESTS.RPS_WIN_QUEST_ID.id],
+    ['Tic-Tac-Toe', QUESTS.TTT_WIN_QUEST_ID.id],
 ]);
 
 export type ResolvedQuestLogEntry = QuestLogEntry & {
@@ -27,7 +27,7 @@ function isQuestCompleted(
     blackHoleQuestCompleted: boolean,
     completedQuestIds: ReadonlySet<string>
 ): boolean {
-    if (quest.id === QUESTS_OBJ.BLACK_HOLE_QUEST_ID.id) {
+    if (quest.id === QUESTS.BLACK_HOLE_QUEST_ID.id) {
         return blackHoleQuestCompleted;
     }
 
@@ -35,14 +35,16 @@ function isQuestCompleted(
 }
 
 export function resolveQuestLogEntries(
-    quests: readonly QuestLogEntry[],
+    quests: typeof QUESTS,
     completedQuestIds: readonly string[],
     blackHoleQuestCompleted: boolean
 ): ResolvedQuestLogEntry[] {
     const completedQuestIdSet = new Set(completedQuestIds);
 
-    return quests.map((quest) => ({
-        ...quest,
+    // build & return an array of ResolvedQuestLogEntries from the quests-obj
+    return Object.values(quests).map((quest) => ({
+        id: quest.id,
+        text: quest.text,
         completed: isQuestCompleted(
             quest,
             blackHoleQuestCompleted,
@@ -98,7 +100,7 @@ function getCompletedQuestId(event: GameEvent): string | null {
     }
 
     if (event.eventType === EventType.PlayerInRange) {
-        return QUESTS_OBJ.MEET_PLAYER_QUEST_ID.id;
+        return QUESTS.MEET_PLAYER_QUEST_ID.id;
     }
 
     if (

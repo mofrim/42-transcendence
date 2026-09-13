@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import {
     EventType,
     type GameEvent,
-    QUESTS_OBJ,
+    QUESTS,
     PlayerState,
     type QuestCompleteHandler,
 } from 'ftr-common/sharedTypes';
@@ -29,7 +29,7 @@ export class LostTokenQuest {
     constructor(scene: THREE.Scene, interactionRange: THREE.Vector3) {
         this.interaction = new Interaction(
             scene,
-            QUESTS_OBJ.FIND_LOST_DROPPED_TOKEN_QUEST_ID,
+            QUESTS.FIND_LOST_DROPPED_TOKEN_QUEST_ID,
             LOST_TOKEN_POSITION,
             interactionRange,
             true
@@ -59,14 +59,12 @@ export class LostTokenQuest {
         completeQuest: QuestCompleteHandler<PlayerAnimationState>,
         onCollected?: () => void
     ): Promise<boolean> {
-        if (
-            interaction.typeID !== QUESTS_OBJ.FIND_LOST_DROPPED_TOKEN_QUEST_ID
-        ) {
+        if (interaction.typeID !== QUESTS.FIND_LOST_DROPPED_TOKEN_QUEST_ID) {
             return false;
         }
 
         await completeQuest(
-            QUESTS_OBJ.FIND_LOST_DROPPED_TOKEN_QUEST_ID.id,
+            QUESTS.FIND_LOST_DROPPED_TOKEN_QUEST_ID.id,
             LOST_TOKEN_SUCCESS_MESSAGE,
             PlayerState.ThumbsUp
         );
@@ -95,10 +93,10 @@ type FrontdeskMessage =
 const FRONTDESK_MESSAGE_BY_QUEST_ID: ReadonlyMap<string, FrontdeskMessage> =
     new Map<string, FrontdeskMessage>([
         [
-            QUESTS_OBJ.FIND_LOST_DROPPED_TOKEN_QUEST_ID.id,
+            QUESTS.FIND_LOST_DROPPED_TOKEN_QUEST_ID.id,
             FRONTDESK_TOKEN_FOUND_TEXT,
         ],
-        [QUESTS_OBJ.ENTER_CAMPUS_TOKEN_QUEST_ID.id, FRONTDESK_GREETING_TEXT],
+        [QUESTS.ENTER_CAMPUS_TOKEN_QUEST_ID.id, FRONTDESK_GREETING_TEXT],
     ]);
 
 /**

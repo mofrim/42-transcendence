@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import {
-    QUESTS_OBJ,
+    QUESTS,
     PlayerState,
     type QuestDialogHandler,
 } from 'ftr-common/sharedTypes';
@@ -91,6 +91,6 @@ export class EventSpaceQuest {
 
         this.completed = true;
         this.traversalStarted = false;
-        return QUESTS_OBJ.ENTER_EVENT_SPACE_QUEST_ID.id;
+        return QUESTS.ENTER_EVENT_SPACE_QUEST_ID.id;
     }
 }
