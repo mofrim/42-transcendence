@@ -6,7 +6,7 @@ import {
     ManyToOne,
 } from 'typeorm';
 import { BaseUser, BaseEventLog, EventType } from 'ftr-common/sharedTypes';
-import type { EventData } from 'ftr-common/sharedTypes';
+import type { EventData, QuestStatus } from 'ftr-common/sharedTypes';
 
 @Entity('users')
 export class ORMUser extends BaseUser {
@@ -30,6 +30,9 @@ export class ORMUser extends BaseUser {
 
     @OneToMany(() => ORMEventLog, (evlog) => evlog.user)
     declare eventLogs: ORMEventLog[];
+
+    @Column('simple-json')
+    declare quests: QuestStatus;
 
     constructor(data?: Partial<ORMUser>) {
         super();
