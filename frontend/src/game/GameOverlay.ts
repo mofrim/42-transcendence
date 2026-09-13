@@ -2,7 +2,7 @@ import * as THREE from 'three';
 
 import { getPlayerImagePath, IMG_DRAW, IMG_VS, IMG_VS_BEAM } from './Assets.js';
 import { CanvasTextSprite } from './CanvasTextSprite';
-import type { ThreeResourceDisposer } from './ThreeResourceDisposer';
+import type { ResourceDisposer } from './ResourceDisposer';
 
 const OVERLAY_TEXT_SCALE = 0.2;
 const OVERLAY_SIZE = new THREE.Vector2();
@@ -42,7 +42,7 @@ export function setPlayerOverlay(
     sprites: Map<string, THREE.Sprite>,
     playerCharacter: boolean,
     opponentCharacter: boolean,
-    resourceDisposer: ThreeResourceDisposer
+    resourceDisposer: ResourceDisposer
 ): void {
     const players = [
         ['UserA', playerCharacter],
@@ -111,7 +111,7 @@ export function addOverlayText(
 
 export function disposeOverlaySprites(
     sprites: Map<string, THREE.Sprite>,
-    resourceDisposer: ThreeResourceDisposer
+    resourceDisposer: ResourceDisposer
 ): void {
     for (const sprite of sprites.values()) {
         resourceDisposer.disposeObject3D(sprite);

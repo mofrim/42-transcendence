@@ -2,7 +2,7 @@ import * as THREE from 'three';
 
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import type { Character } from 'ftr-common/sharedTypes';
-import { createThreeResourceDisposer } from './ThreeResourceDisposer.js';
+import { createResourceDisposer } from './ResourceDisposer.js';
 import { getPlayerModelPath } from './Assets.js';
 
 interface CharacterPreviewOptions {
@@ -42,7 +42,7 @@ export function createCharacterPreview({
 
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(28, 9 / 16, 0.1, 100);
-    const resourceDisposer = createThreeResourceDisposer({
+    const resourceDisposer = createResourceDisposer({
         shouldCloseImageBitmap: () => true,
         onError: (error: unknown) => {
             console.error('Character preview resource disposal failed:', error);

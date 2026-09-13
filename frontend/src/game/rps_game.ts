@@ -12,7 +12,7 @@ import {
     resizeOverlay,
     setPlayerOverlay,
 } from './GameOverlay';
-import { createThreeResourceDisposer } from './ThreeResourceDisposer';
+import { createResourceDisposer } from './ResourceDisposer';
 import type { Socket } from 'socket.io-client';
 import { RPSChoice } from 'ftr-common/sharedTypes';
 
@@ -35,7 +35,7 @@ export class RPS_Game {
         ((player: Remote_Player) => void) | undefined;
     private hasReportedPlayerInRange: boolean;
     private readonly resourceDisposer: ReturnType<
-        typeof createThreeResourceDisposer
+        typeof createResourceDisposer
     >;
     private disposed: boolean;
 
@@ -72,7 +72,7 @@ export class RPS_Game {
         this.battleRequestedPlayer = '';
         this.onPlayerInRange = onPlayerInRange;
         this.hasReportedPlayerInRange = false;
-        this.resourceDisposer = createThreeResourceDisposer();
+        this.resourceDisposer = createResourceDisposer();
         this.disposed = false;
         this.battlePrompt = new FloatingTextSprite(
             BATTLE_PROMPT_TEXT,

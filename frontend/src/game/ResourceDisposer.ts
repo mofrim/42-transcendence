@@ -2,13 +2,13 @@ import * as THREE from 'three';
 
 type DisposalInput<T> = T | readonly T[] | null | undefined;
 
-interface ThreeResourceDisposerOptions {
+interface ResourceDisposerOptions {
     shouldDisposeTexture?(texture: THREE.Texture): boolean;
     shouldCloseImageBitmap?(bitmap: ImageBitmap, owner: THREE.Texture): boolean;
     onError?(error: unknown): void;
 }
 
-export interface ThreeResourceDisposer {
+export interface ResourceDisposer {
     disposeObject3D(value: DisposalInput<THREE.Object3D>): void;
     disposeMaterial(value: DisposalInput<THREE.Material>): void;
     disposeTexture(value: DisposalInput<THREE.Texture>): void;
@@ -30,9 +30,9 @@ function forEachInput<T>(
     callback(value as T);
 }
 
-export function createThreeResourceDisposer(
-    options: ThreeResourceDisposerOptions = {}
-): ThreeResourceDisposer {
+export function createResourceDisposer(
+    options: ResourceDisposerOptions = {}
+): ResourceDisposer {
     const geometries = new WeakSet<THREE.BufferGeometry>();
     const materials = new WeakSet<THREE.Material>();
     const textures = new WeakSet<THREE.Texture>();

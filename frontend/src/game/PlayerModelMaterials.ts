@@ -2,9 +2,9 @@ import * as THREE from 'three';
 
 import { IMG_GRADIENT } from './Assets.js';
 import {
-    createThreeResourceDisposer,
-    type ThreeResourceDisposer,
-} from './ThreeResourceDisposer';
+    createResourceDisposer,
+    type ResourceDisposer,
+} from './ResourceDisposer';
 
 const PLAYER_GRADIENT_TEXTURE = (() => {
     const texture = new THREE.TextureLoader().load(IMG_GRADIENT);
@@ -25,7 +25,7 @@ export function getPlayerMaterials(
 
 export function createPlayerResourceDisposer(
     onError?: (error: unknown) => void
-): ThreeResourceDisposer {
+): ResourceDisposer {
     const options = {
         shouldDisposeTexture: (texture: THREE.Texture) => {
             return texture !== PLAYER_GRADIENT_TEXTURE;
@@ -34,10 +34,10 @@ export function createPlayerResourceDisposer(
     };
 
     if (onError) {
-        return createThreeResourceDisposer({ ...options, onError });
+        return createResourceDisposer({ ...options, onError });
     }
 
-    return createThreeResourceDisposer(options);
+    return createResourceDisposer(options);
 }
 
 function createPlayerMaterial(
@@ -69,7 +69,7 @@ function createPlayerMaterial(
 
 export function replacePlayerModelMaterials(
     model: THREE.Object3D,
-    resourceDisposer: ThreeResourceDisposer
+    resourceDisposer: ResourceDisposer
 ): THREE.Mesh[] {
     const originals = new Set<THREE.Material>();
     const replacements = new Set<THREE.Material>();

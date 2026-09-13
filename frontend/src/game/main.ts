@@ -1,8 +1,6 @@
 import * as THREE from 'three';
 
 import { Octree } from 'three/addons/math/Octree.js';
-
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { FlyControls } from 'three/addons/controls/FlyControls.js';
 
 import { MultiplayerManager } from './multiplayer.js';
@@ -11,12 +9,13 @@ import { Player } from './player.js';
 import { Camera } from './camera.js';
 import { TTT_Game } from './ttt_game.js';
 import { RPS_Game } from './rps_game.js';
-import { createThreeResourceDisposer } from './ThreeResourceDisposer.js';
+import { createResourceDisposer } from './ResourceDisposer.js';
 import { Story_Manager } from './story_manager.js';
 import { InteractionManager } from './interaction_manager.js';
 import { Input } from './Input.js';
 import { TokenQuestFrontdesk } from './QuestToken.js';
 import { addBlackhole } from './QuestBlackHole.js';
+import { WorldLoader } from './WorldLoader.js';
 import {
     getPlayerModelPath,
     IMG_DISPLAY_BOOKING,
@@ -433,7 +432,7 @@ export function startGame(
     const scene = new THREE.Scene();
     const npcManager = new NPCManager(scene, tokenQuestFrontdesk);
     // const renderer = new THREE.WebGLRenderer({ antialias: true });
-    const runtimeResourceDisposer = createThreeResourceDisposer();
+    const runtimeResourceDisposer = createResourceDisposer();
     const followGroup = new THREE.Group();
     const timer = new THREE.Timer();
     const previousPlayerPosition = new THREE.Vector3();
@@ -448,10 +447,8 @@ export function startGame(
     let duck_up: THREE.Object3D | null = null;
     let display: THREE.Object3D | null = null;
 
-    let envLoaded: boolean = false;
     const textureLoader = new THREE.TextureLoader();
     const texture = textureLoader.load(IMG_GRADIENT);
-    const loader = new GLTFLoader();
     // const texture = new THREE.TextureLoader().load('textures/gradientMaps/twoTone2.jpg');
     texture.minFilter = THREE.NearestFilter;
     texture.magFilter = THREE.NearestFilter;
@@ -541,6 +538,19 @@ export function startGame(
     const mesh_Octree: THREE.Object3D[] = [];
     const mesh_RP: THREE.Mesh[] = [];
     const tttBox: TTTMeshBoard = new TTTMeshBoard();
+    const worldLoader = new WorldLoader({
+        scene,
+        worldOctree,
+        colliders: mesh_col,
+        octreeObjects: mesh_Octree,
+        tttBoard: tttBox,
+        doorGroupA: groupDoorA,
+        doorGroupB: groupDoorB,
+        doorMeshNames: doorMeshesNames,
+        gradientTexture: texture,
+        resourceDisposer: runtimeResourceDisposer,
+        isDisposed: () => runtimeDisposed,
+    });
     const input = new Input({
         domElement: renderer.domElement,
         colliders: mesh_col,
@@ -786,14 +796,14 @@ export function startGame(
                 tokenQuestFrontdesk.handleQuestCompletion(questId);
             };
             storyManager.onQuestDuckFound = async () => {
-                duck_up = await loadMesh(MODEL_DUCK_UP, [0, 0, 0]);
+                duck_up = await worldLoader.loadMesh(MODEL_DUCK_UP);
                 if (duck_down) {
                     runtimeResourceDisposer.disposeObject3D(duck_down);
                     duck_down = null;
                 }
             };
             storyManager.onQuestLogin = async () => {
-                display = await loadMesh(MODEL_DISPLAY, [0, 0, 0]);
+                display = await worldLoader.loadMesh(MODEL_DISPLAY);
                 changeObjectTexture(display, IMG_DISPLAY_INTRA);
             };
             storyManager.onQuestEvaluator = async () => {
@@ -809,21 +819,21 @@ export function startGame(
             };
         }
 
-        await loadMesh(MODEL_MAP, [0, 0, 0]);
+        await worldLoader.loadMesh(MODEL_MAP);
         if (runtimeDisposed) return;
         multiplayer.startPlayerUpdateLoop();
-        await loadMeshSky(MODEL_CLOUDS, [0, 0, 0]);
+        await worldLoader.loadSky(MODEL_CLOUDS);
         if (runtimeDisposed) return;
-        await loadMeshSky(MODEL_ROCKS, [0, 0, 0]);
+        await worldLoader.loadSky(MODEL_ROCKS);
         if (runtimeDisposed) return;
-        await loadMesh(MODEL_DOOR_A, [0, 0, 0]);
+        await worldLoader.loadMesh(MODEL_DOOR_A);
         if (runtimeDisposed) return;
-        await loadMesh(MODEL_DOOR_B, [0, 0, 0]);
+        await worldLoader.loadMesh(MODEL_DOOR_B);
         if (runtimeDisposed) return;
 
         // TODO: Need to check with quest state.
         // If duck already found, than show duck_up, else show duck_down.
-        duck_down = await loadMesh(MODEL_DUCK_DOWN, [0, 0, 0]);
+        duck_down = await worldLoader.loadMesh(MODEL_DUCK_DOWN);
         if (runtimeDisposed) return;
 
         addBlackhole(scene);
@@ -865,242 +875,6 @@ export function startGame(
         }
     }
 
-    async function loadMesh(
-        path: string,
-        pos: [number, number, number] = [0, 0, 0]
-    ): Promise<THREE.Object3D | null> {
-        let gltf: Awaited<ReturnType<GLTFLoader['loadAsync']>>;
-        try {
-            gltf = await loader.loadAsync(path);
-        } catch (error: unknown) {
-            if (!runtimeDisposed) {
-                console.error(`Map model loading failed for "${path}":`, error);
-            }
-            return null;
-        }
-
-        const obj = gltf.scene;
-
-        if (runtimeDisposed) {
-            runtimeResourceDisposer.disposeObject3D(obj);
-            return null;
-        }
-
-        //console.log("Adding collider for: " + obj.name);
-
-        obj.position.fromArray(pos);
-        const meshes = obj.getObjectsByProperty('isMesh', true) as GLBMesh[];
-        for (const child of meshes) {
-            if (!child.name.includes('NOCOL')) {
-                //console.log("Adding collider for: " + child.name);
-                mesh_col.push(child);
-            }
-
-            // Add Doors to group so we can open/close them
-            if (path === MODEL_DOOR_A) {
-                console.log(child.name + ' added to groupDoorA');
-                doorMeshesNames.push(child.name);
-                groupDoorA.add(obj);
-            }
-            if (path === MODEL_DOOR_B) {
-                console.log(child.name + ' added to groupDoorB');
-                doorMeshesNames.push(child.name);
-                groupDoorB.add(obj);
-            }
-
-            if (child.name.includes('TTT_Board')) {
-                if (tttBox.cellCnt >= 9)
-                    throw new Error('ttt game can have only 9 cells!');
-                tttBox.cells[tttBox.cellCnt] = child;
-                tttBox.cellCnt++;
-            }
-            // child.scale.setScalar(1.15);
-
-            if (child.material.name === 'Glass_mtl') {
-                child.material = new THREE.MeshToonMaterial({
-                    color: 0xaaddff,
-                    transparent: true,
-                    opacity: 0.3,
-                });
-                child.castShadow = false;
-                child.receiveShadow = false;
-            } else if (child.material.name === 'Glass_outside') {
-                child.material = new THREE.MeshToonMaterial({
-                    color: 0xaaddff,
-                    transparent: true,
-                    opacity: 0.8,
-                });
-                child.castShadow = false;
-                child.receiveShadow = false;
-            } else if (child.material.name === 'Glass_block') {
-                child.material = new THREE.MeshToonMaterial({
-                    color: 0xaaddff,
-                    transparent: false,
-                });
-                child.castShadow = false;
-                child.receiveShadow = false;
-            } else {
-                // outline
-                const edges = new THREE.EdgesGeometry(child.geometry, 50);
-                const line = new THREE.LineSegments(
-                    edges,
-                    new THREE.LineBasicMaterial({ color: 0x000000 })
-                );
-                child.add(line);
-
-                child.material = new THREE.MeshToonMaterial({
-                    color: child.material.color,
-                    map: child.material.map || null,
-                    gradientMap: texture,
-                });
-
-                child.castShadow = true;
-                child.receiveShadow = true;
-            }
-        }
-        if (runtimeDisposed) {
-            runtimeResourceDisposer.disposeObject3D(obj);
-            return null;
-        }
-
-        if (path !== MODEL_DOOR_A && path !== MODEL_DOOR_B) {
-            scene.add(obj);
-            mesh_Octree.push(obj);
-        }
-
-        worldOctree.fromGraphNode(obj);
-        //mesh_col.push(obj);
-
-        //worldOctree.fromGraphNode(obj);
-
-        envLoaded = true;
-
-        return obj;
-    }
-
-    async function loadMeshSky(
-        path: string,
-        pos: [number, number, number] = [0, 0, 0]
-    ): Promise<void> {
-        let gltf: Awaited<ReturnType<GLTFLoader['loadAsync']>>;
-        try {
-            gltf = await loader.loadAsync(path);
-        } catch (error: unknown) {
-            if (!runtimeDisposed) {
-                console.error(`Sky model loading failed for "${path}":`, error);
-            }
-            return;
-        }
-
-        const obj = gltf.scene;
-
-        if (runtimeDisposed) {
-            runtimeResourceDisposer.disposeObject3D(obj);
-            return;
-        }
-
-        obj.position.fromArray(pos);
-        const meshes = obj.getObjectsByProperty('isMesh', true) as GLBMesh[];
-        for (const child of meshes) {
-            // child.scale.setScalar(1.15);
-
-            // outline
-            const edges = new THREE.EdgesGeometry(child.geometry, 50);
-            const line = new THREE.LineSegments(
-                edges,
-                new THREE.LineBasicMaterial({ color: 0x000000 })
-            );
-            child.add(line);
-
-            child.material = new THREE.MeshToonMaterial({
-                color: child.material.color,
-                map: child.material.map || null,
-                gradientMap: texture,
-            });
-
-            child.castShadow = false;
-            child.receiveShadow = true;
-        }
-        if (runtimeDisposed) {
-            runtimeResourceDisposer.disposeObject3D(obj);
-            return;
-        }
-
-        scene.add(obj);
-    }
-
-    /* function loadMeshTitel(path, pos = [0, 0, 0]) {
-        loader.load(path, (gltf) => {
-            const obj = gltf.scene;
-
-            //console.log("Adding collider for: " + obj.name);
-
-            obj.position.set(...pos);
-            obj.traverse((child) => {
-                if (child.isMesh) {
-                    child.scale.set(1.15, 1.15, 1.15);
-
-
-                    if (child.material.name === "Glass_mtl") {
-                        child.material = new THREE.MeshToonMaterial({
-                            color: 0xaaddff,
-                            transparent: true,
-                            opacity: 0.3
-                        });
-                        child.castShadow = false;
-                        child.receiveShadow = false;
-
-                    }
-                    else if (child.material.name === "Glass_outside") {
-                        child.material = new THREE.MeshToonMaterial({
-                            color: 0xaaddff,
-                            transparent: true,
-                            opacity: 0.8
-                        });
-                        child.castShadow = false;
-                        child.receiveShadow = false;
-
-                    }
-                    else if (child.material.name === "Glass_block") {
-                        child.material = new THREE.MeshToonMaterial({
-                            color: 0xaaddff,
-                            transparent: true,
-                            opacity: 1
-                        });
-                        child.castShadow = false;
-                        child.receiveShadow = false;
-
-                    }
-                    else {
-                        // outline
-                        const edges = new THREE.EdgesGeometry(child.geometry, 50);
-                        const line = new THREE.LineSegments(
-                            edges,
-                            new THREE.LineBasicMaterial({ color: 0x000000 })
-                        );
-                        child.add(line);
-
-                        child.material = new THREE.MeshToonMaterial({
-                            color: child.material.color,
-                            map: child.material.map || null,
-                            gradientMap: texture
-                        });
-
-                        child.castShadow = true;
-                        child.receiveShadow = true;
-                    }
-
-                }
-            });
-            scene.add(obj);
-
-            worldOctree.fromGraphNode(obj);
-        });
-    } */
-    //loadMesh(MAP, [0,0,0]);
-
-    //tttGame.board = tttBox;
-
     function openDoors(): void {
         // TODO: Play door opening animation
         groupDoorA.rotation.y = -1.83;
@@ -1140,7 +914,7 @@ export function startGame(
         tokenQuestFrontdesk.reset();
 
         if (!duck_down) {
-            duck_down = await loadMesh(MODEL_DUCK_DOWN, [0, 0, 0]);
+            duck_down = await worldLoader.loadMesh(MODEL_DUCK_DOWN);
         }
         if (runtimeDisposed) {
             return;
@@ -1207,7 +981,11 @@ export function startGame(
             return;
         }
 
-        if (!activeCamera || !multiplayer || (!isSpectator && !envLoaded))
+        if (
+            !activeCamera ||
+            !multiplayer ||
+            (!isSpectator && !worldLoader.isEnvironmentLoaded)
+        )
             return;
 
         timer.update();

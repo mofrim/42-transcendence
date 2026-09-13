@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { createThreeResourceDisposer } from './ThreeResourceDisposer.js';
+import { createResourceDisposer } from './ResourceDisposer.js';
 import { MODEL_MAP } from './Assets.js';
 
 const MAX_PIXEL_RATIO = 1.5;
@@ -90,7 +90,7 @@ export function createMapPreview({
 
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(38, 1, 0.01, 1_000);
-    const resourceDisposer = createThreeResourceDisposer({
+    const resourceDisposer = createResourceDisposer({
         shouldCloseImageBitmap: () => true,
         onError: (error: unknown) => {
             console.error('Map preview resource disposal failed:', error);

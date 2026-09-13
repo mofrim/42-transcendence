@@ -10,7 +10,7 @@ import {
     resizeOverlay,
     setPlayerOverlay,
 } from './GameOverlay';
-import { createThreeResourceDisposer } from './ThreeResourceDisposer';
+import { createResourceDisposer } from './ResourceDisposer';
 import { IMG_EMPTY, IMG_O, IMG_X } from './Assets.js';
 import { TTTGameState, TTTMark, TTTMeshBoard } from 'ftr-common/sharedTypes';
 
@@ -51,7 +51,7 @@ export class TTT_Game {
 
     vsSprite: Map<string, THREE.Sprite>;
     private readonly resourceDisposer: ReturnType<
-        typeof createThreeResourceDisposer
+        typeof createResourceDisposer
     >;
     private readonly boardInitFrameSlot: AnimationFrameSlot;
     private readonly animationFrameSlot: AnimationFrameSlot;
@@ -109,7 +109,7 @@ export class TTT_Game {
         this.overlayCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
 
         this.vsSprite = createMinigameOverlay();
-        this.resourceDisposer = createThreeResourceDisposer();
+        this.resourceDisposer = createResourceDisposer();
         this.boardInitFrameSlot = new AnimationFrameSlot(() => !this.disposed);
         this.animationFrameSlot = new AnimationFrameSlot(() => !this.disposed);
         this.pendingWaits = new Map();
