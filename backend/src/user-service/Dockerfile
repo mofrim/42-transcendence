@@ -16,7 +16,7 @@ COPY backend/tsconfig.base.json backend/tsconfig.json ./backend/
 COPY backend/src/user-service ./backend/src/user-service
 COPY backend/src/backend-utils ./backend/src/backend-utils
 
-RUN npm run build -w ftr-common && npm run build -w backend/src/user-service
+RUN npm run build -w ftr-common && npm run build -w backend/src/backend-utils && npm run build -w backend/src/user-service
 
 # --------------------------=[ serve app with node ]=------------------------ #
 
