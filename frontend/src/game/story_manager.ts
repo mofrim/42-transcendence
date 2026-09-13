@@ -7,7 +7,7 @@ import {
     COMPUTER_LOGIN_QUEST_ID,
     PREPARATION_QUEST_IDS,
     PlayerState,
-    RUBBER_DUCK_QUEST_ID,
+    QUESTS_OBJ,
 } from 'ftr-common/sharedTypes';
 
 // TODO: move this to sharedTypes.ts
@@ -563,7 +563,7 @@ export class Story_Manager {
             interaction.typeID
         );
         let onPreparationHandled: (() => void) | undefined;
-        if (interaction.typeID === RUBBER_DUCK_QUEST_ID) {
+        if (interaction.typeID === QUESTS_OBJ.RUBBER_DUCK_QUEST_ID) {
             onPreparationHandled = () => this.onQuestDuckFound?.();
         } else if (interaction.typeID === COMPUTER_LOGIN_QUEST_ID) {
             onPreparationHandled = () => this.onQuestLogin?.();

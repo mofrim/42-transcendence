@@ -6,9 +6,9 @@ import type * as THREE from 'three';
 // DONE migrating quests
 export const FIND_LOST_DROPPED_TOKEN_QUEST_ID = 'FIND_LOST_DROPPED_TOKEN';
 export const ENTER_CAMPUS_TOKEN_QUEST_ID = 'ENTER_42_CAMPUS_VIA_TOKEN';
+export const RUBBER_DUCK_QUEST_ID = 'FIND_RUBBERDUCK';
 
 // TODO migrating quests
-export const RUBBER_DUCK_QUEST_ID = 'FIND_RUBBERDUCK';
 export const COFFEE_QUEST_ID = 'GET_COFFEE';
 export const PAPER_QUEST_ID = 'GET_PAPER';
 export const COMPUTER_LOGIN_QUEST_ID = 'LOGIN_COMPUTER';
@@ -20,8 +20,73 @@ export const START_EVALUATION_QUEST_ID = 'START_EVALUATION';
 export const TTT_WIN_QUEST_ID = 'win-ttt-minigame';
 export const ENTER_EVENT_SPACE_QUEST_ID = 'ENTER_EVENT_SPACE';
 
+export const QUESTS_OBJ = Object.freeze({
+    FIND_LOST_DROPPED_TOKEN_QUEST_ID: {
+        id: 'FIND_LOST_DROPPED_TOKEN',
+        text: 'Find lost dropped Token',
+    },
+    ENTER_CAMPUS_TOKEN_QUEST_ID: {
+        id: 'ENTER_42_CAMPUS_VIA_TOKEN',
+        text: 'Enter 42 campus via token',
+    },
+    RUBBER_DUCK_QUEST_ID: {
+        id: 'FIND_RUBBERDUCK',
+        text: 'Find the Rubber Duck',
+    },
+    COFFEE_QUEST_ID: {
+        id: 'GET_COFFEE',
+        text: 'Get a Coffee',
+    },
+    PAPER_QUEST_ID: {
+        id: 'GET_PAPER',
+        text: 'Get a Piece of Paper',
+    },
+    COMPUTER_LOGIN_QUEST_ID: {
+        id: 'LOGIN_COMPUTER',
+        text: 'Log In to Computer c2r12s6',
+    },
+    BLACK_HOLE_QUEST_ID: {
+        id: 'avoid-blackhole',
+        text: "Don't get blackholed",
+    },
+    MEET_PLAYER_QUEST_ID: {
+        id: 'meet-player',
+        text: 'Find another Student',
+    },
+    RPS_WIN_QUEST_ID: {
+        id: 'win-rps-minigame',
+        text: 'Win Rock-Paper-Scissors',
+    },
+    EVALUATING_STUDENT_QUEST_ID: {
+        id: 'FIND_EVALUATING_STUDENT',
+        text: 'Find the Evaluating Student',
+    },
+    START_EVALUATION_QUEST_ID: {
+        id: 'START_EVALUATION',
+        text: 'Start Evaluation',
+    },
+    TTT_WIN_QUEST_ID: {
+        id: 'win-ttt-minigame',
+        text: 'Win Tic-Tac-Toe',
+    },
+    ENTER_EVENT_SPACE_QUEST_ID: {
+        id: 'ENTER_EVENT_SPACE',
+        text: 'Enter the Event Space',
+    },
+});
+
+// generate a `type` from the above array.. awesome TS feature BTW
+export type QuestStatus = {
+    [K in keyof typeof QUESTS_OBJ]: boolean;
+};
+
+// the quests object with every boolean set to false.
+export const InitialQuestStatus: QuestStatus = Object.fromEntries(
+    Object.keys(QUESTS_OBJ).map((key) => [key, false])
+) as QuestStatus;
+
 export const PREPARATION_QUEST_IDS = [
-    RUBBER_DUCK_QUEST_ID,
+    QUESTS_OBJ.RUBBER_DUCK_QUEST_ID.id,
     COFFEE_QUEST_ID,
     PAPER_QUEST_ID,
     COMPUTER_LOGIN_QUEST_ID,
@@ -103,71 +168,6 @@ export const QUESTS: readonly QuestLogEntry[] = [
         text: "Don't get blackholed",
     },
 ];
-
-export const QUESTS_OBJ = Object.freeze({
-    FIND_LOST_DROPPED_TOKEN_QUEST_ID: {
-        id: 'FIND_LOST_DROPPED_TOKEN',
-        text: 'Find lost dropped Token',
-    },
-    ENTER_CAMPUS_TOKEN_QUEST_ID: {
-        id: 'ENTER_42_CAMPUS_VIA_TOKEN',
-        text: 'Enter 42 campus via token',
-    },
-    RUBBER_DUCK_QUEST_ID: {
-        id: 'FIND_RUBBERDUCK',
-        text: 'Find the Rubber Duck',
-    },
-    COFFEE_QUEST_ID: {
-        id: 'GET_COFFEE',
-        text: 'Get a Coffee',
-    },
-    PAPER_QUEST_ID: {
-        id: 'GET_PAPER',
-        text: 'Get a Piece of Paper',
-    },
-    COMPUTER_LOGIN_QUEST_ID: {
-        id: 'LOGIN_COMPUTER',
-        text: 'Log In to Computer c2r12s6',
-    },
-    BLACK_HOLE_QUEST_ID: {
-        id: 'avoid-blackhole',
-        text: "Don't get blackholed",
-    },
-    MEET_PLAYER_QUEST_ID: {
-        id: 'meet-player',
-        text: 'Find another Student',
-    },
-    RPS_WIN_QUEST_ID: {
-        id: 'win-rps-minigame',
-        text: 'Win Rock-Paper-Scissors',
-    },
-    EVALUATING_STUDENT_QUEST_ID: {
-        id: 'FIND_EVALUATING_STUDENT',
-        text: 'Find the Evaluating Student',
-    },
-    START_EVALUATION_QUEST_ID: {
-        id: 'START_EVALUATION',
-        text: 'Start Evaluation',
-    },
-    TTT_WIN_QUEST_ID: {
-        id: 'win-ttt-minigame',
-        text: 'Win Tic-Tac-Toe',
-    },
-    ENTER_EVENT_SPACE_QUEST_ID: {
-        id: 'ENTER_EVENT_SPACE',
-        text: 'Enter the Event Space',
-    },
-});
-
-// generate a `type` from the above array.. awesome TS feature BTW
-export type QuestStatus = {
-    [K in keyof typeof QUESTS_OBJ]: boolean;
-};
-
-// the quests object with every boolean set to false.
-export const InitialQuestStatus: QuestStatus = Object.fromEntries(
-    Object.keys(QUESTS_OBJ).map((key) => [key, false])
-) as QuestStatus;
 
 // ---------------------=[ eventlog types and classes ]=--------------------- //
 

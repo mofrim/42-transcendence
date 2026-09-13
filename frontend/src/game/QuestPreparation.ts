@@ -4,7 +4,7 @@ import {
     COMPUTER_LOGIN_QUEST_ID,
     PAPER_QUEST_ID,
     PlayerState,
-    RUBBER_DUCK_QUEST_ID,
+    QUESTS_OBJ,
     type PreparationQuestId,
     type QuestCompleteHandler,
 } from 'ftr-common/sharedTypes';
@@ -23,7 +23,7 @@ type PreparationQuestDefinition = {
 const PREPARATION_QUEST_DEFINITIONS: Readonly<
     Record<PreparationQuestId, PreparationQuestDefinition>
 > = {
-    [RUBBER_DUCK_QUEST_ID]: {
+    [QUESTS_OBJ.RUBBER_DUCK_QUEST_ID.id]: {
         position: new THREE.Vector3(15.5, 0, -24),
         successMessage: 'Found the duck 🦆! One less thing to worry about.',
         animation: PlayerState.Surprised,
@@ -58,7 +58,7 @@ export class PreparationQuest {
         private readonly questId: PreparationQuestId,
         defaultInteractionRange: THREE.Vector3
     ) {
-        this.definition = PREPARATION_QUEST_DEFINITIONS[questId];
+        this.definition = PREPARATION_QUEST_DEFINITIONS[questId]!;
         const interactionRange =
             this.definition.interactionRange ?? defaultInteractionRange;
 
