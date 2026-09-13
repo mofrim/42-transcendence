@@ -16,6 +16,7 @@ import { TokenQuestFrontdesk } from './QuestToken.js';
 import { addBlackhole } from './QuestBlackHole.js';
 import { WorldLoader } from './WorldLoader.js';
 import { RenderLoop } from './RenderLoop.js';
+import { MinigameEvent } from './MinigameEvent.js';
 import {
     getPlayerModelPath,
     IMG_DISPLAY_BOOKING,
@@ -36,20 +37,10 @@ import {
 import { io } from 'socket.io-client';
 
 import {
-    RPSChoice,
     TTTMeshBoard,
     GameEvent,
     EventType,
-    type EventData,
     type GLBMesh,
-    type RPSInvalidPayload,
-    type RPSDrawPayload,
-    type RPSWinnerPayload,
-    type RPSRequestDataPayload,
-    type TTTMarkPayload,
-    type TTTStartPayload,
-    type TTTWinPayload,
-    type TTTDrawPayload,
     type ReceivedChatPayload,
     type SocketAuth,
 } from 'ftr-common/sharedTypes';
@@ -79,17 +70,6 @@ export type GameRuntime = {
     readonly dispose: () => Promise<void>;
     readonly continueDialogue: () => void;
     readonly triggerBlackHoleCutscene: () => void;
-};
-
-type NamedPlayer = {
-    readonly id: string;
-    readonly nickname: string;
-    onDialogChange?: (state: { isOpen: boolean; message: string }) => void;
-};
-
-type ActiveTTTPlayers = {
-    readonly playerOne: NamedPlayer;
-    readonly playerTwo: NamedPlayer;
 };
 
 // export type GameResultEvent = Extract<
@@ -144,282 +124,21 @@ export function startGame(
     let rpsGame: RPS_Game | null = null;
     let storyManager: Story_Manager | null = null;
     let interactionManager: InteractionManager | null = null;
-    let activeTTTPlayers: ActiveTTTPlayers | null = null;
     let isLocalPlayerDespawning = false;
     let localPlayerDespawnPromise: Promise<void> | null = null;
     let eventSpaceDoorsOpen = false;
     const tokenQuestFrontdesk = new TokenQuestFrontdesk(onGameEvent);
     const doorMeshesNames: string[] = [];
-
-    function handleRPSInvalid(data: RPSInvalidPayload) {
-        if (!player) return;
-        if (data.playerOne === player.id || data.playerTwo === player.id) {
-            console.log('Invalid RPS choice received.');
-            if (!rpsGame) return;
-            rpsGame.yourChoice = RPSChoice.None;
-            rpsGame.opponentChoice = RPSChoice.None;
-            //rpsGame.playChoiceAnimation = false;
-            //rpsGame.solutionRPSAnimation();
-            rpsGame.solutionRPSAnimation();
-        }
-    }
-
-    function handleRPSDraw(data: RPSDrawPayload) {
-        console.log('RPS Draw: ' + data.playerOne + ' and ' + data.playerTwo);
-        if (!player) return;
-
-        if (data.playerOne === player.id || data.playerTwo === player.id) {
-            console.log('The RPS game ended in a draw!');
-            if (!rpsGame) return;
-            rpsGame.yourChoice = data.choice;
-            rpsGame.opponentChoice = data.choice;
-
-            let opponentId = data.playerOne;
-            if (data.playerOne === player.id) {
-                opponentId = data.playerTwo;
-            }
-            emitLocalGameResult(
-                'Rock-Paper-Scissors',
-                'draw',
-                resolvePlayerNickname(opponentId)
-            );
-
-            rpsGame.solutionRPSAnimation();
-            /* if(rpsGame.playChoiceAnimation == false)
-                rpsGame.solutionRPSAnimation();
-            else
-                rpsGame.playChoiceAnimation = false; */
-        }
-    }
-
-    function handleRPSWinner(data: RPSWinnerPayload) {
-        if (!player || !rpsGame) return;
-
-        let outcome: NonNullable<EventData['outcome']>;
-        let opponentId: string;
-        let yourChoice: RPSChoice;
-        let opponentChoice: RPSChoice;
-
-        if (data.winner === player.id) {
-            console.log('You won the RPS game!');
-            outcome = 'won';
-            opponentId = data.loser;
-            yourChoice = data.winnerChoice;
-            opponentChoice = data.loserChoice;
-        } else if (data.loser === player.id) {
-            console.log('You lost the RPS game!');
-            outcome = 'lost';
-            opponentId = data.winner;
-            yourChoice = data.loserChoice;
-            opponentChoice = data.winnerChoice;
-        } else {
-            return;
-        }
-
-        emitLocalGameResult(
-            'Rock-Paper-Scissors',
-            outcome,
-            resolvePlayerNickname(opponentId)
-        );
-        rpsGame.yourChoice = yourChoice;
-        rpsGame.opponentChoice = opponentChoice;
-        rpsGame.solutionRPSAnimation();
-    }
-    /* function handleChoice(data){
-        if(data.requestedPlayerID !== player.id)
-            return;
-
-        rpsGame.opponentChoice = data.choice;
-        console.log("Player " + data.id + " made a choice: " + data.choice);
-    } */
-
-    function handleRPSAccept(data: RPSRequestDataPayload) {
-        if (!player) return;
-        if (data.requestedPlayerID !== player.id) return;
-        if (!rpsGame) return;
-        player.battleRequested = false;
-        if (!multiplayer) return;
-        const opponentPlayer = multiplayer.players.get(data.id);
-        if (!opponentPlayer) return;
-        opponentPlayer.battleRequested = false;
-        console.log('Battle accepted from player ' + data.id);
-        rpsGame.startRPSAnimation(whichCharacter, opponentPlayer.character);
-    }
-
-    function handleRPSDecline(data: RPSRequestDataPayload) {
-        if (!player) return;
-
-        if (data.requestedPlayerID !== player.id) return;
-
-        if (!rpsGame) return;
-        player.battleRequested = false;
-        player.youSendRPGRequest = false;
-        if (!multiplayer) return;
-        const opponentPlayer = multiplayer.players.get(data.id);
-        if (!opponentPlayer) return;
-        opponentPlayer.battleRequested = false;
-        console.log('Battle declined from player ' + data.id);
-    }
-
-    function handleRPSRequest(data: RPSRequestDataPayload) {
-        //console.log("Marking 2: " + data.board);
-        if (!player) return;
-        if (data.requestedPlayerID !== player.id) return;
-
-        player.battleRequested = true;
-
-        if (!rpsGame) return;
-        rpsGame.BattleRequest(
-            data.id,
-            // Send server-stored nicknames to the minigame event
-            resolvePlayerNickname(data.id, data.nickname)
-        );
-        //console.log("You accepted a battle with player " + rpsGame.playerInRange.id);
-    }
-
-    function handleTTTupdate(data: TTTMarkPayload) {
-        //console.log("Marking 2: " + data.board);
-        if (!tttGame) return;
-        tttGame.markField(data.fieldName, data.id, data.mark);
-    }
-
-    function handleTTTstart(data: TTTStartPayload) {
-        if (!tttGame || !player || !multiplayer) return;
-
-        const localPlayerID = player.id ?? socket.id;
-        let opponentCharacter = whichCharacter;
-        if (data.playerOne === localPlayerID) {
-            const opponentPlayer = multiplayer.players.get(data.playerTwo);
-            if (!opponentPlayer) return;
-            opponentCharacter = opponentPlayer.character;
-        } else if (data.playerTwo === localPlayerID) {
-            const opponentPlayer = multiplayer.players.get(data.playerOne);
-            if (!opponentPlayer) return;
-            opponentCharacter = opponentPlayer.character;
-        }
-
-        const accepted = tttGame.startGame(
-            data.playerOne,
-            data.playerTwo,
-            data.playerOneNickname,
-            data.playerTwoNickname,
-            whichCharacter,
-            opponentCharacter
-        );
-        if (!accepted) return;
-
-        activeTTTPlayers = {
-            playerOne: createNamedPlayer(
-                data.playerOne,
-                data.playerOneNickname
-            ),
-            playerTwo: createNamedPlayer(
-                data.playerTwo,
-                data.playerTwoNickname
-            ),
-        };
-    }
-
-    function getActiveTTTOpponent(
-        localPlayerId: string | undefined
-    ): NamedPlayer | null {
-        if (!localPlayerId || !activeTTTPlayers) {
-            return null;
-        }
-        if (activeTTTPlayers.playerOne.id === localPlayerId) {
-            return activeTTTPlayers.playerTwo;
-        }
-        if (activeTTTPlayers.playerTwo.id === localPlayerId) {
-            return activeTTTPlayers.playerOne;
-        }
-        return null;
-    }
-
-    function handleTTTwin(data: TTTWinPayload) {
-        if (!tttGame) return;
-        const localPlayerId = player?.id;
-        const opponent = getActiveTTTOpponent(localPlayerId);
-        if (localPlayerId && opponent) {
-            let outcome: EventData['outcome'] = 'lost';
-            if (data.id === localPlayerId) {
-                outcome = 'won';
-            }
-
-            emitLocalGameResult('Tic-Tac-Toe', outcome, opponent.nickname);
-        }
-        tttGame.drawWin(data.winner);
-        tttGame.winner(
-            data.id,
-            // Send server-stored nicknames to the minigame event
-            data.nickname
-        );
-        tttGame.endGame();
-        activeTTTPlayers = null;
-    }
-
-    function handleTTTdraw(_data: TTTDrawPayload) {
-        if (!tttGame) return;
-        void _data;
-
-        const opponent = getActiveTTTOpponent(player?.id);
-        if (opponent) {
-            emitLocalGameResult('Tic-Tac-Toe', 'draw', opponent.nickname);
-        }
-
-        tttGame.draw();
-        tttGame.endGame();
-        activeTTTPlayers = null;
-    }
-
-    function emitLocalGameResult(
-        game: EventData['game'],
-        outcome: EventData['outcome'],
-        opponentNickname: string
-    ): void {
-        onGameEvent?.({
-            eventType: EventType.GameResult,
-            data: {
-                game: game!,
-                outcome: outcome!,
-                playerNickname: localNickname,
-                opponentNickname: opponentNickname,
-            },
-            logtime: new Date(),
-        });
-    }
-
-    function resolvePlayerNickname(
-        playerId: string,
-        fallbackNickname?: string
-    ): string {
-        if (multiplayer) {
-            return multiplayer.resolvePlayerNickname(
-                playerId,
-                fallbackNickname
-            );
-        }
-
-        if (playerId === player?.id || playerId === socket.id) {
-            return localNickname;
-        }
-
-        const fallback = fallbackNickname?.trim();
-        if (fallback) {
-            return fallback;
-        }
-
-        return playerId;
-    }
-
-    function createNamedPlayer(
-        playerId: string,
-        fallbackNickname?: string
-    ): NamedPlayer {
-        return {
-            id: playerId,
-            nickname: resolvePlayerNickname(playerId, fallbackNickname),
-        };
-    }
+    const minigameEvent = new MinigameEvent({
+        localNickname,
+        localCharacter: whichCharacter,
+        getSocketId: () => socket.id,
+        getPlayer: () => player,
+        getMultiplayer: () => multiplayer,
+        getTTTGame: () => tttGame,
+        getRPSGame: () => rpsGame,
+        onGameEvent,
+    });
 
     // ============================================================================
     // GAME SETUP
@@ -522,7 +241,7 @@ export function startGame(
             camera = null;
             tttGame = null;
             rpsGame = null;
-            activeTTTPlayers = null;
+            minigameEvent.reset();
         },
         onGameEvent,
     });
@@ -612,34 +331,7 @@ export function startGame(
             localNickname,
             onGameEvent,
             onChatMessage,
-            gameHandlers: {
-                onInitData(data): void {
-                    tttGame?.initGame({ game: data });
-                },
-                onTTTPlayerOne(id): void {
-                    tttGame?.setPlayerOne(id);
-                },
-                onTTTPlayerTwo(id): void {
-                    tttGame?.setPlayerTwo(id);
-                },
-                onTTTStart: handleTTTstart,
-                onTTTReset(): void {
-                    tttGame?.resetGame();
-                    activeTTTPlayers = null;
-                },
-                onTTTMark: handleTTTupdate,
-                onTTTWin: handleTTTwin,
-                onTTTDraw: handleTTTdraw,
-                onRPSRequest: handleRPSRequest,
-                onRPSAccept: handleRPSAccept,
-                onRPSDecline: handleRPSDecline,
-                onRPSWinner: handleRPSWinner,
-                onRPSDraw: handleRPSDraw,
-                onRPSInvalid: handleRPSInvalid,
-                onDisconnect(): void {
-                    tttGame?.endGame();
-                },
-            },
+            gameHandlers: minigameEvent.handlers,
         });
 
         // NOTE uncommented for React! we need the domElement
@@ -692,7 +384,7 @@ export function startGame(
                         eventType: EventType.PlayerInRange,
                         data: {
                             playerId: nearbyPlayer.id,
-                            nickname: resolvePlayerNickname(
+                            nickname: minigameEvent.resolvePlayerNickname(
                                 nearbyPlayer.id,
                                 nearbyPlayer.nickname
                             ),
