@@ -10,11 +10,11 @@ export const RUBBER_DUCK_QUEST_ID = 'FIND_RUBBERDUCK';
 export const COFFEE_QUEST_ID = 'GET_COFFEE';
 export const PAPER_QUEST_ID = 'GET_PAPER';
 export const COMPUTER_LOGIN_QUEST_ID = 'LOGIN_COMPUTER';
-
-// TODO migrating quests
 export const BLACK_HOLE_QUEST_ID = 'avoid-blackhole';
 export const MEET_PLAYER_QUEST_ID = 'meet-player';
 export const RPS_WIN_QUEST_ID = 'win-rps-minigame';
+
+// TODO migrating quests
 export const EVALUATING_STUDENT_QUEST_ID = 'FIND_EVALUATING_STUDENT';
 export const START_EVALUATION_QUEST_ID = 'START_EVALUATION';
 export const TTT_WIN_QUEST_ID = 'win-ttt-minigame';

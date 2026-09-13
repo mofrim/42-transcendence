@@ -24,7 +24,7 @@ import {
 import {
     type Character,
     QUESTS,
-    BLACK_HOLE_QUEST_ID,
+    QUESTS_OBJ,
     START_EVALUATION_QUEST_ID,
     type QuestLogEntry,
 } from 'ftr-common/sharedTypes';
@@ -535,7 +535,7 @@ export function GameUI({
                             marker = '✅';
                         }
 
-                        if (quest.id === BLACK_HOLE_QUEST_ID) {
+                        if (quest.id === QUESTS_OBJ.BLACK_HOLE_QUEST_ID.id) {
                             blackHoleTimer = (
                                 <time
                                     className='hud-black-hole-timer'

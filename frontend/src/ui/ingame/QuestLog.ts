@@ -1,9 +1,7 @@
 import {
-    BLACK_HOLE_QUEST_ID,
+    QUESTS_OBJ,
     EventType,
     GameEvent,
-    MEET_PLAYER_QUEST_ID,
-    RPS_WIN_QUEST_ID,
     TTT_WIN_QUEST_ID,
     type QuestLogEntry,
 } from 'ftr-common/sharedTypes';
@@ -11,7 +9,7 @@ import {
 type MinigameName = NonNullable<GameEvent['data']['game']>;
 
 const WIN_QUEST_ID_BY_GAME: ReadonlyMap<MinigameName, string> = new Map([
-    ['Rock-Paper-Scissors', RPS_WIN_QUEST_ID],
+    ['Rock-Paper-Scissors', QUESTS_OBJ.RPS_WIN_QUEST_ID.id],
     ['Tic-Tac-Toe', TTT_WIN_QUEST_ID],
 ]);
 
@@ -30,7 +28,7 @@ function isQuestCompleted(
     blackHoleQuestCompleted: boolean,
     completedQuestIds: ReadonlySet<string>
 ): boolean {
-    if (quest.id === BLACK_HOLE_QUEST_ID) {
+    if (quest.id === QUESTS_OBJ.BLACK_HOLE_QUEST_ID.id) {
         return blackHoleQuestCompleted;
     }
 
@@ -101,7 +99,7 @@ function getCompletedQuestId(event: GameEvent): string | null {
     }
 
     if (event.eventType === EventType.PlayerInRange) {
-        return MEET_PLAYER_QUEST_ID;
+        return QUESTS_OBJ.MEET_PLAYER_QUEST_ID.id;
     }
 
     if (
