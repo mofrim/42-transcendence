@@ -13,8 +13,6 @@ export const COMPUTER_LOGIN_QUEST_ID = 'LOGIN_COMPUTER';
 export const BLACK_HOLE_QUEST_ID = 'avoid-blackhole';
 export const MEET_PLAYER_QUEST_ID = 'meet-player';
 export const RPS_WIN_QUEST_ID = 'win-rps-minigame';
-
-// TODO migrating quests
 export const EVALUATING_STUDENT_QUEST_ID = 'FIND_EVALUATING_STUDENT';
 export const START_EVALUATION_QUEST_ID = 'START_EVALUATION';
 export const TTT_WIN_QUEST_ID = 'win-ttt-minigame';

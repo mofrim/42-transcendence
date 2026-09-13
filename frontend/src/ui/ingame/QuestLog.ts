@@ -2,7 +2,6 @@ import {
     QUESTS_OBJ,
     EventType,
     GameEvent,
-    TTT_WIN_QUEST_ID,
     type QuestLogEntry,
 } from 'ftr-common/sharedTypes';
 
@@ -10,7 +9,7 @@ type MinigameName = NonNullable<GameEvent['data']['game']>;
 
 const WIN_QUEST_ID_BY_GAME: ReadonlyMap<MinigameName, string> = new Map([
     ['Rock-Paper-Scissors', QUESTS_OBJ.RPS_WIN_QUEST_ID.id],
-    ['Tic-Tac-Toe', TTT_WIN_QUEST_ID],
+    ['Tic-Tac-Toe', QUESTS_OBJ.TTT_WIN_QUEST_ID.id],
 ]);
 
 export type ResolvedQuestLogEntry = QuestLogEntry & {

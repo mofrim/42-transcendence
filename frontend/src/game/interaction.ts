@@ -1,11 +1,6 @@
 import * as THREE from 'three';
 import { CanvasTextSprite } from './CanvasTextSprite';
-import {
-    EVALUATING_STUDENT_QUEST_ID,
-    START_EVALUATION_QUEST_ID,
-    type PreparationQuestId,
-    QUESTS_OBJ,
-} from 'ftr-common/sharedTypes';
+import { type PreparationQuestId, QUESTS_OBJ } from 'ftr-common/sharedTypes';
 
 /* import { Player } from './player';
 import { Camera } from './camera'; */
@@ -18,8 +13,8 @@ export const EVALUATION_TERMINAL_POSITION = new THREE.Vector3(8, 3.72, -14);
 export type InteractionTypeId =
     | PreparationQuestId
     | typeof EVALUATOR_LOCATION_INTERACTION_ID
-    | typeof EVALUATING_STUDENT_QUEST_ID
-    | typeof START_EVALUATION_QUEST_ID
+    | typeof QUESTS_OBJ.EVALUATING_STUDENT_QUEST_ID
+    | typeof QUESTS_OBJ.START_EVALUATION_QUEST_ID
     | typeof EVENT_SPACE_DOOR_A_INTERACTION_ID
     | typeof EVENT_SPACE_DOOR_B_INTERACTION_ID
     | typeof QUESTS_OBJ.FIND_LOST_DROPPED_TOKEN_QUEST_ID

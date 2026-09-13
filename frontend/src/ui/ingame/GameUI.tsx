@@ -25,7 +25,6 @@ import {
     type Character,
     QUESTS,
     QUESTS_OBJ,
-    START_EVALUATION_QUEST_ID,
     type QuestLogEntry,
 } from 'ftr-common/sharedTypes';
 
@@ -309,7 +308,7 @@ export function GameUI({
         blackHoleHourglass + formatQuestCountdown(blackHoleSecondsRemaining);
     const isBlackHoleCountdownRunning =
         blackHoleCountdownActive &&
-        !completedQuestIds.includes(START_EVALUATION_QUEST_ID);
+        !completedQuestIds.includes(QUESTS_OBJ.START_EVALUATION_QUEST_ID.id);
     const isBlackHoleQuestCompleted =
         blackHoleCountdownActive &&
         !isBlackHoleCountdownRunning &&
