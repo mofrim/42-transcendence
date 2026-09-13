@@ -34,5 +34,8 @@
     },
     "dependencies": {
         "tslog": "^5.1.0"
+    },
+    "overrides": {
+        "test-exclude": "8.0.0"
     }
 }
