@@ -1,8 +1,5 @@
 import * as THREE from 'three';
 import {
-    COFFEE_QUEST_ID,
-    COMPUTER_LOGIN_QUEST_ID,
-    PAPER_QUEST_ID,
     PlayerState,
     QUESTS_OBJ,
     type PreparationQuestId,
@@ -28,19 +25,19 @@ const PREPARATION_QUEST_DEFINITIONS: Readonly<
         successMessage: 'Found the duck 🦆! One less thing to worry about.',
         animation: PlayerState.Surprised,
     },
-    [COFFEE_QUEST_ID]: {
+    [QUESTS_OBJ.COFFEE_QUEST_ID.id]: {
         position: new THREE.Vector3(24.5, 0, -8),
         successMessage: 'Ahh ☕ much better... Now I can finally think!',
         animation: PlayerState.Drinking,
     },
-    [PAPER_QUEST_ID]: {
+    [QUESTS_OBJ.PAPER_QUEST_ID.id]: {
         position: new THREE.Vector3(12.2, 0, -10.5),
         interactionRange: new THREE.Vector3(1.3, 2, 1.3),
         successMessage:
             'I found some paper 📃! Now I can finally take some notes.',
         animation: PlayerState.ThumbsUp,
     },
-    [COMPUTER_LOGIN_QUEST_ID]: {
+    [QUESTS_OBJ.COMPUTER_LOGIN_QUEST_ID.id]: {
         position: EVALUATION_TERMINAL_POSITION,
         successMessage:
             'Great, the computer is ready. Just a few more steps to go!',

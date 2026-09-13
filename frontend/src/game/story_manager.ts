@@ -4,7 +4,6 @@ import { Camera } from './camera';
 import { InteractionManager } from './interaction_manager';
 import { Interaction } from './interaction';
 import {
-    COMPUTER_LOGIN_QUEST_ID,
     PREPARATION_QUEST_IDS,
     PlayerState,
     QUESTS_OBJ,
@@ -565,7 +564,7 @@ export class Story_Manager {
         let onPreparationHandled: (() => void) | undefined;
         if (interaction.typeID === QUESTS_OBJ.RUBBER_DUCK_QUEST_ID) {
             onPreparationHandled = () => this.onQuestDuckFound?.();
-        } else if (interaction.typeID === COMPUTER_LOGIN_QUEST_ID) {
+        } else if (interaction.typeID === QUESTS_OBJ.COMPUTER_LOGIN_QUEST_ID) {
             onPreparationHandled = () => this.onQuestLogin?.();
         }
 

@@ -7,11 +7,11 @@ import type * as THREE from 'three';
 export const FIND_LOST_DROPPED_TOKEN_QUEST_ID = 'FIND_LOST_DROPPED_TOKEN';
 export const ENTER_CAMPUS_TOKEN_QUEST_ID = 'ENTER_42_CAMPUS_VIA_TOKEN';
 export const RUBBER_DUCK_QUEST_ID = 'FIND_RUBBERDUCK';
-
-// TODO migrating quests
 export const COFFEE_QUEST_ID = 'GET_COFFEE';
 export const PAPER_QUEST_ID = 'GET_PAPER';
 export const COMPUTER_LOGIN_QUEST_ID = 'LOGIN_COMPUTER';
+
+// TODO migrating quests
 export const BLACK_HOLE_QUEST_ID = 'avoid-blackhole';
 export const MEET_PLAYER_QUEST_ID = 'meet-player';
 export const RPS_WIN_QUEST_ID = 'win-rps-minigame';
@@ -87,9 +87,9 @@ export const InitialQuestStatus: QuestStatus = Object.fromEntries(
 
 export const PREPARATION_QUEST_IDS = [
     QUESTS_OBJ.RUBBER_DUCK_QUEST_ID.id,
-    COFFEE_QUEST_ID,
-    PAPER_QUEST_ID,
-    COMPUTER_LOGIN_QUEST_ID,
+    QUESTS_OBJ.COFFEE_QUEST_ID.id,
+    QUESTS_OBJ.PAPER_QUEST_ID.id,
+    QUESTS_OBJ.COMPUTER_LOGIN_QUEST_ID.id,
 ] as const;
 
 export type PreparationQuestId = (typeof PREPARATION_QUEST_IDS)[number];
