@@ -1,7 +1,6 @@
 import * as THREE from 'three';
 
 import { Octree } from 'three/addons/math/Octree.js';
-import { FlyControls } from 'three/addons/controls/FlyControls.js';
 
 import { MultiplayerManager } from './multiplayer.js';
 import { NPCManager } from './npc.js';
@@ -16,6 +15,7 @@ import { Input } from './Input.js';
 import { TokenQuestFrontdesk } from './QuestToken.js';
 import { addBlackhole } from './QuestBlackHole.js';
 import { WorldLoader } from './WorldLoader.js';
+import { RenderLoop } from './RenderLoop.js';
 import {
     getPlayerModelPath,
     IMG_DISPLAY_BOOKING,
@@ -140,8 +140,6 @@ export function startGame(
     let player: Player | null = null;
     let multiplayer: MultiplayerManager | null = null;
     let camera: Camera | null = null;
-    let activeCamera: THREE.PerspectiveCamera | null = null;
-    let spectatorControls: FlyControls | null = null;
     let tttGame: TTT_Game | null = null;
     let rpsGame: RPS_Game | null = null;
     let storyManager: Story_Manager | null = null;
@@ -149,8 +147,6 @@ export function startGame(
     let activeTTTPlayers: ActiveTTTPlayers | null = null;
     let isLocalPlayerDespawning = false;
     let localPlayerDespawnPromise: Promise<void> | null = null;
-    let runtimeDisposePromise: Promise<void> | null = null;
-    let runtimeDisposed = false;
     let eventSpaceDoorsOpen = false;
     const tokenQuestFrontdesk = new TokenQuestFrontdesk(onGameEvent);
     const doorMeshesNames: string[] = [];
@@ -434,9 +430,6 @@ export function startGame(
     // const renderer = new THREE.WebGLRenderer({ antialias: true });
     const runtimeResourceDisposer = createResourceDisposer();
     const followGroup = new THREE.Group();
-    const timer = new THREE.Timer();
-    const previousPlayerPosition = new THREE.Vector3();
-    const playerMovementDelta = new THREE.Vector3();
     const dirLight = new THREE.DirectionalLight(0xffffff, 1.25);
     const fillLight = new THREE.DirectionalLight(0xffffff, 1.25);
 
@@ -472,62 +465,11 @@ export function startGame(
                     await player.startDespawn();
                 }
             } finally {
-                await disposeRuntime();
+                await renderLoop.dispose();
             }
         })();
 
         return localPlayerDespawnPromise;
-    }
-
-    /** ThreeJS Cleanup */
-    function disposeRuntime(): Promise<void> {
-        if (runtimeDisposePromise) {
-            return runtimeDisposePromise;
-        }
-
-        runtimeDisposed = true;
-        stopLocalInput();
-
-        renderer.setAnimationLoop(null);
-        window.removeEventListener('resize', onWindowResize);
-        input.dispose();
-
-        const multiplayerDisposePromise = multiplayer?.dispose();
-        socket.removeAllListeners();
-        socket.disconnect();
-
-        runtimeDisposePromise = (async () => {
-            rpsGame?.dispose();
-            tttGame?.dispose();
-            spectatorControls?.dispose();
-            camera?.orbitControls.dispose();
-            timer.dispose();
-
-            const completions: Promise<void>[] = [];
-            if (player) {
-                completions.push(player.forceDispose());
-            }
-            if (multiplayerDisposePromise) {
-                completions.push(multiplayerDisposePromise);
-            }
-            await Promise.all(completions);
-
-            runtimeResourceDisposer.disposeObject3D(scene);
-            runtimeResourceDisposer.disposeTexture(texture);
-            scene.clear();
-            mesh_col.length = 0;
-            mesh_RP.length = 0;
-            player = null;
-            multiplayer = null;
-            camera = null;
-            activeCamera = null;
-            spectatorControls = null;
-            tttGame = null;
-            rpsGame = null;
-            activeTTTPlayers = null;
-        })();
-
-        return runtimeDisposePromise;
     }
 
     const worldOctree = new Octree();
@@ -538,19 +480,6 @@ export function startGame(
     const mesh_Octree: THREE.Object3D[] = [];
     const mesh_RP: THREE.Mesh[] = [];
     const tttBox: TTTMeshBoard = new TTTMeshBoard();
-    const worldLoader = new WorldLoader({
-        scene,
-        worldOctree,
-        colliders: mesh_col,
-        octreeObjects: mesh_Octree,
-        tttBoard: tttBox,
-        doorGroupA: groupDoorA,
-        doorGroupB: groupDoorB,
-        doorMeshNames: doorMeshesNames,
-        gradientTexture: texture,
-        resourceDisposer: runtimeResourceDisposer,
-        isDisposed: () => runtimeDisposed,
-    });
     const input = new Input({
         domElement: renderer.domElement,
         colliders: mesh_col,
@@ -564,6 +493,52 @@ export function startGame(
         getInteractionManager: () => interactionManager,
         isLocalPlayerDespawning: () => isLocalPlayerDespawning,
     });
+    const renderLoop: RenderLoop = new RenderLoop({
+        renderer,
+        scene,
+        socket,
+        input,
+        npcManager,
+        followGroup,
+        texture,
+        colliders: mesh_col,
+        remoteMeshes: mesh_RP,
+        resourceDisposer: runtimeResourceDisposer,
+        isSpectator,
+        getWorldLoader: (): WorldLoader => worldLoader,
+        getPlayer: () => player,
+        getMultiplayer: () => multiplayer,
+        getCamera: () => camera,
+        getTTTGame: () => tttGame,
+        getRPSGame: () => rpsGame,
+        getStoryManager: () => storyManager,
+        getInteractionManager: () => interactionManager,
+        isLocalPlayerDespawning: () => isLocalPlayerDespawning,
+        isEventSpaceDoorsOpen: () => eventSpaceDoorsOpen,
+        stopLocalInput,
+        clearRuntimeState(): void {
+            player = null;
+            multiplayer = null;
+            camera = null;
+            tttGame = null;
+            rpsGame = null;
+            activeTTTPlayers = null;
+        },
+        onGameEvent,
+    });
+    const worldLoader: WorldLoader = new WorldLoader({
+        scene,
+        worldOctree,
+        colliders: mesh_col,
+        octreeObjects: mesh_Octree,
+        tttBoard: tttBox,
+        doorGroupA: groupDoorA,
+        doorGroupB: groupDoorB,
+        doorMeshNames: doorMeshesNames,
+        gradientTexture: texture,
+        resourceDisposer: runtimeResourceDisposer,
+        isDisposed: (): boolean => renderLoop.isDisposed,
+    });
 
     //let camDistance = 0;
 
@@ -575,15 +550,12 @@ export function startGame(
     } */
 
     void init().catch((error: unknown) => {
-        if (!runtimeDisposed) {
+        if (!renderLoop.isDisposed) {
             console.error('Game runtime initialization failed:', error);
         }
     });
 
     async function init() {
-        //timer = new THREE.Timer();
-        timer.connect(document);
-
         //scene = new THREE.Scene();
         scene.background = new THREE.Color(0x999999);
         /* scene.fog = new THREE.Fog( 0x5b6470, 2, 30 ); */
@@ -675,52 +647,22 @@ export function startGame(
         //
         //renderer = new THREE.WebGLRenderer({ antialias: true });
 
-        renderer.setPixelRatio(window.devicePixelRatio);
-        renderer.setSize(window.innerWidth, window.innerHeight);
-
         // NOTE uncommented for React!
         //
         // document.body.appendChild(renderer.domElement);
-
-        renderer.toneMapping = THREE.ACESFilmicToneMapping;
-        renderer.toneMappingExposure = 0.5;
-        renderer.shadowMap.enabled = true;
-        renderer.shadowMap.type = THREE.PCFShadowMap;
 
         // NOTE uncommented for React!
         //
         //container.appendChild(renderer.domElement);
 
-        if (isSpectator) {
-            activeCamera = new THREE.PerspectiveCamera(
-                60,
-                window.innerWidth / window.innerHeight,
-                0.1,
-                100
-            );
-            activeCamera.position.set(0, 2, -5);
-            activeCamera.lookAt(0, 1, 0);
-            spectatorControls = new FlyControls(
-                activeCamera,
-                renderer.domElement
-            );
-            spectatorControls.movementSpeed = 15;
-            spectatorControls.rollSpeed = Math.PI / 3;
-            spectatorControls.dragToLook = true;
-        } else {
+        renderLoop.start(() => {
             camera = new Camera(window, renderer, mesh_col);
-            activeCamera = camera.camera;
-        }
-        renderer.setAnimationLoop(animate);
+            return camera.camera;
+        });
 
         //const startV = new THREE.Vector3(0, 1, 0);
         //camDistance = startV.distanceTo(camera.camera.position);
         //console.log("Distance " + camDistance);
-
-        window.addEventListener('resize', onWindowResize);
-        if (!isSpectator) {
-            input.connect();
-        }
 
         npcManager.initialize();
 
@@ -820,27 +762,27 @@ export function startGame(
         }
 
         await worldLoader.loadMesh(MODEL_MAP);
-        if (runtimeDisposed) return;
+        if (renderLoop.isDisposed) return;
         multiplayer.startPlayerUpdateLoop();
         await worldLoader.loadSky(MODEL_CLOUDS);
-        if (runtimeDisposed) return;
+        if (renderLoop.isDisposed) return;
         await worldLoader.loadSky(MODEL_ROCKS);
-        if (runtimeDisposed) return;
+        if (renderLoop.isDisposed) return;
         await worldLoader.loadMesh(MODEL_DOOR_A);
-        if (runtimeDisposed) return;
+        if (renderLoop.isDisposed) return;
         await worldLoader.loadMesh(MODEL_DOOR_B);
-        if (runtimeDisposed) return;
+        if (renderLoop.isDisposed) return;
 
         // TODO: Need to check with quest state.
         // If duck already found, than show duck_up, else show duck_down.
         duck_down = await worldLoader.loadMesh(MODEL_DUCK_DOWN);
-        if (runtimeDisposed) return;
+        if (renderLoop.isDisposed) return;
 
         addBlackhole(scene);
 
         if (storyManager) {
             await storyManager.GameIntro();
-            if (runtimeDisposed) return;
+            if (renderLoop.isDisposed) return;
             onGameplayReady?.();
         }
         /* const testCube = new THREE.Mesh(
@@ -916,7 +858,7 @@ export function startGame(
         if (!duck_down) {
             duck_down = await worldLoader.loadMesh(MODEL_DUCK_DOWN);
         }
-        if (runtimeDisposed) {
+        if (renderLoop.isDisposed) {
             return;
         }
 
@@ -968,114 +910,8 @@ export function startGame(
         }
     } */
 
-    function onWindowResize() {
-        if (!activeCamera) return;
-
-        activeCamera.aspect = window.innerWidth / window.innerHeight;
-        activeCamera.updateProjectionMatrix();
-        renderer.setSize(window.innerWidth, window.innerHeight);
-    }
-
-    function animate() {
-        if (runtimeDisposed) {
-            return;
-        }
-
-        if (
-            !activeCamera ||
-            !multiplayer ||
-            (!isSpectator && !worldLoader.isEnvironmentLoaded)
-        )
-            return;
-
-        timer.update();
-        const lifecycleDelta = timer.getDelta();
-        /** begrenze Frame-Zeit nur für Bewegung und Physik */
-        const delta = Math.min(lifecycleDelta, 0.05);
-
-        if (isSpectator) {
-            spectatorControls?.update(delta);
-        } else {
-            if (
-                !player ||
-                !camera ||
-                !tttGame ||
-                !rpsGame ||
-                !storyManager ||
-                !interactionManager
-            )
-                return;
-
-            player.updateLifecycle(lifecycleDelta);
-
-            input.update(delta);
-
-            previousPlayerPosition.copy(player.group.position);
-
-            player.updateCharacter(delta);
-
-            // update camera and character only while not in cutscene. Otherwise Cutscene animation
-            if (!storyManager.inCutscene) {
-                playerMovementDelta.subVectors(
-                    player.group.position,
-                    previousPlayerPosition
-                );
-                camera.camera.position.add(playerMovementDelta);
-
-                if (tttGame.tttCamera)
-                    camera.orbitControls.target
-                        .copy(player.group.position)
-                        .setY(player.group.position.y + 1.75);
-                else
-                    camera.orbitControls.target
-                        .copy(player.group.position)
-                        .setY(player.group.position.y + 1);
-                followGroup.position.copy(player.group.position);
-                camera.orbitControls.update();
-
-                // onDeleteCollision();
-                // onSpawnCollision();
-
-                camera.cameraCollisionRaycast(delta, player.group);
-            }
-        }
-
-        renderer.clear();
-        renderer.render(scene, activeCamera);
-        tttGame?.render();
-        rpsGame?.render();
-
-        multiplayer.updateMultiplayer(delta, lifecycleDelta);
-
-        if (!isSpectator && player && rpsGame && interactionManager) {
-            if (!isLocalPlayerDespawning) {
-                rpsGame.updateCheck();
-            }
-
-            const interactionInZone = interactionManager.update(
-                player.group.position
-            );
-            const completedEventSpaceQuestId =
-                interactionManager.eventSpaceQuest.updateTraversal(
-                    interactionInZone,
-                    eventSpaceDoorsOpen
-                );
-            if (completedEventSpaceQuestId !== null) {
-                onGameEvent?.({
-                    eventType: EventType.QuestCompleted,
-                    data: {
-                        questId: completedEventSpaceQuestId,
-                    },
-                    logtime: new Date(),
-                });
-            }
-        }
-
-        npcManager.updateAnimations(delta);
-    }
-
     function sendChatMessage(message: string): void {
-        if (runtimeDisposed) {
+        if (renderLoop.isDisposed) {
             return;
         }
 
@@ -1085,12 +921,12 @@ export function startGame(
     return {
         sendChatMessage,
         despawnLocalPlayer,
-        dispose: disposeRuntime,
+        dispose: () => renderLoop.dispose(),
         continueDialogue(): void {
             storyManager?.continueDialogue();
         },
         triggerBlackHoleCutscene(): void {
-            if (runtimeDisposed) {
+            if (renderLoop.isDisposed) {
                 return;
             }
 
