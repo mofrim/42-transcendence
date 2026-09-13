@@ -1,15 +1,17 @@
 import * as THREE from 'three';
-import { Player } from './player';
-import { Remote_Player } from './remote_player';
-import { CanvasTextSprite } from './CanvasTextSprite';
+import type { Player } from './player';
+import type { Remote_Player } from './remote_player';
 import { FloatingTextSprite } from './FloatingTextSprite';
 import { AnimationFrameSlot } from './AnimationFrameSlot';
 import {
-    addOverlayText,
-    clearOverlayText,
+    animateMinigamePlayersApart,
+    animateMinigameSpriteRight,
     createMinigameOverlay,
     disposeOverlaySprites,
-    resizeOverlay,
+    MINIGAME_ANIMATION_EDGE,
+    MINIGAME_OVERLAY_Y,
+    MINIGAME_RESULT_ANIMATION_STEP,
+    MinigameOverlay,
     setPlayerOverlay,
 } from './GameOverlay';
 import { createResourceDisposer } from './ResourceDisposer';
@@ -20,12 +22,17 @@ const BATTLE_PROMPT_TEXT = 'Press ⌨️ [B] Battle Challenge';
 const BATTLE_PROMPT_SIZE = 20;
 const BATTLE_PROMPT_HEIGHT = 1.6;
 const BATTLE_RANGE_SQUARED = 4;
+const RPS_FAST_ANIMATION_STEP = 0.0075;
+const RPS_WINNING_MATCHUPS = [
+    [RPSChoice.Rock, RPSChoice.Scissors],
+    [RPSChoice.Paper, RPSChoice.Rock],
+    [RPSChoice.Scissors, RPSChoice.Paper],
+] as const;
 
-export class RPS_Game {
+export class RPS_Game extends MinigameOverlay {
     socket: Socket;
     player: Player;
     players: Map<string, Remote_Player>;
-    renderer: THREE.WebGLRenderer;
 
     inRange: boolean;
     playerInRange: Remote_Player | null;
@@ -37,11 +44,7 @@ export class RPS_Game {
     private readonly resourceDisposer: ReturnType<
         typeof createResourceDisposer
     >;
-    private disposed: boolean;
-
-    currentTextState: CanvasTextSprite[];
-    overlayScene: THREE.Scene;
-    overlayCamera: THREE.OrthographicCamera;
+    protected disposed: boolean;
 
     rpsSprite: Map<string, THREE.Sprite>;
 
@@ -62,10 +65,10 @@ export class RPS_Game {
         renderer: THREE.WebGLRenderer,
         onPlayerInRange?: (player: Remote_Player) => void
     ) {
+        super();
         this.socket = socket;
         this.player = player;
         this.players = players;
-        this.renderer = renderer;
 
         this.inRange = false;
         this.playerInRange = null;
@@ -81,9 +84,7 @@ export class RPS_Game {
         );
         scene.add(this.battlePrompt);
 
-        this.currentTextState = [];
-        this.overlayScene = new THREE.Scene();
-        this.overlayCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+        this.initializeOverlay(renderer);
         this.rpsSprite = createMinigameOverlay();
 
         this.rps_choiceMade = false;
@@ -205,26 +206,20 @@ export class RPS_Game {
 
         this.overlayScene.add(...introSprites);
 
-        const yp = 0.025;
-        this.rpsSprite.get('UserA')!.position.set(0, yp, 0);
-        this.rpsSprite.get('UserB')!.position.set(0, yp, 0);
+        userASprite!.position.set(0, MINIGAME_OVERLAY_Y, 0);
+        userBSprite!.position.set(0, MINIGAME_OVERLAY_Y, 0);
 
-        const loop = () => {
-            const posA = this.rpsSprite.get('UserA')!.position.x;
-            const posB = this.rpsSprite.get('UserB')!.position.x;
-
-            this.rpsSprite.get('UserA')!.position.set(posA - 0.0075, yp, 0);
-            this.rpsSprite.get('UserB')!.position.set(posB + 0.0075, yp, 0);
-
-            if (posB < 0.75 && posA > -0.75) {
-                this.animationFrameSlot.request(loop);
-            } else {
+        animateMinigamePlayersApart(
+            () => this.rpsSprite.get('UserA')!,
+            () => this.rpsSprite.get('UserB')!,
+            RPS_FAST_ANIMATION_STEP,
+            -1,
+            this.animationFrameSlot,
+            () => {
                 this.overlayScene.remove(...introSprites);
-
                 this.inGameRPSAnimation();
             }
-        };
-        loop();
+        );
     }
 
     inGameRPSAnimation(): void {
@@ -246,19 +241,18 @@ export class RPS_Game {
         this.addText('Press ⌨️ [2] - 📜 Paper   ', 0, -0.25, 100);
         this.addText('Press ⌨️ [3] - ✂️ Scissors', 0.2, -0.4, 100);
 
-        const yp = 0.025;
-        this.rpsSprite.get('UserA')!.position.set(-0.75, yp, 0);
+        userASprite!.position.set(
+            -MINIGAME_ANIMATION_EDGE,
+            MINIGAME_OVERLAY_Y,
+            0
+        );
 
-        const loop = () => {
-            const posA = this.rpsSprite.get('UserA')!.position.x;
-
-            this.rpsSprite.get('UserA')!.position.set(posA + 0.0075, yp, 0);
-
-            if (this.rps_choiceMade) this.removeText();
-
-            if (posA < 0.75) {
-                this.animationFrameSlot.request(loop);
-            } else {
+        animateMinigameSpriteRight(
+            () => this.rpsSprite.get('UserA')!,
+            RPS_FAST_ANIMATION_STEP,
+            MINIGAME_ANIMATION_EDGE,
+            this.animationFrameSlot,
+            () => {
                 console.log('RPS Choice Animation Ended');
                 this.overlayScene.remove(...choiceSprites);
                 this.removeText();
@@ -266,9 +260,13 @@ export class RPS_Game {
                 this.socket.emit('update', {
                     type: 'rps_invalid',
                 });
+            },
+            () => {
+                if (this.rps_choiceMade) {
+                    this.removeText();
+                }
             }
-        };
-        loop();
+        );
     }
 
     /** will be called from main */
@@ -289,9 +287,8 @@ export class RPS_Game {
 
         this.overlayScene.add(...solutionSprites);
 
-        const yp = 0.025;
-        this.rpsSprite.get('UserA')!.position.set(0, yp, 0);
-        this.rpsSprite.get('UserB')!.position.set(0, yp, 0);
+        userASprite!.position.set(0, MINIGAME_OVERLAY_Y, 0);
+        userBSprite!.position.set(0, MINIGAME_OVERLAY_Y, 0);
 
         this.verifyRPSWinner();
 
@@ -308,16 +305,13 @@ export class RPS_Game {
             );
         }
 
-        const loop = () => {
-            const posA = this.rpsSprite.get('UserA')!.position.x;
-            const posB = this.rpsSprite.get('UserB')!.position.x;
-
-            this.rpsSprite.get('UserA')!.position.set(posA - 0.003, yp, 0);
-            this.rpsSprite.get('UserB')!.position.set(posB + 0.003, yp, 0);
-
-            if (posB < 0.75 && posA > -0.75) {
-                this.animationFrameSlot.request(loop);
-            } else {
+        animateMinigamePlayersApart(
+            () => this.rpsSprite.get('UserA')!,
+            () => this.rpsSprite.get('UserB')!,
+            MINIGAME_RESULT_ANIMATION_STEP,
+            -1,
+            this.animationFrameSlot,
+            () => {
                 this.overlayScene.remove(...solutionSprites);
 
                 this.removeText();
@@ -327,8 +321,7 @@ export class RPS_Game {
                     type: 'game_reset',
                 });
             }
-        };
-        loop();
+        );
     }
 
     verifyRPSWinner(): void {
@@ -344,12 +337,11 @@ export class RPS_Game {
         if (this.yourChoice === this.opponentChoice)
             this.addText("🤝 It's a draw!", 0, -0.225, 125);
         else if (
-            (this.yourChoice === RPSChoice.Rock &&
-                this.opponentChoice === RPSChoice.Scissors) ||
-            (this.yourChoice === RPSChoice.Paper &&
-                this.opponentChoice === RPSChoice.Rock) ||
-            (this.yourChoice === RPSChoice.Scissors &&
-                this.opponentChoice === RPSChoice.Paper)
+            RPS_WINNING_MATCHUPS.some(
+                ([yourChoice, opponentChoice]) =>
+                    this.yourChoice === yourChoice &&
+                    this.opponentChoice === opponentChoice
+            )
         )
             this.addText('🏆 You win!', 0, -0.225, 100);
         else this.addText('You lose!', 0, -0.225, 100);
@@ -366,31 +358,7 @@ export class RPS_Game {
     }
 
     render(): void {
-        if (this.disposed) {
-            return;
-        }
-
-        resizeOverlay(this.overlayCamera, this.renderer);
-        this.renderer.render(this.overlayScene, this.overlayCamera);
-    }
-
-    removeText(): void {
-        clearOverlayText(this.currentTextState);
-    }
-
-    addText(text: string, px: number, py: number, size: number): void {
-        if (this.disposed) {
-            return;
-        }
-
-        addOverlayText(
-            this.overlayScene,
-            this.currentTextState,
-            text,
-            px,
-            py,
-            size
-        );
+        this.renderOverlay();
     }
 
     dispose(): void {

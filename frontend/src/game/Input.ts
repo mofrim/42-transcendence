@@ -5,9 +5,9 @@ import type { Camera } from './camera.js';
 import type { InteractionManager } from './interaction_manager.js';
 import type { MultiplayerManager } from './multiplayer.js';
 import type { Player } from './player.js';
-import type { RPS_Game } from './rps_game.js';
+import type { RPS_Game } from './MinigameRPS.js';
 import type { Story_Manager } from './story_manager.js';
-import type { TTT_Game } from './ttt_game.js';
+import type { TTT_Game } from './MinigameTTT.js';
 
 type InputOptions = {
     readonly domElement: HTMLElement;

@@ -1,7 +1,7 @@
 import type { MultiplayerManager } from './multiplayer.js';
 import type { Player } from './player.js';
-import type { RPS_Game } from './rps_game.js';
-import type { TTT_Game } from './ttt_game.js';
+import type { RPS_Game } from './MinigameRPS.js';
+import type { TTT_Game } from './MinigameTTT.js';
 
 import {
     EventType,
@@ -103,19 +103,52 @@ export class MinigameEvent {
         return playerId;
     }
 
+    private getRequestedLocalPlayer(
+        data: RPSRequestDataPayload
+    ): Player | null {
+        const player = this.options.getPlayer();
+        if (!player || data.requestedPlayerID !== player.id) {
+            return null;
+        }
+        return player;
+    }
+
+    private getOpponentPlayerId(
+        playerId: string | undefined,
+        playerOne: string,
+        playerTwo: string
+    ): string | null {
+        if (playerId === undefined) {
+            return null;
+        }
+        if (playerId === playerOne) {
+            return playerTwo;
+        }
+        if (playerId === playerTwo) {
+            return playerOne;
+        }
+        return null;
+    }
+
     private handleRPSInvalid(data: RPSInvalidPayload): void {
         const player = this.options.getPlayer();
         if (!player) return;
         const playerId = player.id;
-        if (playerId === undefined) return;
-        if ([data.playerOne, data.playerTwo].includes(playerId)) {
-            console.log('Invalid RPS choice received.');
-            const rpsGame = this.options.getRPSGame();
-            if (!rpsGame) return;
-            rpsGame.yourChoice = RPSChoice.None;
-            rpsGame.opponentChoice = RPSChoice.None;
-            rpsGame.solutionRPSAnimation();
-        }
+        if (
+            this.getOpponentPlayerId(
+                playerId,
+                data.playerOne,
+                data.playerTwo
+            ) === null
+        )
+            return;
+
+        console.log('Invalid RPS choice received.');
+        const rpsGame = this.options.getRPSGame();
+        if (!rpsGame) return;
+        rpsGame.yourChoice = RPSChoice.None;
+        rpsGame.opponentChoice = RPSChoice.None;
+        rpsGame.solutionRPSAnimation();
     }
 
     private handleRPSDraw(data: RPSDrawPayload): void {
@@ -123,53 +156,54 @@ export class MinigameEvent {
         const player = this.options.getPlayer();
         if (!player) return;
         const playerId = player.id;
-        if (playerId === undefined) return;
+        const opponentId = this.getOpponentPlayerId(
+            playerId,
+            data.playerOne,
+            data.playerTwo
+        );
+        if (opponentId === null) return;
 
-        if ([data.playerOne, data.playerTwo].includes(playerId)) {
-            console.log('The RPS game ended in a draw!');
-            const rpsGame = this.options.getRPSGame();
-            if (!rpsGame) return;
-            rpsGame.yourChoice = data.choice;
-            rpsGame.opponentChoice = data.choice;
+        console.log('The RPS game ended in a draw!');
+        const rpsGame = this.options.getRPSGame();
+        if (!rpsGame) return;
+        rpsGame.yourChoice = data.choice;
+        rpsGame.opponentChoice = data.choice;
 
-            let opponentId = data.playerOne;
-            if (data.playerOne === playerId) {
-                opponentId = data.playerTwo;
-            }
-            this.emitLocalGameResult(
-                'Rock-Paper-Scissors',
-                'draw',
-                this.resolvePlayerNickname(opponentId)
-            );
+        this.emitLocalGameResult(
+            'Rock-Paper-Scissors',
+            'draw',
+            this.resolvePlayerNickname(opponentId)
+        );
 
-            rpsGame.solutionRPSAnimation();
-        }
+        rpsGame.solutionRPSAnimation();
     }
 
     private handleRPSWinner(data: RPSWinnerPayload): void {
         const player = this.options.getPlayer();
         const rpsGame = this.options.getRPSGame();
         if (!player || !rpsGame) return;
+        const playerId = player.id;
+        const opponentId = this.getOpponentPlayerId(
+            playerId,
+            data.winner,
+            data.loser
+        );
+        if (opponentId === null) return;
 
         let outcome: NonNullable<EventData['outcome']>;
-        let opponentId: string;
         let yourChoice: RPSChoice;
         let opponentChoice: RPSChoice;
 
-        if (data.winner === player.id) {
+        if (data.winner === playerId) {
             console.log('You won the RPS game!');
             outcome = 'won';
-            opponentId = data.loser;
             yourChoice = data.winnerChoice;
             opponentChoice = data.loserChoice;
-        } else if (data.loser === player.id) {
+        } else {
             console.log('You lost the RPS game!');
             outcome = 'lost';
-            opponentId = data.winner;
             yourChoice = data.loserChoice;
             opponentChoice = data.winnerChoice;
-        } else {
-            return;
         }
 
         this.emitLocalGameResult(
@@ -183,9 +217,8 @@ export class MinigameEvent {
     }
 
     private handleRPSAccept(data: RPSRequestDataPayload): void {
-        const player = this.options.getPlayer();
+        const player = this.getRequestedLocalPlayer(data);
         if (!player) return;
-        if (data.requestedPlayerID !== player.id) return;
 
         const rpsGame = this.options.getRPSGame();
         if (!rpsGame) return;
@@ -204,9 +237,8 @@ export class MinigameEvent {
     }
 
     private handleRPSDecline(data: RPSRequestDataPayload): void {
-        const player = this.options.getPlayer();
+        const player = this.getRequestedLocalPlayer(data);
         if (!player) return;
-        if (data.requestedPlayerID !== player.id) return;
 
         const rpsGame = this.options.getRPSGame();
         if (!rpsGame) return;
@@ -222,9 +254,8 @@ export class MinigameEvent {
     }
 
     private handleRPSRequest(data: RPSRequestDataPayload): void {
-        const player = this.options.getPlayer();
+        const player = this.getRequestedLocalPlayer(data);
         if (!player) return;
-        if (data.requestedPlayerID !== player.id) return;
 
         player.battleRequested = true;
 
@@ -250,12 +281,14 @@ export class MinigameEvent {
 
         const localPlayerId = player.id ?? this.options.getSocketId();
         let opponentCharacter = this.options.localCharacter;
-        if (data.playerOne === localPlayerId) {
-            const opponentPlayer = multiplayer.players.get(data.playerTwo);
-            if (!opponentPlayer) return;
-            opponentCharacter = opponentPlayer.character;
-        } else if (data.playerTwo === localPlayerId) {
-            const opponentPlayer = multiplayer.players.get(data.playerOne);
+        const opponentId = this.getOpponentPlayerId(
+            localPlayerId,
+            data.playerOne,
+            data.playerTwo
+        );
+
+        if (opponentId !== null) {
+            const opponentPlayer = multiplayer.players.get(opponentId);
             if (!opponentPlayer) return;
             opponentCharacter = opponentPlayer.character;
         }
@@ -287,14 +320,12 @@ export class MinigameEvent {
         if (!tttGame) return;
 
         const localPlayerId = this.options.getPlayer()?.id;
-        const opponent = this.getActiveTTTOpponent(localPlayerId);
-        if (localPlayerId && opponent) {
+        if (localPlayerId) {
             let outcome: NonNullable<EventData['outcome']> = 'lost';
             if (data.id === localPlayerId) {
                 outcome = 'won';
             }
-
-            this.emitLocalGameResult('Tic-Tac-Toe', outcome, opponent.nickname);
+            this.emitLocalTTTResult(localPlayerId, outcome);
         }
 
         tttGame.drawWin(data.winner);
@@ -308,29 +339,40 @@ export class MinigameEvent {
         if (!tttGame) return;
         void _data;
 
-        const opponent = this.getActiveTTTOpponent(
-            this.options.getPlayer()?.id
-        );
-        if (opponent) {
-            this.emitLocalGameResult('Tic-Tac-Toe', 'draw', opponent.nickname);
-        }
+        this.emitLocalTTTResult(this.options.getPlayer()?.id, 'draw');
 
         tttGame.draw();
         tttGame.endGame();
         this.reset();
     }
 
+    private emitLocalTTTResult(
+        localPlayerId: string | undefined,
+        outcome: NonNullable<EventData['outcome']>
+    ): void {
+        const opponent = this.getActiveTTTOpponent(localPlayerId);
+        if (!opponent) return;
+        this.emitLocalGameResult('Tic-Tac-Toe', outcome, opponent.nickname);
+    }
+
     private getActiveTTTOpponent(
         localPlayerId: string | undefined
     ): NamedPlayer | null {
-        if (!localPlayerId || !this.activeTTTPlayers) {
+        const activePlayers = this.activeTTTPlayers;
+        if (!localPlayerId || !activePlayers) {
             return null;
         }
-        if (this.activeTTTPlayers.playerOne.id === localPlayerId) {
-            return this.activeTTTPlayers.playerTwo;
+
+        const opponentId = this.getOpponentPlayerId(
+            localPlayerId,
+            activePlayers.playerOne.id,
+            activePlayers.playerTwo.id
+        );
+        if (opponentId === activePlayers.playerOne.id) {
+            return activePlayers.playerOne;
         }
-        if (this.activeTTTPlayers.playerTwo.id === localPlayerId) {
-            return this.activeTTTPlayers.playerOne;
+        if (opponentId === activePlayers.playerTwo.id) {
+            return activePlayers.playerTwo;
         }
         return null;
     }

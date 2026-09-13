@@ -10,9 +10,9 @@ import type { MultiplayerManager } from './multiplayer.js';
 import type { NPCManager } from './npc.js';
 import type { Player } from './player.js';
 import type { ResourceDisposer } from './ResourceDisposer.js';
-import type { RPS_Game } from './rps_game.js';
+import type { RPS_Game } from './MinigameRPS.js';
 import type { Story_Manager } from './story_manager.js';
-import type { TTT_Game } from './ttt_game.js';
+import type { TTT_Game } from './MinigameTTT.js';
 import type { WorldLoader } from './WorldLoader.js';
 
 import {
