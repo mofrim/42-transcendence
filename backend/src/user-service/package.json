@@ -12,6 +12,7 @@
         "start": "NODE_ENV=production node ../../dist/user-service/src/main.js"
     },
     "dependencies": {
+        "backend-utils": "*",
         "dotenv": "^17.4.2",
         "jsonwebtoken": "^9.0.3",
         "pg": "^8.22.0",
