@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import {
     PlayerState,
-    ENTER_CAMPUS_TOKEN_QUEST_ID,
+    QUESTS_OBJ,
     type QuestCompleteHandler,
 } from 'ftr-common/sharedTypes';
 
@@ -23,7 +23,7 @@ export class FrontDoorQuest {
     constructor(scene: THREE.Scene, interactionRange: THREE.Vector3) {
         this.interaction = new Interaction(
             scene,
-            ENTER_CAMPUS_TOKEN_QUEST_ID,
+            QUESTS_OBJ.ENTER_CAMPUS_TOKEN_QUEST_ID,
             FRONT_DOOR_POSITION,
             /**  Der Radius, in dem die Taste E gedrückt werden kann */
             interactionRange,
@@ -36,12 +36,12 @@ export class FrontDoorQuest {
         interaction: Interaction,
         completeQuest: QuestCompleteHandler<PlayerAnimationState>
     ): Promise<boolean> {
-        if (interaction.typeID !== ENTER_CAMPUS_TOKEN_QUEST_ID) {
+        if (interaction.typeID !== QUESTS_OBJ.ENTER_CAMPUS_TOKEN_QUEST_ID) {
             return false;
         }
 
         await completeQuest(
-            ENTER_CAMPUS_TOKEN_QUEST_ID,
+            QUESTS_OBJ.ENTER_CAMPUS_TOKEN_QUEST_ID.id,
             FRONT_DOOR_SUCCESS_MESSAGE,
             PlayerState.ThumbsUp
         );

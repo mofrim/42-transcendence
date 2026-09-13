@@ -2,7 +2,6 @@ import * as THREE from 'three';
 import {
     EventType,
     type GameEvent,
-    ENTER_CAMPUS_TOKEN_QUEST_ID,
     QUESTS_OBJ,
     PlayerState,
     type QuestCompleteHandler,
@@ -99,7 +98,7 @@ const FRONTDESK_MESSAGE_BY_QUEST_ID: ReadonlyMap<string, FrontdeskMessage> =
             QUESTS_OBJ.FIND_LOST_DROPPED_TOKEN_QUEST_ID.id,
             FRONTDESK_TOKEN_FOUND_TEXT,
         ],
-        [ENTER_CAMPUS_TOKEN_QUEST_ID, FRONTDESK_GREETING_TEXT],
+        [QUESTS_OBJ.ENTER_CAMPUS_TOKEN_QUEST_ID.id, FRONTDESK_GREETING_TEXT],
     ]);
 
 /**
