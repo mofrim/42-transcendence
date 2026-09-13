@@ -23,6 +23,14 @@ export const describeGameEvent = (event: GameEvent): string => {
             return `${event.data.nickname} 🚪 logged out`;
         case 'PlayerInRange':
             return `Met ${event.data.nickname} nearby`;
+        case 'FriendRequest':
+            if (event.data.friendRequestStatus === 'incoming') {
+                return `${event.data.nickname} sent you a friend request`;
+            }
+            if (event.data.friendRequestStatus === 'sent') {
+                return `Friend request sent to ${event.data.nickname}`;
+            }
+            return `Friend request with ${event.data.nickname} ${event.data.friendRequestStatus}`;
         case 'QuestCompleted': {
             const questDescription =
                 event.data.questText ?? event.data.questId ?? 'unknown quest';

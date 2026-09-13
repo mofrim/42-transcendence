@@ -116,6 +116,7 @@ export enum EventType {
     PlayerJoined = 'PlayerJoined',
     PlayerLeft = 'PlayerLeft',
     PlayerInRange = 'PlayerInRange',
+    FriendRequest = 'FriendRequest',
     GameResult = 'GameResult',
     ChatMsg = 'ChatMsg',
     QuestCompleted = 'QuestCompleted',
@@ -128,6 +129,7 @@ export enum EventType {
 export type EventData = {
     readonly playerId?: string;
     readonly nickname?: string;
+    readonly friendRequestStatus?: FriendRequestStatus;
     readonly game?: 'Tic-Tac-Toe' | 'Rock-Paper-Scissors';
     readonly outcome?: 'won' | 'lost' | 'draw';
     readonly playerNickname?: string;

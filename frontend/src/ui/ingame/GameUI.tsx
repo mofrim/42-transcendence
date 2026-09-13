@@ -29,7 +29,7 @@ import {
 
 import { CharacterPreviewView } from '../login/PreviewCharacter';
 import { EventLogItems, type EventLogEntry } from './EventLogItems';
-import { getFriendRequestMessage } from './FriendList';
+import { FRIENDS_PANEL_ID, FriendList } from './FriendList';
 import { Leaderboard } from './Leaderboard';
 import { MatchHistory } from './MatchHistory';
 
@@ -37,7 +37,6 @@ import './GameUI.css';
 
 const QUEST_LOG_ID = 'game-quest-log';
 const PROFILE_PANEL_ID = 'game-profile-panel';
-const FRIENDS_PANEL_ID = 'game-friends-panel';
 const MATCH_HISTORY_PANEL_ID = 'game-match-history-panel';
 const LEADERBOARD_PANEL_ID = 'game-leaderboard-panel';
 const EVENT_LOG_TITLE_ID = 'game-event-log-title';
@@ -475,17 +474,10 @@ export function GameUI({
                     </button>
                 </aside>
 
-                <aside
-                    id={FRIENDS_PANEL_ID}
-                    className='hud-panel hud-friends-panel'
-                    aria-label='Friendlist'
-                    hidden={!friendsPanelOpen}
-                >
-                    <h2 className='hud-title'>Friendlist</h2>
-                    <p className='hud-friends-placeholder'>
-                        {getFriendRequestMessage(friendRequest)}
-                    </p>
-                </aside>
+                <FriendList
+                    friendRequest={friendRequest}
+                    isOpen={friendsPanelOpen}
+                />
 
                 <aside
                     id={MATCH_HISTORY_PANEL_ID}

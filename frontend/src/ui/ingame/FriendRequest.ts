@@ -48,5 +48,3 @@ export function getFriendRequestMessage(
 
     return `Friend request with ${friendRequest.nickname} ${friendRequest.status}.`;
 }
-
-// TODO: display the friend on list
