@@ -2,10 +2,10 @@ import * as THREE from 'three';
 import { CanvasTextSprite } from './CanvasTextSprite';
 import {
     EVALUATING_STUDENT_QUEST_ID,
-    FIND_LOST_DROPPED_TOKEN_QUEST_ID,
     ENTER_CAMPUS_TOKEN_QUEST_ID,
     START_EVALUATION_QUEST_ID,
     type PreparationQuestId,
+    QUESTS_OBJ,
 } from 'ftr-common/sharedTypes';
 
 /* import { Player } from './player';
@@ -23,7 +23,7 @@ export type InteractionTypeId =
     | typeof START_EVALUATION_QUEST_ID
     | typeof EVENT_SPACE_DOOR_A_INTERACTION_ID
     | typeof EVENT_SPACE_DOOR_B_INTERACTION_ID
-    | typeof FIND_LOST_DROPPED_TOKEN_QUEST_ID
+    | typeof QUESTS_OBJ.FIND_LOST_DROPPED_TOKEN_QUEST_ID
     | typeof ENTER_CAMPUS_TOKEN_QUEST_ID;
 
 /* export enum IID {

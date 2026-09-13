@@ -3,7 +3,10 @@ import type * as THREE from 'three';
 
 // ----------------------------=[ quest types ]=---------------------------- //
 
+// DONE migrating quests
 export const FIND_LOST_DROPPED_TOKEN_QUEST_ID = 'FIND_LOST_DROPPED_TOKEN';
+
+// TODO migrating quests
 export const ENTER_CAMPUS_TOKEN_QUEST_ID = 'ENTER_42_CAMPUS_VIA_TOKEN';
 export const RUBBER_DUCK_QUEST_ID = 'FIND_RUBBERDUCK';
 export const COFFEE_QUEST_ID = 'GET_COFFEE';
