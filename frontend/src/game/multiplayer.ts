@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import type { Socket } from 'socket.io-client';
 import type { Player } from './player.js';
 import { Remote_Player } from './remote_player.js';
+import { Chat } from './Chat.js';
 
 import {
     EventType,
@@ -86,9 +87,8 @@ export class MultiplayerManager {
     private readonly localPlayer: Player | null;
     private readonly localNickname: string;
     private readonly onGameEvent: ((event: GameEvent) => void) | undefined;
-    private readonly onChatMessage:
-        ((message: ReceivedChatPayload) => void) | undefined;
     private readonly gameHandlers: MultiplayerGameHandlers;
+    private readonly chat: Chat;
     private readonly departingPlayers: Set<Remote_Player>;
     private readonly knownPlayerNicknames: Map<string, string>;
     private readonly blockedPlayerUpdates: Set<string>;
@@ -111,7 +111,6 @@ export class MultiplayerManager {
         this.localPlayer = options.localPlayer;
         this.localNickname = options.localNickname;
         this.onGameEvent = options.onGameEvent;
-        this.onChatMessage = options.onChatMessage;
         this.gameHandlers = options.gameHandlers ?? {};
 
         this.players = new Map<string, Remote_Player>();
@@ -126,6 +125,13 @@ export class MultiplayerManager {
         this.disposed = false;
 
         this.desired = new THREE.Vector3();
+        this.chat = new Chat({
+            socket: this.socket,
+            localPlayer: this.localPlayer,
+            players: this.players,
+            onChatMessage: options.onChatMessage,
+            isDisposed: () => this.disposed,
+        });
 
         this.bindSocketEvents();
         if (this.socket.connected) {
@@ -200,20 +206,6 @@ export class MultiplayerManager {
             remoteNickname,
             initialUpdate
         );
-    };
-
-    private readonly handleChatMessage = (data: ReceivedChatPayload): void => {
-        if (this.disposed) {
-            return;
-        }
-
-        this.onChatMessage?.(data);
-        if (data.senderId === this.socket.id) {
-            this.localPlayer?.showChatMessage(data.message);
-            return;
-        }
-
-        this.players.get(data.senderId)?.showChatMessage(data.message);
     };
 
     private readonly handlePlayerDisconnected = (id: string): void => {
@@ -306,7 +298,7 @@ export class MultiplayerManager {
     private bindSocketEvents(): void {
         this.socket.on('connect', this.handleSocketConnect);
         this.socket.on('player_connected', this.handlePlayerConnected);
-        this.socket.on('chat_message', this.handleChatMessage);
+        this.chat.bindSocketEvents();
         this.socket.on('player_disconnected', this.handlePlayerDisconnected);
         this.socket.on('disconnect', this.handleSocketDisconnect);
         this.socket.on('initData', this.handleInitData);
@@ -316,7 +308,7 @@ export class MultiplayerManager {
     private unbindSocketEvents(): void {
         this.socket.off('connect', this.handleSocketConnect);
         this.socket.off('player_connected', this.handlePlayerConnected);
-        this.socket.off('chat_message', this.handleChatMessage);
+        this.chat.unbindSocketEvents();
         this.socket.off('player_disconnected', this.handlePlayerDisconnected);
         this.socket.off('disconnect', this.handleSocketDisconnect);
         this.socket.off('initData', this.handleInitData);
@@ -450,11 +442,7 @@ export class MultiplayerManager {
     }
 
     sendChatMessage(message: string): void {
-        if (this.disposed) {
-            return;
-        }
-
-        this.socket.emit('chat_message', { message });
+        this.chat.sendMessage(message);
     }
 
     resolvePlayerNickname(playerId: string, fallbackNickname?: string): string {
