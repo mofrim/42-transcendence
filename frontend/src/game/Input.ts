@@ -5,6 +5,7 @@ import type { Camera } from './camera.js';
 import type { InteractionManager } from './interaction_manager.js';
 import type { MultiplayerManager } from './multiplayer.js';
 import type { Player } from './player.js';
+import type { Remote_Player } from './remote_player.js';
 import type { RPS_Game } from './MinigameRPS.js';
 import type { Story_Manager } from './story_manager.js';
 import type { TTT_Game } from './MinigameTTT.js';
@@ -122,6 +123,11 @@ export class Input {
     }
 
     private onPressAccept(): void {
+        const multiplayer = this.getMultiplayer();
+        if (multiplayer?.acceptFriendRequest()) {
+            return;
+        }
+
         const player = this.getPlayer();
         const rpsGame = this.getRPSGame();
         if (!player || !rpsGame) return;
@@ -155,6 +161,11 @@ export class Input {
     }
 
     private onPressDecline(): void {
+        const multiplayer = this.getMultiplayer();
+        if (multiplayer?.declineFriendRequest()) {
+            return;
+        }
+
         const player = this.getPlayer();
         const rpsGame = this.getRPSGame();
         if (!player || !rpsGame) return;
@@ -196,26 +207,45 @@ export class Input {
         this.getMultiplayer()?.emitBattleChoice(choice);
     }
 
-    private onPressB(): void {
+    private getNearbyPlayer(): Remote_Player | null {
         const rpsGame = this.getRPSGame();
-        if (!rpsGame) return;
+        const multiplayer = this.getMultiplayer();
+        if (!rpsGame?.inRange || !multiplayer) {
+            return null;
+        }
 
-        if (!rpsGame.inRange) {
+        const nearbyPlayer = rpsGame.playerInRange;
+        if (
+            !nearbyPlayer ||
+            !nearbyPlayer.isActive() ||
+            multiplayer.players.get(nearbyPlayer.id) !== nearbyPlayer
+        ) {
+            return null;
+        }
+
+        return nearbyPlayer;
+    }
+
+    private onPressB(): void {
+        const nearbyPlayer = this.getNearbyPlayer();
+        const multiplayer = this.getMultiplayer();
+        if (!nearbyPlayer || !multiplayer) {
             console.log('No player in range to interact with.');
             return;
         }
 
-        const nearbyPlayer = rpsGame.playerInRange;
+        multiplayer.emitBattleRequest(nearbyPlayer.id);
+    }
+
+    private onPressF(): void {
+        const nearbyPlayer = this.getNearbyPlayer();
         const multiplayer = this.getMultiplayer();
-        if (
-            !nearbyPlayer ||
-            !nearbyPlayer.isActive() ||
-            multiplayer?.players.get(nearbyPlayer.id) !== nearbyPlayer
-        ) {
+        if (!nearbyPlayer || !multiplayer) {
+            console.log('No player in range to interact with.');
             return;
         }
 
-        multiplayer.emitBattleRequest(nearbyPlayer.id);
+        multiplayer.emitFriendRequest(nearbyPlayer.id);
     }
 
     private onPressEscape(): void {
@@ -338,6 +368,9 @@ export class Input {
                 break;
             case 'KeyB':
                 this.onPressB();
+                break;
+            case 'KeyF':
+                this.onPressF();
                 break;
             case 'KeyZ':
             case 'KeyY':

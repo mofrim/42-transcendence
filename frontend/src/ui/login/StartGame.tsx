@@ -10,6 +10,7 @@ import {
 } from 'ftr-common/sharedTypes';
 import { useMatchHistory } from '../../hooks/useMatchHistory';
 import { GameUI, type DialogPanelState } from '../ingame/GameUI';
+import { useFriendRequest } from '../ingame/FriendList';
 import {
     applyQuestCompletionEvent,
     type QuestStatusChange,
@@ -53,6 +54,7 @@ export const Game: React.FC<{
     const [completedQuestIds, setCompletedQuestIds] = useState<string[]>([]);
     const [gameResetVersion, setGameResetVersion] = useState(0);
     const [isGameplayReady, setIsGameplayReady] = useState(false);
+    const { friendRequest, setFriendRequest } = useFriendRequest();
     const [dialog, setDialog] = useState<DialogPanelState>({
         isOpen: false,
         message: '',
@@ -156,8 +158,9 @@ export const Game: React.FC<{
     const handleGameReset = useCallback((): void => {
         metPlayerNicknamesRef.current.clear();
         setCompletedQuestIds([]);
+        setFriendRequest(null);
         setGameResetVersion((currentVersion) => currentVersion + 1);
-    }, []);
+    }, [setFriendRequest]);
 
     /** suck up */
     const exitLocalPlayer = useCallback(async (): Promise<void> => {
@@ -204,6 +207,7 @@ export const Game: React.FC<{
             ((state: DialogPanelState) => void) | undefined;
         let runtimeGameResetHandler: (() => void) | undefined;
         let runtimeGameplayReadyHandler: (() => void) | undefined;
+        let runtimeFriendRequestHandler: typeof setFriendRequest | undefined;
 
         if (!isSpectator) {
             gameMode = 'player';
@@ -211,6 +215,7 @@ export const Game: React.FC<{
             runtimeDialogHandler = setDialog;
             runtimeGameResetHandler = handleGameReset;
             runtimeGameplayReadyHandler = () => setIsGameplayReady(true);
+            runtimeFriendRequestHandler = setFriendRequest;
         }
 
         const runtime: GameRuntime = startGame(
@@ -223,7 +228,8 @@ export const Game: React.FC<{
             gameMode,
             handleReceivedChatMessage,
             runtimeGameResetHandler,
-            runtimeGameplayReadyHandler
+            runtimeGameplayReadyHandler,
+            runtimeFriendRequestHandler
         );
         gameRuntimeRef.current = runtime;
 
@@ -250,6 +256,7 @@ export const Game: React.FC<{
         isSpectator,
         user,
         serverAddrRef,
+        setFriendRequest,
     ]);
 
     let spectatorExitButton: React.ReactNode = null;
@@ -274,6 +281,7 @@ export const Game: React.FC<{
             dialog,
             onDialogNext: handleDialogNext,
             blackHoleCountdownActive: isGameplayReady,
+            friendRequest,
         };
     }
 

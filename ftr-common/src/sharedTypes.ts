@@ -242,6 +242,33 @@ export type ReceivedChatPayload = {
 export type ClientChatPayload = ChatSendPayload;
 export type ServerChatPayload = ReceivedChatPayload;
 
+/** shared request or RPS and friends */
+type PlayerTargetRequestPayload = {
+    id: string;
+    requestedPlayerID: string;
+    nickname?: string;
+};
+
+export type FriendResponseType = 'friend_accept' | 'friend_decline';
+
+export type FriendRequestPayload = PlayerTargetRequestPayload & {
+    type: 'friend_request' | FriendResponseType;
+};
+
+export type FriendResponseStatus = 'accepted' | 'declined';
+
+export type FriendRequestStatus = 'sent' | 'incoming' | FriendResponseStatus;
+
+export type FriendRequestState = {
+    readonly status: FriendRequestStatus;
+    readonly playerId: string;
+    readonly nickname: string;
+};
+
+export type FriendRequestChangeHandler = (
+    state: FriendRequestState | null
+) => void;
+
 /** all both gender */
 export type Character = boolean;
 
@@ -368,11 +395,8 @@ export type RPSBattleChoicePayload = {
     choice: RPSChoice;
 };
 
-export type RPSRequestDataPayload = {
+export type RPSRequestDataPayload = PlayerTargetRequestPayload & {
     type: 'rps_accept' | 'rps_decline' | 'rps_request';
-    id: string;
-    requestedPlayerID: string;
-    nickname?: string;
 };
 
 export type TTTInitGamePayload = {

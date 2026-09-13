@@ -21,10 +21,15 @@ import {
     getBlackHoleCountdownDeadline,
 } from './BlackHoleCountdown';
 
-import { type Character, QUESTS } from 'ftr-common/sharedTypes';
+import {
+    type Character,
+    type FriendRequestState,
+    QUESTS,
+} from 'ftr-common/sharedTypes';
 
 import { CharacterPreviewView } from '../login/PreviewCharacter';
 import { EventLogItems, type EventLogEntry } from './EventLogItems';
+import { getFriendRequestMessage } from './FriendList';
 import { Leaderboard } from './Leaderboard';
 import { MatchHistory } from './MatchHistory';
 
@@ -59,6 +64,7 @@ type GameUIProps = {
     readonly dialog?: DialogPanelState;
     readonly onDialogNext?: () => void;
     readonly blackHoleCountdownActive?: boolean;
+    readonly friendRequest?: FriendRequestState | null;
     readonly isSpectator?: boolean;
 };
 
@@ -207,6 +213,7 @@ export function GameUI({
     dialog,
     onDialogNext,
     blackHoleCountdownActive = true,
+    friendRequest,
     isSpectator = false,
 }: GameUIProps) {
     const [isQuestLogOpen, setIsQuestLogOpen] = useState(false);
@@ -395,6 +402,7 @@ export function GameUI({
     if (isSpectator) {
         hudClassName += ' spectator-hud';
     }
+    const friendsPanelOpen = isFriendsOpen || Boolean(friendRequest);
 
     return (
         <div
@@ -415,7 +423,7 @@ export function GameUI({
                     <HudPanelToggle
                         controls={FRIENDS_PANEL_ID}
                         icon='👥'
-                        isOpen={isFriendsOpen}
+                        isOpen={friendsPanelOpen}
                         panelLabel='Friendlist'
                         onToggle={handleFriendsToggle}
                     />
@@ -471,11 +479,11 @@ export function GameUI({
                     id={FRIENDS_PANEL_ID}
                     className='hud-panel hud-friends-panel'
                     aria-label='Friendlist'
-                    hidden={!isFriendsOpen}
+                    hidden={!friendsPanelOpen}
                 >
                     <h2 className='hud-title'>Friendlist</h2>
                     <p className='hud-friends-placeholder'>
-                        Sample Friendlist Panel
+                        {getFriendRequestMessage(friendRequest)}
                     </p>
                 </aside>
 

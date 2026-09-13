@@ -195,6 +195,7 @@
 
 .hud-friends-placeholder {
     margin: 0;
+    white-space: pre-line;
 }
 
 .hud-match-history-panel {

@@ -18,7 +18,8 @@ import { createResourceDisposer } from './ResourceDisposer';
 import type { Socket } from 'socket.io-client';
 import { RPSChoice } from 'ftr-common/sharedTypes';
 
-const BATTLE_PROMPT_TEXT = 'Press ⌨️ [B] Battle Challenge';
+// TODO: freinds seperate from battle
+const BATTLE_PROMPT_TEXT = '⌨️ [B] Battle Challenge   ⌨️ [F] Friend Request';
 const BATTLE_PROMPT_SIZE = 20;
 const BATTLE_PROMPT_HEIGHT = 1.6;
 const BATTLE_RANGE_SQUARED = 4;

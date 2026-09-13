@@ -40,6 +40,7 @@ import {
     TTTMeshBoard,
     GameEvent,
     EventType,
+    type FriendRequestChangeHandler,
     type GLBMesh,
     type ReceivedChatPayload,
     type SocketAuth,
@@ -89,7 +90,8 @@ export function startGame(
     mode: GameMode = 'player',
     onChatMessage?: (message: ReceivedChatPayload) => void,
     onGameReset?: () => void,
-    onGameplayReady?: () => void
+    onGameplayReady?: () => void,
+    onFriendRequestChange?: FriendRequestChangeHandler
 ): GameRuntime {
     // ============================================================================
     // SERVER CONNECTION
@@ -325,6 +327,7 @@ export function startGame(
             localNickname,
             onGameEvent,
             onChatMessage,
+            onFriendRequestChange,
             gameHandlers: minigameEvent.handlers,
         });
 
