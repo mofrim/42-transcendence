@@ -14,6 +14,7 @@
         "ftr-common"
     ],
     "scripts": {
+        "prepare": "node .githooks/install.mjs",
         "dev:backend": "npm run dev -w backend",
         "dev:frontend": "npm run dev -w frontend",
         "build:common": "npm run build -w ftr-common",
