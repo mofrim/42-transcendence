@@ -61,6 +61,13 @@ dock-db:
 	cd backend && docker compose -f ./compose-db.yaml up -d
 	$(call log_msg_end,Done.)
 
+dock-db-clean: dock-db-down
+	$(call log_msg_start,Cleaning ftr-db...)
+	docker volume rm ftr-db
+	$(call log_msg_end,Done.)
+
+dock-db-re: dock-db-down dock-db-clean dock-db
+
 dock-db-down:
 	$(call log_msg_start,Launching all backend for dev...)
 	cd backend && docker compose -f ./compose-db.yaml down
