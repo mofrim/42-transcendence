@@ -135,66 +135,6 @@ function HudPanelToggle({
     );
 }
 
-/** Beispielereignisse für das Event Log.
-const DEFAULT_EVENTS: readonly EventLogEntry[] = [
-    {
-        id: 'user-b-logout',
-        timestamp: '16:52:00',
-        description: '"UserB" log out',
-    },
-    {
-        id: 'user-c-login',
-        timestamp: '16:52:01',
-        description: '"UserC" log in',
-    },
-    {
-        id: 'user-c-message',
-        timestamp: '16:52:05',
-        description: '"UserC" says: Hallo',
-    },
-    {
-        id: 'user-a-message',
-        timestamp: '16:52:10',
-        description: '"UserA" says: Hi',
-    },
-    {
-        id: 'user-b-login',
-        timestamp: '16:52:15',
-        description: '"UserB" log in',
-    },
-    {
-        id: 'user-a-login',
-        timestamp: '16:52:20',
-        description: '"UserA" log in',
-    },
-    {
-        id: 'user-a-message-2',
-        timestamp: '16:52:25',
-        description: '"UserA" says: challenge?',
-    },
-    {
-        id: 'user-c-message-2',
-        timestamp: '16:52:30',
-        description: '"UserC" says: accepted!',
-    },
-    {
-        id: 'user-b-message-2',
-        timestamp: '16:52:35',
-        description: '"UserB" says: lets play!',
-    },
-    {
-        id: 'user-b-logout-2',
-        timestamp: '16:52:40',
-        description: 'UserB rage quits!',
-    },
-    {
-        id: 'user-c-message-3',
-        timestamp: '16:52:30',
-        description: '"UserC" says: okay?',
-    },
-];
-*/
-
 /**
  * React HUD for controls that do not belong in the Three.js scene.
  */
@@ -229,6 +169,7 @@ export function GameUI({
         BLACK_HOLE_DURATION_SECONDS
     );
     const eventListRef = useRef<HTMLOListElement>(null);
+    const matchHistoryListRef = useRef<HTMLOListElement>(null);
     const chatInputRef = useRef<HTMLInputElement>(null);
     const previousResolvedQuestsRef = useRef<
         readonly ResolvedQuestLogEntry[] | null
@@ -385,6 +326,14 @@ export function GameUI({
         eventList.scrollTop = eventList.scrollHeight;
     }, [latestEventId]);
 
+    /** Auto Scroll des Eventlogs zum neuesten Eintrag. */
+    useEffect(() => {
+        const matchHistoryList = matchHistoryListRef.current;
+        if (!matchHistoryList) return;
+
+        matchHistoryList.scrollTop = matchHistoryList.scrollHeight;
+    }, [matchHistory]);
+
     useEffect(() => {
         if (!isChatOpen) return;
 
@@ -489,7 +438,10 @@ export function GameUI({
                     hidden={!isMatchHistoryOpen}
                 >
                     <h2 className='hud-title'>Match History</h2>
-                    <MatchHistory entries={matchHistory} />
+                    <MatchHistory
+                        entries={matchHistory}
+                        listref={matchHistoryListRef}
+                    />
                 </aside>
 
                 <aside

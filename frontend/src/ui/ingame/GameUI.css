@@ -196,6 +196,7 @@
 
 .hud-match-history-panel {
     width: min(360px, calc(100vw - 94px));
+    pointer-events: auto;
 }
 
 .hud-leaderboard-panel {
