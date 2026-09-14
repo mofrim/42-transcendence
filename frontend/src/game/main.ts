@@ -46,25 +46,6 @@ import {
     type SocketAuth,
 } from 'ftr-common/sharedTypes';
 
-/** event log msgs */
-// export type GameRuntimeEvent =
-//     | {
-//           readonly type: 'player_joined' | 'player_left' | 'player_in_range';
-//           readonly playerId: string;
-//           readonly nickname: string;
-//       }
-//     | {
-//           readonly type: 'quest_completed';
-//           readonly questId: string;
-//       }
-//     | {
-//           readonly type: 'game_result';
-//           readonly game: 'Tic-Tac-Toe' | 'Rock-Paper-Scissors';
-//           readonly outcome: 'won' | 'lost' | 'draw';
-//           readonly playerNickname: string;
-//           readonly opponentNickname: string;
-//       };
-
 export type GameRuntime = {
     readonly sendChatMessage: (message: string) => void;
     readonly despawnLocalPlayer: () => Promise<void>;
@@ -72,11 +53,6 @@ export type GameRuntime = {
     readonly continueDialogue: () => void;
     readonly triggerBlackHoleCutscene: () => void;
 };
-
-// export type GameResultEvent = Extract<
-//     GameRuntimeEvent,
-//     { type: 'game_result' }
-// >;
 
 export type GameMode = NonNullable<SocketAuth['role']>;
 
