@@ -17,6 +17,7 @@ import type { WorldLoader } from './WorldLoader.js';
 
 import {
     EventType,
+    User,
     type GameEvent,
     type GLBMesh,
 } from 'ftr-common/sharedTypes';
@@ -259,6 +260,9 @@ export class RenderLoop {
                         questId: completedEventSpaceQuestId,
                     },
                     logtime: new Date(),
+                    // NOTE well, player.id is strictly speaking not correct.
+                    // we need to make `user`'s nick accessible here otherwise
+                    user: new User({ nickname: player.id! }),
                 });
             }
         }

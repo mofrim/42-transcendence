@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import {
     EventType,
+    User,
     type GameEvent,
     QUESTS,
     PlayerState,
@@ -148,10 +149,11 @@ export class TokenQuestFrontdesk {
         this.onGameEvent?.({
             eventType: EventType.ChatMsg,
             data: {
-                nickname: FRONTDESK_NICKNAME,
                 chatmsg: message,
             },
             logtime: new Date(),
+            // FIXME is this save and working?
+            user: new User({ nickname: FRONTDESK_NICKNAME }),
         });
     }
 }

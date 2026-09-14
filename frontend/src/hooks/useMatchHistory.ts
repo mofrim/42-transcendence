@@ -3,8 +3,8 @@ import axios from 'axios';
 import {
     EventType,
     GameEvent,
+    type EventDataGameResult,
     type BaseEventLog,
-    type EventData,
 } from 'ftr-common/sharedTypes';
 import type { EventLogEntry } from '../ui/ingame/EventLogItems';
 
@@ -21,10 +21,10 @@ type UseMatchHistoryOptions = {
 };
 
 type MatchResultData = Required<
-    Pick<EventData, 'game' | 'outcome' | 'opponentNickname'>
+    Pick<EventDataGameResult, 'game' | 'outcome' | 'opponentNickname'>
 >;
 
-function getMatchResultData(data: EventData): MatchResultData | null {
+function getMatchResultData(data: EventDataGameResult): MatchResultData | null {
     if (data.game !== 'Tic-Tac-Toe' && data.game !== 'Rock-Paper-Scissors') {
         return null;
     }
@@ -75,7 +75,7 @@ function parseMatchHistoryEntry(event: BaseEventLog): EventLogEntry | null {
     }
 
     try {
-        const data = getMatchResultData(event.data);
+        const data = getMatchResultData(event.data as EventDataGameResult);
         if (!data || event.id === undefined) {
             return null;
         }
@@ -141,7 +141,9 @@ export function useMatchHistory({
                 return;
             }
 
-            const storedResult = getMatchResultData(event.data);
+            const storedResult = getMatchResultData(
+                event.data as EventDataGameResult
+            );
             if (!storedResult) {
                 return;
             }

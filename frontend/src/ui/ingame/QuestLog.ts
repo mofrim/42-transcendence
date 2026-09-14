@@ -3,9 +3,11 @@ import {
     EventType,
     GameEvent,
     type QuestLogEntry,
+    type EventDataQuestCompleted,
+    type EventDataGameResult,
 } from 'ftr-common/sharedTypes';
 
-type MinigameName = NonNullable<GameEvent['data']['game']>;
+type MinigameName = NonNullable<EventDataGameResult['game']>;
 
 const WIN_QUEST_ID_BY_GAME: ReadonlyMap<MinigameName, string> = new Map([
     ['Rock-Paper-Scissors', QUESTS.RPS_WIN_QUEST_ID.id],
@@ -96,22 +98,20 @@ export function describeQuestStatusChange(change: QuestStatusChange): string {
 
 function getCompletedQuestId(event: GameEvent): string | null {
     if (event.eventType === EventType.QuestCompleted) {
-        return event.data.questId!;
+        const evData = event.data as EventDataQuestCompleted;
+        return evData.questId;
     }
 
     if (event.eventType === EventType.PlayerInRange) {
         return QUESTS.MEET_PLAYER_QUEST_ID.id;
     }
 
-    if (
-        event.eventType !== EventType.GameResult ||
-        event.data.outcome !== 'won' ||
-        event.data.game === undefined
-    ) {
+    if (event.eventType !== EventType.GameResult) {
         return null;
     }
 
-    return WIN_QUEST_ID_BY_GAME.get(event.data.game) ?? null;
+    const evData = event.data as EventDataGameResult;
+    return WIN_QUEST_ID_BY_GAME.get(evData.game) ?? null;
 }
 
 export function applyQuestCompletionEvent(

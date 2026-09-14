@@ -73,7 +73,7 @@ export const QUESTS = Object.freeze({
     },
 });
 
-// generate a `type` from the above array.. awesome TS feature BTW
+// generate a `type` from the above object.. awesome TS feature BTW
 export type QuestStatus = {
     [K in keyof typeof QUESTS]: boolean;
 };
@@ -126,32 +126,108 @@ export enum EventType {
     None = 'None',
 }
 
-export type EventData = {
-    readonly playerId?: string;
-    readonly nickname?: string;
-    readonly friendRequestStatus?: FriendRequestStatus;
-    readonly game?: 'Tic-Tac-Toe' | 'Rock-Paper-Scissors';
-    readonly outcome?: 'won' | 'lost' | 'draw';
-    readonly playerNickname?: string;
-    readonly opponentNickname?: string;
-    readonly chatmsg?: string;
-    readonly questText?: string;
-    readonly questId?: string;
+// NOTE keep until typing is consilidated here
+// old GameEvent dfn
+// export type GameRuntimeEvent =
+//     | {
+//           readonly type: 'player_joined' | 'player_left' | 'player_in_range';
+//           readonly playerId: string;
+//           readonly nickname: string;
+//       }
+//     | {
+//           readonly type: 'quest_completed';
+//           readonly questId: string;
+//       }
+//     | {
+//           readonly type: 'game_result';
+//           readonly game: 'Tic-Tac-Toe' | 'Rock-Paper-Scissors';
+//           readonly outcome: 'won' | 'lost' | 'draw';
+//           readonly playerNickname: string;
+//           readonly opponentNickname: string;
+//       };
+
+// NOTE keep until typing is consilidated here
+// export type EventData = {
+//     readonly playerId?: string;
+//     readonly nickname?: string;
+//     readonly game?: 'Tic-Tac-Toe' | 'Rock-Paper-Scissors';
+//     readonly outcome?: 'won' | 'lost' | 'draw';
+//     readonly playerNickname?: string;
+//     readonly opponentNickname?: string;
+//     readonly chatmsg?: string;
+//     readonly questText?: string;
+//     readonly questId?: string;
+// };
+export type EventData =
+    | null
+    | {
+          readonly playerId: string;
+          readonly playerNickname: string;
+      }
+    | {
+          readonly playerId: string;
+          readonly remoteNick: string;
+      }
+    | {
+          // PlayerJoined
+          readonly playerId: string;
+      }
+    | {
+          readonly friendRequestStatus: FriendRequestStatus;
+    }
+    | {
+          readonly game: 'Tic-Tac-Toe' | 'Rock-Paper-Scissors';
+          readonly outcome: 'won' | 'lost' | 'draw';
+          readonly opponentNickname: string;
+      }
+    | {
+          readonly chatmsg: string;
+      }
+    | {
+          //  QuestCompleted
+          readonly questId: string;
+          readonly questText?: string;
+      };
+
+// Partial EventData types... `Pick` does not work that well with unions, sadly
+export type EventDataPlayerInRange = {
+    readonly playerId: string;
+    readonly remoteNick: string;
 };
 
-// This will be the foundation for a new table in `eventlog-service`
+export type EventDataChatMsg = {
+    readonly chatmsg: string;
+};
+
+export type EventDataQuestCompleted = {
+    readonly questId: string;
+    readonly questText?: string;
+};
+
+export type EventDataGameResult = {
+    readonly game: 'Tic-Tac-Toe' | 'Rock-Paper-Scissors';
+    readonly outcome: 'won' | 'lost' | 'draw';
+    readonly opponentNickname: string;
+};
+
+// This will be the foundation for a new table in `eventlog-service` every Event
+// is emitted by some user => user must be part of every Event. This obsoletes
+// specification of emitting users nickname in EventData for some events
 export abstract class BaseEventLog {
     abstract id?: number;
     abstract eventType: EventType;
     abstract logtime: Date;
     abstract data: EventData;
+    abstract user: BaseUser;
 }
 
+// GameEvent used wherever a event is generated in frontend
 export class GameEvent extends BaseEventLog {
     id?: number;
     eventType: EventType = EventType.None;
     logtime: Date = new Date();
-    data: EventData = {};
+    data: EventData = null;
+    user: User = new User();
 }
 
 // -----------------------=[ user types and classes ]=----------------------- //
@@ -174,6 +250,13 @@ export class User extends BaseUser {
     email: string = '';
     character: boolean = true;
     hashedPw: string = '';
+
+    constructor(data?: Partial<User>) {
+        super();
+        if (data) {
+            Object.assign(this, data);
+        }
+    }
 }
 
 // ----------------------------=[ other types ]=---------------------------- //

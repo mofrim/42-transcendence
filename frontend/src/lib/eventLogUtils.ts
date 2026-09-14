@@ -1,4 +1,4 @@
-import { GameEvent } from 'ftr-common/sharedTypes';
+import { GameEvent, type EventDataChatMsg, type EventDataGameResult, type EventDataPlayerInRange, type EventDataQuestCompleted } from 'ftr-common/sharedTypes';
 
 export const EVENT_TIME_FORMAT = new Intl.DateTimeFormat('en-US', {
     hour: '2-digit',
@@ -17,12 +17,12 @@ export const EVENT_TIME_FORMAT = new Intl.DateTimeFormat('en-US', {
 export const describeGameEvent = (event: GameEvent): string => {
     switch (event.eventType) {
         case 'PlayerJoined':
-            return `${event.data.nickname} 👋🏻 joined`;
+            return `${event.user.nickname} 👋🏻 joined`;
         case 'PlayerLeft':
             // FIXME handle undefined at first start here
-            return `${event.data.nickname} 🚪 logged out`;
+            return `${event.user.nickname} 🚪 logged out`;
         case 'PlayerInRange':
-            return `Met ${event.data.nickname} nearby`;
+            return `Met ${(event.data as EventDataPlayerInRange).remoteNick} nearby`;
         case 'FriendRequest':
             if (event.data.friendRequestStatus === 'incoming') {
                 return `${event.data.nickname} sent you a friend request`;
@@ -32,19 +32,24 @@ export const describeGameEvent = (event: GameEvent): string => {
             }
             return `Friend request with ${event.data.nickname} ${event.data.friendRequestStatus}`;
         case 'QuestCompleted': {
+            const evData = event.data as EventDataQuestCompleted;
             const questDescription =
-                event.data.questText ?? event.data.questId ?? 'unknown quest';
-            return `${event.data.nickname} completed quest ${questDescription}`;
+                evData.questText ?? evData.questId ?? 'unknown quest';
+            return `${event.user.nickname} completed quest ${questDescription}`;
         }
-        case 'GameResult':
-            if (event.data.outcome === 'draw') {
-                return `${event.data.playerNickname} drew a game of ${event.data.game} against ${event.data.opponentNickname}`;
+        case 'GameResult': {
+            const evData = event.data as EventDataGameResult;
+            if (evData.outcome === 'draw') {
+                return `${event.user.nickname} drew a game of ${evData.game} against ${evData.opponentNickname}`;
             }
-            return `${event.data.playerNickname} ${event.data.outcome} a game of ${event.data.game} against ${event.data.opponentNickname}`;
-        case 'ChatMsg':
-            return `${event.data.nickname} 💬 ${event.data.chatmsg}`;
+            return `${event.user.nickname} ${evData.outcome} a game of ${evData.game} against ${evData.opponentNickname}`;
+        }
+        case 'ChatMsg': {
+            const evData = event.data as EventDataChatMsg;
+            return `${event.user.nickname} 💬 ${evData.chatmsg}`;
+        }
         case 'Blackholed':
-            return `${event.data.nickname} got blackholed`;
+            return `${event.user.nickname} got blackholed`;
         default:
             // QUESTION
             // FIXME can we ever reach this? Are all possible events handled

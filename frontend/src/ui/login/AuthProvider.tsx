@@ -115,7 +115,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
             }
 
             const currentUser = await getAuthenticatedUser();
-            console.log(`userResponse: ${currentUser.nickname}`);
+            console.log(`user authenticated: ${currentUser.nickname}`);
 
             setUser(currentUser);
             return true;

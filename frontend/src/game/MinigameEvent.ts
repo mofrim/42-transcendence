@@ -6,7 +6,8 @@ import type { TTT_Game } from './MinigameTTT.js';
 import {
     EventType,
     RPSChoice,
-    type EventData,
+    User,
+    type EventDataGameResult,
     type GameEvent,
     type RPSDrawPayload,
     type RPSInvalidPayload,
@@ -30,7 +31,7 @@ type ActiveTTTPlayers = {
 };
 
 type MinigameEventOptions = {
-    readonly localNickname: string;
+    readonly user: User;
     readonly localCharacter: boolean;
     readonly getSocketId: () => string | undefined;
     readonly getPlayer: () => Player | null;
@@ -92,7 +93,7 @@ export class MinigameEvent {
             playerId === player?.id ||
             playerId === this.options.getSocketId()
         ) {
-            return this.options.localNickname;
+            return this.options.user.nickname;
         }
 
         const fallback = fallbackNickname?.trim();
@@ -190,7 +191,7 @@ export class MinigameEvent {
         );
         if (opponentId === null) return;
 
-        let outcome: NonNullable<EventData['outcome']>;
+        let outcome: NonNullable<EventDataGameResult['outcome']>;
         let yourChoice: RPSChoice;
         let opponentChoice: RPSChoice;
 
@@ -321,7 +322,7 @@ export class MinigameEvent {
 
         const localPlayerId = this.options.getPlayer()?.id;
         if (localPlayerId) {
-            let outcome: NonNullable<EventData['outcome']> = 'lost';
+            let outcome: NonNullable<EventDataGameResult['outcome']> = 'lost';
             if (data.id === localPlayerId) {
                 outcome = 'won';
             }
@@ -348,7 +349,7 @@ export class MinigameEvent {
 
     private emitLocalTTTResult(
         localPlayerId: string | undefined,
-        outcome: NonNullable<EventData['outcome']>
+        outcome: NonNullable<EventDataGameResult['outcome']>
     ): void {
         const opponent = this.getActiveTTTOpponent(localPlayerId);
         if (!opponent) return;
@@ -378,8 +379,8 @@ export class MinigameEvent {
     }
 
     private emitLocalGameResult(
-        game: NonNullable<EventData['game']>,
-        outcome: NonNullable<EventData['outcome']>,
+        game: NonNullable<EventDataGameResult['game']>,
+        outcome: NonNullable<EventDataGameResult['outcome']>,
         opponentNickname: string
     ): void {
         this.options.onGameEvent?.({
@@ -387,10 +388,10 @@ export class MinigameEvent {
             data: {
                 game,
                 outcome,
-                playerNickname: this.options.localNickname,
                 opponentNickname,
             },
             logtime: new Date(),
+            user: this.options.user,
         });
     }
 

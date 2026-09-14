@@ -40,6 +40,7 @@ import {
     TTTMeshBoard,
     GameEvent,
     EventType,
+    User,
     type FriendRequestChangeHandler,
     type GLBMesh,
     type ReceivedChatPayload,
@@ -58,7 +59,7 @@ export type GameMode = NonNullable<SocketAuth['role']>;
 
 export function startGame(
     whichCharacter: boolean = true,
-    localNickname: string,
+    user: User,
     serverUrl: string,
     renderer: THREE.WebGLRenderer,
     onGameEvent?: (event: GameEvent) => void,
@@ -83,7 +84,7 @@ export function startGame(
         socketAuth = {
             role: 'player',
             character: whichCharacter,
-            nickname: localNickname,
+            nickname: user.nickname,
         };
     }
 
@@ -106,7 +107,7 @@ export function startGame(
     let localPlayerDespawnPromise: Promise<void> | null = null;
     const tokenQuestFrontdesk = new TokenQuestFrontdesk(onGameEvent);
     const minigameEvent = new MinigameEvent({
-        localNickname,
+        user,
         localCharacter: whichCharacter,
         getSocketId: () => socket.id,
         getPlayer: () => player,
@@ -300,7 +301,7 @@ export function startGame(
         multiplayer = new MultiplayerManager(scene, mesh_RP, {
             socket,
             localPlayer: player,
-            localNickname,
+            user,
             onGameEvent,
             onChatMessage,
             onFriendRequestChange,
@@ -357,12 +358,13 @@ export function startGame(
                         eventType: EventType.PlayerInRange,
                         data: {
                             playerId: nearbyPlayer.id,
-                            nickname: minigameEvent.resolvePlayerNickname(
+                            remoteNick: minigameEvent.resolvePlayerNickname(
                                 nearbyPlayer.id,
                                 nearbyPlayer.nickname
                             ),
                         },
                         logtime: new Date(),
+                        user,
                     });
                 }
             );
@@ -399,6 +401,7 @@ export function startGame(
                     eventType: EventType.QuestCompleted,
                     data: { questId: questId },
                     logtime: new Date(),
+                    user,
                 });
                 tokenQuestFrontdesk.handleQuestCompletion(questId);
             };

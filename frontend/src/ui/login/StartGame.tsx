@@ -3,11 +3,12 @@ import { useLoginContext } from '../../hooks/useLoginContext';
 import { useAuth } from '../../hooks/useAuthContext';
 import { startGame, type GameMode, type GameRuntime } from '../../game/main';
 import {
-    type ReceivedChatPayload,
-    type FriendRequestState,
     GameEvent,
     EventType,
     User,
+    type ReceivedChatPayload,
+    type FriendRequestState,
+    type EventDataPlayerInRange,
 } from 'ftr-common/sharedTypes';
 import { useMatchHistory } from '../../hooks/useMatchHistory';
 import { GameUI, type DialogPanelState } from '../ingame/GameUI';
@@ -85,10 +86,11 @@ export const Game: React.FC<{
     const handleGameEvent = useCallback(
         (event: GameEvent): void => {
             if (event.eventType === EventType.PlayerInRange) {
+                const evData = event.data as EventDataPlayerInRange;
                 const metPlayerNicknames = metPlayerNicknamesRef.current;
                 // only log the first time we meet a player, not every time again
-                if (!metPlayerNicknames.has(event.data.nickname!)) {
-                    metPlayerNicknames.add(event.data.nickname!);
+                if (!metPlayerNicknames.has(evData.remoteNick!)) {
+                    metPlayerNicknames.add(evData.remoteNick!);
                     appendEvent(event);
                 }
             } else if (event.eventType !== EventType.QuestCompleted) {
@@ -114,10 +116,10 @@ export const Game: React.FC<{
             const event: GameEvent = {
                 eventType: EventType.ChatMsg,
                 data: {
-                    nickname: message.senderName,
                     chatmsg: message.message,
                 },
                 logtime: new Date(),
+                user: new User({ nickname: message.senderName }),
             };
             appendEvent(event);
         },
@@ -152,11 +154,11 @@ export const Game: React.FC<{
             appendEvent({
                 eventType: EventType.QuestCompleted,
                 data: {
-                    nickname: user!.nickname,
                     questText: statusChange.questText,
                     questId: statusChange.questId,
                 },
                 logtime: new Date(),
+                user: user!,
             });
         },
         [appendEvent, user]
@@ -165,8 +167,9 @@ export const Game: React.FC<{
     const handleBlackHoleCountdownExpired = useCallback((): void => {
         appendEvent({
             eventType: EventType.Blackholed,
-            data: { nickname: user!.nickname },
+            data: null,
             logtime: new Date(),
+            user: user!,
         });
         gameRuntimeRef.current?.triggerBlackHoleCutscene();
     }, [appendEvent, user]);
@@ -186,10 +189,9 @@ export const Game: React.FC<{
     const exitLocalPlayer = useCallback(async (): Promise<void> => {
         const event: GameEvent = {
             eventType: EventType.PlayerLeft,
-            data: {
-                nickname: user!.nickname,
-            },
+            data: null,
             logtime: new Date(),
+            user: user!,
         };
         appendEvent(event);
         await gameRuntimeRef.current?.despawnLocalPlayer();
@@ -242,7 +244,7 @@ export const Game: React.FC<{
 
         const runtime: GameRuntime = startGame(
             character,
-            user!.nickname,
+            user!,
             serverAddrRef.current,
             renderer,
             runtimeGameEventHandler,

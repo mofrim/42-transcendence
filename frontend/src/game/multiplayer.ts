@@ -11,6 +11,7 @@ import {
     PLAYER_NETWORK_UPDATE_INTERVAL_MS,
     PlayerState,
     RPSChoice,
+    User,
     type Character,
     type FriendRequestChangeHandler,
     type FriendRequestPayload,
@@ -86,7 +87,7 @@ type MultiplayerGameHandlers = {
 type MultiplayerManagerOptions = {
     readonly socket: Socket;
     readonly localPlayer: Player | null;
-    readonly localNickname: string;
+    readonly user: User;
     readonly onGameEvent: ((event: GameEvent) => void) | undefined;
     readonly onChatMessage:
         ((message: ReceivedChatPayload) => void) | undefined;
@@ -100,7 +101,7 @@ export class MultiplayerManager {
     players: Map<string, Remote_Player>;
     private readonly socket: Socket;
     private readonly localPlayer: Player | null;
-    private readonly localNickname: string;
+    private readonly user: User;
     private readonly onGameEvent: ((event: GameEvent) => void) | undefined;
     private readonly onFriendRequestChange:
         FriendRequestChangeHandler | undefined;
@@ -127,7 +128,7 @@ export class MultiplayerManager {
         this.mesh_RP = mesh_RP;
         this.socket = options.socket;
         this.localPlayer = options.localPlayer;
-        this.localNickname = options.localNickname;
+        this.user = options.user;
         this.onGameEvent = options.onGameEvent;
         this.onFriendRequestChange = options.onFriendRequestChange;
         this.gameHandlers = options.gameHandlers ?? {};
@@ -228,6 +229,7 @@ export class MultiplayerManager {
         );
     };
 
+    // FIXME clarify EventData for this event!
     private readonly handlePlayerDisconnected = (id: string): void => {
         console.log('someone left:', id);
         if (this.pendingFriendRequesterId === id) {
@@ -245,6 +247,7 @@ export class MultiplayerManager {
                 ),
             },
             logtime: new Date(),
+            user: this.user,
         });
 
         this.blockedPlayerUpdates.add(id);
@@ -571,7 +574,7 @@ export class MultiplayerManager {
 
     resolvePlayerNickname(playerId: string, fallbackNickname?: string): string {
         if (playerId === this.localPlayer?.id || playerId === this.socket.id) {
-            return this.localNickname;
+            return this.user.nickname;
         }
 
         const fallback = fallbackNickname?.trim();
@@ -617,9 +620,9 @@ export class MultiplayerManager {
             eventType: EventType.PlayerJoined,
             data: {
                 playerId: id,
-                nickname: resolvedNickname,
             },
             logtime: new Date(),
+            user: new User({ nickname: resolvedNickname }),
         });
     }
 
