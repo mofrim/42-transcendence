@@ -50,7 +50,7 @@ export class ORMEventLog extends BaseEventLog {
     @Column({ type: 'enum', enum: EventType })
     declare eventType: EventType;
 
-    @Column('simple-json')
+    @Column({ type: 'simple-json', nullable: true })
     declare data: EventData;
 
     @Column({ type: 'timestamptz', precision: 6 })

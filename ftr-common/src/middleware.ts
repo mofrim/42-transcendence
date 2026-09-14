@@ -7,7 +7,6 @@ import { Logger, type ILogObj } from 'tslog';
 export const verifyToken = (token: string, secretKey: string): number => {
     try {
         const decoded = jwt.verify(token, secretKey);
-        console.log('decoded: ', decoded);
         if (typeof decoded === 'string' || !decoded['userId']) {
             throw new Error('Invalid token');
         }

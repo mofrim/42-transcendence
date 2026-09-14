@@ -236,6 +236,17 @@ export class GameEvent extends BaseEventLog {
     user: User = new User();
 }
 
+// stripped version of BaseEventLog containing only necessary data for
+// matchhist. used in /api/eventlog/matchhist and useMatchHistory in frontend
+export type MatchHistResponse = {
+    id: number;
+    data: EventDataGameResult;
+    logtime: Date;
+};
+
+// also used both in eventlog-service and frontend
+export const MAX_MATCH_HISTORY_ENTRIES = 10;
+
 // -----------------------=[ user types and classes ]=----------------------- //
 
 // using an abstract class here in order to force implementation of _all_

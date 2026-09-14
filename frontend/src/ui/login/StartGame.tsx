@@ -63,7 +63,6 @@ export const Game: React.FC<{
     });
 
     const { matchHistory, saveMatchResult } = useMatchHistory({
-        userId: user?.id ?? 0,
         isSpectator,
     });
 

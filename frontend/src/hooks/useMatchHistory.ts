@@ -3,93 +3,39 @@ import axios from 'axios';
 import {
     EventType,
     GameEvent,
+    MAX_MATCH_HISTORY_ENTRIES,
     type EventDataGameResult,
-    type BaseEventLog,
+    type MatchHistResponse,
 } from 'ftr-common/sharedTypes';
 import type { EventLogEntry } from '../ui/ingame/EventLogItems';
 
-const EVENT_LOG_HISTORY_LIMIT = 50;
-const MAX_MATCH_HISTORY_ENTRIES = 10;
 const MATCH_HISTORY_DATE_TIME_FORMAT = new Intl.DateTimeFormat(undefined, {
     dateStyle: 'short',
     timeStyle: 'short',
 });
 
 type UseMatchHistoryOptions = {
-    readonly userId: number;
     readonly isSpectator: boolean;
 };
 
-type MatchResultData = Required<
-    Pick<EventDataGameResult, 'game' | 'outcome' | 'opponentNickname'>
->;
-
-function getMatchResultData(data: EventDataGameResult): MatchResultData | null {
-    if (data.game !== 'Tic-Tac-Toe' && data.game !== 'Rock-Paper-Scissors') {
-        return null;
-    }
-    if (
-        data.outcome !== 'won' &&
-        data.outcome !== 'lost' &&
-        data.outcome !== 'draw'
-    ) {
-        return null;
-    }
-
-    const opponentNickname = data.opponentNickname?.trim();
-    if (!opponentNickname) {
-        return null;
-    }
-
-    return {
-        game: data.game,
-        outcome: data.outcome,
-        opponentNickname,
-    };
-}
-
-function createMatchHistoryEntry(
-    id: number,
-    data: MatchResultData,
-    tstamp: Date | string
-): EventLogEntry {
+function parseMatchHistoryEntry(respoData: MatchHistResponse): EventLogEntry {
     let result = 'Draw';
-    if (data.outcome === 'won') {
+    if (respoData.data.outcome === 'won') {
         result = 'Win';
-    } else if (data.outcome === 'lost') {
+    } else if (respoData.data.outcome === 'lost') {
         result = 'Loss';
     }
 
-    const matchDate = new Date(tstamp.valueOf());
+    const matchDate = new Date(respoData.logtime.valueOf());
 
     return {
-        id: String(id),
+        id: String(respoData.id),
         timestamp: MATCH_HISTORY_DATE_TIME_FORMAT.format(matchDate),
-        description: `${data.game}: ${result} vs ${data.opponentNickname}`,
+        description: `${respoData.data.game}: ${result} vs ${respoData.data.opponentNickname}`,
     };
 }
 
-function parseMatchHistoryEntry(event: BaseEventLog): EventLogEntry | null {
-    if (event.eventType !== EventType.GameResult) {
-        return null;
-    }
-
-    try {
-        const data = getMatchResultData(event.data as EventDataGameResult);
-        if (!data || event.id === undefined) {
-            return null;
-        }
-
-        return createMatchHistoryEntry(event.id, data, event.logtime);
-    } catch {
-        return null;
-    }
-}
-
-export function useMatchHistory({
-    userId,
-    isSpectator,
-}: UseMatchHistoryOptions) {
+export function useMatchHistory({ isSpectator }: UseMatchHistoryOptions) {
     const [matchHistory, setMatchHistory] = useState<EventLogEntry[]>([]);
 
     useEffect(() => {
@@ -100,13 +46,13 @@ export function useMatchHistory({
         const controller = new AbortController();
 
         const loadMatchHistory = async (): Promise<void> => {
+            console.log('Loading MatchHistory from DB...');
             try {
-                const response = await axios.get<BaseEventLog[]>(
-                    '/api/eventlog',
+                const response = await axios.get<MatchHistResponse[]>(
+                    '/api/eventlog/matchhist',
                     {
                         params: {
-                            limit: EVENT_LOG_HISTORY_LIMIT,
-                            uid: userId,
+                            limit: MAX_MATCH_HISTORY_ENTRIES,
                         },
                         signal: controller.signal,
                     }
@@ -116,9 +62,7 @@ export function useMatchHistory({
                     return;
                 }
 
-                const history = response.data
-                    .map(parseMatchHistoryEntry)
-                    .filter((match): match is EventLogEntry => match !== null);
+                const history = response.data.map(parseMatchHistoryEntry);
 
                 setMatchHistory(history.slice(-MAX_MATCH_HISTORY_ENTRIES));
             } catch (error) {
@@ -133,7 +77,7 @@ export function useMatchHistory({
         return () => {
             controller.abort();
         };
-    }, [isSpectator, userId]);
+    }, [isSpectator]);
 
     const saveMatchResult = useCallback(
         async (event: GameEvent): Promise<void> => {
@@ -141,33 +85,29 @@ export function useMatchHistory({
                 return;
             }
 
-            const storedResult = getMatchResultData(
-                event.data as EventDataGameResult
-            );
-            if (!storedResult) {
+            const evData = event.data as EventDataGameResult;
+            if (!evData) {
                 return;
             }
 
             try {
-                const response = await axios.post<BaseEventLog>(
-                    '/api/eventlog',
+                const response = await axios.post<MatchHistResponse>(
+                    '/api/eventlog/matchhist',
                     {
                         eventType: EventType.GameResult,
-                        data: storedResult,
+                        data: evData,
                         logtime: event.logtime,
                     }
                 );
 
                 const savedMatch = parseMatchHistoryEntry(response.data);
-                if (!savedMatch) {
-                    throw new Error('Saved match result is invalid');
-                }
 
-                setMatchHistory((currentHistory) =>
-                    [...currentHistory, savedMatch].slice(
+                setMatchHistory((currentHistory) => {
+                    const newHist = [...currentHistory, savedMatch].slice(
                         -MAX_MATCH_HISTORY_ENTRIES
-                    )
-                );
+                    );
+                    return newHist;
+                });
             } catch (error) {
                 console.error('Failed to save match result:', error);
             }

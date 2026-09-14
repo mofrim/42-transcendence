@@ -1,3 +1,9 @@
+// TODO add endpoint  GET `/api/eventlog/matchhist` for getting the matchhistory
+// as was originally inteded by maryam's mathistory table. goal is to do all the
+// filtering in the backend and return a clean array which contains already all
+// necessary data
+// -> should return `EventLogEntry[]`
+
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
@@ -11,13 +17,21 @@ import type { ILogObj } from 'tslog';
 import type { Express, Request, Response, NextFunction } from 'express';
 
 import { ORMEventLog, ORMUser } from 'ftr-common/ormTypes';
-import { EventType } from 'ftr-common/sharedTypes';
+import {
+    EventType,
+    MAX_MATCH_HISTORY_ENTRIES,
+    type MatchHistResponse,
+    type EventDataGameResult,
+} from 'ftr-common/sharedTypes';
 import { authenticateMid } from 'ftr-common/middleware';
 import { getUserById } from 'backend-utils';
 import 'ftr-common/expressTypes';
 
 // Initialize main tslog-logger
-const log = new Logger<ILogObj>({ name: 'eventlog', minLevel: 'INFO' });
+const log = new Logger<ILogObj>({
+    name: 'eventlog',
+    minLevel: process.env['NODE_ENV'] === 'development' ? 'INFO' : 'WARN',
+});
 
 if (process.env['NODE_ENV'] === 'development') {
     log.info('loading dev.env...');
@@ -73,12 +87,13 @@ try {
     exit(1);
 }
 
-// -------------------------=[ the POST endpoint ]=------------------------- //
+// ------------------------=[  normal eventlogging ]=------------------------ //
 
 // the data-validation for the POST endpoint. what do we want here? what do we
 // allow here? so far we only reject empty data
-const validateEventData = () =>
-    body('data').notEmpty().withMessage('empty data');
+//
+// TODO validate EventData type here completely.. or let it be :)
+const validateEventData = () => body('data').optional();
 
 app.post(
     '/api/eventlog',
@@ -128,8 +143,11 @@ app.post(
             });
 
             const savedEvent = await DB.manager.save(event);
+            logPost.info('stored event:', savedEvent);
 
-            res.status(201).json(savedEvent);
+            // only info we need in frontend is that saving was successful and
+            // the id under which it was saved
+            res.status(201).json({ status: 'success', id: savedEvent.id });
         } catch (err) {
             logPost.error(err as Error);
 
@@ -139,8 +157,6 @@ app.post(
         }
     }
 );
-
-// --------------------------=[ the GET endpoint ]=-------------------------- //
 
 // TODO add proper api documentation here & for other endpoints!
 //
@@ -152,13 +168,12 @@ app.post(
 // - limit=[number] will output the last `number` logs
 // - user=[nickname] will filter the logs for the given nickname
 //
-
-// TODO maybe get user from token
+// if no uid is specified user will be determined from JWT
 app.get(
     '/api/eventlog',
     authenticate,
     async (req: Request, res: Response): Promise<void> => {
-        const logGet = log.getSubLogger({ name: 'GET' });
+        const logGet = log.getSubLogger({ name: 'GET(eventlog)' });
 
         const queryUser = req.query['uid'];
         let queryUID;
@@ -225,6 +240,164 @@ app.get(
             res.status(200).json(events);
         } catch (err) {
             logGet.error(err as Error);
+            res.status(500).json({
+                error: 'Failed to fetch events',
+            });
+        }
+    }
+);
+
+// get everything, regardless of user from eventlog
+// FIXME so far only here for debugging..
+app.get(
+    '/api/eventlog/all',
+    authenticate,
+    async (req: Request, res: Response): Promise<void> => {
+        const logGet = log.getSubLogger({ name: 'GET(eventlog)' });
+        void req;
+
+        try {
+            const events = await DB.manager.find(ORMEventLog, {
+                relations: { user: true },
+                select: {
+                    id: true,
+                    eventType: true,
+                    data: true,
+                    user: {
+                        nickname: true,
+                        id: true,
+                    },
+                    logtime: true,
+                },
+            });
+            events.reverse(); // make order in slice ascending again
+            res.status(200).json(events);
+        } catch (err) {
+            logGet.error(err as Error);
+            res.status(500).json({
+                error: 'Failed to fetch events',
+            });
+        }
+    }
+);
+
+// ----------------------=[ match history endpoints ]=---------------------- //
+
+app.get(
+    '/api/eventlog/matchhist',
+    authenticate,
+    async (req: Request, res: Response): Promise<void> => {
+        const logGet = log.getSubLogger({ name: 'GET(matchhist)' });
+
+        // req.userId will always be set after successful auth
+        const userId = req.userId!;
+
+        try {
+            const events = await DB.manager.find(ORMEventLog, {
+                order: {
+                    id: 'DESC', // get entries starting from most recent
+                },
+                take: MAX_MATCH_HISTORY_ENTRIES,
+                where: {
+                    user: { id: userId },
+                    eventType: EventType.GameResult,
+                },
+                select: {
+                    id: true,
+                    data: {
+                        game: true,
+                        outcome: true,
+                        opponentNickname: true,
+                    },
+                    logtime: true,
+                },
+            });
+            events.reverse(); // make order in slice ascending again
+            res.status(200).json(events);
+        } catch (err) {
+            logGet.error(err as Error);
+            res.status(500).json({
+                error: 'Failed to fetch events',
+            });
+        }
+    }
+);
+
+// a simple enpoint for storing the matchresult. almost the same as the standard
+// post endpoint but returns the stored GameResult in response for parsing in
+// frontend
+app.post(
+    '/api/eventlog/matchhist',
+    authenticate,
+    async (req: Request, res: Response): Promise<void> => {
+        const logPost = log.getSubLogger({ name: 'POST(matchhist)' });
+
+        const { eventType, data, logtime } = req.body;
+
+        if (eventType !== 'GameResult') {
+            res.status(400).json({
+                error: 'Invalid event type',
+            });
+            return;
+        }
+
+        const user = await getUserById(DB, req.userId!);
+        if (user === null) {
+            res.status(400).json({
+                error: `UID ${req.userId} not found`,
+            });
+            return;
+        }
+
+        if (typeof data !== 'object') {
+            res.status(400).json({
+                error: 'Event data must be an object',
+            });
+            return;
+        }
+
+        try {
+            const event = DB.manager.create(ORMEventLog, {
+                eventType: eventType,
+                data: data,
+                logtime: logtime,
+                user: { id: user.id },
+            });
+
+            const savedEvent = await DB.manager.save(event);
+            const savedEventMatchHist: MatchHistResponse = {
+                id: savedEvent.id,
+                data: savedEvent.data as EventDataGameResult,
+                logtime: savedEvent.logtime,
+            };
+            logPost.info('stored event:', savedEvent);
+            res.status(201).json(savedEventMatchHist);
+        } catch (err) {
+            logPost.error(err as Error);
+
+            res.status(500).json({
+                error: 'Failed to save event',
+            });
+        }
+    }
+);
+
+// -------------------=[ the delete everything endpoint ]=------------------- //
+
+// WARN maybe remove this for prod.. or create a admin account that cannot be
+// logged in to from frontend
+app.delete(
+    '/api/eventlog',
+    authenticate,
+    async (req: Request, res: Response): Promise<void> => {
+        const logDel = log.getSubLogger({ name: 'DELETE' });
+        void req;
+
+        try {
+            await DB.manager.deleteAll(ORMEventLog);
+            res.status(204).json({ message: 'success' });
+        } catch (err) {
+            logDel.error(err as Error);
             res.status(500).json({
                 error: 'Failed to fetch events',
             });
