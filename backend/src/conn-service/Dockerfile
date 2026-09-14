@@ -8,7 +8,7 @@ COPY backend/package.json backend/package.json
 COPY backend/src/conn-service/package.json backend/src/conn-service/package.json
 COPY ftr-common/package.json ftr-common/package.json
 
-RUN npm ci
+RUN --mount=type=cache,target=/root/.npm npm ci --no-audit --no-fund
 
 COPY ftr-common ./ftr-common
 COPY backend/tsconfig.base.json backend/tsconfig.json ./backend/
@@ -27,11 +27,11 @@ COPY backend/package.json backend/package.json
 COPY ftr-common/package.json ftr-common/package.json
 
 # only production deps in the final image
-RUN npm ci --omit=dev -w backend -w ftr-common -w backend/src/conn-service
+RUN --mount=type=cache,target=/root/.npm npm ci --no-audit --no-fund --omit=dev -w backend -w ftr-common -w backend/src/conn-service
 
 COPY --from=builder /app/backend/dist ./backend/dist
 COPY --from=builder /app/ftr-common/dist ./ftr-common/dist
 
 WORKDIR /app/backend
 
-CMD ["node", "dist/conn-service/src/main.js"]
+CMD ["node", "dist/conn-service/main.js"]

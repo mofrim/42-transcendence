@@ -12,6 +12,6 @@
         "type-check:watch": "tsc -b ../../../ftr-common/tsconfig.json && tsc --noEmit --watch",
         "lint": "eslint .",
         "lint-fix": "eslint . --fix",
-        "start": "NODE_ENV=production tsx src/main.ts"
+        "start": "NODE_ENV=production node ../../dist/conn-service/main.js"
     }
 }

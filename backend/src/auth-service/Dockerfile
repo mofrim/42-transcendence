@@ -9,7 +9,7 @@ COPY backend/src/auth-service/package.json backend/src/auth-service/package.json
 COPY backend/src/backend-utils/package.json backend/src/backend-utils/package.json
 COPY ftr-common/package.json ftr-common/package.json
 
-RUN npm ci
+RUN --mount=type=cache,target=/root/.npm npm ci --no-audit --no-fund
 
 COPY ftr-common ./ftr-common
 COPY backend/tsconfig.base.json backend/tsconfig.json ./backend/
@@ -31,10 +31,10 @@ COPY backend/src/backend-utils/package.json backend/src/backend-utils/package.js
 COPY backend/src/auth-service/package.json backend/src/auth-service/package.json
 
 # only production deps in the final image
-RUN npm ci --omit=dev --workspace=backend --workspace=ftr-common --workspace=backend/src/auth-service --workspace=backend/src/backend-utils
+RUN --mount=type=cache,target=/root/.npm npm ci --no-audit --no-fund --omit=dev --workspace=backend --workspace=ftr-common --workspace=backend/src/auth-service --workspace=backend/src/backend-utils
 
 COPY --from=builder /app/backend/dist ./backend/dist
 COPY --from=builder /app/ftr-common/dist ./ftr-common/dist
 COPY --from=builder /app/backend/src/backend-utils/dist ./backend/src/backend-utils/dist
 
-CMD ["node", "backend/dist/auth-service/src/main.js"]
+CMD ["node", "backend/dist/auth-service/main.js"]
