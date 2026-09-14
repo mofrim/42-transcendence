@@ -5,6 +5,6 @@ const presetConfig = createDefaultEsmPreset();
 
 export default {
     ...presetConfig,
-    testMatch: ['**/*.test.js'],
+    testMatch: ['**/*.test.ts'],
     verbose: true,
 } satisfies Config;
