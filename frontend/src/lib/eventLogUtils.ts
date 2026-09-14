@@ -1,4 +1,11 @@
-import { GameEvent, type EventDataChatMsg, type EventDataGameResult, type EventDataPlayerInRange, type EventDataQuestCompleted } from 'ftr-common/sharedTypes';
+import {
+    GameEvent,
+    type EventDataChatMsg,
+    type EventDataFriendRequest,
+    type EventDataGameResult,
+    type EventDataPlayerInRange,
+    type EventDataQuestCompleted,
+} from 'ftr-common/sharedTypes';
 
 export const EVENT_TIME_FORMAT = new Intl.DateTimeFormat('en-US', {
     hour: '2-digit',
@@ -19,18 +26,19 @@ export const describeGameEvent = (event: GameEvent): string => {
         case 'PlayerJoined':
             return `${event.user.nickname} 👋🏻 joined`;
         case 'PlayerLeft':
-            // FIXME handle undefined at first start here
             return `${event.user.nickname} 🚪 logged out`;
         case 'PlayerInRange':
             return `Met ${(event.data as EventDataPlayerInRange).remoteNick} nearby`;
-        case 'FriendRequest':
-            if (event.data.friendRequestStatus === 'incoming') {
-                return `${event.data.nickname} sent you a friend request`;
+        case 'FriendRequest': {
+            const evData = event.data as EventDataFriendRequest;
+            if (evData.friendRequestStatus === 'incoming') {
+                return `${evData.friendNick} sent you a friend request`;
             }
-            if (event.data.friendRequestStatus === 'sent') {
-                return `Friend request sent to ${event.data.nickname}`;
+            if (evData.friendRequestStatus === 'sent') {
+                return `Friend request sent to ${evData.friendNick}`;
             }
-            return `Friend request with ${event.data.nickname} ${event.data.friendRequestStatus}`;
+            return `Friend request with ${evData.friendNick} ${evData.friendRequestStatus}`;
+        }
         case 'QuestCompleted': {
             const evData = event.data as EventDataQuestCompleted;
             const questDescription =

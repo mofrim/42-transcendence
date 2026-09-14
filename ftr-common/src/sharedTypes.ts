@@ -173,8 +173,9 @@ export type EventData =
           readonly playerId: string;
       }
     | {
+          readonly friendNick: string;
           readonly friendRequestStatus: FriendRequestStatus;
-    }
+      }
     | {
           readonly game: 'Tic-Tac-Toe' | 'Rock-Paper-Scissors';
           readonly outcome: 'won' | 'lost' | 'draw';
@@ -208,6 +209,11 @@ export type EventDataGameResult = {
     readonly game: 'Tic-Tac-Toe' | 'Rock-Paper-Scissors';
     readonly outcome: 'won' | 'lost' | 'draw';
     readonly opponentNickname: string;
+};
+
+export type EventDataFriendRequest = {
+    readonly friendNick: string;
+    readonly friendRequestStatus: FriendRequestStatus;
 };
 
 // This will be the foundation for a new table in `eventlog-service` every Event

@@ -136,13 +136,14 @@ export const Game: React.FC<{
             appendEvent({
                 eventType: EventType.FriendRequest,
                 data: {
-                    nickname: state.nickname,
+                    friendNick: state.nickname,
                     friendRequestStatus: state.status,
                 },
                 logtime: new Date(),
+                user: user!,
             });
         },
-        [appendEvent, setFriendRequest]
+        [appendEvent, setFriendRequest, user]
     );
 
     const handleQuestStatusChange = useCallback(
@@ -230,8 +231,7 @@ export const Game: React.FC<{
         let runtimeGameResetHandler: (() => void) | undefined;
         let runtimeGameplayReadyHandler: (() => void) | undefined;
         let runtimeFriendRequestHandler:
-            | typeof handleFriendRequestChange
-            | undefined;
+            typeof handleFriendRequestChange | undefined;
 
         if (!isSpectator) {
             gameMode = 'player';
