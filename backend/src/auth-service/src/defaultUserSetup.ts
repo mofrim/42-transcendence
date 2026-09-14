@@ -1,5 +1,5 @@
 import { ORMUser } from 'ftr-common/ormTypes';
-import { InitialQuestStatus  } from 'ftr-common/sharedTypes';
+import { InitialQuestStatus } from 'ftr-common/sharedTypes';
 import bcrypt from 'bcryptjs';
 import { exit } from 'node:process';
 import { DataSource } from 'typeorm';
@@ -11,7 +11,6 @@ const defaultUsers = [
         character: true,
         hashedPw: bcrypt.hashSync('Anatolij', 10),
         quests: InitialQuestStatus,
-
     },
     {
         nickname: 'bob',

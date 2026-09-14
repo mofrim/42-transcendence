@@ -9,58 +9,57 @@ include:
     - ./compose-db.yaml
 
 services:
+    conn-service:
+        container_name: ftr-conn-service
+        image: ftr-conn-service
+        build:
+            context: ..
+            dockerfile: ./backend/src/conn-service/Dockerfile
+        depends_on:
+            auth-service:
+                condition: service_started
+        networks:
+            - ftr-net
 
-  conn-service:
-    container_name: ftr-conn-service
-    image: ftr-conn-service
-    build:
-      context: ..
-      dockerfile: ./backend/src/conn-service/Dockerfile
-    depends_on:
-      auth-service:
-        condition: service_started
-    networks:
-      - ftr-net
+    auth-service:
+        container_name: ftr-auth-service
+        image: ftr-auth-service
+        build:
+            context: ..
+            dockerfile: ./backend/src/auth-service/Dockerfile
+        env_file: ../dev.env
+        depends_on:
+            postgres:
+                condition: service_healthy
+        networks:
+            - ftr-net
 
-  auth-service:
-    container_name: ftr-auth-service
-    image: ftr-auth-service
-    build:
-      context: ..
-      dockerfile: ./backend/src/auth-service/Dockerfile
-    env_file: ../dev.env
-    depends_on:
-      postgres:
-        condition: service_healthy
-    networks:
-      - ftr-net
+    eventlog-service:
+        container_name: ftr-eventlog-service
+        image: ftr-eventlog-service
+        build:
+            context: ..
+            dockerfile: ./backend/src/eventlog-service/Dockerfile
+        env_file: ../dev.env
+        depends_on:
+            postgres:
+                condition: service_healthy
+        networks:
+            - ftr-net
 
-  eventlog-service:
-    container_name: ftr-eventlog-service
-    image: ftr-eventlog-service
-    build:
-      context: ..
-      dockerfile: ./backend/src/eventlog-service/Dockerfile
-    env_file: ../dev.env
-    depends_on:
-      postgres:
-        condition: service_healthy
-    networks:
-      - ftr-net
-
-  user-service:
-      container_name: ftr-user-service
-      image: ftr-user-service
-      build:
-          context: ..
-          dockerfile: ./backend/src/user-service/Dockerfile
-      env_file: ../dev.env
-      depends_on:
-          postgres:
-              condition: service_healthy
-      networks:
-          - ftr-net
+    user-service:
+        container_name: ftr-user-service
+        image: ftr-user-service
+        build:
+            context: ..
+            dockerfile: ./backend/src/user-service/Dockerfile
+        env_file: ../dev.env
+        depends_on:
+            postgres:
+                condition: service_healthy
+        networks:
+            - ftr-net
 
 networks:
-  ftr-net:
-    driver: bridge
+    ftr-net:
+        driver: bridge

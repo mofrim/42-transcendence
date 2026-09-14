@@ -22,12 +22,8 @@
     color: #ffffff;
 }
 
-.hud.spectator-hud > :is(
-        .hud-profile,
-        .hud-toggle,
-        .hud-quest-log,
-        .hud-dialog-panel
-    ) {
+.hud.spectator-hud
+    > :is(.hud-profile, .hud-toggle, .hud-quest-log, .hud-dialog-panel) {
     display: none;
 }
 
@@ -337,7 +333,8 @@
     opacity: 0.72;
 }
 
-.hud-leaderboard-table :is(th, td):is(:first-child, :nth-child(3), :last-child) {
+.hud-leaderboard-table
+    :is(th, td):is(:first-child, :nth-child(3), :last-child) {
     text-align: right;
 }
 

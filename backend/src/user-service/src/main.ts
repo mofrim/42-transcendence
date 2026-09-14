@@ -138,7 +138,6 @@ app.get(
     }
 );
 
-
 app.get(
     '/api/match-history',
     authenticate,
