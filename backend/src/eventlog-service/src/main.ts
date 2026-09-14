@@ -1,9 +1,3 @@
-// TODO add endpoint  GET `/api/eventlog/matchhist` for getting the matchhistory
-// as was originally inteded by maryam's mathistory table. goal is to do all the
-// filtering in the backend and return a clean array which contains already all
-// necessary data
-// -> should return `EventLogEntry[]`
-
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';

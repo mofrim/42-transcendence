@@ -326,7 +326,7 @@ export function GameUI({
         eventList.scrollTop = eventList.scrollHeight;
     }, [latestEventId]);
 
-    /** Auto Scroll des Eventlogs zum neuesten Eintrag. */
+    /** Auto Scroll der MatchHistory zum neuesten Eintrag. */
     useEffect(() => {
         const matchHistoryList = matchHistoryListRef.current;
         if (!matchHistoryList) return;
