@@ -126,38 +126,7 @@ export enum EventType {
     None = 'None',
 }
 
-// NOTE keep until typing is consilidated here
-// old GameEvent dfn
-// export type GameRuntimeEvent =
-//     | {
-//           readonly type: 'player_joined' | 'player_left' | 'player_in_range';
-//           readonly playerId: string;
-//           readonly nickname: string;
-//       }
-//     | {
-//           readonly type: 'quest_completed';
-//           readonly questId: string;
-//       }
-//     | {
-//           readonly type: 'game_result';
-//           readonly game: 'Tic-Tac-Toe' | 'Rock-Paper-Scissors';
-//           readonly outcome: 'won' | 'lost' | 'draw';
-//           readonly playerNickname: string;
-//           readonly opponentNickname: string;
-//       };
-
-// NOTE keep until typing is consilidated here
-// export type EventData = {
-//     readonly playerId?: string;
-//     readonly nickname?: string;
-//     readonly game?: 'Tic-Tac-Toe' | 'Rock-Paper-Scissors';
-//     readonly outcome?: 'won' | 'lost' | 'draw';
-//     readonly playerNickname?: string;
-//     readonly opponentNickname?: string;
-//     readonly chatmsg?: string;
-//     readonly questText?: string;
-//     readonly questId?: string;
-// };
+// all possible EventData combinations in one union..
 export type EventData =
     | null
     | {
@@ -169,7 +138,6 @@ export type EventData =
           readonly remoteNick: string;
       }
     | {
-          // PlayerJoined
           readonly playerId: string;
       }
     | {
@@ -185,12 +153,12 @@ export type EventData =
           readonly chatmsg: string;
       }
     | {
-          //  QuestCompleted
           readonly questId: string;
           readonly questText?: string;
       };
 
-// Partial EventData types... `Pick` does not work that well with unions, sadly
+// Partial EventData types...
+
 export type EventDataPlayerInRange = {
     readonly playerId: string;
     readonly remoteNick: string;
