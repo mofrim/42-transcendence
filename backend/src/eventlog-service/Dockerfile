@@ -16,7 +16,7 @@ COPY backend/tsconfig.base.json backend/tsconfig.json ./backend/
 COPY backend/src/eventlog-service ./backend/src/eventlog-service
 COPY backend/src/backend-utils ./backend/src/backend-utils
 
-RUN npm run build -w ftr-common && npm run build -w backend/src/backend-utils && npm run build -w backend
+RUN npm run build -w ftr-common && npm run build -w backend/src/backend-utils && npm run build -w backend/src/eventlog-service
 
 # --------------------------=[ serve app with node ]=------------------------ #
 

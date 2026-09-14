@@ -14,7 +14,7 @@ COPY ftr-common ./ftr-common
 COPY backend/tsconfig.base.json backend/tsconfig.json ./backend/
 COPY backend/src/conn-service ./backend/src/conn-service
 
-RUN npm run build -w ftr-common && npm run build -w backend && npm run build -w backend/src/conn-service
+RUN npm run build -w ftr-common && npm run build -w backend/src/conn-service
 
 # --------------------------=[ serve app with node ]=------------------------ #
 
