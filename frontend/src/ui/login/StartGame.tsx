@@ -56,7 +56,7 @@ export const Game: React.FC<{
     const [completedQuestIds, setCompletedQuestIds] = useState<string[]>([]);
     const [gameResetVersion, setGameResetVersion] = useState(0);
     const [isGameplayReady, setIsGameplayReady] = useState(false);
-    const { friendRequest, setFriendRequest } = useFriendRequest();
+    const { friendRequest, friends, setFriendRequest } = useFriendRequest();
     const [dialog, setDialog] = useState<DialogPanelState>({
         isOpen: false,
         message: '',
@@ -306,6 +306,7 @@ export const Game: React.FC<{
             onDialogNext: handleDialogNext,
             blackHoleCountdownActive: isGameplayReady,
             friendRequest,
+            friends,
         };
     }
 

@@ -64,6 +64,7 @@ type GameUIProps = {
     readonly onDialogNext?: () => void;
     readonly blackHoleCountdownActive?: boolean;
     readonly friendRequest?: FriendRequestState | null;
+    readonly friends?: readonly string[];
     readonly isSpectator?: boolean;
 };
 
@@ -213,6 +214,7 @@ export function GameUI({
     onDialogNext,
     blackHoleCountdownActive = true,
     friendRequest,
+    friends = [],
     isSpectator = false,
 }: GameUIProps) {
     const [isQuestLogOpen, setIsQuestLogOpen] = useState(false);
@@ -476,6 +478,7 @@ export function GameUI({
 
                 <FriendList
                     friendRequest={friendRequest}
+                    friends={friends}
                     isOpen={friendsPanelOpen}
                 />
 

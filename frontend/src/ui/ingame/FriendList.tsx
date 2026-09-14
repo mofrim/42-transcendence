@@ -6,10 +6,19 @@ export const FRIENDS_PANEL_ID = 'game-friends-panel';
 
 type FriendListProps = {
     readonly friendRequest: FriendRequestState | null | undefined;
+    readonly friends: readonly string[];
     readonly isOpen: boolean;
 };
 
-export function FriendList({ friendRequest, isOpen }: FriendListProps) {
+/** Shows accepted friends' nicknames in the list */
+export function FriendList({
+    friendRequest,
+    friends,
+    isOpen,
+}: FriendListProps) {
+    const friendListMessage =
+        friends.length === 0 ? 'You got no friends. 😭' : friends.join('\n');
+
     return (
         <aside
             id={FRIENDS_PANEL_ID}
@@ -19,6 +28,8 @@ export function FriendList({ friendRequest, isOpen }: FriendListProps) {
         >
             <h2 className='hud-title'>Friendlist</h2>
             <p className='hud-friends-placeholder'>
+                {friendListMessage}
+                {'\n\n'}
                 {getFriendRequestMessage(friendRequest)}
             </p>
         </aside>
