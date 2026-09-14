@@ -102,15 +102,16 @@ function getCompletedQuestId(event: GameEvent): string | null {
         return evData.questId;
     }
 
-    if (event.eventType === EventType.PlayerInRange) {
+    if (event.eventType === EventType.PlayerInRange)
         return QUESTS.MEET_PLAYER_QUEST_ID.id;
-    }
 
-    if (event.eventType !== EventType.GameResult) {
-        return null;
-    }
+    if (event.eventType !== EventType.GameResult) return null;
 
     const evData = event.data as EventDataGameResult;
+
+    // the looser does not get the quest!
+    if (evData.outcome === 'lost') return null;
+
     return WIN_QUEST_ID_BY_GAME.get(evData.game) ?? null;
 }
 
