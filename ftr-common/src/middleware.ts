@@ -4,10 +4,18 @@ import jwt from 'jsonwebtoken';
 import type { Request, Response, NextFunction } from 'express';
 import { Logger, type ILogObj } from 'tslog';
 
-export const verifyToken = (token: string, secretKey: string): number => {
+export const verifyToken = (
+    token: string,
+    secretKey: string,
+    log: Logger<ILogObj>
+): number => {
     try {
         const decoded = jwt.verify(token, secretKey);
-        if (typeof decoded === 'string' || !decoded['userId']) {
+        log.debug(
+            'decoded:',
+            typeof decoded !== 'string' ? JSON.stringify(decoded) : decoded
+        );
+        if (typeof decoded === 'string' || decoded['userId'] === null) {
             throw new Error('Invalid token');
         }
         return Number(decoded['userId']);
@@ -23,7 +31,7 @@ export const authenticateMid = (
     log: Logger<ILogObj>,
     secretKey: string
 ) => {
-    const authLog = log.getSubLogger({ name: 'authenticate' });
+    const authLog = log.getSubLogger({ name: 'authMid' });
 
     let token;
     try {
@@ -36,7 +44,7 @@ export const authenticateMid = (
     }
 
     try {
-        req.userId = verifyToken(token, secretKey);
+        req.userId = verifyToken(token, secretKey, authLog);
         next();
     } catch (err) {
         void err;

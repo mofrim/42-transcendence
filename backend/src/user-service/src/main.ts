@@ -2,29 +2,36 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import type { Express, NextFunction, Request, Response } from 'express';
-import { DataSource } from 'typeorm';
+import { DataSource, DeleteResult } from 'typeorm';
 import { exit } from 'node:process';
 import cookieParser from 'cookie-parser';
 import { Logger, type ILogObj } from 'tslog';
 import { authenticateMid } from 'ftr-common/middleware';
+import { body, matchedData, validationResult } from 'express-validator';
+import bcrypt from 'bcryptjs';
 
 import { ORMEventLog, ORMUser } from 'ftr-common/ormTypes';
-import { ORMMatchHistory, ORMUserProfile } from './orm_types.js';
 import 'ftr-common/expressTypes';
-import { getUserById } from 'backend-utils';
+import { getUserByIdNoPw, mkStatus } from 'backend-utils';
+
+// Initialize main tslog-logger
+const log = new Logger<ILogObj>({
+    name: 'userService',
+    minLevel: process.env['NODE_ENV'] === 'development' ? 'DEBUG' : 'INFO',
+});
 
 // load env vars from global dotenv (correct when running from backend/src/user-service)
 if (process.env['NODE_ENV'] === 'development') {
-    console.log('loading dev.env...');
-    dotenv.config({ path: '../../../dev.env' });
+    log.info('loading dev.env...');
+    dotenv.config({ path: '../../../dev.env', quiet: true });
 }
 
 const PORT = Number(process.env['USER_SERVICE_PORT']) || 3003;
 const SECRET_KEY: string = process.env['JWT_SECRET'] || 'FooBarBaz';
-const log = new Logger<ILogObj>({ name: 'user', minLevel: 'INFO' });
 const app: Express = express();
 
 app.use(cors({ credentials: true }));
+app.use(express.json());
 
 // reject any non-JSON bodies early
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
@@ -36,7 +43,6 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
         next(err);
     }
 });
-app.use(express.json());
 
 app.use(cookieParser());
 
@@ -57,80 +63,100 @@ const DB = new DataSource({
     username: process.env['DB_USER'] || 'postgres',
     password: process.env['DB_PASSWD'] || 'postgres',
     database: process.env['DB_NAME'] || 'postgres',
-    entities: [ORMUserProfile, ORMMatchHistory, ORMUser, ORMEventLog],
+    entities: [ORMUser, ORMEventLog],
     synchronize: true,
     logging: false,
 });
 
 try {
     await DB.initialize();
+    log.info('user-service connected to DB');
 } catch (err) {
     log.fatal('Failed to connect to database!');
     log.fatal(err as Error);
     exit(1);
 }
 
-const userProfileRepo = DB.getRepository(ORMUserProfile);
-const matchHistoryRepo = DB.getRepository(ORMMatchHistory);
 const userRepo = DB.getRepository(ORMUser);
 
-const getCurrentUser = async (req: Request) => {
-    if (!req.userId) {
-        return null;
-    }
+// -------------------------=[ user GET endpoints ]=------------------------- //
 
-    return userRepo.findOne({
-        where: { id: req.userId },
-        select: {
-            id: true,
-            nickname: true,
-            character: true,
-            email: true,
-        },
-    });
-};
-
+// simply get user record of authenticated user
 app.get('/api/user', authenticate, async (req, res) => {
+    const logGet = log.getSubLogger({ name: 'GET(user)' });
     try {
-        const user = await getUserById(DB, req.userId!);
+        const user = await getUserByIdNoPw(DB, req.userId!);
         if (user === null) {
             res.status(401).json({ error: 'User not found' });
             return;
         }
         res.json(user);
     } catch (err) {
-        console.error(err);
+        logGet.error(err as Error);
         res.status(500).json({ error: 'Internal server error' });
     }
 });
 
-// Get user profile by userId
+// get all users
+// NOTE admin only endpoint!
+app.get('/api/user/all', authenticate, async (req: Request, res: Response) => {
+    const logGet = log.getSubLogger({ name: 'GET(userAll)' });
+
+    // guard this endpoint
+    if (req.userId !== 0) {
+        logGet.warn('access denied for uid', req.userId);
+        res.status(401).json({ error: 'invalid credentials' });
+        return;
+    }
+
+    try {
+        const users = await userRepo.find();
+        if (users.length === 0) {
+            res.status(401).json({ error: 'no users in users table?!' });
+            return;
+        }
+        res.json(users);
+    } catch (err) {
+        logGet.error(err as Error);
+        res.status(500).json({ error: 'Failed to fetch user profile' });
+    }
+});
+
+// health-check endpoint
+app.get('/api/user/health', (_req: Request, res: Response) => {
+    res.json({ status: 'user-service is running' });
+});
+
+// query users by uid
+// NOTE admin only endpoint!
 app.get(
     '/api/user/:userId',
     authenticate,
     async (req: Request, res: Response) => {
+        const logGet = log.getSubLogger({ name: 'GET(userId)' });
+
+        // guard this endpoint
+        if (req.userId !== 0) {
+            logGet.warn('access denied for uid', req.userId);
+            res.status(401).json({ error: 'invalid credentials' });
+            return;
+        }
+
         const userId = Number(req.params['userId']);
         if (!Number.isInteger(userId)) {
+            logGet.warn(`userId-enpoint queried with invalid uid ${userId}`);
             return res.status(400).json({ error: 'userId must be an integer' });
         }
 
         try {
-            const user = await getCurrentUser(req);
-            if (!user || user.id !== userId) {
-                return res.status(403).json({ error: 'Forbidden' });
+            const user = await getUserByIdNoPw(DB, userId);
+            if (user === null) {
+                logGet.warn(`userId-enpoint queried with wrong uid ${userId}`);
+                return res.status(401).json({ error: 'User not found' });
             }
-
-            const profile = await userProfileRepo.findOne({
-                where: { userId },
-            });
-            if (!profile) {
-                return res
-                    .status(404)
-                    .json({ error: 'User profile not found' });
-            }
-            return res.json(profile);
+            return res.json(user);
         } catch (err) {
-            log.error(err as Error);
+            logGet.error(err as Error);
             return res
                 .status(500)
                 .json({ error: 'Failed to fetch user profile' });
@@ -138,167 +164,133 @@ app.get(
     }
 );
 
-app.get(
-    '/api/match-history',
+// delete users by uid
+// NOTE admin only endpoint!
+app.delete(
+    '/api/user/:userId',
     authenticate,
     async (req: Request, res: Response) => {
-        const limit = Number(req.query['limit'] ?? 50);
-        if (!Number.isInteger(limit) || limit <= 0 || limit > 100) {
-            res.status(400).json({
-                error: 'limit must be an integer between 1 and 100',
-            });
+        const logGet = log.getSubLogger({ name: 'DEL(userId)' });
+
+        // guard this endpoint
+        if (req.userId !== 0) {
+            logGet.warn('access denied for uid', req.userId);
+            res.status(401).json(mkStatus('invalid credentials', 'error'));
             return;
         }
 
+        const userId = Number(req.params['userId']);
+        if (!Number.isInteger(userId)) {
+            logGet.warn(`DelUserId-enpoint queried with invalid uid ${userId}`);
+            return res
+                .status(400)
+                .json(mkStatus('userId must be an integer', 'error'));
+        }
+
         try {
-            const user = await getCurrentUser(req);
-            if (!user) {
-                res.status(404).json({ error: 'User not found' });
+            const result: DeleteResult = await userRepo.delete({ id: userId });
+            if (result.affected == null) {
+                logGet.warn(`userId-enpoint queried with wrong uid ${userId}`);
+                return res.status(404).json(mkStatus('invalid id', 'error'));
+            }
+            return res.status(204).json(mkStatus('', 'success'));
+        } catch (err) {
+            logGet.error(err as Error);
+            return res
+                .status(500)
+                .json(mkStatus('Failed to fetch user profile', 'error'));
+        }
+    }
+);
+// ------------------------=[ user POST endpoints ]=------------------------ //
+
+const validateNick = () =>
+    body('nickname')
+        .escape()
+        .notEmpty()
+        .withMessage('nick empty')
+        .isLength({ max: 64 })
+        .withMessage('nick invalid length')
+        .isAlphanumeric()
+        .withMessage('invalid char in nick');
+
+const validatePw = () =>
+    body('password')
+        .escape()
+        .notEmpty()
+        .withMessage('pw empty')
+        .isLength({ min: 4, max: 64 })
+        .withMessage('pw invalid length')
+        .isAlphanumeric()
+        .withMessage('pw invalid char');
+
+const validateMail = () =>
+    body('email')
+        .escape()
+        .notEmpty()
+        .withMessage('pw empty')
+        .isEmail()
+        .withMessage('invalid email');
+
+app.post(
+    '/api/user/register',
+    validateNick(),
+    validatePw(),
+    validateMail(),
+    async (req: Request, res: Response) => {
+        const logReg = log.getSubLogger({ name: 'register' });
+
+        // check any errors from Validation
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            logReg.warn('Got bad request from', req.ip);
+            res.status(400).json({ errors: errors.array() });
+            return;
+        }
+
+        // use validated aka matched data
+        const bodyData = matchedData(req);
+        const userNick: string = bodyData['nickname'];
+        const userPass: string = bodyData['password'];
+        const userMail: string = bodyData['email'];
+
+        try {
+            const user = await DB.manager.findOneBy(ORMUser, {
+                nickname: userNick,
+            });
+            if (user !== null) {
+                logReg.warn(`user ${userNick} already exists in DB!`);
+                res.status(403).json({ error: 'user exists' });
                 return;
             }
-
-            const history = await matchHistoryRepo.find({
-                where: { userId: user.id },
-                order: { finishedAt: 'DESC' },
-                take: limit,
+            const newUser = new ORMUser({
+                nickname: userNick,
+                hashedPw: bcrypt.hashSync(userPass, 10),
+                email: userMail,
             });
-            res.json(history);
+            const savedUser = await userRepo.save(newUser);
+            logReg.info(
+                `created user ${savedUser.nickname} with id ${savedUser.id}`
+            );
+            res.status(201).json(
+                mkStatus('user created', 'success', savedUser.id)
+            );
         } catch (err) {
-            log.error(err as Error);
-            res.status(500).json({ error: 'Failed to fetch match history' });
+            logReg.fatal(err as Error);
+            res.status(500).json({ error: 'Internal server error' });
         }
     }
 );
 
-// Create user profile
-app.post(
-    '/api/user-profiles',
-    authenticate,
-    async (req: Request, res: Response) => {
-        try {
-            const user = await getCurrentUser(req);
-            if (!user) {
-                return res.status(404).json({ error: 'User not found' });
-            }
+// --------=[ fallback endpoint for catching unsuppoerted methods ]=-------- //
 
-            const body = req.body as { character?: unknown };
-            if (typeof body.character !== 'boolean') {
-                return res
-                    .status(400)
-                    .json({ error: 'character must be a boolean' });
-            }
-
-            const existing = await userProfileRepo.findOne({
-                where: { userId: user.id },
-            });
-            if (existing) {
-                return res
-                    .status(409)
-                    .json({ error: 'Profile already exists for this user' });
-            }
-
-            const profile = userProfileRepo.create({
-                userId: user.id,
-                character: body.character,
-            });
-            await userProfileRepo.save(profile);
-            return res.status(201).json(profile);
-        } catch (err) {
-            log.error(err as Error);
-            return res
-                .status(500)
-                .json({ error: 'Failed to create user profile' });
-        }
-    }
-);
-
-// Update user profile by userId
-app.put(
-    '/api/user-profiles/:userId',
-    authenticate,
-    async (req: Request, res: Response) => {
-        const userId = Number(req.params['userId']);
-        if (!Number.isInteger(userId)) {
-            return res.status(400).json({ error: 'userId must be an integer' });
-        }
-
-        try {
-            const user = await getCurrentUser(req);
-            if (!user || user.id !== userId) {
-                return res.status(403).json({ error: 'Forbidden' });
-            }
-
-            const profile = await userProfileRepo.findOne({
-                where: { userId },
-            });
-            if (!profile) {
-                return res
-                    .status(404)
-                    .json({ error: 'User profile not found' });
-            }
-
-            const body = req.body as { character?: unknown };
-            if (
-                Object.prototype.hasOwnProperty.call(body, 'character') &&
-                typeof body.character !== 'boolean'
-            ) {
-                return res
-                    .status(400)
-                    .json({ error: 'character must be a boolean' });
-            }
-
-            if (typeof body.character === 'boolean') {
-                profile.character = body.character;
-            }
-            await userProfileRepo.save(profile);
-            await userRepo.update(userId, { character: profile.character });
-            return res.json(profile);
-        } catch (err) {
-            log.error(err as Error);
-            return res
-                .status(500)
-                .json({ error: 'Failed to update user profile' });
-        }
-    }
-);
-
-// Delete user profile by userId
-app.delete(
-    '/api/user-profiles/:userId',
-    authenticate,
-    async (req: Request, res: Response) => {
-        const userId = Number(req.params['userId']);
-        if (!Number.isInteger(userId)) {
-            return res.status(400).json({ error: 'userId must be an integer' });
-        }
-
-        try {
-            const user = await getCurrentUser(req);
-            if (!user || user.id !== userId) {
-                return res.status(403).json({ error: 'Forbidden' });
-            }
-
-            const result = await userProfileRepo.delete({ userId });
-            if (result.affected !== 1) {
-                return res
-                    .status(404)
-                    .json({ error: 'User profile not found' });
-            }
-            return res.status(204).send();
-        } catch (err) {
-            log.error(err as Error);
-            return res
-                .status(500)
-                .json({ error: 'Failed to delete user profile' });
-        }
-    }
-);
-
-// -----------------------=[ Health check endpoint ]=----------------------- //
-app.get('/api/health', (_req: Request, res: Response) => {
-    res.json({ status: 'user-service is running' });
+app.all('/api/user', (req: Request, res: Response) => {
+    log.warn('Invalid Request to /api/user:', req.method);
+    res.status(405).json({ error: 'Unsupported Method' });
 });
 
+// ---------------------------=[ launch server ]=--------------------------- //
+
 app.listen(PORT, (): void => {
-    console.log(`user-service listening on port: ${PORT}`);
+    log.info(`user-service listening on port: ${PORT}`);
 });

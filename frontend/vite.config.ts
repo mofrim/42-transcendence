@@ -10,6 +10,12 @@ export default defineConfig({
     },
     server: {
         proxy: {
+            '/socket.io/': {
+                target: 'http://localhost:3000',
+                changeOrigin: true,
+                secure: false,
+                ws: true,
+            },
             '/api/login': {
                 target: 'http://localhost:3001',
                 changeOrigin: true,
@@ -18,15 +24,7 @@ export default defineConfig({
                 target: 'http://localhost:3001',
                 changeOrigin: true,
             },
-            '/api/user': {
-                target: 'http://localhost:3001',
-                changeOrigin: true,
-            },
             '/api/validateSession': {
-                target: 'http://localhost:3001',
-                changeOrigin: true,
-            },
-            '/api/protected': {
                 target: 'http://localhost:3001',
                 changeOrigin: true,
             },
@@ -34,11 +32,13 @@ export default defineConfig({
                 target: 'http://localhost:3002',
                 changeOrigin: true,
             },
-            '/socket.io/': {
-                target: 'http://localhost:3000',
+            '/api/protected': {
+                target: 'http://localhost:3001',
                 changeOrigin: true,
-                secure: false,
-                ws: true,
+            },
+            '/api/user': {
+                target: 'http://localhost:3003',
+                changeOrigin: true,
             },
         },
     },

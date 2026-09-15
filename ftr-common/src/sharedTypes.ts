@@ -225,7 +225,7 @@ export abstract class BaseUser {
     abstract nickname: string;
     abstract character: boolean;
     abstract email: string;
-    abstract hashedPw: string;
+    abstract hashedPw?: string;
 }
 
 // this is the child class of BaseUser for use in frontend
@@ -234,7 +234,7 @@ export class User extends BaseUser {
     nickname: string = '';
     email: string = '';
     character: boolean = true;
-    hashedPw: string = '';
+    hashedPw?: string = '';
 
     constructor(data?: Partial<User>) {
         super();

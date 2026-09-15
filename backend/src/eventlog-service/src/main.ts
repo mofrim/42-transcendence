@@ -24,7 +24,7 @@ import 'ftr-common/expressTypes';
 // Initialize main tslog-logger
 const log = new Logger<ILogObj>({
     name: 'eventlog',
-    minLevel: process.env['NODE_ENV'] === 'development' ? 'INFO' : 'WARN',
+    minLevel: process.env['NODE_ENV'] === 'development' ? 'DEBUG' : 'INFO',
 });
 
 if (process.env['NODE_ENV'] === 'development') {
@@ -75,6 +75,7 @@ const DB = new DataSource({
 
 try {
     await DB.initialize();
+    log.info('user-service connected to DB');
 } catch (err) {
     log.error('Failed to connect to database!');
     log.error(err as Error);

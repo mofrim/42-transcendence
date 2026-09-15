@@ -231,29 +231,6 @@ if (process.env['NODE_ENV'] === 'development') {
     );
 }
 
-////////////////////////////////////////////////////////////////////////////////
-// Another example endpoint...
-//
-// Example user endpoint which extracts the user from the token-cookie
-// certainly a TODO to move this to user-service!
-//
-// with this endpoint you can retrieve the complete authenticated user data
-// (definitely nothing we want for production!). retrieve a valid auth cookie
-// then use: `curl -v localhost:3001/api/user -H 'Cookie: token=.....'`
-app.get('/api/user', authenticate, async (req, res) => {
-    try {
-        const user = await getUserById(DB, req.userId!);
-        if (user === null) {
-            res.status(401).json({ error: 'User not found' });
-            return;
-        }
-        res.json(user);
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: 'Internal server error' });
-    }
-});
-
 // endpoint for validating if a valid Session-Cookie is still set. Used in
 // restoreSession-logic in AuthProvider
 app.get('/api/validateSession', async (req, res) => {
@@ -261,7 +238,7 @@ app.get('/api/validateSession', async (req, res) => {
 
     try {
         const token = req.cookies['token'];
-        verifyToken(token, SECRET_KEY);
+        verifyToken(token, SECRET_KEY, logValidate);
     } catch (err) {
         void err;
         res.status(200).json({ valid: false });

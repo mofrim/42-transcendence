@@ -5,9 +5,16 @@ import {
     OneToMany,
     ManyToOne,
 } from 'typeorm';
-import { BaseUser, BaseEventLog, EventType } from 'ftr-common/sharedTypes';
-import type { EventData, QuestStatus } from 'ftr-common/sharedTypes';
+import {
+    BaseUser,
+    BaseEventLog,
+    EventType,
+    InitialQuestStatus,
+    type EventData,
+    type QuestStatus,
+} from 'ftr-common/sharedTypes';
 
+// TODO add friends
 @Entity('users')
 export class ORMUser extends BaseUser {
     @PrimaryGeneratedColumn()
@@ -16,22 +23,35 @@ export class ORMUser extends BaseUser {
     @Column({
         type: 'text',
         unique: true,
+        default: '',
     })
     declare nickname: string;
 
-    @Column('bool')
+    @Column({
+        type: 'bool',
+        default: true,
+    })
     declare character: boolean;
 
-    @Column('text')
+    @Column({
+        type: 'text',
+        default: '',
+    })
     declare email: string;
 
-    @Column('text')
+    @Column({
+        type: 'text',
+        default: '',
+    })
     declare hashedPw: string;
 
     @OneToMany(() => ORMEventLog, (evlog) => evlog.user)
     declare eventLogs: ORMEventLog[];
 
-    @Column('simple-json')
+    @Column({
+        type: 'simple-json',
+        default: InitialQuestStatus,
+    })
     declare quests: QuestStatus;
 
     constructor(data?: Partial<ORMUser>) {
