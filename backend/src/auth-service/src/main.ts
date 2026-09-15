@@ -162,7 +162,7 @@ app.post(
 
             const token = jwt.sign({ userId: user.id }, SECRET_KEY, {
                 algorithm: 'HS256',
-                expiresIn: '1h',
+                expiresIn: '6h',
             });
 
             res.cookie('token', token, {
