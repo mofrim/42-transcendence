@@ -1,3 +1,5 @@
+import { useCallback, useState } from 'react';
+
 import type { FriendRequestState } from 'ftr-common/sharedTypes';
 
 import { getFriendRequestMessage } from './FriendRequest';
@@ -10,14 +12,36 @@ type FriendListProps = {
     readonly isOpen: boolean;
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
+export function useFriendList() {
+    const [friends, setFriends] = useState<string[]>([]);
+
+    const addFriend = useCallback((nickname: string): void => {
+        setFriends((currentFriends) => {
+            if (currentFriends.includes(nickname)) {
+                return currentFriends;
+            }
+
+            return [...currentFriends, nickname];
+        });
+    }, []);
+
+    return {
+        friends,
+        addFriend,
+    };
+}
+
 /** Shows accepted friends' nicknames in the list */
 export function FriendList({
     friendRequest,
     friends,
     isOpen,
 }: FriendListProps) {
-    const friendListMessage =
-        friends.length === 0 ? 'You got no friends. 😭' : friends.join('\n');
+    let friendListMessage = 'You got no friends. 😭';
+    if (friends.length > 0) {
+        friendListMessage = friends.join('\n');
+    }
 
     return (
         <aside

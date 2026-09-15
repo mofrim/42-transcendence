@@ -5,6 +5,7 @@ import type { Socket } from 'socket.io-client';
 import type { Player } from './player.js';
 import { Remote_Player } from './remote_player.js';
 import { Chat } from './Chat.js';
+import { FriendRequestManager } from '../ui/ingame/FriendRequest.js';
 
 import {
     EventType,
@@ -15,8 +16,6 @@ import {
     type Character,
     type FriendRequestChangeHandler,
     type FriendRequestPayload,
-    type FriendResponseStatus,
-    type FriendResponseType,
     type GameEvent,
     type PlayerConnectedPayload,
     type PlayerMovementPayload,
@@ -36,15 +35,6 @@ import {
 
 const MIN_POSITION_CHANGE_SQUARED = 0.001 ** 2;
 const PLAYER_NETWORK_KEYFRAME_INTERVAL_MS = 1_000;
-
-function getFriendResponseStatus(
-    responseType: FriendResponseType
-): FriendResponseStatus {
-    if (responseType === 'friend_accept') {
-        return 'accepted';
-    }
-    return 'declined';
-}
 
 type RemotePlayerUpdate = Pick<PlayerUpdatePayload, 'x' | 'y' | 'z' | 'state'>;
 
@@ -103,10 +93,9 @@ export class MultiplayerManager {
     private readonly localPlayer: Player | null;
     private readonly user: User;
     private readonly onGameEvent: ((event: GameEvent) => void) | undefined;
-    private readonly onFriendRequestChange:
-        FriendRequestChangeHandler | undefined;
     private readonly gameHandlers: MultiplayerGameHandlers;
     private readonly chat: Chat;
+    private readonly friendRequest: FriendRequestManager;
     private readonly departingPlayers: Set<Remote_Player>;
     private readonly knownPlayerNicknames: Map<string, string>;
     private readonly blockedPlayerUpdates: Set<string>;
@@ -114,7 +103,6 @@ export class MultiplayerManager {
     private lastSentPlayerState: PlayerMovementPayload['state'] | null;
     private lastPlayerKeyframeMilliseconds: number;
     private playerUpdateIntervalId: number | null;
-    private pendingFriendRequesterId: string | null;
     private disposePromise: Promise<void> | null;
     private disposed: boolean;
     private readonly desired: THREE.Vector3;
@@ -130,7 +118,6 @@ export class MultiplayerManager {
         this.localPlayer = options.localPlayer;
         this.user = options.user;
         this.onGameEvent = options.onGameEvent;
-        this.onFriendRequestChange = options.onFriendRequestChange;
         this.gameHandlers = options.gameHandlers ?? {};
 
         this.players = new Map<string, Remote_Player>();
@@ -141,7 +128,6 @@ export class MultiplayerManager {
         this.lastSentPlayerState = null;
         this.lastPlayerKeyframeMilliseconds = 0;
         this.playerUpdateIntervalId = null;
-        this.pendingFriendRequesterId = null;
         this.disposePromise = null;
         this.disposed = false;
 
@@ -152,6 +138,19 @@ export class MultiplayerManager {
             players: this.players,
             onChatMessage: options.onChatMessage,
             isDisposed: () => this.disposed,
+        });
+        this.friendRequest = new FriendRequestManager({
+            socket: this.socket,
+            players: this.players,
+            onFriendRequestChange: options.onFriendRequestChange,
+            getLocalPlayerId: () => {
+                if (this.localPlayer?.id !== undefined) {
+                    return this.localPlayer.id;
+                }
+                return this.socket.id;
+            },
+            resolvePlayerNickname: (playerId, fallbackNickname) =>
+                this.resolvePlayerNickname(playerId, fallbackNickname),
         });
 
         this.bindSocketEvents();
@@ -232,10 +231,7 @@ export class MultiplayerManager {
     // FIXME clarify EventData for this event!
     private readonly handlePlayerDisconnected = (id: string): void => {
         console.log('someone left:', id);
-        if (this.pendingFriendRequesterId === id) {
-            this.pendingFriendRequesterId = null;
-            this.onFriendRequestChange?.(null);
-        }
+        this.friendRequest.handlePlayerDisconnected(id);
         const disconnectedPlayer = this.players.get(id);
         this.onGameEvent?.({
             eventType: EventType.PlayerLeft,
@@ -255,8 +251,7 @@ export class MultiplayerManager {
     };
 
     private readonly handleSocketDisconnect = (reason: string): void => {
-        this.pendingFriendRequesterId = null;
-        this.onFriendRequestChange?.(null);
+        this.friendRequest.handleSocketDisconnect();
         if (this.localPlayer) {
             this.localPlayer.id = undefined;
         }
@@ -322,59 +317,14 @@ export class MultiplayerManager {
                 this.gameHandlers.onRPSInvalid?.(data);
                 break;
             case 'friend_request':
-                this.handleFriendRequest(data);
+                this.friendRequest.handleRequest(data);
                 break;
             case 'friend_accept':
             case 'friend_decline':
-                this.handleFriendResponse(data);
+                this.friendRequest.handleResponse(data);
                 break;
         }
     };
-
-    private getLocalPlayerId(): string | undefined {
-        if (this.localPlayer?.id !== undefined) {
-            return this.localPlayer.id;
-        }
-
-        return this.socket.id;
-    }
-
-    private isFriendRequestForLocalPlayer(data: FriendRequestPayload): boolean {
-        const localPlayerId = this.getLocalPlayerId();
-        return (
-            localPlayerId !== undefined &&
-            data.requestedPlayerID === localPlayerId
-        );
-    }
-
-    private handleFriendRequest(data: FriendRequestPayload): void {
-        if (!this.isFriendRequestForLocalPlayer(data)) {
-            return;
-        }
-
-        this.pendingFriendRequesterId = data.id;
-        this.onFriendRequestChange?.({
-            status: 'incoming',
-            playerId: data.id,
-            nickname: this.resolvePlayerNickname(data.id, data.nickname),
-        });
-    }
-
-    private handleFriendResponse(data: FriendRequestPayload): void {
-        if (!this.isFriendRequestForLocalPlayer(data)) {
-            return;
-        }
-
-        if (data.type === 'friend_request') {
-            return;
-        }
-
-        this.onFriendRequestChange?.({
-            status: getFriendResponseStatus(data.type),
-            playerId: data.id,
-            nickname: this.resolvePlayerNickname(data.id, data.nickname),
-        });
-    }
 
     private bindSocketEvents(): void {
         this.socket.on('connect', this.handleSocketConnect);
@@ -486,49 +436,15 @@ export class MultiplayerManager {
     }
 
     emitFriendRequest(requestedPlayerId: string): void {
-        const requestedPlayer = this.players.get(requestedPlayerId);
-        if (!requestedPlayer?.isActive()) {
-            return;
-        }
-
-        this.socket.emit('update', {
-            type: 'friend_request',
-            id: this.socket.id,
-            requestedPlayerID: requestedPlayerId,
-        });
-        this.onFriendRequestChange?.({
-            status: 'sent',
-            playerId: requestedPlayerId,
-            nickname: requestedPlayer.nickname,
-        });
-    }
-
-    private respondToFriendRequest(responseType: FriendResponseType): boolean {
-        const requesterId = this.pendingFriendRequesterId;
-        if (requesterId === null) {
-            return false;
-        }
-
-        this.pendingFriendRequesterId = null;
-        this.socket.emit('update', {
-            type: responseType,
-            id: this.socket.id,
-            requestedPlayerID: requesterId,
-        });
-        this.onFriendRequestChange?.({
-            status: getFriendResponseStatus(responseType),
-            playerId: requesterId,
-            nickname: this.resolvePlayerNickname(requesterId),
-        });
-        return true;
+        this.friendRequest.sendRequest(requestedPlayerId);
     }
 
     acceptFriendRequest(): boolean {
-        return this.respondToFriendRequest('friend_accept');
+        return this.friendRequest.accept();
     }
 
     declineFriendRequest(): boolean {
-        return this.respondToFriendRequest('friend_decline');
+        return this.friendRequest.decline();
     }
 
     emitBattleChoice(choice: RPSChoice): void {
@@ -743,7 +659,7 @@ export class MultiplayerManager {
         this.disposed = true;
         this.stopPlayerUpdateLoop();
         this.unbindSocketEvents();
-        this.pendingFriendRequesterId = null;
+        this.friendRequest.dispose();
         this.knownPlayerNicknames.clear();
         this.blockedPlayerUpdates.clear();
         const ownedPlayers = new Set<Remote_Player>([

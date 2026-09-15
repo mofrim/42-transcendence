@@ -9,6 +9,7 @@ import { GameManager } from './gameManager.ts';
 
 import type {
     ChatSendPayload,
+    FriendRequestAcknowledgement,
     FriendRequestPayload,
     FriendResponseType,
     ReceivedChatPayload,
@@ -37,6 +38,7 @@ const io = new Server(server, {
 
 const gameManager = new GameManager();
 const pendingFriendRequests = new Map<string, string>();
+const friendsByPlayer = new Map<string, Set<string>>();
 
 // TODO add event logging to all loggable socket-events like chat-msg,
 // player_connect, etc.
@@ -153,6 +155,7 @@ io.on('connection', (socket) => {
     socket.on('disconnect', () => {
         console.log('Client disconnected:', socket.id);
         clearPendingFriendRequests(socket.id);
+        clearFriendships(socket.id);
         playerGameReset(socket.id);
 
         gameManager.removePlayer(socket.id);
@@ -160,7 +163,7 @@ io.on('connection', (socket) => {
         socket.broadcast.emit('player_disconnected', socket.id);
     });
 
-    socket.on('update', (data) => {
+    socket.on('update', (data, acknowledge) => {
         switch (data.type) {
             case 'player_update':
                 handlePlayerUpdate(socket, data);
@@ -200,7 +203,7 @@ io.on('connection', (socket) => {
                 handleRPSInvalid(socket);
                 break;
             case 'friend_request':
-                handleFriendRequest(socket, data);
+                handleFriendRequest(socket, data, acknowledge);
                 break;
             case 'friend_accept':
             case 'friend_decline':
@@ -244,25 +247,117 @@ function handleRPSRequest(socket: Socket, data: RPSRequestDataPayload) {
     });
 }
 
-function handleFriendRequest(socket: Socket, data: FriendRequestPayload): void {
+function acknowledgeFriendRequest(
+    acknowledge: unknown,
+    result: FriendRequestAcknowledgement
+): void {
+    if (typeof acknowledge === 'function') {
+        acknowledge(result);
+    }
+}
+
+function hasPendingFriendRequest(playerId: string): boolean {
+    if (pendingFriendRequests.has(playerId)) {
+        return true;
+    }
+
+    for (const requesterId of pendingFriendRequests.values()) {
+        if (requesterId === playerId) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+function areFriends(firstPlayerId: string, secondPlayerId: string): boolean {
+    const friends = friendsByPlayer.get(firstPlayerId);
+    if (!friends) {
+        return false;
+    }
+    return friends.has(secondPlayerId);
+}
+
+function addFriendship(firstPlayerId: string, secondPlayerId: string): void {
+    let firstPlayerFriends = friendsByPlayer.get(firstPlayerId);
+    if (!firstPlayerFriends) {
+        firstPlayerFriends = new Set<string>();
+        friendsByPlayer.set(firstPlayerId, firstPlayerFriends);
+    }
+    firstPlayerFriends.add(secondPlayerId);
+
+    let secondPlayerFriends = friendsByPlayer.get(secondPlayerId);
+    if (!secondPlayerFriends) {
+        secondPlayerFriends = new Set<string>();
+        friendsByPlayer.set(secondPlayerId, secondPlayerFriends);
+    }
+    secondPlayerFriends.add(firstPlayerId);
+}
+
+function clearFriendships(playerId: string): void {
+    const friends = friendsByPlayer.get(playerId);
+    if (!friends) {
+        return;
+    }
+
+    for (const friendId of friends) {
+        friendsByPlayer.get(friendId)?.delete(playerId);
+    }
+    friendsByPlayer.delete(playerId);
+}
+
+function handleFriendRequest(
+    socket: Socket,
+    data: FriendRequestPayload,
+    acknowledge: unknown
+): void {
     const requestedPlayerId = data.requestedPlayerID;
     if (
         typeof requestedPlayerId !== 'string' ||
         requestedPlayerId === socket.id ||
         !gameManager.players.has(requestedPlayerId)
     ) {
+        acknowledgeFriendRequest(acknowledge, {
+            accepted: false,
+            reason: 'invalid_target',
+        });
         return;
     }
 
     const requestingPlayer = gameManager.players.get(socket.id);
-    if (!requestingPlayer || pendingFriendRequests.has(requestedPlayerId)) {
+    if (!requestingPlayer) {
+        acknowledgeFriendRequest(acknowledge, {
+            accepted: false,
+            reason: 'invalid_target',
+        });
         return;
     }
 
-    for (const requesterId of pendingFriendRequests.values()) {
-        if (requesterId === socket.id) {
-            return;
-        }
+    if (areFriends(socket.id, requestedPlayerId)) {
+        acknowledgeFriendRequest(acknowledge, {
+            accepted: false,
+            reason: 'already_friends',
+        });
+        return;
+    }
+
+    if (pendingFriendRequests.get(requestedPlayerId) === socket.id) {
+        acknowledgeFriendRequest(acknowledge, {
+            accepted: false,
+            reason: 'duplicate',
+        });
+        return;
+    }
+
+    if (
+        hasPendingFriendRequest(socket.id) ||
+        hasPendingFriendRequest(requestedPlayerId)
+    ) {
+        acknowledgeFriendRequest(acknowledge, {
+            accepted: false,
+            reason: 'duplicate_request',
+        });
+        return;
     }
 
     pendingFriendRequests.set(requestedPlayerId, socket.id);
@@ -272,6 +367,7 @@ function handleFriendRequest(socket: Socket, data: FriendRequestPayload): void {
         requestedPlayerID: requestedPlayerId,
         nickname: requestingPlayer.nickname,
     };
+    acknowledgeFriendRequest(acknowledge, { accepted: true });
     io.to(requestedPlayerId).emit('update', payload);
 }
 
@@ -293,6 +389,10 @@ function handleFriendResponse(
     const respondingPlayer = gameManager.players.get(socket.id);
     if (!respondingPlayer || !gameManager.players.has(requesterId)) {
         return;
+    }
+
+    if (responseType === 'friend_accept') {
+        addFriendship(socket.id, requesterId);
     }
 
     const payload: FriendRequestPayload = {

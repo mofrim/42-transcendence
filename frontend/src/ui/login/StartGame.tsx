@@ -12,6 +12,7 @@ import {
 } from 'ftr-common/sharedTypes';
 import { useMatchHistory } from '../../hooks/useMatchHistory';
 import { GameUI, type DialogPanelState } from '../ingame/GameUI';
+import { useFriendList } from '../ingame/FriendList';
 import { useFriendRequest } from '../ingame/FriendRequest';
 import {
     applyQuestCompletionEvent,
@@ -56,7 +57,8 @@ export const Game: React.FC<{
     const [completedQuestIds, setCompletedQuestIds] = useState<string[]>([]);
     const [gameResetVersion, setGameResetVersion] = useState(0);
     const [isGameplayReady, setIsGameplayReady] = useState(false);
-    const { friendRequest, friends, setFriendRequest } = useFriendRequest();
+    const { friendRequest, setFriendRequest } = useFriendRequest();
+    const { friends, addFriend } = useFriendList();
     const [dialog, setDialog] = useState<DialogPanelState>({
         isOpen: false,
         message: '',
@@ -127,6 +129,10 @@ export const Game: React.FC<{
 
     const handleFriendRequestChange = useCallback(
         (state: FriendRequestState | null): void => {
+            if (state?.status === 'accepted') {
+                addFriend(state.nickname);
+            }
+
             setFriendRequest(state);
             if (!state) {
                 return;
@@ -142,7 +148,7 @@ export const Game: React.FC<{
                 user: user!,
             });
         },
-        [appendEvent, setFriendRequest, user]
+        [addFriend, appendEvent, setFriendRequest, user]
     );
 
     const handleQuestStatusChange = useCallback(

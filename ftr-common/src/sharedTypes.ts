@@ -325,6 +325,18 @@ export type FriendRequestPayload = PlayerTargetRequestPayload & {
     type: 'friend_request' | FriendResponseType;
 };
 
+export type FriendRequestRejectionReason =
+    'invalid_target' | 'duplicate' | 'already_friends' | 'duplicate_request';
+
+export type FriendRequestAcknowledgement =
+    | {
+          readonly accepted: true;
+      }
+    | {
+          readonly accepted: false;
+          readonly reason: FriendRequestRejectionReason;
+      };
+
 export type FriendResponseStatus = 'accepted' | 'declined';
 
 export type FriendRequestStatus = 'sent' | 'incoming' | FriendResponseStatus;

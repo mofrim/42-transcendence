@@ -1,24 +1,213 @@
 import { useCallback, useEffect, useState } from 'react';
+import type { Socket } from 'socket.io-client';
 
-import type { FriendRequestState } from 'ftr-common/sharedTypes';
+import type { Remote_Player } from '../../game/remote_player.js';
+import type {
+    FriendRequestAcknowledgement,
+    FriendRequestChangeHandler,
+    FriendRequestPayload,
+    FriendRequestState,
+    FriendResponseStatus,
+    FriendResponseType,
+} from 'ftr-common/sharedTypes';
 
 const FRIEND_REQUEST_RESULT_DISPLAY_MS = 4_000;
+
+type FriendRequestManagerOptions = {
+    readonly socket: Socket;
+    readonly players: ReadonlyMap<string, Remote_Player>;
+    readonly onFriendRequestChange: FriendRequestChangeHandler | undefined;
+    readonly getLocalPlayerId: () => string | undefined;
+    readonly resolvePlayerNickname: (
+        playerId: string,
+        fallbackNickname?: string
+    ) => string;
+};
+
+function getFriendResponseStatus(
+    responseType: FriendResponseType
+): FriendResponseStatus {
+    if (responseType === 'friend_accept') {
+        return 'accepted';
+    }
+    return 'declined';
+}
+
+export class FriendRequestManager {
+    private readonly socket: Socket;
+    private readonly players: ReadonlyMap<string, Remote_Player>;
+    private readonly onFriendRequestChange:
+        FriendRequestChangeHandler | undefined;
+    private readonly getLocalPlayerId: () => string | undefined;
+    private readonly resolvePlayerNickname: (
+        playerId: string,
+        fallbackNickname?: string
+    ) => string;
+    private pendingRequesterId: string | null = null;
+    private pendingRecipientId: string | null = null;
+    private readonly friendPlayerIds = new Set<string>();
+
+    constructor(options: FriendRequestManagerOptions) {
+        this.socket = options.socket;
+        this.players = options.players;
+        this.onFriendRequestChange = options.onFriendRequestChange;
+        this.getLocalPlayerId = options.getLocalPlayerId;
+        this.resolvePlayerNickname = options.resolvePlayerNickname;
+    }
+
+    private isForLocalPlayer(data: FriendRequestPayload): boolean {
+        const localPlayerId = this.getLocalPlayerId();
+        return (
+            localPlayerId !== undefined &&
+            data.requestedPlayerID === localPlayerId
+        );
+    }
+
+    handlePlayerDisconnected(playerId: string): void {
+        if (this.pendingRequesterId === playerId) {
+            this.pendingRequesterId = null;
+            this.onFriendRequestChange?.(null);
+        }
+        if (this.pendingRecipientId === playerId) {
+            this.pendingRecipientId = null;
+            this.onFriendRequestChange?.(null);
+        }
+    }
+
+    handleSocketDisconnect(): void {
+        this.pendingRequesterId = null;
+        this.pendingRecipientId = null;
+        this.friendPlayerIds.clear();
+        this.onFriendRequestChange?.(null);
+    }
+
+    handleRequest(data: FriendRequestPayload): void {
+        if (!this.isForLocalPlayer(data)) {
+            return;
+        }
+
+        if (this.pendingRecipientId === data.id) {
+            this.pendingRecipientId = null;
+        }
+        this.pendingRequesterId = data.id;
+        this.onFriendRequestChange?.({
+            status: 'incoming',
+            playerId: data.id,
+            nickname: this.resolvePlayerNickname(data.id, data.nickname),
+        });
+    }
+
+    handleResponse(data: FriendRequestPayload): void {
+        if (!this.isForLocalPlayer(data)) {
+            return;
+        }
+
+        if (data.type === 'friend_request') {
+            return;
+        }
+
+        if (this.pendingRecipientId === data.id) {
+            this.pendingRecipientId = null;
+        }
+        if (data.type === 'friend_accept') {
+            this.friendPlayerIds.add(data.id);
+        }
+
+        this.onFriendRequestChange?.({
+            status: getFriendResponseStatus(data.type),
+            playerId: data.id,
+            nickname: this.resolvePlayerNickname(data.id, data.nickname),
+        });
+    }
+
+    sendRequest(requestedPlayerId: string): void {
+        const requestedPlayer = this.players.get(requestedPlayerId);
+        if (!requestedPlayer?.isActive()) {
+            return;
+        }
+
+        if (
+            this.friendPlayerIds.has(requestedPlayerId) ||
+            this.pendingRequesterId !== null ||
+            this.pendingRecipientId !== null
+        ) {
+            return;
+        }
+
+        this.pendingRecipientId = requestedPlayerId;
+
+        this.socket.emit(
+            'update',
+            {
+                type: 'friend_request',
+                id: this.socket.id,
+                requestedPlayerID: requestedPlayerId,
+            },
+            (result: FriendRequestAcknowledgement) => {
+                if (!result.accepted) {
+                    if (this.pendingRecipientId === requestedPlayerId) {
+                        this.pendingRecipientId = null;
+                    }
+                    return;
+                }
+
+                if (this.pendingRecipientId !== requestedPlayerId) {
+                    return;
+                }
+
+                this.onFriendRequestChange?.({
+                    status: 'sent',
+                    playerId: requestedPlayerId,
+                    nickname: requestedPlayer.nickname,
+                });
+            }
+        );
+    }
+
+    private respond(responseType: FriendResponseType): boolean {
+        const requesterId = this.pendingRequesterId;
+        if (requesterId === null) {
+            return false;
+        }
+
+        this.pendingRequesterId = null;
+        if (responseType === 'friend_accept') {
+            this.friendPlayerIds.add(requesterId);
+        }
+        this.socket.emit('update', {
+            type: responseType,
+            id: this.socket.id,
+            requestedPlayerID: requesterId,
+        });
+        this.onFriendRequestChange?.({
+            status: getFriendResponseStatus(responseType),
+            playerId: requesterId,
+            nickname: this.resolvePlayerNickname(requesterId),
+        });
+        return true;
+    }
+
+    accept(): boolean {
+        return this.respond('friend_accept');
+    }
+
+    decline(): boolean {
+        return this.respond('friend_decline');
+    }
+
+    dispose(): void {
+        this.pendingRequesterId = null;
+        this.pendingRecipientId = null;
+        this.friendPlayerIds.clear();
+    }
+}
 
 export function useFriendRequest() {
     const [friendRequest, setFriendRequestState] =
         useState<FriendRequestState | null>(null);
-    const [friends, setFriends] = useState<string[]>([]);
 
     const setFriendRequest = useCallback(
         (state: FriendRequestState | null): void => {
-            if (state?.status === 'accepted') {
-                setFriends((currentFriends) =>
-                    currentFriends.includes(state.nickname)
-                        ? currentFriends
-                        : [...currentFriends, state.nickname]
-                );
-            }
-
             setFriendRequestState(state);
         },
         []
@@ -43,7 +232,6 @@ export function useFriendRequest() {
 
     return {
         friendRequest,
-        friends,
         setFriendRequest,
     };
 }
