@@ -91,6 +91,7 @@ export function startGame(
      * */
     const socket = io(serverUrl, {
         auth: socketAuth,
+        withCredentials: true,
     });
     let player: Player | null = null;
     let multiplayer: MultiplayerManager | null = null;

@@ -26,6 +26,20 @@ export function getFriendRequestMessage(
     if (friendRequest.status === 'sent') {
         return `Friend request sent to ${friendRequest.nickname}.`;
     }
+    if (friendRequest.status === 'rejected') {
+        switch (friendRequest.reason) {
+            case 'same_account':
+                return 'You cannot send a friend request to another player session using your account.';
+            case 'already_friends':
+                return `${friendRequest.nickname} is already in your friend list.`;
+            case 'duplicate':
+            case 'duplicate_request':
+                return `A friend request involving ${friendRequest.nickname} is already pending.`;
+            case 'invalid_target':
+            default:
+                return `Friend request to ${friendRequest.nickname} could not be sent.`;
+        }
+    }
     if (friendRequest.status === 'removed') {
         return `Friendship with ${friendRequest.nickname} removed.`;
     }

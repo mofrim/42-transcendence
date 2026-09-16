@@ -42,6 +42,20 @@ export const describeGameEvent = (event: GameEvent): string => {
             if (evData.friendRequestStatus === 'removed') {
                 return `Friendship with ${evData.friendNick} removed`;
             }
+            if (evData.friendRequestStatus === 'rejected') {
+                switch (evData.friendRequestReason) {
+                    case 'same_account':
+                        return `Friend request to ${evData.friendNick} rejected: same account`;
+                    case 'already_friends':
+                        return `Friend request to ${evData.friendNick} rejected: already friends`;
+                    case 'duplicate':
+                        return `Friend request to ${evData.friendNick} rejected: duplicate request`;
+                    case 'duplicate_request':
+                        return `Friend request to ${evData.friendNick} rejected: another request is pending`;
+                    case 'invalid_target':
+                        return `Friend request to ${evData.friendNick} rejected: player unavailable`;
+                }
+            }
             return `Friend request with ${evData.friendNick} ${evData.friendRequestStatus}`;
         }
         case 'QuestCompleted': {

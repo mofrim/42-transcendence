@@ -5,6 +5,7 @@ import { useFriendList } from './FriendList';
 export { getFriendRequestMessage } from './FriendList';
 import {
     EventType,
+    type EventDataFriendRequest,
     type GameEvent,
     type FriendRemoveAcknowledgement,
     type FriendRemovePayload,
@@ -81,6 +82,13 @@ function getFriendResponseStatus(
     return 'declined';
 }
 
+function getStableFriendUserId(data: {
+    readonly friendUserId?: number;
+}): string | null {
+    const friendUserId = data.friendUserId;
+    return Number.isSafeInteger(friendUserId) ? String(friendUserId) : null;
+}
+
 export class FriendRequestManager {
     private readonly socket: Socket;
     private readonly players: ReadonlyMap<string, Remote_Player>;
@@ -91,8 +99,8 @@ export class FriendRequestManager {
         fallbackNickname?: string
     ) => string;
     private pendingRequesterId: string | null = null;
+    private pendingRequesterUserId: string | null = null;
     private pendingRecipientId: string | null = null;
-    private readonly friendPlayerIds = new Set<string>();
     constructor(options: FriendRequestManagerOptions) {
         this.socket = options.socket;
         this.players = options.players;
@@ -137,9 +145,7 @@ export class FriendRequestManager {
         this.socket.off('disconnect', this.handleSocketDisconnectEvent);
     }
 
-    private isForLocalPlayer(
-        data: FriendRequestPayload | FriendRemovePayload
-    ): boolean {
+    private isForLocalPlayer(data: FriendRequestPayload): boolean {
         const localPlayerId = this.getLocalPlayerId();
         return (
             localPlayerId !== undefined &&
@@ -150,6 +156,7 @@ export class FriendRequestManager {
     handlePlayerDisconnected(playerId: string): void {
         if (this.pendingRequesterId === playerId) {
             this.pendingRequesterId = null;
+            this.pendingRequesterUserId = null;
             this.onFriendRequestChange?.(null);
         }
         if (this.pendingRecipientId === playerId) {
@@ -160,8 +167,8 @@ export class FriendRequestManager {
 
     handleSocketDisconnect(): void {
         this.pendingRequesterId = null;
+        this.pendingRequesterUserId = null;
         this.pendingRecipientId = null;
-        this.friendPlayerIds.clear();
         this.onFriendRequestChange?.(null);
     }
 
@@ -169,13 +176,18 @@ export class FriendRequestManager {
         if (!this.isForLocalPlayer(data)) {
             return;
         }
+        const friendUserId = getStableFriendUserId(data);
+        if (friendUserId === null) {
+            return;
+        }
         if (this.pendingRecipientId === data.id) {
             this.pendingRecipientId = null;
         }
         this.pendingRequesterId = data.id;
+        this.pendingRequesterUserId = friendUserId;
         this.onFriendRequestChange?.({
             status: 'incoming',
-            playerId: data.id,
+            playerId: friendUserId,
             nickname: this.resolvePlayerNickname(data.id, data.nickname),
         });
     }
@@ -184,39 +196,41 @@ export class FriendRequestManager {
         if (!this.isForLocalPlayer(data)) {
             return;
         }
+        const friendUserId = getStableFriendUserId(data);
+        if (friendUserId === null) {
+            return;
+        }
         if (data.type === 'friend_request') {
             return;
         }
         if (this.pendingRecipientId === data.id) {
             this.pendingRecipientId = null;
         }
-        if (data.type === 'friend_accept') {
-            this.friendPlayerIds.add(data.id);
-        }
         this.onFriendRequestChange?.({
             status: getFriendResponseStatus(data.type),
-            playerId: data.id,
+            playerId: friendUserId,
             nickname: this.resolvePlayerNickname(data.id, data.nickname),
         });
     }
 
     private applyFriendRemoval(
-        playerId: string,
+        friendUserId: string,
         fallbackNickname?: string
     ): void {
-        this.friendPlayerIds.delete(playerId);
+        const nickname = fallbackNickname?.trim() || friendUserId;
         this.onFriendRequestChange?.({
             status: 'removed',
-            playerId,
-            nickname: this.resolvePlayerNickname(playerId, fallbackNickname),
+            playerId: friendUserId,
+            nickname,
         });
     }
 
     handleRemoval(data: FriendRemovePayload): void {
-        if (!this.isForLocalPlayer(data)) {
+        const friendUserId = getStableFriendUserId(data);
+        if (friendUserId === null) {
             return;
         }
-        this.applyFriendRemoval(data.id, data.nickname);
+        this.applyFriendRemoval(friendUserId, data.nickname);
     }
 
     handleUpdate(data: FriendRequestUpdate): void {
@@ -237,7 +251,6 @@ export class FriendRequestManager {
             return;
         }
         if (
-            this.friendPlayerIds.has(requestedPlayerId) ||
             this.pendingRequesterId !== null ||
             this.pendingRecipientId !== null
         ) {
@@ -256,6 +269,12 @@ export class FriendRequestManager {
                     if (this.pendingRecipientId === requestedPlayerId) {
                         this.pendingRecipientId = null;
                     }
+                    this.onFriendRequestChange?.({
+                        status: 'rejected',
+                        playerId: requestedPlayerId,
+                        nickname: requestedPlayer.nickname,
+                        reason: result.reason,
+                    });
                     return;
                 }
                 if (this.pendingRecipientId !== requestedPlayerId) {
@@ -263,7 +282,7 @@ export class FriendRequestManager {
                 }
                 this.onFriendRequestChange?.({
                     status: 'sent',
-                    playerId: requestedPlayerId,
+                    playerId: String(result.friendUserId),
                     nickname: requestedPlayer.nickname,
                 });
             }
@@ -272,13 +291,12 @@ export class FriendRequestManager {
 
     private respond(responseType: FriendResponseType): boolean {
         const requesterId = this.pendingRequesterId;
-        if (requesterId === null) {
+        const requesterUserId = this.pendingRequesterUserId;
+        if (requesterId === null || requesterUserId === null) {
             return false;
         }
         this.pendingRequesterId = null;
-        if (responseType === 'friend_accept') {
-            this.friendPlayerIds.add(requesterId);
-        }
+        this.pendingRequesterUserId = null;
         this.socket.emit('update', {
             type: responseType,
             id: this.socket.id,
@@ -286,7 +304,7 @@ export class FriendRequestManager {
         });
         this.onFriendRequestChange?.({
             status: getFriendResponseStatus(responseType),
-            playerId: requesterId,
+            playerId: requesterUserId,
             nickname: this.resolvePlayerNickname(requesterId),
         });
         return true;
@@ -300,19 +318,23 @@ export class FriendRequestManager {
         return this.respond('friend_decline');
     }
 
-    remove(friendPlayerId: string): void {
+    remove(friendUserId: string): void {
+        const stableFriendUserId = Number(friendUserId);
+        if (!Number.isSafeInteger(stableFriendUserId)) {
+            return;
+        }
         this.socket.emit(
             'update',
             {
                 type: 'friend_remove',
                 id: this.socket.id,
-                requestedPlayerID: friendPlayerId,
+                friendUserId: stableFriendUserId,
             },
             (result: FriendRemoveAcknowledgement) => {
                 if (!result.removed) {
                     return;
                 }
-                this.applyFriendRemoval(friendPlayerId);
+                this.applyFriendRemoval(friendUserId);
             }
         );
     }
@@ -321,8 +343,8 @@ export class FriendRequestManager {
         this.unbindSocketEvents();
         this.onFriendRequestChange = undefined;
         this.pendingRequesterId = null;
+        this.pendingRequesterUserId = null;
         this.pendingRecipientId = null;
-        this.friendPlayerIds.clear();
     }
 }
 
@@ -341,12 +363,19 @@ export function useFriendRequest(options: UseFriendRequestOptions = {}) {
                 return;
             }
             if (appendEvent && user) {
-                appendEvent({
-                    eventType: EventType.FriendRequest,
-                    data: {
+                    let friendRequestData: EventDataFriendRequest = {
                         friendNick: state.nickname,
                         friendRequestStatus: state.status,
-                    },
+                    };
+                    if (state.reason !== undefined) {
+                        friendRequestData = {
+                            ...friendRequestData,
+                            friendRequestReason: state.reason,
+                        };
+                    }
+                appendEvent({
+                    eventType: EventType.FriendRequest,
+                        data: friendRequestData,
                     logtime: new Date(),
                     user,
                 });
@@ -370,6 +399,7 @@ export function useFriendRequest(options: UseFriendRequestOptions = {}) {
         if (
             friendRequest?.status !== 'accepted' &&
             friendRequest?.status !== 'declined' &&
+            friendRequest?.status !== 'rejected' &&
             friendRequest?.status !== 'removed'
         ) {
             return;

@@ -143,6 +143,7 @@ export type EventData =
     | {
           readonly friendNick: string;
           readonly friendRequestStatus: FriendStatus;
+            readonly friendRequestReason?: FriendRequestRejectionReason;
       }
     | {
           readonly game: 'Tic-Tac-Toe' | 'Rock-Paper-Scissors';
@@ -182,6 +183,7 @@ export type EventDataGameResult = {
 export type EventDataFriendRequest = {
     readonly friendNick: string;
     readonly friendRequestStatus: FriendStatus;
+    readonly friendRequestReason?: FriendRequestRejectionReason;
 };
 
 // This will be the foundation for a new table in `eventlog-service` every Event
@@ -338,18 +340,27 @@ export type FriendResponseType = 'friend_accept' | 'friend_decline';
 
 export type FriendRequestPayload = PlayerTargetRequestPayload & {
     type: 'friend_request' | FriendResponseType;
+    friendUserId?: number;
 };
 
-export type FriendRemovePayload = PlayerTargetRequestPayload & {
+export type FriendRemovePayload = {
     type: 'friend_remove';
+    id: string;
+    friendUserId: number;
+    nickname?: string;
 };
 
 export type FriendRequestRejectionReason =
-    'invalid_target' | 'duplicate' | 'already_friends' | 'duplicate_request';
+    | 'invalid_target'
+    | 'same_account'
+    | 'duplicate'
+    | 'already_friends'
+    | 'duplicate_request';
 
 export type FriendRequestAcknowledgement =
     | {
           readonly accepted: true;
+          readonly friendUserId: number;
       }
     | {
           readonly accepted: false;
@@ -367,7 +378,8 @@ export type FriendRemoveAcknowledgement =
 
 export type FriendResponseStatus = 'accepted' | 'declined';
 
-export type FriendRequestStatus = 'sent' | 'incoming' | FriendResponseStatus;
+export type FriendRequestStatus =
+    'sent' | 'incoming' | 'rejected' | FriendResponseStatus;
 
 export type FriendStatus = FriendRequestStatus | 'removed';
 
@@ -378,6 +390,7 @@ export type FriendListEntry = {
 
 export type FriendRequestState = FriendListEntry & {
     readonly status: FriendStatus;
+    readonly reason?: FriendRequestRejectionReason;
 };
 
 export type FriendRequestChangeHandler = (

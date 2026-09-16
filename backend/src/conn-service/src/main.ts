@@ -6,7 +6,7 @@ import { randomUUID } from 'node:crypto';
 import { Server } from 'socket.io';
 import type { Socket } from 'socket.io';
 import { GameManager } from './gameManager.ts';
-
+import { verifyToken } from 'ftr-common/middleware';
 import type {
     ChatSendPayload,
     FriendRemoveAcknowledgement,
@@ -22,10 +22,10 @@ import type {
     PlayerUpdatePayload,
     TTTMarkPayload,
 } from 'ftr-common/sharedTypes';
-
 import { SPECTATOR_NAME, TTTGameState, TTTMark } from 'ftr-common/sharedTypes';
 
 const PORT = 3000;
+const SECRET_KEY: string = process.env['JWT_SECRET'] || 'FooBarBaz';
 const app: Express = express();
 
 app.use(cors());
@@ -33,14 +33,68 @@ app.use(cors());
 const server: http.Server = app.listen(PORT, (): void => {
     console.log(`listening on port: ${PORT}`);
 });
-
 const io = new Server(server, {
     cors: { origin: '*' },
 });
-
 const gameManager = new GameManager();
 const pendingFriendRequests = new Map<string, string>();
-const friendsByPlayer = new Map<string, Set<string>>();
+const friendsByUser = new Map<number, Set<number>>();
+
+function getCookieValue(
+    cookieHeader: string | undefined,
+    cookieName: string
+): string | null {
+    if (!cookieHeader) {
+        return null;
+    }
+    for (const cookiePart of cookieHeader.split(';')) {
+        const separatorIndex = cookiePart.indexOf('=');
+        if (separatorIndex < 0) {
+            continue;
+        }
+        const name = cookiePart.slice(0, separatorIndex).trim();
+        if (name !== cookieName) {
+            continue;
+        }
+        const value = cookiePart.slice(separatorIndex + 1).trim();
+        try {
+            return decodeURIComponent(value);
+        } catch {
+            return null;
+        }
+    }
+    return null;
+}
+
+function getAuthenticatedUserId(socket: Socket | undefined): number | null {
+    const userId = Number(socket?.data.userId);
+    return Number.isSafeInteger(userId) ? userId : null;
+}
+
+function getUserRoom(userId: number): string {
+    return `user:${userId}`;
+}
+
+io.use((socket, next) => {
+    const requestedRole = socket.handshake.auth['role'];
+    if (requestedRole === 'spectator') {
+        next();
+        return;
+    }
+
+    const token = (socket.request as Request).cookies['token'];
+    if (typeof token !== 'string') {
+        next(new Error('Unauthorized'));
+        return;
+    }
+
+    try {
+        socket.data.userId = verifyToken(token, SECRET_KEY);
+        next();
+    } catch {
+        next(new Error('Unauthorized'));
+    }
+});
 
 // TODO add event logging to all loggable socket-events like chat-msg,
 // player_connect, etc.
@@ -77,9 +131,15 @@ io.on('connection', (socket) => {
         socket.data.role = 'spectator';
         socket.data.nickname = SPECTATOR_NAME;
     } else {
+        const userId = getAuthenticatedUserId(socket);
+        if (userId === null) {
+            socket.disconnect(true);
+            return;
+        }
         socket.data.role = 'player';
         socket.data.nickname = nickname;
         socket.data.character = character;
+        socket.join(getUserRoom(userId));
     }
 
     /**
@@ -157,7 +217,10 @@ io.on('connection', (socket) => {
     socket.on('disconnect', () => {
         console.log('Client disconnected:', socket.id);
         clearPendingFriendRequests(socket.id);
-        clearFriendships(socket.id);
+        const userId = getAuthenticatedUserId(socket);
+        if (userId !== null) {
+            clearFriendships(userId);
+        }
         playerGameReset(socket.id);
 
         gameManager.removePlayer(socket.id);
@@ -252,9 +315,12 @@ function handleRPSRequest(socket: Socket, data: RPSRequestDataPayload) {
     });
 }
 
-function acknowledgeFriendRequest(
+type FriendAcknowledgement =
+    FriendRequestAcknowledgement | FriendRemoveAcknowledgement;
+
+function acknowledgeFriend(
     acknowledge: unknown,
-    result: FriendRequestAcknowledgement
+    result: FriendAcknowledgement
 ): void {
     if (typeof acknowledge === 'function') {
         acknowledge(result);
@@ -275,54 +341,43 @@ function hasPendingFriendRequest(playerId: string): boolean {
     return false;
 }
 
-function areFriends(firstPlayerId: string, secondPlayerId: string): boolean {
-    const friends = friendsByPlayer.get(firstPlayerId);
-    if (!friends) {
-        return false;
-    }
-    return friends.has(secondPlayerId);
+function areFriends(firstUserId: number, secondUserId: number): boolean {
+    return friendsByUser.get(firstUserId)?.has(secondUserId) ?? false;
 }
 
-function addFriendship(firstPlayerId: string, secondPlayerId: string): void {
-    let firstPlayerFriends = friendsByPlayer.get(firstPlayerId);
-    if (!firstPlayerFriends) {
-        firstPlayerFriends = new Set<string>();
-        friendsByPlayer.set(firstPlayerId, firstPlayerFriends);
-    }
-    firstPlayerFriends.add(secondPlayerId);
-
-    let secondPlayerFriends = friendsByPlayer.get(secondPlayerId);
-    if (!secondPlayerFriends) {
-        secondPlayerFriends = new Set<string>();
-        friendsByPlayer.set(secondPlayerId, secondPlayerFriends);
-    }
-    secondPlayerFriends.add(firstPlayerId);
+function addFriendship(firstUserId: number, secondUserId: number): void {
+    const firstUserFriends =
+        friendsByUser.get(firstUserId) ?? new Set<number>();
+    friendsByUser.set(firstUserId, firstUserFriends);
+    firstUserFriends.add(secondUserId);
+    const secondUserFriends =
+        friendsByUser.get(secondUserId) ?? new Set<number>();
+    friendsByUser.set(secondUserId, secondUserFriends);
+    secondUserFriends.add(firstUserId);
 }
 
-function removeFriendship(firstPlayerId: string, secondPlayerId: string): void {
-    const firstPlayerFriends = friendsByPlayer.get(firstPlayerId);
-    firstPlayerFriends?.delete(secondPlayerId);
-    if (firstPlayerFriends?.size === 0) {
-        friendsByPlayer.delete(firstPlayerId);
+function removeFriendship(firstUserId: number, secondUserId: number): void {
+    const firstUserFriends = friendsByUser.get(firstUserId);
+    firstUserFriends?.delete(secondUserId);
+    if (firstUserFriends?.size === 0) {
+        friendsByUser.delete(firstUserId);
     }
-
-    const secondPlayerFriends = friendsByPlayer.get(secondPlayerId);
-    secondPlayerFriends?.delete(firstPlayerId);
-    if (secondPlayerFriends?.size === 0) {
-        friendsByPlayer.delete(secondPlayerId);
+    const secondUserFriends = friendsByUser.get(secondUserId);
+    secondUserFriends?.delete(firstUserId);
+    if (secondUserFriends?.size === 0) {
+        friendsByUser.delete(secondUserId);
     }
 }
 
-function clearFriendships(playerId: string): void {
-    const friends = friendsByPlayer.get(playerId);
+function clearFriendships(userId: number): void {
+    const friends = friendsByUser.get(userId);
     if (!friends) {
         return;
     }
-
     for (const friendId of friends) {
-        friendsByPlayer.get(friendId)?.delete(playerId);
+        friendsByUser.get(friendId)?.delete(userId);
     }
-    friendsByPlayer.delete(playerId);
+    friendsByUser.delete(userId);
 }
 
 function handleFriendRequest(
@@ -331,29 +386,43 @@ function handleFriendRequest(
     acknowledge: unknown
 ): void {
     const requestedPlayerId = data.requestedPlayerID;
+    const requestingUserId = getAuthenticatedUserId(socket);
+    const requestedUserId =
+        typeof requestedPlayerId === 'string'
+            ? getAuthenticatedUserId(io.sockets.sockets.get(requestedPlayerId))
+            : null;
     if (
         typeof requestedPlayerId !== 'string' ||
         requestedPlayerId === socket.id ||
-        !gameManager.players.has(requestedPlayerId)
+        !gameManager.players.has(requestedPlayerId) ||
+        requestingUserId === null ||
+        requestedUserId === null
     ) {
-        acknowledgeFriendRequest(acknowledge, {
+        acknowledgeFriend(acknowledge, {
             accepted: false,
             reason: 'invalid_target',
+        });
+        return;
+    }
+
+    if (requestingUserId === requestedUserId) {
+        acknowledgeFriend(acknowledge, {
+            accepted: false,
+            reason: 'same_account',
         });
         return;
     }
 
     const requestingPlayer = gameManager.players.get(socket.id);
     if (!requestingPlayer) {
-        acknowledgeFriendRequest(acknowledge, {
+        acknowledgeFriend(acknowledge, {
             accepted: false,
             reason: 'invalid_target',
         });
         return;
     }
-
-    if (areFriends(socket.id, requestedPlayerId)) {
-        acknowledgeFriendRequest(acknowledge, {
+    if (areFriends(requestingUserId, requestedUserId)) {
+        acknowledgeFriend(acknowledge, {
             accepted: false,
             reason: 'already_friends',
         });
@@ -361,7 +430,7 @@ function handleFriendRequest(
     }
 
     if (pendingFriendRequests.get(requestedPlayerId) === socket.id) {
-        acknowledgeFriendRequest(acknowledge, {
+        acknowledgeFriend(acknowledge, {
             accepted: false,
             reason: 'duplicate',
         });
@@ -372,7 +441,7 @@ function handleFriendRequest(
         hasPendingFriendRequest(socket.id) ||
         hasPendingFriendRequest(requestedPlayerId)
     ) {
-        acknowledgeFriendRequest(acknowledge, {
+        acknowledgeFriend(acknowledge, {
             accepted: false,
             reason: 'duplicate_request',
         });
@@ -384,9 +453,13 @@ function handleFriendRequest(
         type: 'friend_request',
         id: socket.id,
         requestedPlayerID: requestedPlayerId,
+        friendUserId: requestingUserId,
         nickname: requestingPlayer.nickname,
     };
-    acknowledgeFriendRequest(acknowledge, { accepted: true });
+    acknowledgeFriend(acknowledge, {
+        accepted: true,
+        friendUserId: requestedUserId,
+    });
     io.to(requestedPlayerId).emit('update', payload);
 }
 
@@ -406,30 +479,29 @@ function handleFriendResponse(
     pendingFriendRequests.delete(socket.id);
 
     const respondingPlayer = gameManager.players.get(socket.id);
-    if (!respondingPlayer || !gameManager.players.has(requesterId)) {
+    const respondingUserId = getAuthenticatedUserId(socket);
+    const requesterUserId = getAuthenticatedUserId(
+        io.sockets.sockets.get(requesterId)
+    );
+    if (
+        !respondingPlayer ||
+        !gameManager.players.has(requesterId) ||
+        respondingUserId === null ||
+        requesterUserId === null
+    ) {
         return;
     }
-
     if (responseType === 'friend_accept') {
-        addFriendship(socket.id, requesterId);
+        addFriendship(respondingUserId, requesterUserId);
     }
-
     const payload: FriendRequestPayload = {
         type: responseType,
         id: socket.id,
         requestedPlayerID: requesterId,
+        friendUserId: respondingUserId,
         nickname: respondingPlayer.nickname,
     };
     io.to(requesterId).emit('update', payload);
-}
-
-function acknowledgeFriendRemove(
-    acknowledge: unknown,
-    result: FriendRemoveAcknowledgement
-): void {
-    if (typeof acknowledge === 'function') {
-        acknowledge(result);
-    }
 }
 
 function handleFriendRemove(
@@ -437,9 +509,14 @@ function handleFriendRemove(
     data: FriendRemovePayload,
     acknowledge: unknown
 ): void {
-    const removedPlayerId = data.requestedPlayerID;
-    if (typeof removedPlayerId !== 'string' || removedPlayerId === socket.id) {
-        acknowledgeFriendRemove(acknowledge, {
+    const removedUserId = data.friendUserId;
+    const requestingUserId = getAuthenticatedUserId(socket);
+    if (
+        !Number.isSafeInteger(removedUserId) ||
+        requestingUserId === null ||
+        removedUserId === requestingUserId
+    ) {
+        acknowledgeFriend(acknowledge, {
             removed: false,
             reason: 'invalid_target',
         });
@@ -448,17 +525,17 @@ function handleFriendRemove(
 
     const requestingPlayer = gameManager.players.get(socket.id);
     if (!requestingPlayer) {
-        acknowledgeFriendRemove(acknowledge, {
+        acknowledgeFriend(acknowledge, {
             removed: false,
             reason: 'invalid_target',
         });
         return;
     }
 
-    const friendshipExisted = areFriends(socket.id, removedPlayerId);
-    removeFriendship(socket.id, removedPlayerId);
-    acknowledgeFriendRemove(acknowledge, { removed: true });
+    const friendshipExisted = areFriends(requestingUserId, removedUserId);
 
+    removeFriendship(requestingUserId, removedUserId);
+    acknowledgeFriend(acknowledge, { removed: true });
     if (!friendshipExisted) {
         return;
     }
@@ -466,10 +543,10 @@ function handleFriendRemove(
     const payload: FriendRemovePayload = {
         type: 'friend_remove',
         id: socket.id,
-        requestedPlayerID: removedPlayerId,
+        friendUserId: requestingUserId,
         nickname: requestingPlayer.nickname,
     };
-    io.to(removedPlayerId).emit('update', payload);
+    io.to(getUserRoom(removedUserId)).emit('update', payload);
 }
 
 function clearPendingFriendRequests(playerId: string): void {
