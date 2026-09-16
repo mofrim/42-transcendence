@@ -1,4 +1,5 @@
 {
+    "$schema": "https://json.schemastore.org/package.json",
     "name": "backend-tests",
     "description": "ft_transcendence backend tests",
     "private": true,

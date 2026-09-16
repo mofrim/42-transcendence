@@ -1,4 +1,5 @@
 {
+    "$schema": "https://json.schemastore.org/package.json",
     "name": "ft_transcendence",
     "private": true,
     "type": "module",

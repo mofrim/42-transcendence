@@ -1,4 +1,5 @@
 {
+    "$schema": "https://json.schemastore.org/package.json",
     "name": "ftr-frontend",
     "description": "ft_transcendence frontend",
     "private": true,

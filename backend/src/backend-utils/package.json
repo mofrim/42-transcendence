@@ -1,4 +1,5 @@
 {
+    "$schema": "https://json.schemastore.org/package.json",
     "name": "backend-utils",
     "description": "ft_transcendence backend-utils",
     "private": true,

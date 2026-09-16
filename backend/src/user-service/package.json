@@ -1,4 +1,5 @@
 {
+    "$schema": "https://json.schemastore.org/package.json",
     "name": "user-service",
     "description": "ft_transcendence user-service",
     "private": true,
