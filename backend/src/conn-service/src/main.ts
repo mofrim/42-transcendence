@@ -257,7 +257,7 @@ io.on('connection', (socket) => {
                 break;
             case 'friend_accept':
             case 'friend_decline':
-                handleFriendResponse(socket, data, data.type);
+                handleFriendResponse(socket, data, data.type, acknowledge);
                 break;
             case 'friend_remove':
                 handleFriendRemove(socket, data, acknowledge);
@@ -301,7 +301,7 @@ function handleRPSRequest(socket: Socket, data: RPSRequestDataPayload) {
 }
 
 type FriendAcknowledgement =
-    FriendRequestAcknowledgement | FriendRemoveAcknowledgement;
+    boolean | FriendRequestAcknowledgement | FriendRemoveAcknowledgement;
 
 function acknowledgeFriend(
     acknowledge: unknown,
@@ -451,13 +451,15 @@ function handleFriendRequest(
 function handleFriendResponse(
     socket: Socket,
     data: FriendRequestPayload,
-    responseType: FriendResponseType
+    responseType: FriendResponseType,
+    acknowledge: unknown
 ): void {
     const requesterId = data.requestedPlayerID;
     if (
         typeof requesterId !== 'string' ||
         pendingFriendRequests.get(socket.id) !== requesterId
     ) {
+        acknowledgeFriend(acknowledge, false);
         return;
     }
 
@@ -474,6 +476,7 @@ function handleFriendResponse(
         respondingUserId === null ||
         requesterUserId === null
     ) {
+        acknowledgeFriend(acknowledge, false);
         return;
     }
     if (responseType === 'friend_accept') {
@@ -487,6 +490,7 @@ function handleFriendResponse(
         nickname: respondingPlayer.nickname,
     };
     io.to(requesterId).emit('update', payload);
+    acknowledgeFriend(acknowledge, true);
 }
 
 function handleFriendRemove(

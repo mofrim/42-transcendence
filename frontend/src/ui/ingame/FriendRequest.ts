@@ -297,16 +297,25 @@ export class FriendRequestManager {
         }
         this.pendingRequesterId = null;
         this.pendingRequesterUserId = null;
-        this.socket.emit('update', {
-            type: responseType,
-            id: this.socket.id,
-            requestedPlayerID: requesterId,
-        });
-        this.onFriendRequestChange?.({
-            status: getFriendResponseStatus(responseType),
-            playerId: requesterUserId,
-            nickname: this.resolvePlayerNickname(requesterId),
-        });
+        this.socket.emit(
+            'update',
+            {
+                type: responseType,
+                id: this.socket.id,
+                requestedPlayerID: requesterId,
+            },
+            (processed: boolean) => {
+                if (!processed) {
+                    this.onFriendRequestChange?.(null);
+                    return;
+                }
+                this.onFriendRequestChange?.({
+                    status: getFriendResponseStatus(responseType),
+                    playerId: requesterUserId,
+                    nickname: this.resolvePlayerNickname(requesterId),
+                });
+            }
+        );
         return true;
     }
 
@@ -363,19 +372,19 @@ export function useFriendRequest(options: UseFriendRequestOptions = {}) {
                 return;
             }
             if (appendEvent && user) {
-                    let friendRequestData: EventDataFriendRequest = {
-                        friendNick: state.nickname,
-                        friendRequestStatus: state.status,
+                let friendRequestData: EventDataFriendRequest = {
+                    friendNick: state.nickname,
+                    friendRequestStatus: state.status,
+                };
+                if (state.reason !== undefined) {
+                    friendRequestData = {
+                        ...friendRequestData,
+                        friendRequestReason: state.reason,
                     };
-                    if (state.reason !== undefined) {
-                        friendRequestData = {
-                            ...friendRequestData,
-                            friendRequestReason: state.reason,
-                        };
-                    }
+                }
                 appendEvent({
                     eventType: EventType.FriendRequest,
-                        data: friendRequestData,
+                    data: friendRequestData,
                     logtime: new Date(),
                     user,
                 });
