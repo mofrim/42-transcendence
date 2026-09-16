@@ -142,7 +142,7 @@ export type EventData =
       }
     | {
           readonly friendNick: string;
-          readonly friendRequestStatus: FriendRequestStatus;
+          readonly friendRequestStatus: FriendStatus;
       }
     | {
           readonly game: 'Tic-Tac-Toe' | 'Rock-Paper-Scissors';
@@ -181,7 +181,7 @@ export type EventDataGameResult = {
 
 export type EventDataFriendRequest = {
     readonly friendNick: string;
-    readonly friendRequestStatus: FriendRequestStatus;
+    readonly friendRequestStatus: FriendStatus;
 };
 
 // This will be the foundation for a new table in `eventlog-service` every Event
@@ -325,6 +325,10 @@ export type FriendRequestPayload = PlayerTargetRequestPayload & {
     type: 'friend_request' | FriendResponseType;
 };
 
+export type FriendRemovePayload = PlayerTargetRequestPayload & {
+    type: 'friend_remove';
+};
+
 export type FriendRequestRejectionReason =
     'invalid_target' | 'duplicate' | 'already_friends' | 'duplicate_request';
 
@@ -337,14 +341,28 @@ export type FriendRequestAcknowledgement =
           readonly reason: FriendRequestRejectionReason;
       };
 
+export type FriendRemoveAcknowledgement =
+    | {
+          readonly removed: true;
+      }
+    | {
+          readonly removed: false;
+          readonly reason: 'invalid_target';
+      };
+
 export type FriendResponseStatus = 'accepted' | 'declined';
 
 export type FriendRequestStatus = 'sent' | 'incoming' | FriendResponseStatus;
 
-export type FriendRequestState = {
-    readonly status: FriendRequestStatus;
+export type FriendStatus = FriendRequestStatus | 'removed';
+
+export type FriendListEntry = {
     readonly playerId: string;
     readonly nickname: string;
+};
+
+export type FriendRequestState = FriendListEntry & {
+    readonly status: FriendStatus;
 };
 
 export type FriendRequestChangeHandler = (

@@ -7,7 +7,6 @@ import {
     EventType,
     User,
     type ReceivedChatPayload,
-    type FriendRequestState,
     type EventDataPlayerInRange,
 } from 'ftr-common/sharedTypes';
 import { useMatchHistory } from '../../hooks/useMatchHistory';
@@ -57,8 +56,8 @@ export const Game: React.FC<{
     const [completedQuestIds, setCompletedQuestIds] = useState<string[]>([]);
     const [gameResetVersion, setGameResetVersion] = useState(0);
     const [isGameplayReady, setIsGameplayReady] = useState(false);
-    const { friendRequest, setFriendRequest } = useFriendRequest();
-    const { friends, addFriend } = useFriendList();
+    const { friends, handleFriendRequestChange: handleFriendListChange } =
+        useFriendList();
     const [dialog, setDialog] = useState<DialogPanelState>({
         isOpen: false,
         message: '',
@@ -82,6 +81,13 @@ export const Game: React.FC<{
     const { events, appendEvent } = isSpectator
         ? spectatorEventLog
         : { events: realEvents, appendEvent: realAppendEvent };
+
+    const { friendRequest, setFriendRequest, handleFriendRequestChange } =
+        useFriendRequest({
+            onFriendListChange: handleFriendListChange,
+            appendEvent,
+            user: user!,
+        });
 
     /** Runtime-Ereignisse bleiben auch außerhalb des Sichtfelds sichtbar. */
     const handleGameEvent = useCallback(
@@ -127,29 +133,9 @@ export const Game: React.FC<{
         [appendEvent]
     );
 
-    const handleFriendRequestChange = useCallback(
-        (state: FriendRequestState | null): void => {
-            if (state?.status === 'accepted') {
-                addFriend(state.nickname);
-            }
-
-            setFriendRequest(state);
-            if (!state) {
-                return;
-            }
-
-            appendEvent({
-                eventType: EventType.FriendRequest,
-                data: {
-                    friendNick: state.nickname,
-                    friendRequestStatus: state.status,
-                },
-                logtime: new Date(),
-                user: user!,
-            });
-        },
-        [addFriend, appendEvent, setFriendRequest, user]
-    );
+    const handleFriendRemove = useCallback((friendPlayerId: string): void => {
+        gameRuntimeRef.current?.removeFriend(friendPlayerId);
+    }, []);
 
     const handleQuestStatusChange = useCallback(
         (statusChange: QuestStatusChange): void => {
@@ -312,6 +298,7 @@ export const Game: React.FC<{
             blackHoleCountdownActive: isGameplayReady,
             friendRequest,
             friends,
+            onFriendRemove: handleFriendRemove,
         };
     }
 

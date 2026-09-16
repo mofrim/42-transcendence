@@ -23,6 +23,7 @@ import {
 
 import {
     type Character,
+    type FriendListEntry,
     type FriendRequestState,
     QUESTS,
 } from 'ftr-common/sharedTypes';
@@ -32,6 +33,7 @@ import { EventLogItems, type EventLogEntry } from './EventLogItems';
 import { FRIENDS_PANEL_ID, FriendList } from './FriendList';
 import { Leaderboard } from './Leaderboard';
 import { MatchHistory } from './MatchHistory';
+import { MAX_EVENT_LOG_ENTRIES } from '../../lib/eventLogUtils';
 
 import './GameUI.css';
 
@@ -40,8 +42,6 @@ const PROFILE_PANEL_ID = 'game-profile-panel';
 const MATCH_HISTORY_PANEL_ID = 'game-match-history-panel';
 const LEADERBOARD_PANEL_ID = 'game-leaderboard-panel';
 const EVENT_LOG_TITLE_ID = 'game-event-log-title';
-
-export const MAX_EVENT_LOG_ENTRIES = 10;
 
 export type DialogPanelState = {
     readonly isOpen: boolean;
@@ -64,7 +64,8 @@ type GameUIProps = {
     readonly onDialogNext?: () => void;
     readonly blackHoleCountdownActive?: boolean;
     readonly friendRequest?: FriendRequestState | null;
-    readonly friends?: readonly string[];
+    readonly friends?: readonly FriendListEntry[];
+    readonly onFriendRemove?: (friendPlayerId: string) => void;
     readonly isSpectator?: boolean;
 };
 
@@ -155,6 +156,7 @@ export function GameUI({
     blackHoleCountdownActive = true,
     friendRequest,
     friends = [],
+    onFriendRemove,
     isSpectator = false,
 }: GameUIProps) {
     const [isQuestLogOpen, setIsQuestLogOpen] = useState(false);
@@ -429,6 +431,7 @@ export function GameUI({
                     friendRequest={friendRequest}
                     friends={friends}
                     isOpen={friendsPanelOpen}
+                    onRemoveFriend={onFriendRemove}
                 />
 
                 <aside

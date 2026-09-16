@@ -194,6 +194,55 @@
     white-space: pre-line;
 }
 
+.hud-friends-list {
+    display: grid;
+    gap: 6px;
+    margin: 0 0 12px;
+    padding: 0;
+    list-style: none;
+}
+
+.hud-friend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
+
+.hud-friend-name {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.hud-friend-remove {
+    width: 24px;
+    height: 24px;
+    margin-left: auto;
+    padding: 0;
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    border-radius: 50%;
+    background: rgba(14, 22, 32, 0.18);
+    color: rgba(255, 255, 255, 0.78);
+    cursor: pointer;
+    font: inherit;
+    font-size: 18px;
+    line-height: 1;
+    pointer-events: auto;
+}
+
+.hud-friend-remove:hover {
+    border-color: rgba(255, 255, 255, 0.56);
+    background: rgba(255, 255, 255, 0.12);
+    color: #ffffff;
+}
+
+.hud-friend-remove:focus-visible {
+    outline: 2px solid #ffffff;
+    outline-offset: 2px;
+}
+
 .hud-match-history-panel {
     width: min(360px, calc(100vw - 94px));
     pointer-events: auto;

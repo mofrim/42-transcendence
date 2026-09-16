@@ -15,6 +15,7 @@ import {
     User,
     type Character,
     type FriendRequestChangeHandler,
+    type FriendRemovePayload,
     type FriendRequestPayload,
     type GameEvent,
     type PlayerConnectedPayload,
@@ -50,6 +51,7 @@ type MultiplayerSocketUpdate =
     | TTTMarkPayload
     | TTTWinPayload
     | TTTDrawPayload
+    | FriendRemovePayload
     | FriendRequestPayload
     | RPSRequestDataPayload
     | RPSWinnerPayload
@@ -323,6 +325,9 @@ export class MultiplayerManager {
             case 'friend_decline':
                 this.friendRequest.handleResponse(data);
                 break;
+            case 'friend_remove':
+                this.friendRequest.handleRemoval(data);
+                break;
         }
     };
 
@@ -445,6 +450,10 @@ export class MultiplayerManager {
 
     declineFriendRequest(): boolean {
         return this.friendRequest.decline();
+    }
+
+    removeFriend(friendPlayerId: string): void {
+        this.friendRequest.remove(friendPlayerId);
     }
 
     emitBattleChoice(choice: RPSChoice): void {
@@ -613,7 +622,7 @@ export class MultiplayerManager {
     removeAllPlayers(): Promise<void> {
         const completions: Promise<void>[] = [];
 
-        for (const id of [...this.players.keys()]) {
+        for (const id of this.players.keys()) {
             const completion = this.removePlayer(id);
             if (completion) {
                 completions.push(completion);

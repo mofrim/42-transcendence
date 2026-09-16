@@ -2,16 +2,27 @@ import { useCallback, useEffect, useState } from 'react';
 import type { Socket } from 'socket.io-client';
 
 import type { Remote_Player } from '../../game/remote_player.js';
-import type {
-    FriendRequestAcknowledgement,
-    FriendRequestChangeHandler,
-    FriendRequestPayload,
-    FriendRequestState,
-    FriendResponseStatus,
-    FriendResponseType,
+import {
+    EventType,
+    type GameEvent,
+    type FriendRemoveAcknowledgement,
+    type FriendRemovePayload,
+    type FriendRequestAcknowledgement,
+    type FriendRequestChangeHandler,
+    type FriendRequestPayload,
+    type FriendRequestState,
+    type FriendResponseStatus,
+    type FriendResponseType,
+    type User,
 } from 'ftr-common/sharedTypes';
 
 const FRIEND_REQUEST_RESULT_DISPLAY_MS = 4_000;
+
+type UseFriendRequestOptions = {
+    readonly onFriendListChange?: FriendRequestChangeHandler;
+    readonly appendEvent?: (event: GameEvent) => void;
+    readonly user?: User;
+};
 
 type FriendRequestManagerOptions = {
     readonly socket: Socket;
@@ -55,7 +66,9 @@ export class FriendRequestManager {
         this.resolvePlayerNickname = options.resolvePlayerNickname;
     }
 
-    private isForLocalPlayer(data: FriendRequestPayload): boolean {
+    private isForLocalPlayer(
+        data: FriendRequestPayload | FriendRemovePayload
+    ): boolean {
         const localPlayerId = this.getLocalPlayerId();
         return (
             localPlayerId !== undefined &&
@@ -118,6 +131,26 @@ export class FriendRequestManager {
             playerId: data.id,
             nickname: this.resolvePlayerNickname(data.id, data.nickname),
         });
+    }
+
+    private applyFriendRemoval(
+        playerId: string,
+        fallbackNickname?: string
+    ): void {
+        this.friendPlayerIds.delete(playerId);
+        this.onFriendRequestChange?.({
+            status: 'removed',
+            playerId,
+            nickname: this.resolvePlayerNickname(playerId, fallbackNickname),
+        });
+    }
+
+    handleRemoval(data: FriendRemovePayload): void {
+        if (!this.isForLocalPlayer(data)) {
+            return;
+        }
+
+        this.applyFriendRemoval(data.id, data.nickname);
     }
 
     sendRequest(requestedPlayerId: string): void {
@@ -195,6 +228,24 @@ export class FriendRequestManager {
         return this.respond('friend_decline');
     }
 
+    remove(friendPlayerId: string): void {
+        this.socket.emit(
+            'update',
+            {
+                type: 'friend_remove',
+                id: this.socket.id,
+                requestedPlayerID: friendPlayerId,
+            },
+            (result: FriendRemoveAcknowledgement) => {
+                if (!result.removed) {
+                    return;
+                }
+
+                this.applyFriendRemoval(friendPlayerId);
+            }
+        );
+    }
+
     dispose(): void {
         this.pendingRequesterId = null;
         this.pendingRecipientId = null;
@@ -202,27 +253,45 @@ export class FriendRequestManager {
     }
 }
 
-export function useFriendRequest() {
-    const [friendRequest, setFriendRequestState] =
+export function useFriendRequest(options: UseFriendRequestOptions = {}) {
+    const { onFriendListChange, appendEvent, user } = options;
+    const [friendRequest, setFriendRequest] =
         useState<FriendRequestState | null>(null);
 
-    const setFriendRequest = useCallback(
-        (state: FriendRequestState | null): void => {
-            setFriendRequestState(state);
+    const handleFriendRequestChange = useCallback<FriendRequestChangeHandler>(
+        (state): void => {
+            onFriendListChange?.(state);
+            setFriendRequest(state);
+            if (!state) {
+                return;
+            }
+
+            if (appendEvent && user) {
+                appendEvent({
+                    eventType: EventType.FriendRequest,
+                    data: {
+                        friendNick: state.nickname,
+                        friendRequestStatus: state.status,
+                    },
+                    logtime: new Date(),
+                    user,
+                });
+            }
         },
-        []
+        [appendEvent, onFriendListChange, user]
     );
 
     useEffect(() => {
         if (
             friendRequest?.status !== 'accepted' &&
-            friendRequest?.status !== 'declined'
+            friendRequest?.status !== 'declined' &&
+            friendRequest?.status !== 'removed'
         ) {
             return;
         }
 
         const timeoutId = window.setTimeout(() => {
-            setFriendRequestState(null);
+            setFriendRequest(null);
         }, FRIEND_REQUEST_RESULT_DISPLAY_MS);
 
         return () => {
@@ -233,6 +302,7 @@ export function useFriendRequest() {
     return {
         friendRequest,
         setFriendRequest,
+        handleFriendRequestChange,
     };
 }
 
@@ -249,6 +319,10 @@ export function getFriendRequestMessage(
 
     if (friendRequest.status === 'sent') {
         return `Friend request sent to ${friendRequest.nickname}.`;
+    }
+
+    if (friendRequest.status === 'removed') {
+        return `Friendship with ${friendRequest.nickname} removed.`;
     }
 
     return `Friend request with ${friendRequest.nickname} ${friendRequest.status}.`;

@@ -49,6 +49,7 @@ import {
 
 export type GameRuntime = {
     readonly sendChatMessage: (message: string) => void;
+    readonly removeFriend: (friendPlayerId: string) => void;
     readonly despawnLocalPlayer: () => Promise<void>;
     readonly dispose: () => Promise<void>;
     readonly continueDialogue: () => void;
@@ -535,8 +536,17 @@ export function startGame(
         multiplayer?.sendChatMessage(message);
     }
 
+    function removeFriend(friendPlayerId: string): void {
+        if (renderLoop.isDisposed) {
+            return;
+        }
+
+        multiplayer?.removeFriend(friendPlayerId);
+    }
+
     return {
         sendChatMessage,
+        removeFriend,
         despawnLocalPlayer,
         dispose: () => renderLoop.dispose(),
         continueDialogue(): void {

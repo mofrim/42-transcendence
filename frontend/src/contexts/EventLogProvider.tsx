@@ -4,7 +4,11 @@ import axios from 'axios';
 import type { EventLogEntry } from '../ui/ingame/EventLogItems';
 import { EventLogContext } from '../contexts/EventLogContext.tsx';
 import { GameEvent, BaseEventLog } from 'ftr-common/sharedTypes';
-import { EVENT_TIME_FORMAT, describeGameEvent } from '../lib/eventLogUtils.ts';
+import {
+    EVENT_TIME_FORMAT,
+    MAX_EVENT_LOG_ENTRIES,
+    describeGameEvent,
+} from '../lib/eventLogUtils.ts';
 
 // TODO handle reset / loading of old events on login
 
@@ -12,7 +16,6 @@ export const EventLogProvider: React.FC<{ children: React.ReactNode }> = ({
     children,
 }) => {
     const [events, setEvents] = useState<EventLogEntry[]>([]);
-    const MAX_EVENT_LOG_ENTRIES = 10;
 
     // FIXME handle setting the `id` param properly. but maybe this is already
     // enough.. another solution would be to use the id returned after the
@@ -38,12 +41,9 @@ export const EventLogProvider: React.FC<{ children: React.ReactNode }> = ({
                 description,
             };
 
-            setEvents((currentEvents) => {
-                const updatedEvents = [...currentEvents, ev].slice(
-                    -MAX_EVENT_LOG_ENTRIES
-                );
-                return updatedEvents;
-            });
+            setEvents((currentEvents) =>
+                [...currentEvents, ev].slice(-MAX_EVENT_LOG_ENTRIES)
+            );
         } catch (error) {
             console.error('Failed to save event to database:', error);
         }

@@ -1,6 +1,10 @@
 import { useCallback, useState } from 'react';
 
-import type { FriendRequestState } from 'ftr-common/sharedTypes';
+import type {
+    FriendListEntry,
+    FriendRequestChangeHandler,
+    FriendRequestState,
+} from 'ftr-common/sharedTypes';
 
 import { getFriendRequestMessage } from './FriendRequest';
 
@@ -8,27 +12,48 @@ export const FRIENDS_PANEL_ID = 'game-friends-panel';
 
 type FriendListProps = {
     readonly friendRequest: FriendRequestState | null | undefined;
-    readonly friends: readonly string[];
+    readonly friends: readonly FriendListEntry[];
     readonly isOpen: boolean;
+    readonly onRemoveFriend?: ((friendPlayerId: string) => void) | undefined;
 };
 
 // eslint-disable-next-line react-refresh/only-export-components
 export function useFriendList() {
-    const [friends, setFriends] = useState<string[]>([]);
+    const [friends, setFriends] = useState<FriendListEntry[]>([]);
 
-    const addFriend = useCallback((nickname: string): void => {
-        setFriends((currentFriends) => {
-            if (currentFriends.includes(nickname)) {
-                return currentFriends;
+    const handleFriendRequestChange = useCallback<FriendRequestChangeHandler>(
+        (state): void => {
+            if (state?.status === 'accepted') {
+                setFriends((currentFriends) => {
+                    if (
+                        currentFriends.some(
+                            (currentFriend) =>
+                                currentFriend.playerId === state.playerId
+                        )
+                    ) {
+                        return currentFriends;
+                    }
+
+                    return [...currentFriends, state];
+                });
+                return;
             }
 
-            return [...currentFriends, nickname];
-        });
-    }, []);
+            if (state?.status === 'removed') {
+                setFriends((currentFriends) =>
+                    currentFriends.filter(
+                        (currentFriend) =>
+                            currentFriend.playerId !== state.playerId
+                    )
+                );
+            }
+        },
+        []
+    );
 
     return {
         friends,
-        addFriend,
+        handleFriendRequestChange,
     };
 }
 
@@ -37,10 +62,42 @@ export function FriendList({
     friendRequest,
     friends,
     isOpen,
+    onRemoveFriend,
 }: FriendListProps) {
-    let friendListMessage = 'You got no friends. 😭';
+    let friendListContent = (
+        <p className='hud-friends-placeholder'>You got no friends. 😭</p>
+    );
     if (friends.length > 0) {
-        friendListMessage = friends.join('\n');
+        friendListContent = (
+            <ul className='hud-friends-list'>
+                {friends.map((friend) => {
+                    let removeButton = null;
+                    if (onRemoveFriend) {
+                        const removeLabel = `Remove ${friend.nickname} from friend list`;
+                        removeButton = (
+                            <button
+                                type='button'
+                                className='hud-friend-remove'
+                                aria-label={removeLabel}
+                                title={removeLabel}
+                                onClick={() => onRemoveFriend(friend.playerId)}
+                            >
+                                ×
+                            </button>
+                        );
+                    }
+
+                    return (
+                        <li key={friend.playerId} className='hud-friend-item'>
+                            <span className='hud-friend-name'>
+                                {friend.nickname}
+                            </span>
+                            {removeButton}
+                        </li>
+                    );
+                })}
+            </ul>
+        );
     }
 
     return (
@@ -51,9 +108,8 @@ export function FriendList({
             hidden={!isOpen}
         >
             <h2 className='hud-title'>Friendlist</h2>
+            {friendListContent}
             <p className='hud-friends-placeholder'>
-                {friendListMessage}
-                {'\n\n'}
                 {getFriendRequestMessage(friendRequest)}
             </p>
         </aside>

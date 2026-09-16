@@ -9,6 +9,8 @@ import { GameManager } from './gameManager.ts';
 
 import type {
     ChatSendPayload,
+    FriendRemoveAcknowledgement,
+    FriendRemovePayload,
     FriendRequestAcknowledgement,
     FriendRequestPayload,
     FriendResponseType,
@@ -209,6 +211,9 @@ io.on('connection', (socket) => {
             case 'friend_decline':
                 handleFriendResponse(socket, data, data.type);
                 break;
+            case 'friend_remove':
+                handleFriendRemove(socket, data, acknowledge);
+                break;
             case 'game_reset':
                 handleGameReset(socket);
                 break;
@@ -292,6 +297,20 @@ function addFriendship(firstPlayerId: string, secondPlayerId: string): void {
         friendsByPlayer.set(secondPlayerId, secondPlayerFriends);
     }
     secondPlayerFriends.add(firstPlayerId);
+}
+
+function removeFriendship(firstPlayerId: string, secondPlayerId: string): void {
+    const firstPlayerFriends = friendsByPlayer.get(firstPlayerId);
+    firstPlayerFriends?.delete(secondPlayerId);
+    if (firstPlayerFriends?.size === 0) {
+        friendsByPlayer.delete(firstPlayerId);
+    }
+
+    const secondPlayerFriends = friendsByPlayer.get(secondPlayerId);
+    secondPlayerFriends?.delete(firstPlayerId);
+    if (secondPlayerFriends?.size === 0) {
+        friendsByPlayer.delete(secondPlayerId);
+    }
 }
 
 function clearFriendships(playerId: string): void {
@@ -402,6 +421,55 @@ function handleFriendResponse(
         nickname: respondingPlayer.nickname,
     };
     io.to(requesterId).emit('update', payload);
+}
+
+function acknowledgeFriendRemove(
+    acknowledge: unknown,
+    result: FriendRemoveAcknowledgement
+): void {
+    if (typeof acknowledge === 'function') {
+        acknowledge(result);
+    }
+}
+
+function handleFriendRemove(
+    socket: Socket,
+    data: FriendRemovePayload,
+    acknowledge: unknown
+): void {
+    const removedPlayerId = data.requestedPlayerID;
+    if (typeof removedPlayerId !== 'string' || removedPlayerId === socket.id) {
+        acknowledgeFriendRemove(acknowledge, {
+            removed: false,
+            reason: 'invalid_target',
+        });
+        return;
+    }
+
+    const requestingPlayer = gameManager.players.get(socket.id);
+    if (!requestingPlayer) {
+        acknowledgeFriendRemove(acknowledge, {
+            removed: false,
+            reason: 'invalid_target',
+        });
+        return;
+    }
+
+    const friendshipExisted = areFriends(socket.id, removedPlayerId);
+    removeFriendship(socket.id, removedPlayerId);
+    acknowledgeFriendRemove(acknowledge, { removed: true });
+
+    if (!friendshipExisted) {
+        return;
+    }
+
+    const payload: FriendRemovePayload = {
+        type: 'friend_remove',
+        id: socket.id,
+        requestedPlayerID: removedPlayerId,
+        nickname: requestingPlayer.nickname,
+    };
+    io.to(removedPlayerId).emit('update', payload);
 }
 
 function clearPendingFriendRequests(playerId: string): void {

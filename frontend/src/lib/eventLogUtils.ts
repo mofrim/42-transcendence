@@ -7,6 +7,8 @@ import {
     type EventDataQuestCompleted,
 } from 'ftr-common/sharedTypes';
 
+export const MAX_EVENT_LOG_ENTRIES = 10;
+
 export const EVENT_TIME_FORMAT = new Intl.DateTimeFormat('en-US', {
     hour: '2-digit',
     minute: '2-digit',
@@ -36,6 +38,9 @@ export const describeGameEvent = (event: GameEvent): string => {
             }
             if (evData.friendRequestStatus === 'sent') {
                 return `Friend request sent to ${evData.friendNick}`;
+            }
+            if (evData.friendRequestStatus === 'removed') {
+                return `Friendship with ${evData.friendNick} removed`;
             }
             return `Friend request with ${evData.friendNick} ${evData.friendRequestStatus}`;
         }
