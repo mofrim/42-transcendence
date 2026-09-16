@@ -15,6 +15,7 @@ services:
         build:
             context: ..
             dockerfile: ./backend/src/conn-service/Dockerfile
+        env_file: ../dev.env
         depends_on:
             auth-service:
                 condition: service_started
