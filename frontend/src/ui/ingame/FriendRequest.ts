@@ -193,9 +193,6 @@ export class FriendRequestManager {
     }
 
     handleResponse(data: FriendRequestPayload): void {
-        if (!this.isForLocalPlayer(data)) {
-            return;
-        }
         const friendUserId = getStableFriendUserId(data);
         if (friendUserId === null) {
             return;

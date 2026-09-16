@@ -466,13 +466,14 @@ function handleFriendResponse(
     pendingFriendRequests.delete(socket.id);
 
     const respondingPlayer = gameManager.players.get(socket.id);
+    const requesterPlayer = gameManager.players.get(requesterId);
     const respondingUserId = getAuthenticatedUserId(socket);
     const requesterUserId = getAuthenticatedUserId(
         io.sockets.sockets.get(requesterId)
     );
     if (
         !respondingPlayer ||
-        !gameManager.players.has(requesterId) ||
+        !requesterPlayer ||
         respondingUserId === null ||
         requesterUserId === null
     ) {
@@ -481,6 +482,16 @@ function handleFriendResponse(
     }
     if (responseType === 'friend_accept') {
         addFriendship(respondingUserId, requesterUserId);
+        const respondingUserPayload: FriendRequestPayload = {
+            type: responseType,
+            id: requesterId,
+            requestedPlayerID: socket.id,
+            friendUserId: requesterUserId,
+            nickname: requesterPlayer.nickname,
+        };
+        socket
+            .to(getUserRoom(respondingUserId))
+            .emit('update', respondingUserPayload);
     }
     const payload: FriendRequestPayload = {
         type: responseType,
@@ -489,7 +500,7 @@ function handleFriendResponse(
         friendUserId: respondingUserId,
         nickname: respondingPlayer.nickname,
     };
-    io.to(requesterId).emit('update', payload);
+    io.to(getUserRoom(requesterUserId)).emit('update', payload);
     acknowledgeFriend(acknowledge, true);
 }
 
@@ -524,6 +535,14 @@ function handleFriendRemove(
     const friendshipExisted = areFriends(requestingUserId, removedUserId);
 
     removeFriendship(requestingUserId, removedUserId);
+    const requestingUserPayload: FriendRemovePayload = {
+        type: 'friend_remove',
+        id: socket.id,
+        friendUserId: removedUserId,
+    };
+    socket
+        .to(getUserRoom(requestingUserId))
+        .emit('update', requestingUserPayload);
     acknowledgeFriend(acknowledge, { removed: true });
     if (!friendshipExisted) {
         return;
