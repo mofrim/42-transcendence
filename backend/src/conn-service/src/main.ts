@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
-import type { Express } from 'express';
+import cookieParser from 'cookie-parser';
+import type { Express, Request } from 'express';
 import http from 'http';
 import { randomUUID } from 'node:crypto';
 import { Server } from 'socket.io';
@@ -36,35 +37,10 @@ const server: http.Server = app.listen(PORT, (): void => {
 const io = new Server(server, {
     cors: { origin: '*' },
 });
+io.engine.use(cookieParser());
 const gameManager = new GameManager();
 const pendingFriendRequests = new Map<string, string>();
 const friendsByUser = new Map<number, Set<number>>();
-
-function getCookieValue(
-    cookieHeader: string | undefined,
-    cookieName: string
-): string | null {
-    if (!cookieHeader) {
-        return null;
-    }
-    for (const cookiePart of cookieHeader.split(';')) {
-        const separatorIndex = cookiePart.indexOf('=');
-        if (separatorIndex < 0) {
-            continue;
-        }
-        const name = cookiePart.slice(0, separatorIndex).trim();
-        if (name !== cookieName) {
-            continue;
-        }
-        const value = cookiePart.slice(separatorIndex + 1).trim();
-        try {
-            return decodeURIComponent(value);
-        } catch {
-            return null;
-        }
-    }
-    return null;
-}
 
 function getAuthenticatedUserId(socket: Socket | undefined): number | null {
     const userId = Number(socket?.data.userId);
