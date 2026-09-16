@@ -65,7 +65,16 @@ io.use((socket, next) => {
     }
 
     try {
-        socket.data.userId = verifyToken(token, SECRET_KEY);
+        const authenticatedUserId = verifyToken(token, SECRET_KEY);
+        const requestedUserId = socket.handshake.auth['userId'];
+        if (
+            !Number.isSafeInteger(requestedUserId) ||
+            requestedUserId !== authenticatedUserId
+        ) {
+            next(new Error('Session identity mismatch'));
+            return;
+        }
+        socket.data.userId = authenticatedUserId;
         next();
     } catch {
         next(new Error('Unauthorized'));

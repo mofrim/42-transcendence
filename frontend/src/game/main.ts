@@ -80,6 +80,7 @@ export function startGame(
     } else {
         socketAuth = {
             role: 'player',
+            userId: user.id,
             character: whichCharacter,
             nickname: user.nickname,
         };

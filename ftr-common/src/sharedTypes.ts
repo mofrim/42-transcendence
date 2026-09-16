@@ -303,6 +303,7 @@ export const PLAYER_NETWORK_UPDATE_INTERVAL_SECONDS =
 
 export type PlayerSocketAuth = {
     role?: 'player';
+    userId: number;
     character: boolean;
     nickname: string;
 };
