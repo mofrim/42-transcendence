@@ -1,0 +1,70 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+repo_root=$(git rev-parse --show-toplevel)
+cd "$repo_root"
+
+pathspecs=(
+    '*.js'
+    '*.jsx'
+    '*.mjs'
+    '*.cjs'
+    '*.ts'
+    '*.tsx'
+    '*.mts'
+    '*.cts'
+    '*.json'
+    '*.jsonc'
+    '*.css'
+    '*.scss'
+    '*.less'
+    '*.html'
+    '*.md'
+    '*.mdx'
+    '*.yaml'
+    '*.yml'
+    '*.graphql'
+    '*.gql'
+)
+
+mapfile -d '' staged_files < <(
+    git diff --cached --name-only --diff-filter=ACMR -z -- "${pathspecs[@]}"
+)
+
+if ((${#staged_files[@]} == 0)); then
+    exit 0
+fi
+
+partially_staged_files=()
+for file in "${staged_files[@]}"; do
+    if ! git diff --quiet -- "$file"; then
+        partially_staged_files+=("$file")
+    fi
+done
+
+if ((${#partially_staged_files[@]} > 0)); then
+    printf 'pre-commit: Prettier cannot safely auto-stage partially staged files:\n' >&2
+    printf '  %s\n' "${partially_staged_files[@]}" >&2
+    printf 'Stage or restore those files before committing.\n' >&2
+    exit 1
+fi
+
+if [[ ! -f node_modules/prettier/bin/prettier.cjs ]]; then
+    printf 'pre-commit: node_modules/prettier/bin/prettier.cjs is missing.\n' >&2
+    exit 1
+fi
+
+if ! command -v node >/dev/null 2>&1 ||
+    ! node -e 'if (Number(process.versions.node.split(".")[0]) < 14) process.exit(1)'; then
+    printf 'pre-commit: Node.js 14+ is required to run Prettier.\n' >&2
+    exit 1
+fi
+
+node ./node_modules/prettier/bin/prettier.cjs \
+    --write \
+    --ignore-unknown \
+    -- \
+    "${staged_files[@]}"
+
+git add -- "${staged_files[@]}"
