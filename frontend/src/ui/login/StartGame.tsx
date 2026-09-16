@@ -11,7 +11,6 @@ import {
 } from 'ftr-common/sharedTypes';
 import { useMatchHistory } from '../../hooks/useMatchHistory';
 import { GameUI, type DialogPanelState } from '../ingame/GameUI';
-import { useFriendList } from '../ingame/FriendList';
 import { useFriendRequest } from '../ingame/FriendRequest';
 import {
     applyQuestCompletionEvent,
@@ -56,8 +55,6 @@ export const Game: React.FC<{
     const [completedQuestIds, setCompletedQuestIds] = useState<string[]>([]);
     const [gameResetVersion, setGameResetVersion] = useState(0);
     const [isGameplayReady, setIsGameplayReady] = useState(false);
-    const { friends, handleFriendRequestChange: handleFriendListChange } =
-        useFriendList();
     const [dialog, setDialog] = useState<DialogPanelState>({
         isOpen: false,
         message: '',
@@ -82,12 +79,17 @@ export const Game: React.FC<{
         ? spectatorEventLog
         : { events: realEvents, appendEvent: realAppendEvent };
 
-    const { friendRequest, setFriendRequest, handleFriendRequestChange } =
-        useFriendRequest({
-            onFriendListChange: handleFriendListChange,
-            appendEvent,
-            user: user!,
-        });
+    const {
+        friends,
+        friendRequest,
+        handleFriendRequestChange,
+        resetFriendRequest,
+        removeFriend,
+    } = useFriendRequest({
+        appendEvent,
+        runtimeRef: gameRuntimeRef,
+        user: user!,
+    });
 
     /** Runtime-Ereignisse bleiben auch außerhalb des Sichtfelds sichtbar. */
     const handleGameEvent = useCallback(
@@ -133,10 +135,6 @@ export const Game: React.FC<{
         [appendEvent]
     );
 
-    const handleFriendRemove = useCallback((friendPlayerId: string): void => {
-        gameRuntimeRef.current?.removeFriend(friendPlayerId);
-    }, []);
-
     const handleQuestStatusChange = useCallback(
         (statusChange: QuestStatusChange): void => {
             if (!statusChange.completed) {
@@ -173,9 +171,9 @@ export const Game: React.FC<{
     const handleGameReset = useCallback((): void => {
         metPlayerNicknamesRef.current.clear();
         setCompletedQuestIds([]);
-        setFriendRequest(null);
+        resetFriendRequest();
         setGameResetVersion((currentVersion) => currentVersion + 1);
-    }, [setFriendRequest]);
+    }, [resetFriendRequest]);
 
     /** suck up */
     const exitLocalPlayer = useCallback(async (): Promise<void> => {
@@ -298,7 +296,7 @@ export const Game: React.FC<{
             blackHoleCountdownActive: isGameplayReady,
             friendRequest,
             friends,
-            onFriendRemove: handleFriendRemove,
+            onFriendRemove: removeFriend,
         };
     }
 

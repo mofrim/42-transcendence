@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import { RPSChoice } from 'ftr-common/sharedTypes';
-
 import type { Camera } from './camera.js';
 import type { InteractionManager } from './interaction_manager.js';
 import type { MultiplayerManager } from './multiplayer.js';
@@ -77,7 +76,6 @@ export class Input {
             this.domElement.removeEventListener('click', this.onClick);
             this.connected = false;
         }
-
         this.stop();
     }
 
@@ -94,7 +92,6 @@ export class Input {
         if (!player || !camera || this.isLocalPlayerDespawning()) {
             return;
         }
-
         const speedDelta = deltaTime * player.controls.runVelocity;
         if (this.keyStates['KeyW'] || this.keyStates['ArrowUp']) {
             player.playerVelocity.addScaledVector(
@@ -131,7 +128,6 @@ export class Input {
         const player = this.getPlayer();
         const rpsGame = this.getRPSGame();
         if (!player || !rpsGame) return;
-
         if (player.battleRequested) {
             player.battleRequested = false;
             if (rpsGame.playerInRange)
@@ -169,7 +165,6 @@ export class Input {
         const player = this.getPlayer();
         const rpsGame = this.getRPSGame();
         if (!player || !rpsGame) return;
-
         if (player.battleRequested) {
             player.battleRequested = false;
             if (rpsGame.playerInRange)
@@ -194,15 +189,12 @@ export class Input {
         const player = this.getPlayer();
         const rpsGame = this.getRPSGame();
         if (!player || !rpsGame) return;
-
         if (rpsGame.rps_choiceMade) return;
         if (!player.inRPSBattleMode) return;
         if (!rpsGame.inBattleChooseMode) return;
-
         console.log(
             choice.charAt(0).toUpperCase() + choice.slice(1) + ' key pressed'
         );
-
         rpsGame.rps_choiceMade = true;
         this.getMultiplayer()?.emitBattleChoice(choice);
     }
@@ -213,7 +205,6 @@ export class Input {
         if (!rpsGame?.inRange || !multiplayer) {
             return null;
         }
-
         const nearbyPlayer = rpsGame.playerInRange;
         if (
             !nearbyPlayer ||
@@ -222,7 +213,6 @@ export class Input {
         ) {
             return null;
         }
-
         return nearbyPlayer;
     }
 
@@ -233,7 +223,6 @@ export class Input {
             console.log('No player in range to interact with.');
             return;
         }
-
         multiplayer.emitBattleRequest(nearbyPlayer.id);
     }
 
@@ -244,14 +233,12 @@ export class Input {
             console.log('No player in range to interact with.');
             return;
         }
-
         multiplayer.emitFriendRequest(nearbyPlayer.id);
     }
 
     private onPressEscape(): void {
         const storyManager = this.getStoryManager();
         if (storyManager) storyManager.skipCameraAnimation = true;
-
         const player = this.getPlayer();
         const tttGame = this.getTTTGame();
         if (!player || !tttGame) {
@@ -265,7 +252,6 @@ export class Input {
 
     private readonly onClick = (event: MouseEvent): void => {
         if (this.isLocalPlayerDespawning()) return;
-
         this.tttPointer.set(
             THREE.MathUtils.mapLinear(
                 event.clientX,
@@ -282,10 +268,8 @@ export class Input {
                 -1
             )
         );
-
         const camera = this.getCamera();
         if (!camera) return;
-
         this.tttRaycaster.setFromCamera(this.tttPointer, camera.camera);
         this.tttRaycastHits.length = 0;
         this.tttRaycaster.intersectObjects(
@@ -293,10 +277,8 @@ export class Input {
             false,
             this.tttRaycastHits
         );
-
         const firstHit = this.tttRaycastHits[0];
         if (!firstHit) return;
-
         console.log('Clicked on: ' + firstHit.object.name);
         if (firstHit.object.name.includes('TTT_Board')) {
             this.getMultiplayer()?.emitTTTMark(firstHit.object.name);
@@ -308,10 +290,8 @@ export class Input {
     private readonly onKeyDown = (event: KeyboardEvent): void => {
         const player = this.getPlayer();
         if (!player || this.isLocalPlayerDespawning()) return;
-
         const storyManager = this.getStoryManager();
         if (storyManager?.inCutscene) return;
-
         this.keyStates[event.code] = true;
         player.controls.key = this.keys;
         switch (event.code) {
@@ -343,7 +323,6 @@ export class Input {
     private readonly onKeyUp = (event: KeyboardEvent): void => {
         const player = this.getPlayer();
         if (!player || this.isLocalPlayerDespawning()) return;
-
         this.keyStates[event.code] = false;
         player.controls.key = this.keys;
         switch (event.code) {

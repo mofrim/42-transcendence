@@ -1,13 +1,9 @@
 import { useCallback, useState } from 'react';
-
 import type {
     FriendListEntry,
     FriendRequestChangeHandler,
     FriendRequestState,
 } from 'ftr-common/sharedTypes';
-
-import { getFriendRequestMessage } from './FriendRequest';
-
 export const FRIENDS_PANEL_ID = 'game-friends-panel';
 
 type FriendListProps = {
@@ -18,9 +14,27 @@ type FriendListProps = {
 };
 
 // eslint-disable-next-line react-refresh/only-export-components
+export function getFriendRequestMessage(
+    friendRequest: FriendRequestState | null | undefined
+): string {
+    if (!friendRequest) {
+        return 'No pending friend requests.';
+    }
+    if (friendRequest.status === 'incoming') {
+        return `${friendRequest.nickname} sent you a friend request.  Press\n👍🏻 [Y] ⌨️ to accept or\n👎🏻 [X] ⌨️ to decline.`;
+    }
+    if (friendRequest.status === 'sent') {
+        return `Friend request sent to ${friendRequest.nickname}.`;
+    }
+    if (friendRequest.status === 'removed') {
+        return `Friendship with ${friendRequest.nickname} removed.`;
+    }
+    return `Friend request with ${friendRequest.nickname} ${friendRequest.status}.`;
+}
+
+// eslint-disable-next-line react-refresh/only-export-components
 export function useFriendList() {
     const [friends, setFriends] = useState<FriendListEntry[]>([]);
-
     const handleFriendRequestChange = useCallback<FriendRequestChangeHandler>(
         (state): void => {
             if (state?.status === 'accepted') {
@@ -33,12 +47,10 @@ export function useFriendList() {
                     ) {
                         return currentFriends;
                     }
-
                     return [...currentFriends, state];
                 });
                 return;
             }
-
             if (state?.status === 'removed') {
                 setFriends((currentFriends) =>
                     currentFriends.filter(
@@ -50,10 +62,23 @@ export function useFriendList() {
         },
         []
     );
-
     return {
         friends,
         handleFriendRequestChange,
+    };
+}
+
+// eslint-disable-next-line react-refresh/only-export-components
+export function useFriendListPanel(
+    friendRequest: FriendRequestState | null | undefined
+) {
+    const [isOpen, setIsOpen] = useState(false);
+    const toggle = useCallback((): void => {
+        setIsOpen((currentIsOpen) => !currentIsOpen);
+    }, []);
+    return {
+        isOpen: isOpen || Boolean(friendRequest),
+        toggle,
     };
 }
 
@@ -86,7 +111,6 @@ export function FriendList({
                             </button>
                         );
                     }
-
                     return (
                         <li key={friend.playerId} className='hud-friend-item'>
                             <span className='hud-friend-name'>
@@ -99,7 +123,6 @@ export function FriendList({
             </ul>
         );
     }
-
     return (
         <aside
             id={FRIENDS_PANEL_ID}

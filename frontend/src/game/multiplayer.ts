@@ -5,7 +5,11 @@ import type { Socket } from 'socket.io-client';
 import type { Player } from './player.js';
 import { Remote_Player } from './remote_player.js';
 import { Chat } from './Chat.js';
-import { FriendRequestManager } from '../ui/ingame/FriendRequest.js';
+import {
+    createFriendRequestRuntimeActions,
+    FriendRequestManager,
+    type FriendRequestRuntimeActions,
+} from '../ui/ingame/FriendRequest.js';
 
 import {
     EventType,
@@ -15,8 +19,6 @@ import {
     User,
     type Character,
     type FriendRequestChangeHandler,
-    type FriendRemovePayload,
-    type FriendRequestPayload,
     type GameEvent,
     type PlayerConnectedPayload,
     type PlayerMovementPayload,
@@ -51,8 +53,6 @@ type MultiplayerSocketUpdate =
     | TTTMarkPayload
     | TTTWinPayload
     | TTTDrawPayload
-    | FriendRemovePayload
-    | FriendRequestPayload
     | RPSRequestDataPayload
     | RPSWinnerPayload
     | RPSDrawPayload
@@ -76,6 +76,10 @@ type MultiplayerGameHandlers = {
     readonly onDisconnect?: (reason: string) => void;
 };
 
+export type MultiplayerRuntimeActions = FriendRequestRuntimeActions & {
+    readonly sendChatMessage: (message: string) => void;
+};
+
 type MultiplayerManagerOptions = {
     readonly socket: Socket;
     readonly localPlayer: Player | null;
@@ -86,6 +90,29 @@ type MultiplayerManagerOptions = {
     readonly onFriendRequestChange: FriendRequestChangeHandler | undefined;
     readonly gameHandlers?: MultiplayerGameHandlers;
 };
+
+export function createMultiplayerRuntimeActions(options: {
+    readonly isDisposed: () => boolean;
+    readonly getMultiplayer: () => MultiplayerManager | null;
+}): MultiplayerRuntimeActions {
+    const friendRequestRuntimeActions = createFriendRequestRuntimeActions({
+        isDisposed: options.isDisposed,
+        removeFriend: (friendPlayerId) => {
+            options.getMultiplayer()?.removeFriend(friendPlayerId);
+        },
+    });
+
+    return {
+        ...friendRequestRuntimeActions,
+        sendChatMessage(message: string): void {
+            if (options.isDisposed()) {
+                return;
+            }
+
+            options.getMultiplayer()?.sendChatMessage(message);
+        },
+    };
+}
 
 export class MultiplayerManager {
     scene: THREE.Scene;
@@ -233,7 +260,6 @@ export class MultiplayerManager {
     // FIXME clarify EventData for this event!
     private readonly handlePlayerDisconnected = (id: string): void => {
         console.log('someone left:', id);
-        this.friendRequest.handlePlayerDisconnected(id);
         const disconnectedPlayer = this.players.get(id);
         this.onGameEvent?.({
             eventType: EventType.PlayerLeft,
@@ -253,7 +279,6 @@ export class MultiplayerManager {
     };
 
     private readonly handleSocketDisconnect = (reason: string): void => {
-        this.friendRequest.handleSocketDisconnect();
         if (this.localPlayer) {
             this.localPlayer.id = undefined;
         }
@@ -317,16 +342,6 @@ export class MultiplayerManager {
                 break;
             case 'rps_invalid':
                 this.gameHandlers.onRPSInvalid?.(data);
-                break;
-            case 'friend_request':
-                this.friendRequest.handleRequest(data);
-                break;
-            case 'friend_accept':
-            case 'friend_decline':
-                this.friendRequest.handleResponse(data);
-                break;
-            case 'friend_remove':
-                this.friendRequest.handleRemoval(data);
                 break;
         }
     };

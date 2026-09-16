@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, type RefObject } from 'react';
 import type { Socket } from 'socket.io-client';
-
 import type { Remote_Player } from '../../game/remote_player.js';
+import { useFriendList } from './FriendList';
+export { getFriendRequestMessage } from './FriendList';
 import {
     EventType,
     type GameEvent,
@@ -21,8 +22,31 @@ const FRIEND_REQUEST_RESULT_DISPLAY_MS = 4_000;
 type UseFriendRequestOptions = {
     readonly onFriendListChange?: FriendRequestChangeHandler;
     readonly appendEvent?: (event: GameEvent) => void;
+    readonly runtimeRef?: RefObject<FriendRequestRuntimeActions | null>;
     readonly user?: User;
 };
+
+export type FriendRequestRuntimeActions = {
+    readonly removeFriend: (friendPlayerId: string) => void;
+};
+
+type FriendRequestRuntimeActionsOptions = {
+    readonly isDisposed: () => boolean;
+    readonly removeFriend: (friendPlayerId: string) => void;
+};
+
+export function createFriendRequestRuntimeActions(
+    options: FriendRequestRuntimeActionsOptions
+): FriendRequestRuntimeActions {
+    return {
+        removeFriend(friendPlayerId: string): void {
+            if (options.isDisposed()) {
+                return;
+            }
+            options.removeFriend(friendPlayerId);
+        },
+    };
+}
 
 type FriendRequestManagerOptions = {
     readonly socket: Socket;
@@ -34,6 +58,19 @@ type FriendRequestManagerOptions = {
         fallbackNickname?: string
     ) => string;
 };
+
+export type FriendRequestUpdate = FriendRequestPayload | FriendRemovePayload;
+
+export function isFriendRequestUpdate(data: {
+    readonly type: string;
+}): data is FriendRequestUpdate {
+    return (
+        data.type === 'friend_request' ||
+        data.type === 'friend_accept' ||
+        data.type === 'friend_decline' ||
+        data.type === 'friend_remove'
+    );
+}
 
 function getFriendResponseStatus(
     responseType: FriendResponseType
@@ -47,8 +84,7 @@ function getFriendResponseStatus(
 export class FriendRequestManager {
     private readonly socket: Socket;
     private readonly players: ReadonlyMap<string, Remote_Player>;
-    private readonly onFriendRequestChange:
-        FriendRequestChangeHandler | undefined;
+    private onFriendRequestChange: FriendRequestChangeHandler | undefined;
     private readonly getLocalPlayerId: () => string | undefined;
     private readonly resolvePlayerNickname: (
         playerId: string,
@@ -57,13 +93,48 @@ export class FriendRequestManager {
     private pendingRequesterId: string | null = null;
     private pendingRecipientId: string | null = null;
     private readonly friendPlayerIds = new Set<string>();
-
     constructor(options: FriendRequestManagerOptions) {
         this.socket = options.socket;
         this.players = options.players;
         this.onFriendRequestChange = options.onFriendRequestChange;
         this.getLocalPlayerId = options.getLocalPlayerId;
         this.resolvePlayerNickname = options.resolvePlayerNickname;
+        this.bindSocketEvents();
+    }
+    private readonly handleSocketUpdate = (data: {
+        readonly type: string;
+    }): void => {
+        if (isFriendRequestUpdate(data)) {
+            this.handleUpdate(data);
+        }
+    };
+
+    private readonly handlePlayerDisconnectedEvent = (
+        playerId: string
+    ): void => {
+        this.handlePlayerDisconnected(playerId);
+    };
+
+    private readonly handleSocketDisconnectEvent = (): void => {
+        this.handleSocketDisconnect();
+    };
+
+    private bindSocketEvents(): void {
+        this.socket.on('update', this.handleSocketUpdate);
+        this.socket.on(
+            'player_disconnected',
+            this.handlePlayerDisconnectedEvent
+        );
+        this.socket.on('disconnect', this.handleSocketDisconnectEvent);
+    }
+
+    private unbindSocketEvents(): void {
+        this.socket.off('update', this.handleSocketUpdate);
+        this.socket.off(
+            'player_disconnected',
+            this.handlePlayerDisconnectedEvent
+        );
+        this.socket.off('disconnect', this.handleSocketDisconnectEvent);
     }
 
     private isForLocalPlayer(
@@ -98,7 +169,6 @@ export class FriendRequestManager {
         if (!this.isForLocalPlayer(data)) {
             return;
         }
-
         if (this.pendingRecipientId === data.id) {
             this.pendingRecipientId = null;
         }
@@ -114,18 +184,15 @@ export class FriendRequestManager {
         if (!this.isForLocalPlayer(data)) {
             return;
         }
-
         if (data.type === 'friend_request') {
             return;
         }
-
         if (this.pendingRecipientId === data.id) {
             this.pendingRecipientId = null;
         }
         if (data.type === 'friend_accept') {
             this.friendPlayerIds.add(data.id);
         }
-
         this.onFriendRequestChange?.({
             status: getFriendResponseStatus(data.type),
             playerId: data.id,
@@ -149,8 +216,19 @@ export class FriendRequestManager {
         if (!this.isForLocalPlayer(data)) {
             return;
         }
-
         this.applyFriendRemoval(data.id, data.nickname);
+    }
+
+    handleUpdate(data: FriendRequestUpdate): void {
+        if (data.type === 'friend_request') {
+            this.handleRequest(data);
+            return;
+        }
+        if (data.type === 'friend_remove') {
+            this.handleRemoval(data);
+            return;
+        }
+        this.handleResponse(data);
     }
 
     sendRequest(requestedPlayerId: string): void {
@@ -158,7 +236,6 @@ export class FriendRequestManager {
         if (!requestedPlayer?.isActive()) {
             return;
         }
-
         if (
             this.friendPlayerIds.has(requestedPlayerId) ||
             this.pendingRequesterId !== null ||
@@ -166,9 +243,7 @@ export class FriendRequestManager {
         ) {
             return;
         }
-
         this.pendingRecipientId = requestedPlayerId;
-
         this.socket.emit(
             'update',
             {
@@ -183,11 +258,9 @@ export class FriendRequestManager {
                     }
                     return;
                 }
-
                 if (this.pendingRecipientId !== requestedPlayerId) {
                     return;
                 }
-
                 this.onFriendRequestChange?.({
                     status: 'sent',
                     playerId: requestedPlayerId,
@@ -202,7 +275,6 @@ export class FriendRequestManager {
         if (requesterId === null) {
             return false;
         }
-
         this.pendingRequesterId = null;
         if (responseType === 'friend_accept') {
             this.friendPlayerIds.add(requesterId);
@@ -240,13 +312,14 @@ export class FriendRequestManager {
                 if (!result.removed) {
                     return;
                 }
-
                 this.applyFriendRemoval(friendPlayerId);
             }
         );
     }
 
     dispose(): void {
+        this.unbindSocketEvents();
+        this.onFriendRequestChange = undefined;
         this.pendingRequesterId = null;
         this.pendingRecipientId = null;
         this.friendPlayerIds.clear();
@@ -254,18 +327,19 @@ export class FriendRequestManager {
 }
 
 export function useFriendRequest(options: UseFriendRequestOptions = {}) {
-    const { onFriendListChange, appendEvent, user } = options;
+    const { onFriendListChange, appendEvent, runtimeRef, user } = options;
+    const { friends, handleFriendRequestChange: handleFriendListChange } =
+        useFriendList();
     const [friendRequest, setFriendRequest] =
         useState<FriendRequestState | null>(null);
-
     const handleFriendRequestChange = useCallback<FriendRequestChangeHandler>(
         (state): void => {
+            handleFriendListChange(state);
             onFriendListChange?.(state);
             setFriendRequest(state);
             if (!state) {
                 return;
             }
-
             if (appendEvent && user) {
                 appendEvent({
                     eventType: EventType.FriendRequest,
@@ -278,7 +352,18 @@ export function useFriendRequest(options: UseFriendRequestOptions = {}) {
                 });
             }
         },
-        [appendEvent, onFriendListChange, user]
+        [appendEvent, handleFriendListChange, onFriendListChange, user]
+    );
+
+    const resetFriendRequest = useCallback((): void => {
+        setFriendRequest(null);
+    }, []);
+
+    const removeFriend = useCallback(
+        (friendPlayerId: string): void => {
+            runtimeRef?.current?.removeFriend(friendPlayerId);
+        },
+        [runtimeRef]
     );
 
     useEffect(() => {
@@ -289,7 +374,6 @@ export function useFriendRequest(options: UseFriendRequestOptions = {}) {
         ) {
             return;
         }
-
         const timeoutId = window.setTimeout(() => {
             setFriendRequest(null);
         }, FRIEND_REQUEST_RESULT_DISPLAY_MS);
@@ -300,30 +384,11 @@ export function useFriendRequest(options: UseFriendRequestOptions = {}) {
     }, [friendRequest]);
 
     return {
+        friends,
         friendRequest,
         setFriendRequest,
         handleFriendRequestChange,
+        resetFriendRequest,
+        removeFriend,
     };
-}
-
-export function getFriendRequestMessage(
-    friendRequest: FriendRequestState | null | undefined
-): string {
-    if (!friendRequest) {
-        return 'No pending friend requests.';
-    }
-
-    if (friendRequest.status === 'incoming') {
-        return `${friendRequest.nickname} sent you a friend request.  Press\n👍🏻 [Y] ⌨️ to accept or\n👎🏻 [X] ⌨️ to decline.`;
-    }
-
-    if (friendRequest.status === 'sent') {
-        return `Friend request sent to ${friendRequest.nickname}.`;
-    }
-
-    if (friendRequest.status === 'removed') {
-        return `Friendship with ${friendRequest.nickname} removed.`;
-    }
-
-    return `Friend request with ${friendRequest.nickname} ${friendRequest.status}.`;
 }

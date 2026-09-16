@@ -30,7 +30,7 @@ import {
 
 import { CharacterPreviewView } from '../login/PreviewCharacter';
 import { EventLogItems, type EventLogEntry } from './EventLogItems';
-import { FRIENDS_PANEL_ID, FriendList } from './FriendList';
+import { FRIENDS_PANEL_ID, FriendList, useFriendListPanel } from './FriendList';
 import { Leaderboard } from './Leaderboard';
 import { MatchHistory } from './MatchHistory';
 import { MAX_EVENT_LOG_ENTRIES } from '../../lib/eventLogUtils';
@@ -161,7 +161,6 @@ export function GameUI({
 }: GameUIProps) {
     const [isQuestLogOpen, setIsQuestLogOpen] = useState(false);
     const [isProfileOpen, setIsProfileOpen] = useState(false);
-    const [isFriendsOpen, setIsFriendsOpen] = useState(false);
     const [isMatchHistoryOpen, setIsMatchHistoryOpen] = useState(false);
     const [isLeaderboardOpen, setIsLeaderboardOpen] = useState(false);
     const [isChatOpen, setIsChatOpen] = useState(false);
@@ -176,6 +175,8 @@ export function GameUI({
     const previousResolvedQuestsRef = useRef<
         readonly ResolvedQuestLogEntry[] | null
     >(null);
+    const { isOpen: friendsPanelOpen, toggle: handleFriendsToggle } =
+        useFriendListPanel(friendRequest);
 
     const handleQuestLogToggle = (): void => {
         setIsQuestLogOpen((isOpen) => !isOpen);
@@ -183,10 +184,6 @@ export function GameUI({
 
     const handleProfileToggle = (): void => {
         setIsProfileOpen((isOpen) => !isOpen);
-    };
-
-    const handleFriendsToggle = (): void => {
-        setIsFriendsOpen((isOpen) => !isOpen);
     };
 
     const handleMatchHistoryToggle = (): void => {
@@ -354,8 +351,6 @@ export function GameUI({
     if (isSpectator) {
         hudClassName += ' spectator-hud';
     }
-    const friendsPanelOpen = isFriendsOpen || Boolean(friendRequest);
-
     return (
         <div
             id='game-ui'
