@@ -244,6 +244,21 @@ export class User extends BaseUser {
     }
 }
 
+// ------------=[ types related to the backend API in general ]=------------ //
+
+// this is what the frontend can expect for API-calls that do not explicitly
+// other data.
+//
+// NOTE
+// TODO would be nice to have a more generalized form of this, which fits
+// for _EVERY_ API-call.. this would imply having some generalized or union-data
+// field on top. at least :/
+export type ApiStatusResponse = {
+    message: string;
+    status: 'error' | 'success';
+    id?: number;
+};
+
 // ----------------------------=[ other types ]=---------------------------- //
 
 export enum PlayerState {

@@ -103,7 +103,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
                     }
                 );
             } catch (error) {
-                // Distinguish invalid credentials from operational login failures so AuthCard can show the correct error path.
+                // Distinguish invalid credentials from operational login
+                // failures so AuthCard can show the correct error path.
                 if (
                     axios.isAxiosError(error) &&
                     error.response?.status === 401

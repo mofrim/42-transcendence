@@ -244,7 +244,7 @@ app.post(
         const errors = validationResult(req);
         if (!errors.isEmpty()) {
             logReg.warn('Got bad request from', req.ip);
-            res.status(400).json({ errors: errors.array() });
+            res.status(400).json(errors.array());
             return;
         }
 
@@ -260,7 +260,7 @@ app.post(
             });
             if (user !== null) {
                 logReg.warn(`user ${userNick} already exists in DB!`);
-                res.status(403).json({ error: 'user exists' });
+                res.status(403).json(mkStatus('user exists', 'error'));
                 return;
             }
             const newUser = new ORMUser({

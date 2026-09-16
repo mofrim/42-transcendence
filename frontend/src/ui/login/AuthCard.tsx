@@ -1,7 +1,59 @@
 import React, { useState } from 'react';
 import { Form, Input, Button, Card, message } from 'antd';
-import { UserOutlined, LockOutlined } from '@ant-design/icons';
+import type { GetProp, MessageArgsProps } from 'antd';
+import { UserOutlined, LockOutlined, MailOutlined } from '@ant-design/icons';
 import { useAuth } from '../../hooks/useAuthContext';
+import type { ValidationError } from 'express-validator';
+import axios from 'axios';
+import type { ApiStatusResponse } from 'ftr-common/sharedTypes';
+
+// -------------------------=[ style the messages ]=------------------------- //
+
+const errorStyles: GetProp<MessageArgsProps, 'styles', 'Return'> = {
+    root: {
+        backgroundColor: 'rgba(250, 250, 250, 0.6)',
+        border: '2px solid #bb3333',
+        borderRadius: 12,
+        boxShadow: '0 10px 30px rgba(0, 0, 0, 0.3)',
+    },
+    icon: {
+        color: '#952222',
+    },
+    title: {
+        color: '#952222',
+        fontWeight: 600,
+    },
+};
+
+const successStyles: GetProp<MessageArgsProps, 'styles', 'Return'> = {
+    root: {
+        backgroundColor: 'rgba(250, 250, 250, 0.6)',
+        border: '2px solid #95de64',
+        borderRadius: 12,
+        boxShadow: '0 10px 30px rgba(0, 0, 0, 0.3)',
+    },
+    icon: {
+        color: '#237804',
+    },
+    title: {
+        color: '#237804',
+        fontWeight: 600,
+    },
+};
+
+const showErrMsg = (content: string) => {
+    message.error({
+        content,
+        styles: errorStyles,
+    });
+};
+
+const showSuccessMsg = (content: string) => {
+    message.success({
+        content,
+        styles: successStyles,
+    });
+};
 
 // ---------------------------=[ the login form ]=--------------------------- //
 
@@ -22,13 +74,13 @@ const LoginForm: React.FC<LoginFormProps> = ({
         try {
             const success = await login(values.nickname, values.password);
             if (success) {
-                message.success('login successful!');
+                showSuccessMsg('Login successful!');
             } else {
-                message.error('invalid credentials!');
+                showErrMsg('Invalid credentials!');
             }
         } catch (err) {
             void err;
-            message.error('login malfunctioned. plz try again');
+            showErrMsg('Login malfunction! Plz try again');
         } finally {
             setLoading(false);
         }
@@ -44,7 +96,7 @@ const LoginForm: React.FC<LoginFormProps> = ({
             >
                 <Form.Item
                     name='nickname'
-                    rules={[{ required: true, message: 'nickname required' }]}
+                    rules={[{ required: true, message: 'Nickname required' }]}
                 >
                     <Input
                         prefix={<UserOutlined />}
@@ -55,7 +107,7 @@ const LoginForm: React.FC<LoginFormProps> = ({
 
                 <Form.Item
                     name='password'
-                    rules={[{ required: true, message: 'pw required' }]}
+                    rules={[{ required: true, message: 'PW required' }]}
                 >
                     <Input.Password
                         prefix={<LockOutlined />}
@@ -100,15 +152,38 @@ interface RegisterFormProps {
 
 function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
     const onFinish = async (values: {
-        // firstName: string;
-        // lastName: string;
         nickname: string;
         email: string;
         password: string;
     }) => {
-        // TODO add user-creation logic here! needs the working user-sercice in
-        // backend
-        message.info(`(TODO) user registered: ${JSON.stringify(values)}`);
+        try {
+            await axios.post<ApiStatusResponse>('/api/user/register', values);
+        } catch (err) {
+            if (
+                axios.isAxiosError<ValidationError[]>(err) &&
+                err.response?.status === 400
+            ) {
+                const errors = err.response.data;
+                if (errors.some((error) => error.msg === 'pw invalid length'))
+                    showErrMsg('Registration failed: PW invalid length');
+
+                if (errors.some((error) => error.msg === 'invalid email'))
+                    showErrMsg('Registration failed: Invalid email');
+                return;
+            }
+            if (
+                axios.isAxiosError<ApiStatusResponse>(err) &&
+                err.response?.status === 403
+            ) {
+                showErrMsg(`Registration failed: Nickname exists`);
+                return;
+            }
+            showErrMsg(`Registration failed`);
+            console.error('Registration failed:', err);
+            return;
+        }
+        showSuccessMsg(`Registration successful! You may login now.`);
+        onSwitchToLogin();
     };
 
     return (
@@ -129,26 +204,16 @@ function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
                         size='large'
                     />
                 </Form.Item>
-
-                {/* <Form.Item
-                    name='firstName'
-                    rules={[{ required: true, message: 'firstName required' }]}
-                >
-                    <Input placeholder='firstName' size='large' />
-                </Form.Item>
-
-                <Form.Item
-                    name='lastName'
-                    rules={[{ required: true, message: 'lastName required' }]}
-                >
-                    <Input placeholder='lastName' size='large' />
-                </Form.Item> */}
-
                 <Form.Item
                     name='email'
                     rules={[{ required: true, message: 'email required' }]}
                 >
-                    <Input type='email' placeholder='email' size='large' />
+                    <Input
+                        prefix={<MailOutlined />}
+                        type='email'
+                        placeholder='email'
+                        size='large'
+                    />
                 </Form.Item>
 
                 <Form.Item
