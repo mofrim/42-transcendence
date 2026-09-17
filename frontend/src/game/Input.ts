@@ -38,6 +38,8 @@ export class Input {
     private readonly getStoryManager: () => Story_Manager | null;
     private readonly getInteractionManager: () => InteractionManager | null;
     private readonly isLocalPlayerDespawning: () => boolean;
+    private readonly movementForward = new THREE.Vector3();
+    private readonly movementSide = new THREE.Vector3();
     private readonly tttPointer = new THREE.Vector2();
     private readonly tttRaycaster = new THREE.Raycaster();
     private readonly tttRaycastHits: THREE.Intersection[] = [];
@@ -92,28 +94,39 @@ export class Input {
         if (!player || !camera || this.isLocalPlayerDespawning()) {
             return;
         }
+
+        const moveForward = this.keyStates['KeyW'] || this.keyStates['ArrowUp'];
+        const moveBackward =
+            this.keyStates['KeyS'] || this.keyStates['ArrowDown'];
+        const moveLeft = this.keyStates['KeyA'] || this.keyStates['ArrowLeft'];
+        const moveRight =
+            this.keyStates['KeyD'] || this.keyStates['ArrowRight'];
+
+        if (!moveForward && !moveBackward && !moveLeft && !moveRight) {
+            return;
+        }
+
         const speedDelta = deltaTime * player.controls.runVelocity;
-        if (this.keyStates['KeyW'] || this.keyStates['ArrowUp']) {
-            player.playerVelocity.addScaledVector(
-                player.getForwardVector(camera.camera),
-                speedDelta
-            );
+        const forward = camera.camera
+            .getWorldDirection(this.movementForward)
+            .projectOnPlane(camera.camera.up)
+            .normalize();
+        this.movementSide.crossVectors(forward, camera.camera.up);
+        if (moveForward) {
+            player.playerVelocity.addScaledVector(forward, speedDelta);
         }
-        if (this.keyStates['KeyS'] || this.keyStates['ArrowDown']) {
+        if (moveBackward) {
+            player.playerVelocity.addScaledVector(forward, -speedDelta);
+        }
+        if (moveLeft) {
             player.playerVelocity.addScaledVector(
-                player.getForwardVector(camera.camera),
+                this.movementSide,
                 -speedDelta
             );
         }
-        if (this.keyStates['KeyA'] || this.keyStates['ArrowLeft']) {
+        if (moveRight) {
             player.playerVelocity.addScaledVector(
-                player.getSideVector(camera.camera),
-                -speedDelta
-            );
-        }
-        if (this.keyStates['KeyD'] || this.keyStates['ArrowRight']) {
-            player.playerVelocity.addScaledVector(
-                player.getSideVector(camera.camera),
+                this.movementSide,
                 speedDelta
             );
         }
