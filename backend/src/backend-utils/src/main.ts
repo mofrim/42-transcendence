@@ -1,6 +1,6 @@
-import { DataSource } from 'typeorm';
+import type { DataSource } from 'typeorm';
 import { ORMUser } from 'ftr-common/ormTypes';
-import { User } from 'ftr-common/sharedTypes';
+import type { ApiStatusResponse, User } from 'ftr-common/sharedTypes';
 
 // get the id belonging to a nickname string
 export const getUserId = async (
@@ -22,8 +22,7 @@ export const getUserById = async (
     userId: number
 ): Promise<User | null> => {
     try {
-        const exists = await db.manager.findOneBy(ORMUser, { id: userId });
-        return exists === null ? null : exists;
+        return await db.manager.findOneBy(ORMUser, { id: userId });
     } catch (err) {
         console.error(err);
         return null;
@@ -37,7 +36,7 @@ export const getUserByIdNoPw = async (
     userId: number
 ): Promise<User | null> => {
     try {
-        const exists = await db.manager.findOne(ORMUser, {
+        return await db.manager.findOne(ORMUser, {
             where: {
                 id: userId,
             },
@@ -51,7 +50,6 @@ export const getUserByIdNoPw = async (
                 // QUESTION add friends here?!
             },
         });
-        return exists === null ? null : exists;
     } catch (err) {
         console.error(err);
         return null;
@@ -63,6 +61,9 @@ export const mkStatus = (
     message: string,
     status: 'error' | 'success',
     id?: number
-) => {
-    return id !== undefined ? { message, status, id } : { message, status };
+): ApiStatusResponse => {
+    if (id === undefined) {
+        return { message, status };
+    }
+    return { message, status, id };
 };
