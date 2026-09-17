@@ -41,6 +41,7 @@ import {
     EventType,
     User,
     type FriendRequestChangeHandler,
+    type FriendStateSnapshotHandler,
     type GLBMesh,
     type ReceivedChatPayload,
     type SocketAuth,
@@ -66,7 +67,8 @@ export function startGame(
     onChatMessage?: (message: ReceivedChatPayload) => void,
     onGameReset?: () => void,
     onGameplayReady?: () => void,
-    onFriendRequestChange?: FriendRequestChangeHandler
+    onFriendRequestChange?: FriendRequestChangeHandler,
+    onFriendStateSnapshot?: FriendStateSnapshotHandler
 ): GameRuntime {
     // ============================================================================
     // SERVER CONNECTION
@@ -298,6 +300,7 @@ export function startGame(
             onGameEvent,
             onChatMessage,
             onFriendRequestChange,
+            onFriendStateSnapshot,
             gameHandlers: minigameEvent.handlers,
         });
 

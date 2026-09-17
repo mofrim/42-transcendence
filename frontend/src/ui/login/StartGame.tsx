@@ -83,6 +83,7 @@ export const Game: React.FC<{
         friends,
         friendRequest,
         handleFriendRequestChange,
+        handleFriendStateSnapshot,
         resetFriendRequest,
         removeFriend,
     } = useFriendRequest({
@@ -221,6 +222,8 @@ export const Game: React.FC<{
         let runtimeGameplayReadyHandler: (() => void) | undefined;
         let runtimeFriendRequestHandler:
             typeof handleFriendRequestChange | undefined;
+        let runtimeFriendStateSnapshotHandler:
+            typeof handleFriendStateSnapshot | undefined;
 
         if (!isSpectator) {
             gameMode = 'player';
@@ -229,6 +232,7 @@ export const Game: React.FC<{
             runtimeGameResetHandler = handleGameReset;
             runtimeGameplayReadyHandler = () => setIsGameplayReady(true);
             runtimeFriendRequestHandler = handleFriendRequestChange;
+            runtimeFriendStateSnapshotHandler = handleFriendStateSnapshot;
         }
 
         const runtime: GameRuntime = startGame(
@@ -242,7 +246,8 @@ export const Game: React.FC<{
             handleReceivedChatMessage,
             runtimeGameResetHandler,
             runtimeGameplayReadyHandler,
-            runtimeFriendRequestHandler
+            runtimeFriendRequestHandler,
+            runtimeFriendStateSnapshotHandler
         );
         gameRuntimeRef.current = runtime;
 
@@ -266,6 +271,7 @@ export const Game: React.FC<{
         handleGameEvent,
         handleGameReset,
         handleFriendRequestChange,
+        handleFriendStateSnapshot,
         handleReceivedChatMessage,
         isSpectator,
         user,

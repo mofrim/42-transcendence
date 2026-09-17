@@ -78,6 +78,7 @@ export function useFriendList() {
     );
     return {
         friends,
+        setFriends,
         handleFriendRequestChange,
     };
 }

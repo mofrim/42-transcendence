@@ -143,7 +143,7 @@ export type EventData =
     | {
           readonly friendNick: string;
           readonly friendRequestStatus: FriendStatus;
-            readonly friendRequestReason?: FriendRequestRejectionReason;
+          readonly friendRequestReason?: FriendRequestRejectionReason;
       }
     | {
           readonly game: 'Tic-Tac-Toe' | 'Rock-Paper-Scissors';
@@ -340,15 +340,22 @@ type PlayerTargetRequestPayload = {
 export type FriendResponseType = 'friend_accept' | 'friend_decline';
 
 export type FriendRequestPayload = PlayerTargetRequestPayload & {
-    type: 'friend_request' | FriendResponseType;
+    type: 'friend_request';
     friendUserId?: number;
 };
 
-export type FriendRemovePayload = {
-    type: 'friend_remove';
+type FriendUserPayload = {
     id: string;
     friendUserId: number;
     nickname?: string;
+};
+
+export type FriendResponsePayload = FriendUserPayload & {
+    type: FriendResponseType;
+};
+
+export type FriendRemovePayload = FriendUserPayload & {
+    type: 'friend_remove';
 };
 
 export type FriendRequestRejectionReason =
@@ -388,6 +395,19 @@ export type FriendListEntry = {
     readonly playerId: string;
     readonly nickname: string;
 };
+
+export type FriendPendingRequest = FriendListEntry & {
+    readonly direction: 'incoming' | 'outgoing';
+};
+
+export type FriendStateSnapshot = {
+    readonly friends: readonly FriendListEntry[];
+    readonly pendingRequest: FriendPendingRequest | null;
+};
+
+export type FriendStateSnapshotHandler = (
+    snapshot: FriendStateSnapshot
+) => void;
 
 export type FriendRequestState = FriendListEntry & {
     readonly status: FriendStatus;

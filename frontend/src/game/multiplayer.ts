@@ -19,6 +19,7 @@ import {
     User,
     type Character,
     type FriendRequestChangeHandler,
+    type FriendStateSnapshotHandler,
     type GameEvent,
     type PlayerConnectedPayload,
     type PlayerMovementPayload,
@@ -88,6 +89,7 @@ type MultiplayerManagerOptions = {
     readonly onChatMessage:
         ((message: ReceivedChatPayload) => void) | undefined;
     readonly onFriendRequestChange: FriendRequestChangeHandler | undefined;
+    readonly onFriendStateSnapshot: FriendStateSnapshotHandler | undefined;
     readonly gameHandlers?: MultiplayerGameHandlers;
 };
 
@@ -172,12 +174,7 @@ export class MultiplayerManager {
             socket: this.socket,
             players: this.players,
             onFriendRequestChange: options.onFriendRequestChange,
-            getLocalPlayerId: () => {
-                if (this.localPlayer?.id !== undefined) {
-                    return this.localPlayer.id;
-                }
-                return this.socket.id;
-            },
+            onFriendStateSnapshot: options.onFriendStateSnapshot,
             resolvePlayerNickname: (playerId, fallbackNickname) =>
                 this.resolvePlayerNickname(playerId, fallbackNickname),
         });
