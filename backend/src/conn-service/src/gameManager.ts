@@ -5,7 +5,6 @@ import {
     PlayerState,
     TTTMark,
 } from 'ftr-common/sharedTypes';
-
 import type {
     RPSGame,
     TTTGame,
@@ -13,6 +12,24 @@ import type {
     RPSRequestDataPayload,
     RPSBattleChoicePayload,
 } from 'ftr-common/sharedTypes';
+
+/** winning conditions states for Tic Tac Toe */
+const TTT_WINNING_LINES = [
+    [0, 1, 2],
+    [3, 4, 5],
+    [6, 7, 8],
+    [0, 3, 6],
+    [1, 4, 7],
+    [2, 5, 8],
+    [0, 4, 8],
+    [2, 4, 6],
+] as const;
+
+const RPS_WINNING_CHOICES = new Map<RPSChoice, RPSChoice>([
+    [RPSChoice.Rock, RPSChoice.Scissors],
+    [RPSChoice.Paper, RPSChoice.Rock],
+    [RPSChoice.Scissors, RPSChoice.Paper],
+]);
 
 export class GameManager {
     players: Map<string, PlayerData>;
@@ -36,69 +53,42 @@ export class GameManager {
         };
     }
 
-    removePlayer(id: string): void {
-        if (this.players.has(id)) this.players.delete(id);
-    }
-
-    getMapData(): TTTGame {
-        return this.tttGame;
-    }
-
     updatePlayer(
         id: string,
         x: number,
         y: number,
         z: number,
         state: PlayerState
-    ): void {
+    ): boolean {
         const player = this.players.get(id);
         if (!player) {
-            return;
+            return false;
         }
 
         Object.assign(player.position, { x, y, z });
         player.state = state;
+        return true;
     }
 
     // ====================================================================================================
     // Rock Paper Scissors Game
     // ====================================================================================================
 
-    createRPSGame(
-        gameID: string,
-        playerOne: string,
-        playerTwo: string
-    ): RPSGame {
-        return {
-            gameID: gameID,
-            playerOne: playerOne,
-            playerTwo: playerTwo,
-            playerOneChoice: RPSChoice.None,
-            playerTwoChoice: RPSChoice.None,
-            state: RPSGameState.Requested, // requested, inGame
-        };
-    }
-
     removeRPSGame(gameID: string): void {
         const rpsGame = this.rpsGame.get(gameID);
 
         if (!rpsGame) return;
 
-        const playerOne = rpsGame.playerOne;
-        if (playerOne) {
-            const player = this.players.get(playerOne);
-            if (player) {
-                player.gameID = null;
-                player.inGame = false;
+        for (const playerId of [rpsGame.playerOne, rpsGame.playerTwo]) {
+            if (!playerId) {
+                continue;
             }
-        }
-        const playerTwo = rpsGame.playerTwo;
-        if (playerTwo) {
-            const player = this.players.get(playerTwo);
-            if (player) {
-                player.gameID = null;
-                player.inGame = false;
+            const player = this.players.get(playerId);
+            if (!player) {
+                continue;
             }
+            player.gameID = null;
+            player.inGame = false;
         }
 
         this.rpsGame.delete(gameID);
@@ -133,11 +123,14 @@ export class GameManager {
         }
 
         const gameID = 'rps_' + data.id + '_' + data.requestedPlayerID;
-        const rpsGame = this.createRPSGame(
+        const rpsGame: RPSGame = {
             gameID,
-            data.id,
-            data.requestedPlayerID
-        );
+            playerOne: data.id,
+            playerTwo: data.requestedPlayerID,
+            playerOneChoice: RPSChoice.None,
+            playerTwoChoice: RPSChoice.None,
+            state: RPSGameState.Requested,
+        };
 
         playerRequested.gameID = gameID;
         playerRequested.inGame = true;
@@ -150,7 +143,11 @@ export class GameManager {
         return 1;
     }
 
-    rpsDeclined(data: RPSRequestDataPayload): number {
+    rpsRespond(data: RPSRequestDataPayload): number {
+        if (data.type !== 'rps_accept' && data.type !== 'rps_decline') {
+            return 0;
+        }
+
         const playerThis = this.players.get(data.id);
         const playerOther = this.players.get(data.requestedPlayerID);
 
@@ -181,41 +178,12 @@ export class GameManager {
             return 0;
         }
 
-        this.removeRPSGame(gameID);
-
-        // RPS Game Declined
-        return 1;
-    }
-
-    rpsAccept(data: RPSRequestDataPayload): number {
-        const playerThis = this.players.get(data.id);
-        const playerOther = this.players.get(data.requestedPlayerID);
-
-        if (!playerThis || !playerOther) return 0;
-
-        if (!playerThis.gameID) return 0;
-
-        const gameID = playerThis.gameID;
-        const rpsGame = this.rpsGame.get(gameID);
-
-        if (!rpsGame) return 0;
-        if (rpsGame.state !== RPSGameState.Requested) {
-            return 0;
-        }
-        if (playerOther.gameID !== gameID) {
-            return 0;
+        if (data.type === 'rps_accept') {
+            rpsGame.state = RPSGameState.InGame;
+        } else {
+            this.removeRPSGame(gameID);
         }
 
-        const playersMatch =
-            (rpsGame.playerOne === data.id &&
-                rpsGame.playerTwo === data.requestedPlayerID) ||
-            (rpsGame.playerTwo === data.id &&
-                rpsGame.playerOne === data.requestedPlayerID);
-
-        if (!playersMatch) {
-            return 0;
-        }
-        rpsGame.state = RPSGameState.InGame;
         return 1;
     }
 
@@ -276,35 +244,11 @@ export class GameManager {
         } else {
             return null;
         }
-
         if (playerChoice !== RPSChoice.None) {
             return null;
         }
-
         this.removeRPSGame(rpsGame.gameID);
         return rpsGame;
-    }
-
-    resultDraw(playerOneID: string, playerTwoID: string, choice: string) {
-        return {
-            playerOne: playerOneID,
-            playerTwo: playerTwoID,
-            choice: choice,
-        };
-    }
-
-    resultWinner(
-        winner: string,
-        winnerChoice: RPSChoice,
-        loser: string,
-        loserChoice: RPSChoice
-    ) {
-        return {
-            winner: winner,
-            winnerChoice: winnerChoice,
-            loser: loser,
-            loserChoice: loserChoice,
-        };
     }
 
     verifyRPSGame(gameID: string) {
@@ -314,7 +258,6 @@ export class GameManager {
             //console.log("RPS game not found for gameID: " + gameID);
             return 0;
         }
-
         if (
             rpsGame.playerOneChoice == RPSChoice.None ||
             rpsGame.playerTwoChoice == RPSChoice.None
@@ -325,28 +268,21 @@ export class GameManager {
         if (rpsGame.playerOneChoice === rpsGame.playerTwoChoice) {
             //console.log("DRAW!");
             return 2;
-        } else if (
-            (rpsGame.playerOneChoice === RPSChoice.Rock &&
-                rpsGame.playerTwoChoice === RPSChoice.Scissors) ||
-            (rpsGame.playerOneChoice === RPSChoice.Paper &&
-                rpsGame.playerTwoChoice === RPSChoice.Rock) ||
-            (rpsGame.playerOneChoice === RPSChoice.Scissors &&
-                rpsGame.playerTwoChoice === RPSChoice.Paper)
+        }
+        if (
+            RPS_WINNING_CHOICES.get(rpsGame.playerOneChoice) ===
+            rpsGame.playerTwoChoice
         ) {
             //console.log("WINNER PLAYER ONE!");
             return 3;
-        } else if (
-            (rpsGame.playerTwoChoice === RPSChoice.Rock &&
-                rpsGame.playerOneChoice === RPSChoice.Scissors) ||
-            (rpsGame.playerTwoChoice === RPSChoice.Paper &&
-                rpsGame.playerOneChoice === RPSChoice.Rock) ||
-            (rpsGame.playerTwoChoice === RPSChoice.Scissors &&
-                rpsGame.playerOneChoice === RPSChoice.Paper)
+        }
+        if (
+            RPS_WINNING_CHOICES.get(rpsGame.playerTwoChoice) ===
+            rpsGame.playerOneChoice
         ) {
             //console.log("WINNER PLAYER TWO!");
             return 4;
         }
-
         return 0;
     }
 
@@ -396,7 +332,6 @@ export class GameManager {
 
     startTTTGame(playerID: string): number {
         //console.log("Starting TTTGame for player: " + playerID);
-
         if (
             this.tttGame.state == TTTGameState.WaitingForFirstPlayer &&
             !this.tttGame.players[0]
@@ -423,7 +358,6 @@ export class GameManager {
             //console.log("Game already in progress or finished. Player: " + playerID + " cannot join.");
             return 0;
         }
-
         console.log('Invalid TTTGame. Resetting game.');
         this.tttGame = this.createTTTGame();
         return -1;
@@ -438,7 +372,6 @@ export class GameManager {
         ) {
             return false;
         }
-
         this.tttGame = this.createTTTGame();
         return true;
     }
@@ -498,7 +431,6 @@ export class GameManager {
                 //console.log("Not your turn.");
                 return TTTMark.Empty;
             }
-
             this.tttGame.currentMark = TTTMark.X;
             this.tttGame.board[fieldIndex] = TTTMark.X;
             return TTTMark.X;
@@ -513,77 +445,25 @@ export class GameManager {
         return TTTMark.O;
     }
 
-    checkWin() {
-        if (
-            this.tttGame.board[0] === this.tttGame.board[1] &&
-            this.tttGame.board[1] === this.tttGame.board[2] &&
-            this.tttGame.board[0] !== ''
-        ) {
-            return 1;
-        }
-        if (
-            this.tttGame.board[3] === this.tttGame.board[4] &&
-            this.tttGame.board[4] === this.tttGame.board[5] &&
-            this.tttGame.board[3] !== ''
-        ) {
-            return 2;
-        }
-        if (
-            this.tttGame.board[6] === this.tttGame.board[7] &&
-            this.tttGame.board[7] === this.tttGame.board[8] &&
-            this.tttGame.board[6] !== ''
-        ) {
-            return 3;
-        }
-
-        if (
-            this.tttGame.board[0] === this.tttGame.board[3] &&
-            this.tttGame.board[3] === this.tttGame.board[6] &&
-            this.tttGame.board[0] !== ''
-        ) {
-            return 4;
-        }
-        if (
-            this.tttGame.board[1] === this.tttGame.board[4] &&
-            this.tttGame.board[4] === this.tttGame.board[7] &&
-            this.tttGame.board[1] !== ''
-        ) {
-            return 5;
-        }
-        if (
-            this.tttGame.board[2] === this.tttGame.board[5] &&
-            this.tttGame.board[5] === this.tttGame.board[8] &&
-            this.tttGame.board[2] !== ''
-        ) {
-            return 6;
-        }
-
-        if (
-            this.tttGame.board[0] === this.tttGame.board[4] &&
-            this.tttGame.board[4] === this.tttGame.board[8] &&
-            this.tttGame.board[0] !== ''
-        ) {
-            return 7;
-        }
-        if (
-            this.tttGame.board[2] === this.tttGame.board[4] &&
-            this.tttGame.board[4] === this.tttGame.board[6] &&
-            this.tttGame.board[2] !== ''
-        ) {
-            return 8;
-        }
-
-        return 0;
-    }
-
-    checkDraw(): boolean {
-        for (const field of this.tttGame.board) {
-            if (field === '') {
-                // Game still in progress.
-                return false;
+    checkWin(): number {
+        const board = this.tttGame.board;
+        const winningLineIndex = TTT_WINNING_LINES.findIndex(
+            ([first, second, third]) => {
+                const mark = board[first];
+                return (
+                    mark !== TTTMark.Empty &&
+                    mark === board[second] &&
+                    mark === board[third]
+                );
             }
-        }
-        // Draw. No Winner
-        return true;
+        );
+        return winningLineIndex + 1;
+    }
+    /**
+     * false: Game still in progress.
+     * true: Draw. No Winner
+     */
+    checkDraw(): boolean {
+        return this.tttGame.board.every((field) => field !== TTTMark.Empty);
     }
 }
