@@ -160,31 +160,24 @@ export type EventData =
 
 // Partial EventData types...
 
-export type EventDataPlayerInRange = {
-    readonly playerId: string;
-    readonly remoteNick: string;
-};
+export type EventDataPlayerInRange = Extract<
+    EventData,
+    { readonly remoteNick: string }
+>;
 
-export type EventDataChatMsg = {
-    readonly chatmsg: string;
-};
+export type EventDataChatMsg = Extract<EventData, { readonly chatmsg: string }>;
 
-export type EventDataQuestCompleted = {
-    readonly questId: string;
-    readonly questText?: string;
-};
+export type EventDataQuestCompleted = Extract<
+    EventData,
+    { readonly questId: string }
+>;
 
-export type EventDataGameResult = {
-    readonly game: 'Tic-Tac-Toe' | 'Rock-Paper-Scissors';
-    readonly outcome: 'won' | 'lost' | 'draw';
-    readonly opponentNickname: string;
-};
+export type EventDataGameResult = Extract<EventData, { readonly game: string }>;
 
-export type EventDataFriendRequest = {
-    readonly friendNick: string;
-    readonly friendRequestStatus: FriendStatus;
-    readonly friendRequestReason?: FriendRequestRejectionReason;
-};
+export type EventDataFriendRequest = Extract<
+    EventData,
+    { readonly friendRequestStatus: FriendStatus }
+>;
 
 // This will be the foundation for a new table in `eventlog-service` every Event
 // is emitted by some user => user must be part of every Event. This obsoletes
@@ -433,11 +426,7 @@ export type GLBMesh = THREE.Mesh<
     THREE.MeshStandardMaterial | THREE.MeshToonMaterial
 >;
 
-export type PlayerPosition = {
-    x: number;
-    y: number;
-    z: number;
-};
+export type PlayerPosition = THREE.Vector3Like;
 
 export type PlayerData = {
     id: string;
@@ -613,15 +602,7 @@ export type TTTDrawPayload = {
 };
 
 export class TTTMeshBoard {
-    cells: GLBMesh[];
-    size: number;
-    cellCnt: number;
-
-    constructor() {
-        this.cells = [];
-        this.size = 9;
-        this.cellCnt = 0;
-    }
+    cells: GLBMesh[] = [];
 
     // method needed to wrap the array access because with
     // `noUncheckedIndexedAccess` tsc is treating each array-acces as `... |
