@@ -209,6 +209,7 @@ export class Input {
             choice.charAt(0).toUpperCase() + choice.slice(1) + ' key pressed'
         );
         rpsGame.rps_choiceMade = true;
+        rpsGame.removeText();
         this.getMultiplayer()?.emitBattleChoice(choice);
     }
 

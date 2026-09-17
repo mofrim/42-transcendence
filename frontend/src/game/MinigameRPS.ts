@@ -255,17 +255,6 @@ export class RPS_Game extends MinigameOverlay {
             this.animationFrameSlot,
             () => {
                 console.log('RPS Choice Animation Ended');
-                this.overlayScene.remove(...choiceSprites);
-                this.removeText();
-
-                this.socket.emit('update', {
-                    type: 'rps_invalid',
-                });
-            },
-            () => {
-                if (this.rps_choiceMade) {
-                    this.removeText();
-                }
             }
         );
     }
