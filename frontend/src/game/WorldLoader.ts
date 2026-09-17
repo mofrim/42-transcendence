@@ -81,11 +81,10 @@ export class WorldLoader {
             }
 
             if (mesh.name.includes('TTT_Board')) {
-                if (this.tttBoard.cellCnt >= 9) {
+                if (this.tttBoard.cells.length >= 9) {
                     throw new Error('ttt game can have only 9 cells!');
                 }
-                this.tttBoard.cells[this.tttBoard.cellCnt] = mesh;
-                this.tttBoard.cellCnt++;
+                this.tttBoard.cells.push(mesh);
             }
 
             this.prepareWorldMesh(mesh);
