@@ -42,6 +42,16 @@ if (process.env['NODE_ENV'] === 'development') {
 
 const SECRET_KEY: string = process.env['JWT_SECRET'] || 'FooBarBaz';
 const PORT = Number(process.env['AUTH_SERVICE_PORT']) || 3001;
+const IS_PRODUCTION = process.env['NODE_ENV'] === 'production';
+const TOKEN_COOKIE_OPTIONS = {
+    httpOnly: true,
+    secure: IS_PRODUCTION,
+    sameSite: 'strict',
+} as const;
+let dbHost = 'localhost';
+if (IS_PRODUCTION) {
+    dbHost = process.env['DB_HOST'] || 'localhost';
+}
 
 // using partial function evaluation here to set the local logger and SECRET_KEY
 // in auth middleware function
@@ -71,10 +81,7 @@ app.use(cookieParser());
 
 const DB = new DataSource({
     type: 'postgres',
-    host:
-        process.env['NODE_ENV'] === 'production'
-            ? process.env['DB_HOST'] || 'localhost'
-            : 'localhost',
+    host: dbHost,
     port: Number(process.env['DB_PORT']) || 5432,
     username: process.env['DB_USER'] || 'postgres',
     password: process.env['DB_PASSWD'] || 'postgres',
@@ -166,9 +173,7 @@ app.post(
             });
 
             res.cookie('token', token, {
-                httpOnly: true,
-                secure: process.env['NODE_ENV'] === 'production',
-                sameSite: 'strict',
+                ...TOKEN_COOKIE_OPTIONS,
                 maxAge: 60 * 60 * 1000, // 1h
             });
             res.json({ success: true });
@@ -183,11 +188,7 @@ app.post(
 
 app.post('/api/logout', authenticate, (req, res) => {
     void req;
-    res.clearCookie('token', {
-        httpOnly: true,
-        secure: process.env['NODE_ENV'] === 'production',
-        sameSite: 'strict',
-    });
+    res.clearCookie('token', TOKEN_COOKIE_OPTIONS);
     res.json({ success: true });
 });
 
@@ -239,8 +240,7 @@ app.get('/api/validateSession', async (req, res) => {
     try {
         const token = req.cookies['token'];
         verifyToken(token, SECRET_KEY, logValidate);
-    } catch (err) {
-        void err;
+    } catch {
         res.status(200).json({ valid: false });
         logValidate.info('validateSession failed');
         return;
