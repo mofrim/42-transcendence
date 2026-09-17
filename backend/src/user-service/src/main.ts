@@ -2,12 +2,12 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import type { Express, NextFunction, Request, Response } from 'express';
-import { DataSource, DeleteResult } from 'typeorm';
+import { DataSource } from 'typeorm';
 import { exit } from 'node:process';
 import cookieParser from 'cookie-parser';
 import { Logger, type ILogObj } from 'tslog';
 import { authenticateMid } from 'ftr-common/middleware';
-import { body, matchedData, validationResult } from 'express-validator';
+import { checkSchema, matchedData, validationResult } from 'express-validator';
 import bcrypt from 'bcryptjs';
 
 import { ORMEventLog, ORMUser } from 'ftr-common/ormTypes';
@@ -188,7 +188,7 @@ app.delete(
         }
 
         try {
-            const result: DeleteResult = await userRepo.delete({ id: userId });
+            const result = await userRepo.delete(userId);
             if (result.affected == null) {
                 logGet.warn(`userId-enpoint queried with wrong uid ${userId}`);
                 return res.status(404).json(mkStatus('invalid id', 'error'));
@@ -204,39 +204,38 @@ app.delete(
 );
 // ------------------------=[ user POST endpoints ]=------------------------ //
 
-const validateNick = () =>
-    body('nickname')
-        .escape()
-        .notEmpty()
-        .withMessage('nick empty')
-        .isLength({ max: 64 })
-        .withMessage('nick invalid length')
-        .isAlphanumeric()
-        .withMessage('invalid char in nick');
-
-const validatePw = () =>
-    body('password')
-        .escape()
-        .notEmpty()
-        .withMessage('pw empty')
-        .isLength({ min: 4, max: 64 })
-        .withMessage('pw invalid length')
-        .isAlphanumeric()
-        .withMessage('pw invalid char');
-
-const validateMail = () =>
-    body('email')
-        .escape()
-        .notEmpty()
-        .withMessage('pw empty')
-        .isEmail()
-        .withMessage('invalid email');
+const registrationValidation = checkSchema(
+    {
+        nickname: {
+            escape: true,
+            notEmpty: { errorMessage: 'nick empty' },
+            isLength: {
+                options: { max: 64 },
+                errorMessage: 'nick invalid length',
+            },
+            isAlphanumeric: { errorMessage: 'invalid char in nick' },
+        },
+        password: {
+            escape: true,
+            notEmpty: { errorMessage: 'pw empty' },
+            isLength: {
+                options: { min: 4, max: 64 },
+                errorMessage: 'pw invalid length',
+            },
+            isAlphanumeric: { errorMessage: 'pw invalid char' },
+        },
+        email: {
+            escape: true,
+            notEmpty: { errorMessage: 'pw empty' },
+            isEmail: { errorMessage: 'invalid email' },
+        },
+    },
+    ['body']
+);
 
 app.post(
     '/api/user/register',
-    validateNick(),
-    validatePw(),
-    validateMail(),
+    registrationValidation,
     async (req: Request, res: Response) => {
         const logReg = log.getSubLogger({ name: 'register' });
 
@@ -255,15 +254,15 @@ app.post(
         const userMail: string = bodyData['email'];
 
         try {
-            const user = await DB.manager.findOneBy(ORMUser, {
+            const userExists = await userRepo.existsBy({
                 nickname: userNick,
             });
-            if (user !== null) {
+            if (userExists) {
                 logReg.warn(`user ${userNick} already exists in DB!`);
                 res.status(403).json(mkStatus('user exists', 'error'));
                 return;
             }
-            const newUser = new ORMUser({
+            const newUser = userRepo.create({
                 nickname: userNick,
                 hashedPw: bcrypt.hashSync(userPass, 10),
                 email: userMail,
