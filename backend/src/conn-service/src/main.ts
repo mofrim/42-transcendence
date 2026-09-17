@@ -219,7 +219,7 @@ io.on('connection', (socket) => {
         console.log('Client disconnected:', socket.id);
         playerGameReset(socket.id);
 
-        gameManager.removePlayer(socket.id);
+        gameManager.players.delete(socket.id);
 
         socket.broadcast.emit('player_disconnected', socket.id);
     });
@@ -331,26 +331,26 @@ function areFriends(firstUserId: number, secondUserId: number): boolean {
 }
 
 function addFriendship(firstUserId: number, secondUserId: number): void {
-    const firstUserFriends =
-        friendsByUser.get(firstUserId) ?? new Set<number>();
-    friendsByUser.set(firstUserId, firstUserFriends);
-    firstUserFriends.add(secondUserId);
-    const secondUserFriends =
-        friendsByUser.get(secondUserId) ?? new Set<number>();
-    friendsByUser.set(secondUserId, secondUserFriends);
-    secondUserFriends.add(firstUserId);
+    for (const [userId, friendUserId] of [
+        [firstUserId, secondUserId],
+        [secondUserId, firstUserId],
+    ] as const) {
+        const friends = friendsByUser.get(userId) ?? new Set<number>();
+        friendsByUser.set(userId, friends);
+        friends.add(friendUserId);
+    }
 }
 
 function removeFriendship(firstUserId: number, secondUserId: number): void {
-    const firstUserFriends = friendsByUser.get(firstUserId);
-    firstUserFriends?.delete(secondUserId);
-    if (firstUserFriends?.size === 0) {
-        friendsByUser.delete(firstUserId);
-    }
-    const secondUserFriends = friendsByUser.get(secondUserId);
-    secondUserFriends?.delete(firstUserId);
-    if (secondUserFriends?.size === 0) {
-        friendsByUser.delete(secondUserId);
+    for (const [userId, friendUserId] of [
+        [firstUserId, secondUserId],
+        [secondUserId, firstUserId],
+    ] as const) {
+        const friends = friendsByUser.get(userId);
+        friends?.delete(friendUserId);
+        if (friends?.size === 0) {
+            friendsByUser.delete(userId);
+        }
     }
 }
 
@@ -919,11 +919,6 @@ function handleRPSAccept(socket: Socket, data: RPSRequestDataPayload) {
         id: socket.id,
         requestedPlayerID: data.requestedPlayerID,
     });
-
-    /* console.log("START");
-    wait(2500).then(() => {
-      console.log("END");
-    }); */
 }
 
 function handleRPSDecline(socket: Socket, data: RPSRequestDataPayload) {
