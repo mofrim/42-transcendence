@@ -1,9 +1,7 @@
 import * as THREE from 'three';
-
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { Capsule } from 'three/addons/math/Capsule.js';
 import type { Octree } from 'three/addons/math/Octree.js';
-
 import {
     cleanupPlayerAnimationMixer,
     createPlayerAnimationActions,
@@ -23,13 +21,12 @@ import {
 } from './FloatingTextSprite.js';
 import { PlayerState } from 'ftr-common/sharedTypes';
 
-export type PlayerAnimationState = ReturnType<typeof transitionPlayerAnimation>;
-
 const PLAYER_FORWARD = new THREE.Vector3(0, 0, 1);
 const COLLISION_STEP_RADIUS_FACTOR = 0.5;
 /** ms also 10 Sekunden */
 const PLAYER_CHAT_DURATION_MS = 10_000;
 
+export type PlayerAnimationState = ReturnType<typeof transitionPlayerAnimation>;
 export class Player {
     static colRad: number = 0.35;
     static colStartY: number = 0.35;
@@ -58,7 +55,6 @@ export class Player {
     animations: THREE.AnimationClip[] = [];
     worldOctree: Octree;
     playerVelocity: THREE.Vector3;
-    playerDirection: THREE.Vector3;
     playerOnFloor: boolean;
     GRAVITY: number;
     isSpawned: boolean;
@@ -106,7 +102,6 @@ export class Player {
 
         this.worldOctree = worldOctree;
         this.playerVelocity = new THREE.Vector3();
-        this.playerDirection = new THREE.Vector3();
         this.playerOnFloor = false;
 
         this.GRAVITY = 30;
@@ -171,7 +166,7 @@ export class Player {
         this.lifecycleController.startSpawn();
     }
 
-    // change Players position - update playerCollider
+    /** change Players position - update playerCollider */
     setPlayerPosition(X: number, Y: number, Z: number) {
         this.playerCollider.start.set(X, Y + Player.colStartY, Z);
         this.playerCollider.end.set(X, Y + Player.colEndY, Z);
@@ -188,7 +183,6 @@ export class Player {
         if (!this.isActive()) {
             return;
         }
-
         const trimmedMessage = message.trim();
         if (!trimmedMessage) {
             return;
@@ -198,9 +192,7 @@ export class Player {
             CHAT_BUBBLE_SIZE
         );
         this.chatBubble.follow(this.group);
-
         this.clearChatBubbleTimeout();
-
         const timeout = setTimeout(() => {
             if (this.chatBubbleTimeout !== timeout) {
                 return;
@@ -222,10 +214,8 @@ export class Player {
         if (this.chatBubbleTimeout === null) {
             return;
         }
-
         const chatBubbleTimeout = this.chatBubbleTimeout;
         this.chatBubbleTimeout = null;
-
         try {
             clearTimeout(chatBubbleTimeout);
         } catch (error) {
@@ -247,7 +237,6 @@ export class Player {
     private prepareForTermination(): void {
         this.loadGeneration += 1;
         this.isSpawned = false;
-
         const runPreparation = (prepare: () => void): void => {
             try {
                 prepare();
@@ -258,7 +247,6 @@ export class Player {
                 );
             }
         };
-
         runPreparation(() => {
             this.controls.key = [0, 0];
         });
@@ -271,7 +259,6 @@ export class Player {
         if (this.lifecycleController.state === 'active') {
             this.prepareForTermination();
         }
-
         return this.lifecycleController.startDespawn();
     }
 
@@ -294,7 +281,6 @@ export class Player {
             return;
         }
         this.finalized = true;
-
         let finalizationError: unknown = null;
         const runCleanup = (cleanup: () => void): void => {
             try {
@@ -305,12 +291,9 @@ export class Player {
                 }
             }
         };
-
         this.clearChatBubbleTimeout();
-
         const model = this.model;
         const mixer = this.mixer;
-
         if (mixer !== null) {
             cleanupPlayerAnimationMixer(mixer, (error) => {
                 if (finalizationError === null) {
@@ -318,22 +301,18 @@ export class Player {
                 }
             });
         }
-
         if (model !== null) {
             runCleanup(() => this.resourceDisposer.disposeObject3D(model));
         }
-
         runCleanup(() => this.chatBubble.hide());
         runCleanup(() =>
             this.resourceDisposer.disposeObject3D(this.chatBubble)
         );
         runCleanup(() => this.group.removeFromParent());
-
         this.actions = null;
         this.mixer = null;
         this.model = null;
         this.isSpawned = false;
-
         if (finalizationError !== null) {
             throw finalizationError;
         }
@@ -379,7 +358,6 @@ export class Player {
             this.model = null;
             this.isSpawned = false;
         }
-
         runRollback(() => this.resourceDisposer.disposeObject3D(model));
     }
 
@@ -399,7 +377,6 @@ export class Player {
         if (!this.canAcceptLoad(generation)) {
             return;
         }
-
         this.isSpawned = false;
         this.reportLifecycleError(
             `Player model loading failed for "${path}":`,
@@ -513,17 +490,6 @@ export class Player {
         }
     }
 
-    getForwardVector(camera: THREE.Camera) {
-        return camera
-            .getWorldDirection(this.playerDirection)
-            .projectOnPlane(camera.up)
-            .normalize();
-    }
-
-    getSideVector(camera: THREE.Camera) {
-        return this.getForwardVector(camera).cross(camera.up);
-    }
-
     playerCollisions() {
         const result = this.worldOctree.capsuleIntersect(this.playerCollider);
         this.playerOnFloor = false;
@@ -532,10 +498,7 @@ export class Player {
             this.playerOnFloor = result.normal.y >= 0.15; // allow slopes up to ~81° but ignore sheer vertical walls
             if (!this.playerOnFloor) {
                 //console.log("WALL COLLISION");
-                this.playerVelocity.addScaledVector(
-                    result.normal,
-                    -result.normal.dot(this.playerVelocity)
-                );
+                this.playerVelocity.projectOnPlane(result.normal);
             }
             if (result.depth >= 1e-10) {
                 //console.log("FLOOR COLLISION " + result.depth);
@@ -602,14 +565,9 @@ export class Player {
 
         if (this.group.position.y < -0.01) {
             this.group.position.setY(0);
-            this.playerCollider.start.set(
+            this.setPlayerPosition(
                 this.group.position.x,
-                this.group.position.y + Player.colStartY,
-                this.group.position.z
-            );
-            this.playerCollider.end.set(
-                this.group.position.x,
-                this.group.position.y + Player.colEndY,
+                this.group.position.y,
                 this.group.position.z
             );
             this.playerVelocity.setScalar(0);
