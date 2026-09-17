@@ -4,5 +4,6 @@
         "rootDir": "./src",
         "outDir": "../../dist/eventlog-service"
     },
-    "include": ["./src/**/*.ts"]
+    "include": ["./src/**/*.ts"],
+    "references": [{ "path": "../backend-utils" }]
 }
