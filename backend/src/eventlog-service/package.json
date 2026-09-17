@@ -16,7 +16,6 @@
         "backend-utils": "*",
         "dotenv": "^17.4.2",
         "express": "^5.1.0",
-        "express-validator": "^7.3.2",
         "ftr-common": "*",
         "pg": "^8.23.0",
         "tslog": "^5.1.0",

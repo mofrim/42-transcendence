@@ -1,11 +1,10 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import { DataSource } from 'typeorm';
+import { DataSource, type FindManyOptions } from 'typeorm';
 import { exit } from 'node:process';
 import { Logger } from 'tslog';
 import cookieParser from 'cookie-parser';
-import { body, validationResult } from 'express-validator';
 
 import type { ILogObj } from 'tslog';
 import type { Express, Request, Response, NextFunction } from 'express';
@@ -47,7 +46,6 @@ app.use(express.json());
 
 // reject any non-JSON bodies early
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
-    void req;
     if (err instanceof SyntaxError && err.message.includes('JSON')) {
         log.warn('Got invalid JSON body from IP ', req.ip);
         res.status(400).json({ error: 'Invalid JSON body' });
@@ -82,28 +80,30 @@ try {
     exit(1);
 }
 
+/** ORMEventLog */
+const eventLogRepo = DB.getRepository(ORMEventLog);
+const eventLogWithUserOptions = {
+    relations: { user: true },
+    select: {
+        id: true,
+        eventType: true,
+        data: true,
+        user: {
+            nickname: true,
+            id: true,
+        },
+        logtime: true,
+    },
+} satisfies FindManyOptions<ORMEventLog>;
+
 // ------------------------=[  normal eventlogging ]=------------------------ //
 
-// the data-validation for the POST endpoint. what do we want here? what do we
-// allow here? so far we only reject empty data
-//
-// TODO validate EventData type here completely.. or let it be :)
-const validateEventData = () => body('data').optional();
+const eventLogRoute = app.route('/api/eventlog');
 
-app.post(
-    '/api/eventlog',
+eventLogRoute.post(
     authenticate,
-    validateEventData(),
     async (req: Request, res: Response): Promise<void> => {
         const logPost = log.getSubLogger({ name: 'POST' });
-
-        // check any errors from Validation
-        const errors = validationResult(req);
-        if (!errors.isEmpty()) {
-            logPost.warn('Got bad request from', req.ip);
-            res.status(400).json({ errors: errors.array() });
-            return;
-        }
 
         const { eventType, data, logtime } = req.body;
 
@@ -130,14 +130,12 @@ app.post(
         }
 
         try {
-            const event = DB.manager.create(ORMEventLog, {
-                eventType: eventType,
-                data: data,
-                logtime: logtime,
+            const savedEvent = await eventLogRepo.save({
+                eventType,
+                data,
+                logtime,
                 user: { id: user.id },
             });
-
-            const savedEvent = await DB.manager.save(event);
             logPost.info('stored event:', savedEvent);
 
             // only info we need in frontend is that saving was successful and
@@ -164,8 +162,7 @@ app.post(
 // - user=[nickname] will filter the logs for the given nickname
 //
 // if no uid is specified user will be determined from JWT
-app.get(
-    '/api/eventlog',
+eventLogRoute.get(
     authenticate,
     async (req: Request, res: Response): Promise<void> => {
         const logGet = log.getSubLogger({ name: 'GET(eventlog)' });
@@ -201,7 +198,8 @@ app.get(
         }
 
         try {
-            const events = await DB.manager.find(ORMEventLog, {
+            const events = await eventLogRepo.find({
+                ...eventLogWithUserOptions,
                 order: {
                     id: 'DESC', // get entries starting from most recent
                 },
@@ -219,17 +217,6 @@ app.get(
                               },
                           }
                         : undefined,
-                relations: { user: true },
-                select: {
-                    id: true,
-                    eventType: true,
-                    data: true,
-                    user: {
-                        nickname: true,
-                        id: true,
-                    },
-                    logtime: true,
-                },
             });
             events.reverse(); // make order in slice ascending again
             res.status(200).json(events);
@@ -252,19 +239,7 @@ app.get(
         void req;
 
         try {
-            const events = await DB.manager.find(ORMEventLog, {
-                relations: { user: true },
-                select: {
-                    id: true,
-                    eventType: true,
-                    data: true,
-                    user: {
-                        nickname: true,
-                        id: true,
-                    },
-                    logtime: true,
-                },
-            });
+            const events = await eventLogRepo.find(eventLogWithUserOptions);
             events.reverse(); // make order in slice ascending again
             res.status(200).json(events);
         } catch (err) {
@@ -278,8 +253,9 @@ app.get(
 
 // ----------------------=[ match history endpoints ]=---------------------- //
 
-app.get(
-    '/api/eventlog/matchhist',
+const matchHistoryRoute = app.route('/api/eventlog/matchhist');
+
+matchHistoryRoute.get(
     authenticate,
     async (req: Request, res: Response): Promise<void> => {
         const logGet = log.getSubLogger({ name: 'GET(matchhist)' });
@@ -288,7 +264,7 @@ app.get(
         const userId = req.userId!;
 
         try {
-            const events = await DB.manager.find(ORMEventLog, {
+            const events = await eventLogRepo.find({
                 order: {
                     id: 'DESC', // get entries starting from most recent
                 },
@@ -321,15 +297,14 @@ app.get(
 // a simple enpoint for storing the matchresult. almost the same as the standard
 // post endpoint but returns the stored GameResult in response for parsing in
 // frontend
-app.post(
-    '/api/eventlog/matchhist',
+matchHistoryRoute.post(
     authenticate,
     async (req: Request, res: Response): Promise<void> => {
         const logPost = log.getSubLogger({ name: 'POST(matchhist)' });
 
         const { eventType, data, logtime } = req.body;
 
-        if (eventType !== 'GameResult') {
+        if (eventType !== EventType.GameResult) {
             res.status(400).json({
                 error: 'Invalid event type',
             });
@@ -352,14 +327,12 @@ app.post(
         }
 
         try {
-            const event = DB.manager.create(ORMEventLog, {
-                eventType: eventType,
-                data: data,
-                logtime: logtime,
+            const savedEvent = await eventLogRepo.save({
+                eventType,
+                data,
+                logtime,
                 user: { id: user.id },
             });
-
-            const savedEvent = await DB.manager.save(event);
             const savedEventMatchHist: MatchHistResponse = {
                 id: savedEvent.id,
                 data: savedEvent.data as EventDataGameResult,
@@ -381,16 +354,15 @@ app.post(
 
 // WARN maybe remove this for prod.. or create a admin account that cannot be
 // logged in to from frontend
-app.delete(
-    '/api/eventlog',
+eventLogRoute.delete(
     authenticate,
     async (req: Request, res: Response): Promise<void> => {
         const logDel = log.getSubLogger({ name: 'DELETE' });
         void req;
 
         try {
-            await DB.manager.deleteAll(ORMEventLog);
-            res.status(204).json({ message: 'success' });
+            await eventLogRepo.deleteAll();
+            res.status(204).end();
         } catch (err) {
             logDel.error(err as Error);
             res.status(500).json({
@@ -402,7 +374,7 @@ app.delete(
 
 // --------=[ fallback endpoint for catching unsuppoerted methods ]=-------- //
 
-app.all('/api/eventlog', (req: Request, res: Response) => {
+eventLogRoute.all((req: Request, res: Response) => {
     log.warn('Invalid Request to /api/eventlog:', req.method);
     res.status(405).json({ error: 'Unsupported Method' });
 });
