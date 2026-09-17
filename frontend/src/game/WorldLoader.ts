@@ -11,6 +11,7 @@ import { type GLBMesh, type TTTMeshBoard } from 'ftr-common/sharedTypes';
 type WorldLoaderOptions = {
     readonly scene: THREE.Scene;
     readonly worldOctree: Octree;
+    readonly worldOctreeInteractive: Octree;
     readonly colliders: GLBMesh[];
     readonly tttBoard: TTTMeshBoard;
     readonly doorGroupA: THREE.Group;
@@ -26,6 +27,7 @@ export class WorldLoader {
 
     private readonly scene: THREE.Scene;
     private readonly worldOctree: Octree;
+    private readonly worldOctreeInteractive: Octree;
     private readonly colliders: GLBMesh[];
     private readonly octreeObjects: THREE.Object3D[] = [];
     private readonly tttBoard: TTTMeshBoard;
@@ -40,6 +42,7 @@ export class WorldLoader {
     constructor(options: WorldLoaderOptions) {
         this.scene = options.scene;
         this.worldOctree = options.worldOctree;
+        this.worldOctreeInteractive = options.worldOctreeInteractive;
         this.colliders = options.colliders;
         this.tttBoard = options.tttBoard;
         this.doorGroupA = options.doorGroupA;
@@ -73,11 +76,13 @@ export class WorldLoader {
                 console.log(mesh.name + ' added to groupDoorA');
                 this.doorMeshNames.push(mesh.name);
                 this.doorGroupA.add(object);
+                this.worldOctreeInteractive.fromGraphNode(object);
             }
             if (path === MODEL_DOOR_B) {
                 console.log(mesh.name + ' added to groupDoorB');
                 this.doorMeshNames.push(mesh.name);
                 this.doorGroupB.add(object);
+                this.worldOctreeInteractive.fromGraphNode(object);
             }
 
             if (mesh.name.includes('TTT_Board')) {
@@ -100,7 +105,9 @@ export class WorldLoader {
             this.octreeObjects.push(object);
         }
 
-        this.worldOctree.fromGraphNode(object);
+        if (path !== MODEL_DOOR_A && path !== MODEL_DOOR_B) {
+            this.worldOctree.fromGraphNode(object);
+        }
         this.isEnvironmentLoaded = true;
 
         return object;
@@ -194,16 +201,14 @@ export class WorldLoader {
             }
         }
 
-        this.rebuildWorldOctree();
+        this.rebuildWorldOctree(this.doorGroupA, this.doorGroupB);
     }
 
     private rebuildWorldOctree(...additionalObjects: THREE.Object3D[]): void {
-        this.worldOctree.clear();
-        for (const mesh of this.octreeObjects) {
-            this.worldOctree.fromGraphNode(mesh);
-        }
+        this.worldOctreeInteractive.clear();
+
         for (const object of additionalObjects) {
-            this.worldOctree.fromGraphNode(object);
+            this.worldOctreeInteractive.fromGraphNode(object);
         }
     }
 

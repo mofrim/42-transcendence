@@ -166,6 +166,7 @@ export function startGame(
     }
 
     const worldOctree = new Octree();
+    const worldOctreeInteractive = new Octree();
     //const octreeDelete = new Octree();
     //const OctreeSpawn = new Octree();
     const mesh_col: GLBMesh[] = [];
@@ -221,6 +222,7 @@ export function startGame(
     const worldLoader: WorldLoader = new WorldLoader({
         scene,
         worldOctree,
+        worldOctreeInteractive,
         colliders: mesh_col,
         tttBoard: tttBox,
         doorGroupA: groupDoorA,
@@ -294,7 +296,13 @@ export function startGame(
         if (!isSpectator) {
             const playerModelPath = getPlayerModelPath(whichCharacter);
             console.log('Player model path: ' + playerModelPath);
-            player = new Player(playerModelPath, socket.id, scene, worldOctree);
+            player = new Player(
+                playerModelPath,
+                socket.id,
+                scene,
+                worldOctree,
+                worldOctreeInteractive
+            );
         }
         multiplayer = new MultiplayerManager(scene, mesh_RP, {
             socket,

@@ -54,6 +54,7 @@ export class Player {
     actions: ReturnType<typeof createPlayerAnimationActions> | null;
     animations: THREE.AnimationClip[] = [];
     worldOctree: Octree;
+    worldOctreeInteractive: Octree;
     playerVelocity: THREE.Vector3;
     playerOnFloor: boolean;
     GRAVITY: number;
@@ -76,7 +77,8 @@ export class Player {
         path: string,
         id: string | undefined,
         scene: THREE.Scene,
-        worldOctree: Octree
+        worldOctree: Octree,
+        worldOctreeInteractive: Octree
     ) {
         // we never want this to happen so this would be an exceptional error.
         // we might even throw here...
@@ -101,6 +103,7 @@ export class Player {
         this.animations = [];
 
         this.worldOctree = worldOctree;
+        this.worldOctreeInteractive = worldOctreeInteractive;
         this.playerVelocity = new THREE.Vector3();
         this.playerOnFloor = false;
 
@@ -491,8 +494,20 @@ export class Player {
     }
 
     playerCollisions() {
-        const result = this.worldOctree.capsuleIntersect(this.playerCollider);
         this.playerOnFloor = false;
+
+        const resultStatic = this.worldOctree.capsuleIntersect(
+            this.playerCollider
+        );
+        if (resultStatic) this.handleCollision(resultStatic);
+
+        const resultInteractive = this.worldOctreeInteractive.capsuleIntersect(
+            this.playerCollider
+        );
+        if (resultInteractive) this.handleCollision(resultInteractive);
+    }
+
+    handleCollision(result: any) {
         if (result) {
             // determine if the surface we bumped into is something we can stand on
             this.playerOnFloor = result.normal.y >= 0.15; // allow slopes up to ~81° but ignore sheer vertical walls
