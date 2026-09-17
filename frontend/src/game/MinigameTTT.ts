@@ -181,9 +181,9 @@ export class TTT_Game extends MinigameOverlay {
     waitforInitMesh(data: TTTInitGamePayload): void {
         const loop = () => {
             //console.log("Waiting for board to be ready...");
-            if (!this.board.cells[0]) {
+            if (this.board.cells.length === 0) {
                 this.boardInitFrameSlot.request(loop);
-            } else if (this.board.size > 0) {
+            } else {
                 for (const [index, box] of data.game.board.entries()) {
                     const cell = this.board.getCell(index);
                     cell.material.color.set(0xffffff);
