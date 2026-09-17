@@ -2,7 +2,7 @@ import { ORMUser } from 'ftr-common/ormTypes';
 import { InitialQuestStatus } from 'ftr-common/sharedTypes';
 import bcrypt from 'bcryptjs';
 import { exit } from 'node:process';
-import { DataSource } from 'typeorm';
+import type { DataSource } from 'typeorm';
 
 const defaultUsers = [
     {
@@ -42,25 +42,29 @@ const defaultUsers = [
     },
 ];
 
+/** default user setup error */
+const userSetupError = (nickname: string, error: unknown): void => {
+    if (error instanceof Error) {
+        if (error.message.includes('duplicate')) {
+            console.warn(`user ${nickname} already there!`);
+            return;
+        }
+        console.error(`type of error: ${error.name}`);
+    } else {
+        console.error('Unknown error occurred:', error);
+    }
+    exit(1);
+};
+
 export const setupDefaultUsers = async (DB: DataSource) => {
     const userRepo = DB.getRepository(ORMUser);
     for (const user of defaultUsers) {
         try {
-            const defaultUser = new ORMUser(user);
+            const defaultUser = userRepo.create(user);
             await userRepo.save(defaultUser);
             console.log(`defaultUser ${user.nickname} successfully created!`);
         } catch (error) {
-            if (error instanceof Error) {
-                if (error.message.includes('duplicate')) {
-                    console.warn(`user ${user.nickname} already there!`);
-                } else {
-                    console.error(`type of error: ${error.name}`);
-                    exit(1);
-                }
-            } else {
-                console.error('Unknown error occurred:', error);
-                exit(1);
-            }
+            userSetupError(user.nickname, error);
         }
     }
     // add root
@@ -74,20 +78,10 @@ export const setupDefaultUsers = async (DB: DataSource) => {
         quests: InitialQuestStatus,
     };
     try {
-        await userRepo.save(new ORMUser(root));
+        await userRepo.save(userRepo.create(root));
         console.log(`defaultUser superadmin successfully created!`);
         await userRepo.update({ nickname: 'root' }, { id: 0 });
     } catch (error) {
-        if (error instanceof Error) {
-            if (error.message.includes('duplicate')) {
-                console.warn(`user root already there!`);
-            } else {
-                console.error(`type of error: ${error.name}`);
-                exit(1);
-            }
-        } else {
-            console.error('Unknown error occurred:', error);
-            exit(1);
-        }
+        userSetupError(root.nickname, error);
     }
 };
