@@ -46,6 +46,7 @@ type RenderLoopOptions = {
     readonly stopLocalInput: () => void;
     readonly clearRuntimeState: () => void;
     readonly onGameEvent: ((event: GameEvent) => void) | undefined;
+    readonly onFrameUpdate?: (delta: number) => void;
 };
 
 export class RenderLoop {
@@ -161,6 +162,8 @@ export class RenderLoop {
             return;
         }
 
+        console.log('RenderLoop animate called');
+
         const multiplayer = this.options.getMultiplayer();
         if (
             !this.activeCamera ||
@@ -224,6 +227,8 @@ export class RenderLoop {
                 camera.cameraCollisionRaycast(delta, player.group);
             }
         }
+
+        this.options.onFrameUpdate?.(delta);
 
         this.options.renderer.clear();
         this.options.renderer.render(this.options.scene, this.activeCamera);

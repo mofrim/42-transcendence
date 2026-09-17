@@ -18,6 +18,7 @@ import { addBlackhole } from './QuestBlackHole.js';
 import { WorldLoader } from './WorldLoader.js';
 import { RenderLoop } from './RenderLoop.js';
 import { MinigameEvent } from './MinigameEvent.js';
+import { EnvCubeAnimationManager } from './EnvCubeAnimationManager.js';
 import {
     getPlayerModelPath,
     IMG_DISPLAY_BOOKING,
@@ -183,6 +184,7 @@ export function startGame(
         getInteractionManager: () => interactionManager,
         isLocalPlayerDespawning: () => isLocalPlayerDespawning,
     });
+    const cubeAnimation = new EnvCubeAnimationManager(scene);
     const renderLoop: RenderLoop = new RenderLoop({
         renderer,
         scene,
@@ -214,6 +216,7 @@ export function startGame(
             minigameEvent.reset();
         },
         onGameEvent,
+        onFrameUpdate: (delta) => cubeAnimation.update(delta),
     });
     const worldLoader: WorldLoader = new WorldLoader({
         scene,
