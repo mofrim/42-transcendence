@@ -89,6 +89,7 @@ backend-dev-win:
 	cd backend && docker compose -f ./compose-db.yaml up -d
 	cd backend && start powershell -NoExit -Command "npm --prefix .\src\conn-service run dev-win"
 	cd backend && start powershell -NoExit -Command "npm --prefix .\src\auth-service run dev-win"
+	cd backend && start powershell -NoExit -Command "npm --prefix .\src\user-service run dev-win"
 	$(call log_msg_end,Done.)
 
 .phony: all dock-clean dock-fclean dock-backend dock-frontend dock-db \
