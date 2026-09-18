@@ -1,6 +1,8 @@
 // in this file we collect types that are shared at least among multiple files.
 import type * as THREE from 'three';
 
+export const BLACK_HOLE_DURATION_SECONDS = 5 * 60;
+
 // ----------------------------=[ quest types ]=---------------------------- //
 
 // our _main_ quests list. in order to add / modify a quest this is the root
