@@ -18,7 +18,7 @@ import { DataSource } from 'typeorm';
 import { exit } from 'node:process';
 import cookieParser from 'cookie-parser';
 import { Logger } from 'tslog';
-import { body, matchedData, validationResult } from 'express-validator';
+import { checkSchema, matchedData, validationResult } from 'express-validator';
 
 import type { ILogObj } from 'tslog';
 import type { Request, Express, Response, NextFunction } from 'express';
@@ -66,7 +66,6 @@ app.use(express.json());
 
 // reject any non-JSON bodies early
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
-    void req;
     if (err instanceof SyntaxError && err.message.includes('JSON')) {
         log.warn('Got invalid JSON body from IP ', req.ip);
         res.status(400).json({ error: 'Invalid JSON body' });
@@ -105,31 +104,34 @@ setupDefaultUsers(DB);
 
 // ------------------------=[ define login endpoint ]=----------------------- //
 
-// Validation funcs for nick & pw.
-const validateNick = () =>
-    body('nickname')
-        .escape()
-        .notEmpty()
-        .withMessage('nick empty')
-        .isLength({ max: 64 })
-        .withMessage('nick invalid length')
-        .isAlphanumeric()
-        .withMessage('invalid char in nick');
-
-const validatePw = () =>
-    body('password')
-        .escape()
-        .notEmpty()
-        .withMessage('pw empty')
-        .isLength({ min: 4, max: 64 })
-        .withMessage('pw invalid length')
-        .isAlphanumeric()
-        .withMessage('pw invalid char');
+/** Validation funcs for nick & pw. */
+const loginValidation = checkSchema(
+    {
+        nickname: {
+            escape: true,
+            notEmpty: { errorMessage: 'nick empty' },
+            isLength: {
+                options: { max: 64 },
+                errorMessage: 'nick invalid length',
+            },
+            isAlphanumeric: { errorMessage: 'invalid char in nick' },
+        },
+        password: {
+            escape: true,
+            notEmpty: { errorMessage: 'pw empty' },
+            isLength: {
+                options: { min: 4, max: 64 },
+                errorMessage: 'pw invalid length',
+            },
+            isAlphanumeric: { errorMessage: 'pw invalid char' },
+        },
+    },
+    ['body']
+);
 
 app.post(
     '/api/login',
-    validateNick(),
-    validatePw(),
+    loginValidation,
     async (req: Request, res: Response): Promise<void> => {
         // create sublogger which will have the prefix 'auth:login' on console
         const loginLog = log.getSubLogger({ name: 'login' });
@@ -219,8 +221,7 @@ if (process.env['NODE_ENV'] === 'development') {
                 });
                 return;
             }
-            const userId = Number(req.userId);
-            const user = await getUserById(DB, userId);
+            const user = await getUserById(DB, req.userId);
             if (user === null) {
                 res.status(500).json({
                     error: 'Invalid userId in token or DB error',
