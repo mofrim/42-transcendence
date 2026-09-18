@@ -430,6 +430,23 @@ export type GLBMesh = THREE.Mesh<
 
 export type PlayerPosition = THREE.Vector3Like;
 
+export type SaveGameSnapshot = {
+    readonly position: PlayerPosition;
+    readonly blackHoleSecondsRemaining: number;
+    readonly blackHoleCountdownCompleted: boolean;
+    readonly completedQuestIds: readonly string[];
+};
+
+export type SaveGameTimerPayload = {
+    readonly type: 'save_game_timer';
+    readonly blackHoleSecondsRemaining: number;
+    readonly completed: boolean;
+};
+
+export type SaveGameQuestStatusPayload = {
+    readonly type: 'save_game_quest_status';
+} & Pick<SaveGameSnapshot, 'completedQuestIds'>;
+
 export type PlayerData = {
     id: string;
     nickname: string;
@@ -450,7 +467,7 @@ export type PlayerUpdatePayload = PlayerMovementPayload &
 export type PlayerConnectedPayload = Pick<PlayerData, 'id' | 'nickname'> & {
     character: Character;
     isInitialSnapshot: boolean;
-} & Partial<Pick<PlayerUpdatePayload, 'x' | 'y' | 'z' | 'state'>>;
+} & Partial<PlayerPosition & Pick<PlayerData, 'state'>>;
 
 // ================================================
 // RPS Game
