@@ -260,7 +260,15 @@ io.on('connection', (socket) => {
                 handlePlayerUpdate(socket, data);
                 break;
             case 'save_game_timer':
-                saveGame.handleSaveGameTimer(
+                saveGame.SaveGameBlackholeTimer(
+                    getAuthenticatedUserId(socket),
+                    socket.id,
+                    gameManager.players.get(socket.id)?.position,
+                    data
+                );
+                break;
+            case 'save_game_quest_status':
+                saveGame.SaveGameQuestStatus(
                     getAuthenticatedUserId(socket),
                     socket.id,
                     gameManager.players.get(socket.id)?.position,

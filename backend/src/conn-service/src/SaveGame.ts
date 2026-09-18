@@ -1,8 +1,9 @@
-import { BLACK_HOLE_DURATION_SECONDS } from 'ftr-common/sharedTypes';
-import type {
-    PlayerPosition,
-    SaveGameSnapshot,
-    SaveGameTimerPayload,
+import {
+    BLACK_HOLE_DURATION_SECONDS,
+    type PlayerPosition,
+    type SaveGameQuestStatusPayload,
+    type SaveGameSnapshot,
+    type SaveGameTimerPayload,
 } from 'ftr-common/sharedTypes';
 
 type MutableSaveGameSnapshot = {
@@ -52,7 +53,7 @@ export class SaveGame {
             this.activeSocketsByUser.delete(userId);
         }
 
-        if (this.ownerSocketByUser.get(userId) !== socketId) {
+        if (!this.isOwnerSocket(userId, socketId)) {
             return;
         }
 
@@ -68,7 +69,7 @@ export class SaveGame {
 
     getSnapshot(userId: number, socketId: string): SaveGameSnapshot | null {
         if (
-            this.ownerSocketByUser.get(userId) !== socketId ||
+            !this.isOwnerSocket(userId, socketId) ||
             this.blockedSocketIds.has(socketId)
         ) {
             return null;
@@ -116,7 +117,20 @@ export class SaveGame {
         save.blackHoleCountdownCompleted = completed;
     }
 
-    handleSaveGameTimer(
+    updateQuestStatus(
+        userId: number,
+        socketId: string,
+        position: PlayerPosition,
+        completedQuestIds: readonly string[]
+    ): void {
+        if (!this.isWritable(userId, socketId)) {
+            return;
+        }
+        const save = this.getOrCreateSave(userId, position);
+        save.completedQuestIds = [...new Set(completedQuestIds)];
+    }
+
+    SaveGameBlackholeTimer(
         userId: number | null,
         socketId: string,
         position: PlayerPosition | undefined,
@@ -145,8 +159,33 @@ export class SaveGame {
         );
     }
 
+    /** TODO: Quests in der users-table in der DB speichern & von da auch wider laden bei login */
+    SaveGameQuestStatus(
+        userId: number | null,
+        socketId: string,
+        position: PlayerPosition | undefined,
+        data: SaveGameQuestStatusPayload
+    ): void {
+        if (
+            userId === null ||
+            position === undefined ||
+            !Array.isArray(data.completedQuestIds) ||
+            data.completedQuestIds.some(
+                (questId) => typeof questId !== 'string'
+            )
+        ) {
+            return;
+        }
+        this.updateQuestStatus(
+            userId,
+            socketId,
+            position,
+            data.completedQuestIds
+        );
+    }
+
     clearForBlackHoleTimeout(userId: number, socketId: string): void {
-        if (this.ownerSocketByUser.get(userId) !== socketId) {
+        if (!this.isOwnerSocket(userId, socketId)) {
             return;
         }
 
@@ -161,7 +200,7 @@ export class SaveGame {
     }
 
     restartAfterBlackHole(userId: number, socketId: string): void {
-        if (this.ownerSocketByUser.get(userId) !== socketId) {
+        if (!this.isOwnerSocket(userId, socketId)) {
             return;
         }
 
@@ -171,10 +210,14 @@ export class SaveGame {
 
     private isWritable(userId: number, socketId: string): boolean {
         return (
-            this.ownerSocketByUser.get(userId) === socketId &&
+            this.isOwnerSocket(userId, socketId) &&
             !this.blockedSocketIds.has(socketId) &&
             this.restoreReadySocketIds.has(socketId)
         );
+    }
+
+    private isOwnerSocket(userId: number, socketId: string): boolean {
+        return this.ownerSocketByUser.get(userId) === socketId;
     }
 
     private getOrCreateSave(
@@ -190,6 +233,7 @@ export class SaveGame {
             position: structuredClone(position),
             blackHoleSecondsRemaining: BLACK_HOLE_DURATION_SECONDS,
             blackHoleCountdownCompleted: false,
+            completedQuestIds: [],
         };
         this.saves.set(userId, save);
         return save;

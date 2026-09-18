@@ -1,6 +1,7 @@
 import type { Socket } from 'socket.io-client';
 import type {
     PlayerPosition,
+    SaveGameQuestStatusPayload,
     SaveGameSnapshot,
     SaveGameTimerPayload,
 } from 'ftr-common/sharedTypes';
@@ -17,6 +18,7 @@ type SaveGameOptions = {
 
 type SaveGameUpdatePayload =
     | SaveGameTimerPayload
+    | SaveGameQuestStatusPayload
     | { readonly type: 'black_hole_timeout' | 'save_game_restart' };
 
 export class SaveGame {
@@ -34,7 +36,6 @@ export class SaveGame {
 
     requestRestore(socketId: string): void {
         const { socket } = this.options;
-
         socket.emit(
             'save_game_restore',
             (snapshot: SaveGameSnapshot | null): void => {
@@ -57,7 +58,7 @@ export class SaveGame {
     }
 
     handleDisconnect(): void {
-        this.restoreReady = false;
+        this.prepareRestore();
         this.options.onConnectionChange?.(false);
     }
 
@@ -66,6 +67,13 @@ export class SaveGame {
             type: 'save_game_timer',
             blackHoleSecondsRemaining: secondsRemaining,
             completed,
+        });
+    }
+
+    updateQuestStatus(completedQuestIds: readonly string[]): void {
+        this.emitUpdate({
+            type: 'save_game_quest_status',
+            completedQuestIds,
         });
     }
 
@@ -82,7 +90,7 @@ export class SaveGame {
     }
 
     dispose(): void {
-        this.restoreReady = false;
+        this.prepareRestore();
     }
 
     private emitUpdate(payload: SaveGameUpdatePayload): void {

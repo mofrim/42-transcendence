@@ -55,6 +55,7 @@ export type GameRuntime = {
         secondsRemaining: number,
         completed: boolean
     ) => void;
+    readonly updateQuestStatus: (completedQuestIds: readonly string[]) => void;
     readonly removeFriend: (friendPlayerId: string) => void;
     readonly despawnLocalPlayer: () => Promise<void>;
     readonly dispose: () => Promise<void>;

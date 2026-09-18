@@ -247,7 +247,7 @@ export function GameUI({
     const handleBlackHoleCountdownExpired = useEffectEvent((): void => {
         onBlackHoleCountdownExpired?.();
     });
-    const handleBlackHoleTimerChange = useEffectEvent(
+    const BlackHoleTimerChange = useEffectEvent(
         (secondsRemaining: number, completed: boolean): void => {
             onBlackHoleTimerChange?.(secondsRemaining, completed);
         }
@@ -291,7 +291,7 @@ export function GameUI({
             return;
         }
 
-        handleBlackHoleTimerChange(getBlackHoleSecondsRemaining(), true);
+        BlackHoleTimerChange(getBlackHoleSecondsRemaining(), true);
     }, [blackHoleCountdownActive, isStartEvaluationCompleted]);
 
     /** blackhole timer */
@@ -314,11 +314,11 @@ export function GameUI({
             setBlackHoleSecondsRemaining(secondsRemaining);
 
             if (secondsRemaining > 0) {
-                handleBlackHoleTimerChange(secondsRemaining, false);
+                BlackHoleTimerChange(secondsRemaining, false);
             } else if (intervalId !== undefined) {
                 window.clearInterval(intervalId);
                 intervalId = undefined;
-                handleBlackHoleTimerChange(0, false);
+                BlackHoleTimerChange(0, false);
                 handleBlackHoleCountdownExpired();
             }
         };

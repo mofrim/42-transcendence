@@ -86,6 +86,7 @@ export type MultiplayerRuntimeActions = FriendRequestRuntimeActions & {
         secondsRemaining: number,
         completed: boolean
     ) => void;
+    readonly updateQuestStatus: (completedQuestIds: readonly string[]) => void;
 };
 
 type MultiplayerManagerOptions = {
@@ -134,6 +135,12 @@ export function createMultiplayerRuntimeActions(options: {
             options
                 .getMultiplayer()
                 ?.updateBlackHoleTimer(secondsRemaining, completed);
+        },
+        updateQuestStatus(completedQuestIds: readonly string[]): void {
+            if (options.isDisposed()) {
+                return;
+            }
+            options.getMultiplayer()?.updateQuestStatus(completedQuestIds);
         },
     };
 }
@@ -548,6 +555,10 @@ export class MultiplayerManager {
 
     updateBlackHoleTimer(secondsRemaining: number, completed: boolean): void {
         this.saveGame.updateBlackHoleTimer(secondsRemaining, completed);
+    }
+
+    updateQuestStatus(completedQuestIds: readonly string[]): void {
+        this.saveGame.updateQuestStatus(completedQuestIds);
     }
 
     emitBlackHoleTimeout(): void {

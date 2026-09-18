@@ -8,6 +8,7 @@ import {
     User,
     type ReceivedChatPayload,
     type EventDataPlayerInRange,
+    type SaveGameSnapshot,
 } from 'ftr-common/sharedTypes';
 import { useMatchHistory } from '../../hooks/useMatchHistory';
 import { GameUI, type DialogPanelState } from '../ingame/GameUI';
@@ -65,14 +66,29 @@ export const Game: React.FC<{
         isSaveGameReady,
         isGameConnected,
         blackHoleRestore,
-        handleSaveGameRestore,
+        SaveGameRestore: handleSaveGameStateRestore,
         handleGameConnectionChange,
-        handleBlackHoleTimerChange,
+        BlackHoleTimerChange,
         resetSaveGame,
     } = useSaveGame({
         isSpectator,
         gameRuntimeRef,
     });
+
+    const SaveGameRestore = useCallback(
+        (snapshot: SaveGameSnapshot | null): void => {
+            setCompletedQuestIds(Array.from(snapshot?.completedQuestIds ?? []));
+            handleSaveGameStateRestore(snapshot);
+        },
+        [handleSaveGameStateRestore]
+    );
+
+    useEffect(() => {
+        if (isSpectator || !isSaveGameReady) {
+            return;
+        }
+        gameRuntimeRef.current?.updateQuestStatus(completedQuestIds);
+    }, [completedQuestIds, isSaveGameReady, isSpectator]);
 
     const { matchHistory, saveMatchResult } = useMatchHistory({
         isSpectator,
@@ -239,8 +255,7 @@ export const Game: React.FC<{
             typeof handleFriendRequestChange | undefined;
         let runtimeFriendStateSnapshotHandler:
             typeof handleFriendStateSnapshot | undefined;
-        let runtimeSaveGameRestoreHandler:
-            typeof handleSaveGameRestore | undefined;
+        let runtimeSaveGameRestoreHandler: typeof SaveGameRestore | undefined;
         let runtimeConnectionChangeHandler:
             typeof handleGameConnectionChange | undefined;
 
@@ -252,7 +267,7 @@ export const Game: React.FC<{
             runtimeGameplayReadyHandler = () => setIsGameplayReady(true);
             runtimeFriendRequestHandler = handleFriendRequestChange;
             runtimeFriendStateSnapshotHandler = handleFriendStateSnapshot;
-            runtimeSaveGameRestoreHandler = handleSaveGameRestore;
+            runtimeSaveGameRestoreHandler = SaveGameRestore;
             runtimeConnectionChangeHandler = handleGameConnectionChange;
         }
 
@@ -297,7 +312,7 @@ export const Game: React.FC<{
         handleFriendStateSnapshot,
         handleGameConnectionChange,
         handleReceivedChatMessage,
-        handleSaveGameRestore,
+        SaveGameRestore,
         isSpectator,
         user,
         serverAddrRef,
@@ -329,7 +344,7 @@ export const Game: React.FC<{
             restoredBlackHoleSecondsRemaining:
                 blackHoleRestore.secondsRemaining,
             restoredBlackHoleCountdownCompleted: blackHoleRestore.completed,
-            onBlackHoleTimerChange: handleBlackHoleTimerChange,
+            onBlackHoleTimerChange: BlackHoleTimerChange,
             friendRequest,
             friends,
             onFriendRemove: removeFriend,

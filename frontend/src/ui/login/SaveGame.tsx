@@ -11,6 +11,11 @@ type BlackHoleRestore = {
     readonly completed: boolean;
 };
 
+const DEFAULT_BLACK_HOLE_RESTORE = {
+    secondsRemaining: BLACK_HOLE_DURATION_SECONDS,
+    completed: false,
+} satisfies Omit<BlackHoleRestore, 'version'>;
+
 type UseSaveGameOptions = {
     readonly isSpectator: boolean;
     readonly gameRuntimeRef: RefObject<GameRuntime | null>;
@@ -24,18 +29,19 @@ export function useSaveGame({
     const [isGameConnected, setIsGameConnected] = useState(isSpectator);
     const [blackHoleRestore, setBlackHoleRestore] = useState<BlackHoleRestore>({
         version: 0,
-        secondsRemaining: BLACK_HOLE_DURATION_SECONDS,
-        completed: false,
+        ...DEFAULT_BLACK_HOLE_RESTORE,
     });
 
-    const handleSaveGameRestore = useCallback(
+    const SaveGameRestore = useCallback(
         (snapshot: SaveGameSnapshot | null): void => {
             setBlackHoleRestore((currentRestore) => ({
                 version: currentRestore.version + 1,
                 secondsRemaining:
                     snapshot?.blackHoleSecondsRemaining ??
-                    BLACK_HOLE_DURATION_SECONDS,
-                completed: snapshot?.blackHoleCountdownCompleted ?? false,
+                    DEFAULT_BLACK_HOLE_RESTORE.secondsRemaining,
+                completed:
+                    snapshot?.blackHoleCountdownCompleted ??
+                    DEFAULT_BLACK_HOLE_RESTORE.completed,
             }));
             setIsSaveGameReady(true);
         },
@@ -52,7 +58,7 @@ export function useSaveGame({
         []
     );
 
-    const handleBlackHoleTimerChange = useCallback(
+    const BlackHoleTimerChange = useCallback(
         (secondsRemaining: number, completed: boolean): void => {
             gameRuntimeRef.current?.updateBlackHoleTimer(
                 secondsRemaining,
@@ -65,8 +71,7 @@ export function useSaveGame({
     const resetSaveGame = useCallback((): void => {
         setBlackHoleRestore((currentRestore) => ({
             version: currentRestore.version + 1,
-            secondsRemaining: BLACK_HOLE_DURATION_SECONDS,
-            completed: false,
+            ...DEFAULT_BLACK_HOLE_RESTORE,
         }));
     }, []);
 
@@ -74,9 +79,9 @@ export function useSaveGame({
         isSaveGameReady,
         isGameConnected,
         blackHoleRestore,
-        handleSaveGameRestore,
+        SaveGameRestore,
         handleGameConnectionChange,
-        handleBlackHoleTimerChange,
+        BlackHoleTimerChange,
         resetSaveGame,
     };
 }
