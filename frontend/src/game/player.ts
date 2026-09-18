@@ -512,7 +512,7 @@ export class Player {
         if (resultInteractive) this.handleCollision(resultInteractive);
     }
 
-    handleCollision(result: any) {
+    handleCollision(result: ReturnType<Octree['capsuleIntersect']>) {
         if (result) {
             // determine if the surface we bumped into is something we can stand on
             this.playerOnFloor = result.normal.y >= 0.15; // allow slopes up to ~81° but ignore sheer vertical walls
