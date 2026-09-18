@@ -5,6 +5,7 @@ import type { Socket } from 'socket.io-client';
 import type { Player } from './player.js';
 import { Remote_Player } from './remote_player.js';
 import { Chat } from './Chat.js';
+import { SaveGame } from './SaveGame.js';
 import {
     createFriendRequestRuntimeActions,
     FriendRequestManager,
@@ -23,12 +24,14 @@ import {
     type GameEvent,
     type PlayerConnectedPayload,
     type PlayerMovementPayload,
+    type PlayerPosition,
     type PlayerUpdatePayload,
     type ReceivedChatPayload,
     type RPSDrawPayload,
     type RPSInvalidPayload,
     type RPSRequestDataPayload,
     type RPSWinnerPayload,
+    type SaveGameSnapshot,
     type TTTDrawPayload,
     type TTTGame,
     type TTTMarkPayload,
@@ -40,7 +43,7 @@ import {
 const MIN_POSITION_CHANGE_SQUARED = 0.001 ** 2;
 const PLAYER_NETWORK_KEYFRAME_INTERVAL_MS = 1_000;
 
-type RemotePlayerUpdate = Pick<PlayerUpdatePayload, 'x' | 'y' | 'z' | 'state'>;
+type RemotePlayerUpdate = PlayerPosition & Pick<PlayerUpdatePayload, 'state'>;
 
 type TTTResetPayload = {
     readonly type: 'ttt_reset' | 'ttt_left';
@@ -79,6 +82,10 @@ type MultiplayerGameHandlers = {
 
 export type MultiplayerRuntimeActions = FriendRequestRuntimeActions & {
     readonly sendChatMessage: (message: string) => void;
+    readonly updateBlackHoleTimer: (
+        secondsRemaining: number,
+        completed: boolean
+    ) => void;
 };
 
 type MultiplayerManagerOptions = {
@@ -90,6 +97,9 @@ type MultiplayerManagerOptions = {
         ((message: ReceivedChatPayload) => void) | undefined;
     readonly onFriendRequestChange: FriendRequestChangeHandler | undefined;
     readonly onFriendStateSnapshot: FriendStateSnapshotHandler | undefined;
+    readonly onSaveGameRestore:
+        ((snapshot: SaveGameSnapshot | null) => void) | undefined;
+    readonly onConnectionChange: ((connected: boolean) => void) | undefined;
     readonly gameHandlers?: MultiplayerGameHandlers;
 };
 
@@ -113,6 +123,18 @@ export function createMultiplayerRuntimeActions(options: {
 
             options.getMultiplayer()?.sendChatMessage(message);
         },
+        updateBlackHoleTimer(
+            secondsRemaining: number,
+            completed: boolean
+        ): void {
+            if (options.isDisposed()) {
+                return;
+            }
+
+            options
+                .getMultiplayer()
+                ?.updateBlackHoleTimer(secondsRemaining, completed);
+        },
     };
 }
 
@@ -125,6 +147,7 @@ export class MultiplayerManager {
     private readonly user: User;
     private readonly onGameEvent: ((event: GameEvent) => void) | undefined;
     private readonly gameHandlers: MultiplayerGameHandlers;
+    private readonly saveGame: SaveGame;
     private readonly chat: Chat;
     private readonly friendRequest: FriendRequestManager;
     private readonly departingPlayers: Set<Remote_Player>;
@@ -161,6 +184,21 @@ export class MultiplayerManager {
         this.playerUpdateIntervalId = null;
         this.disposePromise = null;
         this.disposed = false;
+        this.saveGame = new SaveGame({
+            socket: this.socket,
+            isDisposed: () => this.disposed,
+            onSaveGameRestore: options.onSaveGameRestore,
+            onConnectionChange: options.onConnectionChange,
+            onPositionRestore: (position) => {
+                if (!this.localPlayer) {
+                    return;
+                }
+                this.localPlayer.setPlayerPosition(position);
+                this.localPlayer.group.position.copy(position);
+                this.lastSentPlayerPosition.copy(position);
+            },
+            onRestoreReady: () => this.sendLocalPlayerUpdate(),
+        });
 
         this.desired = new THREE.Vector3();
         this.chat = new Chat({
@@ -186,6 +224,7 @@ export class MultiplayerManager {
     }
 
     private readonly handleSocketConnect = (): void => {
+        this.saveGame.prepareRestore();
         const socketId = this.socket.id;
         if (socketId === undefined) {
             console.error(
@@ -203,7 +242,7 @@ export class MultiplayerManager {
         }
 
         this.lastSentPlayerState = null;
-        this.sendLocalPlayerUpdate();
+        this.saveGame.requestRestore(socketId);
     };
 
     private readonly handlePlayerConnected = (
@@ -276,6 +315,7 @@ export class MultiplayerManager {
     };
 
     private readonly handleSocketDisconnect = (reason: string): void => {
+        this.saveGame.handleDisconnect();
         if (this.localPlayer) {
             this.localPlayer.id = undefined;
         }
@@ -369,6 +409,7 @@ export class MultiplayerManager {
             this.disposed ||
             !player ||
             !this.socket.connected ||
+            !this.saveGame.isRestoreReady ||
             !player.isSpawned
         ) {
             return;
@@ -505,6 +546,18 @@ export class MultiplayerManager {
         });
     }
 
+    updateBlackHoleTimer(secondsRemaining: number, completed: boolean): void {
+        this.saveGame.updateBlackHoleTimer(secondsRemaining, completed);
+    }
+
+    emitBlackHoleTimeout(): void {
+        this.saveGame.emitBlackHoleTimeout();
+    }
+
+    restartSaveGameAfterBlackHole(): void {
+        this.saveGame.restartAfterBlackHole();
+    }
+
     sendChatMessage(message: string): void {
         this.chat.sendMessage(message);
     }
@@ -542,9 +595,7 @@ export class MultiplayerManager {
         if (initialUpdate && remotePlayer?.isActive()) {
             this.multiplayerMovement(
                 remotePlayer,
-                initialUpdate.x,
-                initialUpdate.y,
-                initialUpdate.z,
+                initialUpdate,
                 initialUpdate.state
             );
         }
@@ -573,20 +624,12 @@ export class MultiplayerManager {
             return;
         }
 
-        this.multiplayerMovement(
-            remotePlayer,
-            data.x,
-            data.y,
-            data.z,
-            data.state
-        );
+        this.multiplayerMovement(remotePlayer, data, data.state);
     }
 
     multiplayerMovement(
         player: Remote_Player,
-        x: number,
-        y: number,
-        z: number,
+        position: PlayerPosition,
         state: PlayerState
     ) {
         //console.log("ID 1 " + playe.id + " to position: " + playe.group.position.y.toFixed(4) + " , y: " + y.toFixed(4));
@@ -596,13 +639,13 @@ export class MultiplayerManager {
         player.state = state;
 
         if (!player.isSpawned) {
-            player.animateSpawn(x, y, z);
+            player.animateSpawn(position);
             return;
         }
 
         const pos = player.group.position;
 
-        this.desired.set(x, y, z);
+        this.desired.copy(position);
 
         if (state === PlayerState.Run)
             player.rotateCharacter(this.desired, pos);
@@ -678,6 +721,7 @@ export class MultiplayerManager {
         }
 
         this.disposed = true;
+        this.saveGame.dispose();
         this.stopPlayerUpdateLoop();
         this.unbindSocketEvents();
         this.friendRequest.dispose();

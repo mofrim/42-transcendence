@@ -12,6 +12,7 @@ import {
 import { useMatchHistory } from '../../hooks/useMatchHistory';
 import { GameUI, type DialogPanelState } from '../ingame/GameUI';
 import { useFriendRequest } from '../ingame/FriendRequest';
+import { useSaveGame } from './SaveGame';
 import {
     applyQuestCompletionEvent,
     type QuestStatusChange,
@@ -58,6 +59,19 @@ export const Game: React.FC<{
     const [dialog, setDialog] = useState<DialogPanelState>({
         isOpen: false,
         message: '',
+    });
+    /** SaveGame */
+    const {
+        isSaveGameReady,
+        isGameConnected,
+        blackHoleRestore,
+        handleSaveGameRestore,
+        handleGameConnectionChange,
+        handleBlackHoleTimerChange,
+        resetSaveGame,
+    } = useSaveGame({
+        isSpectator,
+        gameRuntimeRef,
     });
 
     const { matchHistory, saveMatchResult } = useMatchHistory({
@@ -172,9 +186,10 @@ export const Game: React.FC<{
     const handleGameReset = useCallback((): void => {
         metPlayerNicknamesRef.current.clear();
         setCompletedQuestIds([]);
+        resetSaveGame();
         resetFriendRequest();
         setGameResetVersion((currentVersion) => currentVersion + 1);
-    }, [resetFriendRequest]);
+    }, [resetFriendRequest, resetSaveGame]);
 
     /** suck up */
     const exitLocalPlayer = useCallback(async (): Promise<void> => {
@@ -224,6 +239,10 @@ export const Game: React.FC<{
             typeof handleFriendRequestChange | undefined;
         let runtimeFriendStateSnapshotHandler:
             typeof handleFriendStateSnapshot | undefined;
+        let runtimeSaveGameRestoreHandler:
+            typeof handleSaveGameRestore | undefined;
+        let runtimeConnectionChangeHandler:
+            typeof handleGameConnectionChange | undefined;
 
         if (!isSpectator) {
             gameMode = 'player';
@@ -233,6 +252,8 @@ export const Game: React.FC<{
             runtimeGameplayReadyHandler = () => setIsGameplayReady(true);
             runtimeFriendRequestHandler = handleFriendRequestChange;
             runtimeFriendStateSnapshotHandler = handleFriendStateSnapshot;
+            runtimeSaveGameRestoreHandler = handleSaveGameRestore;
+            runtimeConnectionChangeHandler = handleGameConnectionChange;
         }
 
         const runtime: GameRuntime = startGame(
@@ -247,7 +268,9 @@ export const Game: React.FC<{
             runtimeGameResetHandler,
             runtimeGameplayReadyHandler,
             runtimeFriendRequestHandler,
-            runtimeFriendStateSnapshotHandler
+            runtimeFriendStateSnapshotHandler,
+            runtimeSaveGameRestoreHandler,
+            runtimeConnectionChangeHandler
         );
         gameRuntimeRef.current = runtime;
 
@@ -272,7 +295,9 @@ export const Game: React.FC<{
         handleGameReset,
         handleFriendRequestChange,
         handleFriendStateSnapshot,
+        handleGameConnectionChange,
         handleReceivedChatMessage,
+        handleSaveGameRestore,
         isSpectator,
         user,
         serverAddrRef,
@@ -299,7 +324,12 @@ export const Game: React.FC<{
             onLogout: handleLogout,
             dialog,
             onDialogNext: handleDialogNext,
-            blackHoleCountdownActive: isGameplayReady,
+            blackHoleCountdownActive: isGameplayReady && isSaveGameReady,
+            blackHoleConnected: isGameConnected,
+            restoredBlackHoleSecondsRemaining:
+                blackHoleRestore.secondsRemaining,
+            restoredBlackHoleCountdownCompleted: blackHoleRestore.completed,
+            onBlackHoleTimerChange: handleBlackHoleTimerChange,
             friendRequest,
             friends,
             onFriendRemove: removeFriend,
@@ -311,7 +341,7 @@ export const Game: React.FC<{
             <div ref={mountRef} className='game-canvas-container' />
             {spectatorExitButton}
             <GameUI
-                key={gameResetVersion}
+                key={gameResetVersion + ':' + blackHoleRestore.version}
                 // NOTE now we can just use the users nickname from DB here..
                 // this might change when we want to allow change user-prefs
                 // from a in-game ui

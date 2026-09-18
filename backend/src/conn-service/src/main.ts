@@ -8,6 +8,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { Server } from 'socket.io';
 import type { Socket } from 'socket.io';
 import { GameManager } from './gameManager.ts';
+import { SaveGame } from './SaveGame.ts';
 import { verifyToken } from 'ftr-common/middleware';
 import type {
     ChatSendPayload,
@@ -21,6 +22,7 @@ import type {
     RPSBattleChoicePayload,
     RPSRequestDataPayload,
     PlayerMovementPayload,
+    PlayerPosition,
     PlayerConnectedPayload,
     PlayerUpdatePayload,
     TTTMarkPayload,
@@ -51,6 +53,7 @@ const io = new Server(server, {
 });
 io.engine.use(cookieParser());
 const gameManager = new GameManager();
+const saveGame = new SaveGame();
 
 function getAuthenticatedUserId(socket: Socket | undefined): number | null {
     const userId = Number(socket?.data.userId);
@@ -96,6 +99,7 @@ io.use((socket, next) => {
 
 io.on('connection', (socket) => {
     const requestedRole = socket.handshake.auth['role'];
+    let authenticatedPlayerUserId: number | null = null;
 
     if (
         requestedRole !== undefined &&
@@ -131,6 +135,7 @@ io.on('connection', (socket) => {
             socket.disconnect(true);
             return;
         }
+        authenticatedPlayerUserId = userId;
         socket.data.role = 'player';
         socket.data.nickname = nickname;
         socket.data.character = character;
@@ -198,6 +203,18 @@ io.on('connection', (socket) => {
         return;
     }
 
+    if (authenticatedPlayerUserId === null) {
+        socket.disconnect(true);
+        return;
+    }
+    const playerUserId = authenticatedPlayerUserId;
+    const restoredSaveGame = saveGame.connect(playerUserId, socket.id);
+    const playerData = gameManager.createPlayer(socket.id, nickname);
+    if (restoredSaveGame) {
+        Object.assign(playerData.position, restoredSaveGame.position);
+    }
+    gameManager.players.set(socket.id, playerData);
+
     // the only other action preformed currently by the backend apart from
     // handling ttt and rps game
     const connectedPlayer: PlayerConnectedPayload = {
@@ -206,18 +223,30 @@ io.on('connection', (socket) => {
         nickname,
         isInitialSnapshot: false,
     };
+    if (restoredSaveGame) {
+        Object.assign(connectedPlayer, restoredSaveGame.position, {
+            state: playerData.state,
+        });
+    }
     socket.broadcast.emit('player_connected', connectedPlayer);
     console.log('Client connected:', socket.id);
 
-    gameManager.players.set(
-        socket.id,
-        gameManager.createPlayer(socket.id, nickname)
-    );
+    socket.on('save_game_restore', (acknowledge: unknown) => {
+        if (typeof acknowledge !== 'function') {
+            return;
+        }
+        acknowledge(saveGame.getSnapshot(playerUserId, socket.id));
+    });
 
     // TTT-Disconnect
     // dissconnect and remove player from gameManager
     socket.on('disconnect', () => {
         console.log('Client disconnected:', socket.id);
+        saveGame.disconnect(
+            playerUserId,
+            socket.id,
+            gameManager.players.get(socket.id)?.position
+        );
         playerGameReset(socket.id);
 
         gameManager.players.delete(socket.id);
@@ -229,6 +258,20 @@ io.on('connection', (socket) => {
         switch (data.type) {
             case 'player_update':
                 handlePlayerUpdate(socket, data);
+                break;
+            case 'save_game_timer':
+                saveGame.handleSaveGameTimer(
+                    getAuthenticatedUserId(socket),
+                    socket.id,
+                    gameManager.players.get(socket.id)?.position,
+                    data
+                );
+                break;
+            case 'black_hole_timeout':
+                saveGame.clearForBlackHoleTimeout(playerUserId, socket.id);
+                break;
+            case 'save_game_restart':
+                saveGame.restartAfterBlackHole(playerUserId, socket.id);
                 break;
 
             case 'ttt_mark':
@@ -601,19 +644,26 @@ function handleFriendRemove(
 }
 
 function handlePlayerUpdate(socket: Socket, data: PlayerMovementPayload) {
-    if (
-        !gameManager.updatePlayer(socket.id, data.x, data.y, data.z, data.state)
-    ) {
+    const position: PlayerPosition = {
+        x: data.x,
+        y: data.y,
+        z: data.z,
+    };
+
+    if (!gameManager.updatePlayer(socket.id, position, data.state)) {
         console.log('Player not found for id: ' + socket.id);
         return;
+    }
+
+    const userId = getAuthenticatedUserId(socket);
+    if (userId !== null) {
+        saveGame.updatePosition(userId, socket.id, position);
     }
 
     const playerUpdate: PlayerUpdatePayload = {
         type: 'player_update',
         id: socket.id,
-        x: data.x,
-        y: data.y,
-        z: data.z,
+        ...position,
         state: data.state,
     };
 

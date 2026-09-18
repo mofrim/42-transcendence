@@ -45,11 +45,16 @@ import {
     type FriendStateSnapshotHandler,
     type GLBMesh,
     type ReceivedChatPayload,
+    type SaveGameSnapshot,
     type SocketAuth,
 } from 'ftr-common/sharedTypes';
 
 export type GameRuntime = {
     readonly sendChatMessage: (message: string) => void;
+    readonly updateBlackHoleTimer: (
+        secondsRemaining: number,
+        completed: boolean
+    ) => void;
     readonly removeFriend: (friendPlayerId: string) => void;
     readonly despawnLocalPlayer: () => Promise<void>;
     readonly dispose: () => Promise<void>;
@@ -69,7 +74,9 @@ export function startGame(
     onGameReset?: () => void,
     onGameplayReady?: () => void,
     onFriendRequestChange?: FriendRequestChangeHandler,
-    onFriendStateSnapshot?: FriendStateSnapshotHandler
+    onFriendStateSnapshot?: FriendStateSnapshotHandler,
+    onSaveGameRestore?: (snapshot: SaveGameSnapshot | null) => void,
+    onConnectionChange?: (connected: boolean) => void
 ): GameRuntime {
     // ============================================================================
     // SERVER CONNECTION
@@ -312,6 +319,8 @@ export function startGame(
             onChatMessage,
             onFriendRequestChange,
             onFriendStateSnapshot,
+            onSaveGameRestore,
+            onConnectionChange,
             gameHandlers: minigameEvent.handlers,
         });
 
@@ -489,6 +498,7 @@ export function startGame(
             runtimeResourceDisposer.disposeObject3D(duck_up);
             duck_up = null;
         }
+        multiplayer?.restartSaveGameAfterBlackHole();
         onGameReset?.();
     }
     // Test function fo spawn and delete
@@ -527,6 +537,7 @@ export function startGame(
             if (renderLoop.isDisposed) {
                 return;
             }
+            multiplayer?.emitBlackHoleTimeout();
             multiplayer?.emitGameReset();
             storyManager?.blackHoleCutscene();
         },

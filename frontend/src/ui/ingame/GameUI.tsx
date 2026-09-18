@@ -18,10 +18,6 @@ import { formatQuestCountdown } from '../../game/QuestBlackHole';
 
 import {
     BLACK_HOLE_DURATION_SECONDS,
-    getBlackHoleCountdownDeadline,
-} from './BlackHoleCountdown';
-
-import {
     type Character,
     type FriendListEntry,
     type FriendRequestState,
@@ -63,6 +59,13 @@ type GameUIProps = {
     readonly dialog?: DialogPanelState;
     readonly onDialogNext?: () => void;
     readonly blackHoleCountdownActive?: boolean;
+    readonly blackHoleConnected?: boolean;
+    readonly restoredBlackHoleSecondsRemaining?: number;
+    readonly restoredBlackHoleCountdownCompleted?: boolean;
+    readonly onBlackHoleTimerChange?: (
+        secondsRemaining: number,
+        completed: boolean
+    ) => void;
     readonly friendRequest?: FriendRequestState | null;
     readonly friends?: readonly FriendListEntry[];
     readonly onFriendRemove?: (friendPlayerId: string) => void;
@@ -154,6 +157,10 @@ export function GameUI({
     dialog,
     onDialogNext,
     blackHoleCountdownActive = true,
+    blackHoleConnected = true,
+    restoredBlackHoleSecondsRemaining = BLACK_HOLE_DURATION_SECONDS,
+    restoredBlackHoleCountdownCompleted = false,
+    onBlackHoleTimerChange,
     friendRequest,
     friends = [],
     onFriendRemove,
@@ -167,7 +174,7 @@ export function GameUI({
     const [chatMessage, setChatMessage] = useState('');
     const [isLoggingOut, setIsLoggingOut] = useState(false);
     const [blackHoleSecondsRemaining, setBlackHoleSecondsRemaining] = useState(
-        BLACK_HOLE_DURATION_SECONDS
+        restoredBlackHoleSecondsRemaining
     );
     const eventListRef = useRef<HTMLOListElement>(null);
     const matchHistoryListRef = useRef<HTMLOListElement>(null);
@@ -240,6 +247,14 @@ export function GameUI({
     const handleBlackHoleCountdownExpired = useEffectEvent((): void => {
         onBlackHoleCountdownExpired?.();
     });
+    const handleBlackHoleTimerChange = useEffectEvent(
+        (secondsRemaining: number, completed: boolean): void => {
+            onBlackHoleTimerChange?.(secondsRemaining, completed);
+        }
+    );
+    const getBlackHoleSecondsRemaining = useEffectEvent(
+        (): number => blackHoleSecondsRemaining
+    );
 
     const displayedEvents = events.slice(-MAX_EVENT_LOG_ENTRIES);
     const latestEventId = displayedEvents.at(-1)?.id;
@@ -249,12 +264,18 @@ export function GameUI({
     }
     const blackHoleCountdown =
         blackHoleHourglass + formatQuestCountdown(blackHoleSecondsRemaining);
+    const isStartEvaluationCompleted = completedQuestIds.includes(
+        QUESTS.START_EVALUATION_QUEST_ID.id
+    );
+    const isBlackHoleCountdownCompleted =
+        restoredBlackHoleCountdownCompleted || isStartEvaluationCompleted;
     const isBlackHoleCountdownRunning =
         blackHoleCountdownActive &&
-        !completedQuestIds.includes(QUESTS.START_EVALUATION_QUEST_ID.id);
+        blackHoleConnected &&
+        !isBlackHoleCountdownCompleted;
     const isBlackHoleQuestCompleted =
         blackHoleCountdownActive &&
-        !isBlackHoleCountdownRunning &&
+        isBlackHoleCountdownCompleted &&
         blackHoleSecondsRemaining > 0;
     const resolvedQuests = resolveQuestLogEntries(
         quests,
@@ -264,17 +285,23 @@ export function GameUI({
     const completedQuestCount = resolvedQuests.filter(
         (quest) => quest.completed
     ).length;
-    /** blackhole timer */
-    useEffect(() => {
-        const blackHoleDeadline = getBlackHoleCountdownDeadline(
-            isBlackHoleCountdownRunning,
-            Date.now()
-        );
 
-        if (blackHoleDeadline === null) {
+    useEffect(() => {
+        if (!blackHoleCountdownActive || !isStartEvaluationCompleted) {
             return;
         }
 
+        handleBlackHoleTimerChange(getBlackHoleSecondsRemaining(), true);
+    }, [blackHoleCountdownActive, isStartEvaluationCompleted]);
+
+    /** blackhole timer */
+    useEffect(() => {
+        if (!isBlackHoleCountdownRunning) {
+            return;
+        }
+
+        const blackHoleDeadline =
+            Date.now() + getBlackHoleSecondsRemaining() * 1_000;
         let intervalId: number | undefined;
 
         const updateBlackHoleTimer = (): void => {
@@ -286,9 +313,12 @@ export function GameUI({
 
             setBlackHoleSecondsRemaining(secondsRemaining);
 
-            if (secondsRemaining === 0 && intervalId !== undefined) {
+            if (secondsRemaining > 0) {
+                handleBlackHoleTimerChange(secondsRemaining, false);
+            } else if (intervalId !== undefined) {
                 window.clearInterval(intervalId);
                 intervalId = undefined;
+                handleBlackHoleTimerChange(0, false);
                 handleBlackHoleCountdownExpired();
             }
         };
