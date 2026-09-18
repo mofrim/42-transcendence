@@ -396,7 +396,7 @@ export class Story_Manager {
             new THREE.Vector3(18, 6, -10)
         );
 
-        this.transformModelForCutscene(16, 0, 14);
+        this.transformModelForCutscene({ x: 16, y: 0, z: 14 });
 
         await this.moveCameraAndLookAt(
             new THREE.Vector3(15, 0.2, 17),
@@ -406,7 +406,7 @@ export class Story_Manager {
             new THREE.Vector3(17, 7, 0)
         );
 
-        //this.transformModelForCutscene(10, 0, 10);
+        //this.transformModelForCutscene({ x: 10, y: 0, z: 10 });
 
         this.moveCameraDialog(
             new THREE.Vector3(16.3, 1.1, 13),
@@ -432,8 +432,8 @@ export class Story_Manager {
         this.endCutscene();
     }
 
-    transformModelForCutscene(X: number, Y: number, Z: number): void {
-        const worldPosition = new THREE.Vector3(X, Y, Z);
+    transformModelForCutscene(position: THREE.Vector3Like): void {
+        const worldPosition = new THREE.Vector3().copy(position);
         this.player.group.worldToLocal(worldPosition);
         this.player.model?.position.copy(worldPosition);
     }
@@ -447,7 +447,7 @@ export class Story_Manager {
 
         this.player.controls.requestedAnimation = PlayerState.Falling;
 
-        this.transformModelForCutscene(16, 15, -5);
+        this.transformModelForCutscene({ x: 16, y: 15, z: -5 });
 
         const continueAfterBlackHole = this.showDialog(
             'OH NO... THE BLACK HOLE IS PULLING ME IN!'
@@ -622,7 +622,7 @@ export class Story_Manager {
     async CutscenePositionTest(): Promise<void> {
         this.startCutscene();
 
-        this.transformModelForCutscene(10, 0, 5);
+        this.transformModelForCutscene({ x: 10, y: 0, z: 5 });
         //this.player.controls.requestedAnimation = 'Falling';
 
         await this.waitForMouseClick();

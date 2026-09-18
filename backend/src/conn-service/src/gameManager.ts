@@ -9,6 +9,7 @@ import type {
     RPSGame,
     TTTGame,
     PlayerData,
+    PlayerPosition,
     RPSRequestDataPayload,
     RPSBattleChoicePayload,
 } from 'ftr-common/sharedTypes';
@@ -55,9 +56,7 @@ export class GameManager {
 
     updatePlayer(
         id: string,
-        x: number,
-        y: number,
-        z: number,
+        position: PlayerPosition,
         state: PlayerState
     ): boolean {
         const player = this.players.get(id);
@@ -65,7 +64,7 @@ export class GameManager {
             return false;
         }
 
-        Object.assign(player.position, { x, y, z });
+        Object.assign(player.position, position);
         player.state = state;
         return true;
     }

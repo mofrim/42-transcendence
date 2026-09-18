@@ -126,14 +126,14 @@ const RemotePlayerImplementation = class Remote_Player {
         this.loadEnemyCharacter(getPlayerModelPath(character));
     }
 
-    animateSpawn(x: number, startY: number, z: number): void {
+    animateSpawn(position: THREE.Vector3Like): void {
         if (!this.isActive()) {
             return;
         }
 
         //console.log("Animating spawn " + this.id);
         //console.log("Animating spawn...");
-        this.group.position.set(x, startY, z);
+        this.group.position.copy(position);
         //console.log("spawnY: " + this.group.position.y.toFixed(4));
         this.nameLabel.visible = true;
         this.lifecycleController.startSpawn();

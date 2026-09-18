@@ -33,8 +33,11 @@ export class Player {
     static colEndY: number = 1;
     static offset: number = 0;
 
-    static playerStartX: number = 16;
-    static playerStartZ: number = 14;
+    static readonly playerStartPosition: THREE.Vector3Like = {
+        x: 16,
+        y: 0,
+        z: 14,
+    };
 
     /** ugly random Socket ID strings */
     id: string | undefined;
@@ -170,15 +173,17 @@ export class Player {
     }
 
     /** change Players position - update playerCollider */
-    setPlayerPosition(X: number, Y: number, Z: number) {
-        this.playerCollider.start.set(X, Y + Player.colStartY, Z);
-        this.playerCollider.end.set(X, Y + Player.colEndY, Z);
+    setPlayerPosition(position: THREE.Vector3Like): void {
+        this.playerCollider.start.copy(position);
+        this.playerCollider.start.y += Player.colStartY;
+        this.playerCollider.end.copy(position);
+        this.playerCollider.end.y += Player.colEndY;
     }
 
     PlayerToStartPosition(): void {
         this.playerVelocity.setScalar(0);
         this.playerOnFloor = false;
-        this.setPlayerPosition(Player.playerStartX, 0, Player.playerStartZ);
+        this.setPlayerPosition(Player.playerStartPosition);
     }
 
     /** print player chat bubble */
@@ -580,11 +585,7 @@ export class Player {
 
         if (this.group.position.y < -0.01) {
             this.group.position.setY(0);
-            this.setPlayerPosition(
-                this.group.position.x,
-                this.group.position.y,
-                this.group.position.z
-            );
+            this.setPlayerPosition(this.group.position);
             this.playerVelocity.setScalar(0);
         }
         if (this.controls.current === PlayerState.Idle) {
