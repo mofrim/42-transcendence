@@ -18,7 +18,7 @@ import {
     type EventDataGameResult,
 } from 'ftr-common/sharedTypes';
 import { authenticateMid } from 'ftr-common/middleware';
-import { getUserById } from 'backend-utils';
+import { getUserById, mkApiResponse } from 'backend-utils';
 import 'ftr-common/expressTypes';
 
 // Initialize main tslog-logger
@@ -49,7 +49,7 @@ app.use(express.json());
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
     if (err instanceof SyntaxError && err.message.includes('JSON')) {
         log.warn('Got invalid JSON body from IP ', req.ip);
-        res.status(400).json({ error: 'Invalid JSON body' });
+        res.status(400).json(mkApiResponse('Invalid JSON body', 'error'));
     } else {
         next(err);
     }
@@ -109,24 +109,22 @@ eventLogRoute.post(
         const { eventType, data, logtime } = req.body;
 
         if (!Object.values(EventType).includes(eventType)) {
-            res.status(400).json({
-                error: 'Invalid event type',
-            });
+            res.status(400).json(mkApiResponse('Invalid event type', 'error'));
             return;
         }
 
         const user = await getUserById(DB, req.userId!);
         if (user === null) {
-            res.status(400).json({
-                error: `UID ${req.userId} not found`,
-            });
+            res.status(400).json(
+                mkApiResponse(`UID ${req.userId} not found`, 'error')
+            );
             return;
         }
 
         if (typeof data !== 'object') {
-            res.status(400).json({
-                error: 'Event data must be an object',
-            });
+            res.status(400).json(
+                mkApiResponse('Event data must be an object', 'error')
+            );
             return;
         }
 
@@ -141,13 +139,15 @@ eventLogRoute.post(
 
             // only info we need in frontend is that saving was successful and
             // the id under which it was saved
-            res.status(201).json({ status: 'success', id: savedEvent.id });
+            res.status(201).json(
+                mkApiResponse('Event stored', 'success', savedEvent.id)
+            );
         } catch (err) {
             logPost.error(err as Error);
 
-            res.status(500).json({
-                error: 'Failed to save event',
-            });
+            res.status(500).json(
+                mkApiResponse('Failed to save event', 'error')
+            );
         }
     }
 );
@@ -182,17 +182,17 @@ eventLogRoute.get(
         }
 
         if (!(limit === undefined) && !(Number.isInteger(limit) && limit > 0)) {
-            res.status(400).json({
-                error: 'limit must be a positive integer',
-            });
+            res.status(400).json(
+                mkApiResponse('limit must be a positive integer', 'error')
+            );
             return;
         }
 
         if (queryUser != null) {
             if ((await getUserById(DB, Number(queryUser))) === null) {
-                res.status(400).json({
-                    error: `User ${queryUser} not found`,
-                });
+                res.status(400).json(
+                    mkApiResponse(`User ${queryUser} not found`, 'error')
+                );
                 return;
             }
             queryUID = Number(queryUser);
@@ -220,12 +220,19 @@ eventLogRoute.get(
                         : undefined,
             });
             events.reverse(); // make order in slice ascending again
-            res.status(200).json(events);
+            res.status(200).json(
+                mkApiResponse<ORMEventLog[]>(
+                    'Found eventlogs',
+                    'success',
+                    undefined,
+                    events
+                )
+            );
         } catch (err) {
             logGet.error(err as Error);
-            res.status(500).json({
-                error: 'Failed to fetch events',
-            });
+            res.status(500).json(
+                mkApiResponse('Failed to fetch events', 'error')
+            );
         }
     }
 );
@@ -242,12 +249,19 @@ app.get(
         try {
             const events = await eventLogRepo.find(eventLogWithUserOptions);
             events.reverse(); // make order in slice ascending again
-            res.status(200).json(events);
+            res.status(200).json(
+                mkApiResponse<ORMEventLog[]>(
+                    'Found eventlogs',
+                    'success',
+                    undefined,
+                    events
+                )
+            );
         } catch (err) {
             logGet.error(err as Error);
-            res.status(500).json({
-                error: 'Failed to fetch events',
-            });
+            res.status(500).json(
+                mkApiResponse('Failed to fetch events', 'error')
+            );
         }
     }
 );
@@ -285,12 +299,19 @@ matchHistoryRoute.get(
                 },
             });
             events.reverse(); // make order in slice ascending again
-            res.status(200).json(events);
+            res.status(200).json(
+                mkApiResponse<MatchHistResponse[]>(
+                    'Found eventlogs',
+                    'success',
+                    undefined,
+                    events as MatchHistResponse[]
+                )
+            );
         } catch (err) {
             logGet.error(err as Error);
-            res.status(500).json({
-                error: 'Failed to fetch events',
-            });
+            res.status(500).json(
+                mkApiResponse('Failed to fetch events', 'error')
+            );
         }
     }
 );
@@ -306,24 +327,22 @@ matchHistoryRoute.post(
         const { eventType, data, logtime } = req.body;
 
         if (eventType !== EventType.GameResult) {
-            res.status(400).json({
-                error: 'Invalid event type',
-            });
+            res.status(400).json(mkApiResponse('Invalid event type', 'error'));
             return;
         }
 
         const user = await getUserById(DB, req.userId!);
         if (user === null) {
-            res.status(400).json({
-                error: `UID ${req.userId} not found`,
-            });
+            res.status(400).json(
+                mkApiResponse(`UID ${req.userId} not found`, 'error')
+            );
             return;
         }
 
         if (typeof data !== 'object') {
-            res.status(400).json({
-                error: 'Event data must be an object',
-            });
+            res.status(400).json(
+                mkApiResponse('Event data must be an object', 'error')
+            );
             return;
         }
 
@@ -340,21 +359,28 @@ matchHistoryRoute.post(
                 logtime: savedEvent.logtime,
             };
             logPost.info('stored event:', savedEvent);
-            res.status(201).json(savedEventMatchHist);
+            res.status(201).json(
+                mkApiResponse<MatchHistResponse>(
+                    'Saving event successful',
+                    'success',
+                    undefined,
+                    savedEventMatchHist
+                )
+            );
         } catch (err) {
             logPost.error(err as Error);
 
-            res.status(500).json({
-                error: 'Failed to save event',
-            });
+            res.status(500).json(
+                mkApiResponse('Failed to save event', 'error')
+            );
         }
     }
 );
 
-// -------------------=[ the delete everything endpoint ]=------------------- //
+// ------------------------=[ the reset endpoint ]=-------------------------- //
 
-// WARN maybe remove this for prod.. or create a admin account that cannot be
-// logged in to from frontend
+// can be used to reset eventlog during tests / dev
+// NOTE admin only endpoint!
 eventLogRoute.delete(
     authenticate,
     async (req: Request, res: Response): Promise<void> => {
@@ -366,9 +392,9 @@ eventLogRoute.delete(
             res.status(204).end();
         } catch (err) {
             logDel.error(err as Error);
-            res.status(500).json({
-                error: 'Failed to fetch events',
-            });
+            res.status(500).json(
+                mkApiResponse('Failed to fetch events', 'error')
+            );
         }
     }
 );
@@ -377,7 +403,7 @@ eventLogRoute.delete(
 
 eventLogRoute.all((req: Request, res: Response) => {
     log.warn(`Invalid Request to ${API_EVENTLOG.root}:`, req.method);
-    res.status(405).json({ error: 'Unsupported Method' });
+    res.status(405).json(mkApiResponse('Unsupported Method', 'error'));
 });
 
 // ---------------------=[ finally launch the server ]=--------------------- //

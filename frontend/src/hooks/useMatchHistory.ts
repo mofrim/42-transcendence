@@ -5,6 +5,7 @@ import {
     EventType,
     GameEvent,
     MAX_MATCH_HISTORY_ENTRIES,
+    type ApiResponse,
     type EventDataGameResult,
     type MatchHistResponse,
 } from 'ftr-common/sharedTypes';
@@ -49,21 +50,20 @@ export function useMatchHistory({ isSpectator }: UseMatchHistoryOptions) {
         const loadMatchHistory = async (): Promise<void> => {
             console.log('Loading MatchHistory from DB...');
             try {
-                const response = await axios.get<MatchHistResponse[]>(
-                    API_EVENTLOG.matchHistory,
-                    {
-                        params: {
-                            limit: MAX_MATCH_HISTORY_ENTRIES,
-                        },
-                        signal: controller.signal,
-                    }
-                );
+                const response = await axios.get<
+                    ApiResponse<MatchHistResponse[]>
+                >(API_EVENTLOG.matchHistory, {
+                    params: {
+                        limit: MAX_MATCH_HISTORY_ENTRIES,
+                    },
+                    signal: controller.signal,
+                });
 
                 if (controller.signal.aborted) {
                     return;
                 }
 
-                const history = response.data.map(parseMatchHistoryEntry);
+                const history = response.data.data!.map(parseMatchHistoryEntry);
 
                 setMatchHistory(history.slice(-MAX_MATCH_HISTORY_ENTRIES));
             } catch (error) {
@@ -92,16 +92,15 @@ export function useMatchHistory({ isSpectator }: UseMatchHistoryOptions) {
             }
 
             try {
-                const response = await axios.post<MatchHistResponse>(
-                    API_EVENTLOG.matchHistory,
-                    {
-                        eventType: EventType.GameResult,
-                        data: evData,
-                        logtime: event.logtime,
-                    }
-                );
+                const response = await axios.post<
+                    ApiResponse<MatchHistResponse>
+                >(API_EVENTLOG.matchHistory, {
+                    eventType: EventType.GameResult,
+                    data: evData,
+                    logtime: event.logtime,
+                });
 
-                const savedMatch = parseMatchHistoryEntry(response.data);
+                const savedMatch = parseMatchHistoryEntry(response.data.data!);
 
                 setMatchHistory((currentHistory) => {
                     const newHist = [...currentHistory, savedMatch].slice(

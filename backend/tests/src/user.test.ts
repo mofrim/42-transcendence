@@ -34,7 +34,7 @@ describe('basic user-service test', () => {
             .set('Cookie', authCookieFm);
         // console.log(`got response: ${JSON.stringify(res.body, null, 2)}`);
         expect(res.statusCode).toEqual(200);
-        expect(res.body.nickname).toEqual('freddy');
+        expect(res.body.data.nickname).toEqual('freddy');
     });
 
     it('should get user with id 0', async () => {
@@ -44,7 +44,7 @@ describe('basic user-service test', () => {
         // console.log(`got response: ${JSON.stringify(res.body, null, 2)}`);
         expect(res.statusCode).toEqual(200);
         expect(res.body.id).toEqual(0);
-        expect(res.body.nickname).toEqual('root');
+        expect(res.body.data.nickname).toEqual('root');
     });
 
     it('should fail as unauthorized', async () => {
@@ -148,6 +148,6 @@ describe('simple output of response', () => {
             .set('Cookie', authCookieFm);
         console.log(`got response: ${JSON.stringify(res.body, null, 2)}`);
         expect(res.statusCode).toEqual(200);
-        expect(res.body.nickname).toEqual('freddy');
+        expect(res.body.data.nickname).toEqual('freddy');
     });
 });

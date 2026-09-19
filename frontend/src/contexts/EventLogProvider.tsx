@@ -3,7 +3,11 @@ import React, { useState, useCallback } from 'react';
 import axios from 'axios';
 import type { EventLogEntry } from '../ui/ingame/EventLogItems';
 import { EventLogContext } from '../contexts/EventLogContext.tsx';
-import { BaseEventLog, API_EVENTLOG, GameEvent } from 'ftr-common/sharedTypes';
+import {
+    GameEvent,
+    API_EVENTLOG,
+    type ApiResponse,
+} from 'ftr-common/sharedTypes';
 import {
     EVENT_TIME_FORMAT,
     MAX_EVENT_LOG_ENTRIES,
@@ -27,7 +31,7 @@ export const EventLogProvider: React.FC<{ children: React.ReactNode }> = ({
         const description = describeGameEvent(event);
 
         try {
-            const response = await axios.post<BaseEventLog>(API_EVENTLOG.root, {
+            const response = await axios.post<ApiResponse>(API_EVENTLOG.root, {
                 eventType: event.eventType,
                 data: event.data,
                 logtime: now,

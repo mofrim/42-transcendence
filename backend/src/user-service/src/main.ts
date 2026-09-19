@@ -6,13 +6,19 @@ import { DataSource } from 'typeorm';
 import { exit } from 'node:process';
 import cookieParser from 'cookie-parser';
 import { Logger, type ILogObj } from 'tslog';
-import { authenticateMid } from 'ftr-common/middleware';
-import { checkSchema, matchedData, validationResult } from 'express-validator';
+import {
+    checkSchema,
+    matchedData,
+    validationResult,
+    type ValidationError,
+} from 'express-validator';
 import bcrypt from 'bcryptjs';
 
+import { authenticateMid } from 'ftr-common/middleware';
 import { ORMEventLog, ORMUser } from 'ftr-common/ormTypes';
 import 'ftr-common/expressTypes';
-import { getUserByIdNoPw, mkStatus } from 'backend-utils';
+import { getUserByIdNoPw, mkApiResponse } from 'backend-utils';
+import { User } from 'ftr-common/sharedTypes';
 
 // Initialize main tslog-logger
 const log = new Logger<ILogObj>({
@@ -38,7 +44,7 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
     void req;
     if (err instanceof SyntaxError && err.message.includes('JSON')) {
         log.warn('Got invalid JSON body from IP ', req.ip);
-        res.status(400).json({ error: 'Invalid JSON body' });
+        res.status(400).json(mkApiResponse('Invalid JSON body', 'error'));
     } else {
         next(err);
     }
@@ -87,13 +93,13 @@ app.get('/api/user', authenticate, async (req, res) => {
     try {
         const user = await getUserByIdNoPw(DB, req.userId!);
         if (user === null) {
-            res.status(401).json({ error: 'User not found' });
+            res.status(401).json(mkApiResponse('User not found', 'error'));
             return;
         }
-        res.json(user);
+        res.json(mkApiResponse<User>('User found', 'success', user.id, user));
     } catch (err) {
         logGet.error(err as Error);
-        res.status(500).json({ error: 'Internal server error' });
+        res.status(500).json(mkApiResponse('Internal server error', 'error'));
     }
 });
 
@@ -105,26 +111,37 @@ app.get('/api/user/all', authenticate, async (req: Request, res: Response) => {
     // guard this endpoint
     if (req.userId !== 0) {
         logGet.warn('access denied for uid', req.userId);
-        res.status(401).json({ error: 'invalid credentials' });
+        res.status(401).json(mkApiResponse('invalid credentials', 'error'));
         return;
     }
 
     try {
-        const users = await userRepo.find();
+        const users = await userRepo.find({
+            relations: {
+                friends: true,
+                eventLogs: true,
+            },
+        });
         if (users.length === 0) {
-            res.status(401).json({ error: 'no users in users table?!' });
+            res.status(401).json(
+                mkApiResponse('no users in users table?!', 'error')
+            );
             return;
         }
-        res.json(users);
+        res.json(
+            mkApiResponse<ORMUser[]>('all users', 'success', undefined, users)
+        );
     } catch (err) {
         logGet.error(err as Error);
-        res.status(500).json({ error: 'Failed to fetch user profile' });
+        res.status(500).json(
+            mkApiResponse('Failed to fetch user profile', 'error')
+        );
     }
 });
 
 // health-check endpoint
 app.get('/api/user/health', (_req: Request, res: Response) => {
-    res.json({ status: 'user-service is running' });
+    res.json(mkApiResponse('user-service is running', 'success'));
 });
 
 // query users by uid
@@ -138,28 +155,34 @@ app.get(
         // guard this endpoint
         if (req.userId !== 0) {
             logGet.warn('access denied for uid', req.userId);
-            res.status(401).json({ error: 'invalid credentials' });
+            res.status(401).json(mkApiResponse('invalid credentials', 'error'));
             return;
         }
 
         const userId = Number(req.params['userId']);
         if (!Number.isInteger(userId)) {
             logGet.warn(`userId-enpoint queried with invalid uid ${userId}`);
-            return res.status(400).json({ error: 'userId must be an integer' });
+            return res
+                .status(400)
+                .json(mkApiResponse('userId must be an integer', 'error'));
         }
 
         try {
             const user = await getUserByIdNoPw(DB, userId);
             if (user === null) {
                 logGet.warn(`userId-enpoint queried with wrong uid ${userId}`);
-                return res.status(401).json({ error: 'User not found' });
+                return res
+                    .status(401)
+                    .json(mkApiResponse('User not found', 'error'));
             }
-            return res.json(user);
+            return res.json(
+                mkApiResponse<User>('User found', 'success', user.id, user)
+            );
         } catch (err) {
             logGet.error(err as Error);
             return res
                 .status(500)
-                .json({ error: 'Failed to fetch user profile' });
+                .json(mkApiResponse('Failed to fetch user profile', 'error'));
         }
     }
 );
@@ -175,7 +198,7 @@ app.delete(
         // guard this endpoint
         if (req.userId !== 0) {
             logGet.warn('access denied for uid', req.userId);
-            res.status(401).json(mkStatus('invalid credentials', 'error'));
+            res.status(401).json(mkApiResponse('invalid credentials', 'error'));
             return;
         }
 
@@ -184,21 +207,27 @@ app.delete(
             logGet.warn(`DelUserId-enpoint queried with invalid uid ${userId}`);
             return res
                 .status(400)
-                .json(mkStatus('userId must be an integer', 'error'));
+                .json(mkApiResponse('userId must be an integer', 'error'));
         }
 
         try {
             const result = await userRepo.delete(userId);
             if (result.affected == null) {
                 logGet.warn(`userId-enpoint queried with wrong uid ${userId}`);
-                return res.status(404).json(mkStatus('invalid id', 'error'));
+                return res
+                    .status(404)
+                    .json(mkApiResponse('invalid id', 'error'));
             }
-            return res.status(204).json(mkStatus('', 'success'));
+            return res
+                .status(204)
+                .json(
+                    mkApiResponse('Successfully fetche user by ID', 'success')
+                );
         } catch (err) {
             logGet.error(err as Error);
             return res
                 .status(500)
-                .json(mkStatus('Failed to fetch user profile', 'error'));
+                .json(mkApiResponse('Failed to fetch user profile', 'error'));
         }
     }
 );
@@ -226,7 +255,7 @@ const registrationValidation = checkSchema(
         },
         email: {
             escape: true,
-            notEmpty: { errorMessage: 'pw empty' },
+            notEmpty: { errorMessage: 'email empty' },
             isEmail: { errorMessage: 'invalid email' },
         },
     },
@@ -243,7 +272,14 @@ app.post(
         const errors = validationResult(req);
         if (!errors.isEmpty()) {
             logReg.warn('Got bad request from', req.ip);
-            res.status(400).json(errors.array());
+            res.status(400).json(
+                mkApiResponse<ValidationError[]>(
+                    'Validation failed',
+                    'error',
+                    undefined,
+                    errors.array()
+                )
+            );
             return;
         }
 
@@ -259,7 +295,7 @@ app.post(
             });
             if (userExists) {
                 logReg.warn(`user ${userNick} already exists in DB!`);
-                res.status(403).json(mkStatus('user exists', 'error'));
+                res.status(403).json(mkApiResponse('user exists', 'error'));
                 return;
             }
             const newUser = userRepo.create({
@@ -272,11 +308,13 @@ app.post(
                 `created user ${savedUser.nickname} with id ${savedUser.id}`
             );
             res.status(201).json(
-                mkStatus('user created', 'success', savedUser.id)
+                mkApiResponse('user created', 'success', savedUser.id)
             );
         } catch (err) {
             logReg.fatal(err as Error);
-            res.status(500).json({ error: 'Internal server error' });
+            res.status(500).json(
+                mkApiResponse('Internal server error', 'error')
+            );
         }
     }
 );
@@ -285,7 +323,7 @@ app.post(
 
 app.all('/api/user', (req: Request, res: Response) => {
     log.warn('Invalid Request to /api/user:', req.method);
-    res.status(405).json({ error: 'Unsupported Method' });
+    res.status(405).json(mkApiResponse('Unsupported Method', 'error'));
 });
 
 // ---------------------------=[ launch server ]=--------------------------- //

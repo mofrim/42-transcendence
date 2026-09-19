@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { AuthContext } from '../../contexts/AuthContext';
-import type { User } from 'ftr-common/sharedTypes';
+import type { User, ApiResponse } from 'ftr-common/sharedTypes';
 import axios from 'axios';
 import type { AxiosRequestConfig } from 'axios';
 
@@ -14,8 +14,11 @@ const getAuthenticatedUser = async (signal?: AbortSignal): Promise<User> => {
         config.signal = signal;
     }
 
-    const userResponse = await axios.get<User>('/api/user', config);
-    return userResponse.data;
+    const userResponse = await axios.get<ApiResponse<User>>(
+        '/api/user',
+        config
+    );
+    return userResponse.data.data!;
 };
 
 // validate session cookie without risking a 401 response. querying
@@ -31,11 +34,8 @@ const isValidSession = async (signal?: AbortSignal): Promise<boolean> => {
         config.signal = signal;
     }
 
-    const res = await axios.get<{ valid: boolean }>(
-        '/api/validateSession',
-        config
-    );
-    return res.data.valid;
+    const res = await axios.get<ApiResponse>('/api/validateSession', config);
+    return res.data.status === 'success';
 };
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({

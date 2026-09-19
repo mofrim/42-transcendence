@@ -1,6 +1,6 @@
 import type { DataSource } from 'typeorm';
 import { ORMUser } from 'ftr-common/ormTypes';
-import type { ApiStatusResponse, User } from 'ftr-common/sharedTypes';
+import type { ApiResponse, User } from 'ftr-common/sharedTypes';
 
 // get the id belonging to a nickname string
 export const getUserId = async (
@@ -29,8 +29,10 @@ export const getUserById = async (
     }
 };
 
-// get the id belonging to a UID return user without hashedPw field as this is
-// needed nowhere
+/*
+ * Get User record excluding hashedPw as this sensible info is not needed by any
+ * external functionality.
+ */
 export const getUserByIdNoPw = async (
     db: DataSource,
     userId: number
@@ -56,14 +58,20 @@ export const getUserByIdNoPw = async (
     }
 };
 
-// a little json status msg factory func.
-export const mkStatus = (
+/**
+ * Api-Response factory func. Can be called like
+ * `mkApiResponse('your message', 'error'|'success')`
+ * `mkApiResponse('your message', 'error'|'success', id)`,
+ * or `mkApiResponse('your message', 'error'|'success', id | undefined, data)`
+ */
+export const mkApiResponse = <T>(
     message: string,
     status: 'error' | 'success',
-    id?: number
-): ApiStatusResponse => {
-    if (id === undefined) {
-        return { message, status };
-    }
-    return { message, status, id };
+    id?: number,
+    data?: T
+): ApiResponse<T> => {
+    const baseRespo: ApiResponse<T> = { message, status };
+    if (id !== undefined) baseRespo.id = id;
+    if (data !== undefined) baseRespo.data = data;
+    return baseRespo;
 };

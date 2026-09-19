@@ -5,7 +5,7 @@ import { UserOutlined, LockOutlined, MailOutlined } from '@ant-design/icons';
 import { useAuth } from '../../hooks/useAuthContext';
 import type { ValidationError } from 'express-validator';
 import axios from 'axios';
-import type { ApiStatusResponse } from 'ftr-common/sharedTypes';
+import type { ApiResponse } from 'ftr-common/sharedTypes';
 
 // -------------------------=[ style the messages ]=------------------------- //
 
@@ -157,13 +157,13 @@ function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
         password: string;
     }) => {
         try {
-            await axios.post<ApiStatusResponse>('/api/user/register', values);
+            await axios.post<ApiResponse>('/api/user/register', values);
         } catch (err) {
             if (
-                axios.isAxiosError<ValidationError[]>(err) &&
+                axios.isAxiosError<ApiResponse<ValidationError[]>>(err) &&
                 err.response?.status === 400
             ) {
-                const errors = err.response.data;
+                const errors = err.response.data.data!;
                 if (errors.some((error) => error.msg === 'pw invalid length'))
                     showErrMsg('Registration failed: PW invalid length');
 
@@ -172,7 +172,7 @@ function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
                 return;
             }
             if (
-                axios.isAxiosError<ApiStatusResponse>(err) &&
+                axios.isAxiosError<ApiResponse>(err) &&
                 err.response?.status === 403
             ) {
                 showErrMsg(`Registration failed: Nickname exists`);

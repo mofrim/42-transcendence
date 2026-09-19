@@ -18,7 +18,12 @@ import { DataSource } from 'typeorm';
 import { exit } from 'node:process';
 import cookieParser from 'cookie-parser';
 import { Logger } from 'tslog';
-import { checkSchema, matchedData, validationResult } from 'express-validator';
+import {
+    checkSchema,
+    matchedData,
+    validationResult,
+    type ValidationError,
+} from 'express-validator';
 
 import type { ILogObj } from 'tslog';
 import type { Request, Express, Response, NextFunction } from 'express';
@@ -26,7 +31,7 @@ import type { Request, Express, Response, NextFunction } from 'express';
 import { ORMEventLog, ORMUser } from 'ftr-common/ormTypes';
 import { authenticateMid, verifyToken } from 'ftr-common/middleware';
 import { setupDefaultUsers } from './defaultUserSetup.ts';
-import { getUserById } from 'backend-utils';
+import { getUserById, mkApiResponse } from 'backend-utils';
 import 'ftr-common/expressTypes';
 
 // Initialize main tslog-logger
@@ -68,7 +73,7 @@ app.use(express.json());
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
     if (err instanceof SyntaxError && err.message.includes('JSON')) {
         log.warn('Got invalid JSON body from IP ', req.ip);
-        res.status(400).json({ error: 'Invalid JSON body' });
+        res.status(400).json(mkApiResponse('Invalid JSON body', 'error'));
     } else {
         next(err);
     }
@@ -140,7 +145,14 @@ app.post(
         const errors = validationResult(req);
         if (!errors.isEmpty()) {
             loginLog.warn('Got bad request from', req.ip);
-            res.status(400).json({ errors: errors.array() });
+            res.status(400).json(
+                mkApiResponse<ValidationError[]>(
+                    'Validation failed',
+                    'error',
+                    undefined,
+                    errors.array()
+                )
+            );
             return;
         }
 
@@ -156,7 +168,9 @@ app.post(
             });
             if (user === null) {
                 loginLog.warn('Cannot find user', userNick, 'in DB');
-                res.status(401).json({ error: 'Invalid credentials' });
+                res.status(401).json(
+                    mkApiResponse('Invalid credentials', 'error')
+                );
                 return;
             }
 
@@ -165,7 +179,9 @@ app.post(
                 user.hashedPw
             );
             if (!isPasswordValid) {
-                res.status(401).json({ error: 'Invalid credentials' });
+                res.status(401).json(
+                    mkApiResponse('Invalid credentials', 'error')
+                );
                 return;
             }
 
@@ -178,10 +194,14 @@ app.post(
                 ...TOKEN_COOKIE_OPTIONS,
                 maxAge: 60 * 60 * 1000, // 1h
             });
-            res.json({ success: true });
+            res.json(
+                mkApiResponse('Setting auth cookie successful', 'success')
+            );
         } catch (err) {
             loginLog.fatal(err as Error);
-            res.status(500).json({ error: 'Internal server error' });
+            res.status(500).json(
+                mkApiResponse('Internal server error', 'error')
+            );
         }
     }
 );
@@ -191,7 +211,7 @@ app.post(
 app.post('/api/logout', authenticate, (req, res) => {
     void req;
     res.clearCookie('token', TOKEN_COOKIE_OPTIONS);
-    res.json({ success: true });
+    res.json(mkApiResponse('Auth cookie cleared', 'success'));
 });
 
 // --------------------------------=[ misc ]=-------------------------------- //
@@ -216,19 +236,22 @@ if (process.env['NODE_ENV'] === 'development') {
         authenticate,
         async (req: Request, res: Response) => {
             if (req.userId === undefined) {
-                res.status(500).json({
-                    error: 'token verification malfunction',
-                });
+                res.status(500).json(
+                    mkApiResponse('Token verification malfunction', 'error')
+                );
                 return;
             }
             const user = await getUserById(DB, req.userId);
             if (user === null) {
-                res.status(500).json({
-                    error: 'Invalid userId in token or DB error',
-                });
+                res.status(500).json(
+                    mkApiResponse(
+                        'Invalid userId in token or DB error',
+                        'error'
+                    )
+                );
                 return;
             }
-            res.json({ msg: `hello ${user.nickname}!` });
+            res.json(mkApiResponse(`hello ${user.nickname}!`, 'success'));
         }
     );
 }
@@ -242,18 +265,18 @@ app.get('/api/validateSession', async (req, res) => {
         const token = req.cookies['token'];
         verifyToken(token, SECRET_KEY, logValidate);
     } catch {
-        res.status(200).json({ valid: false });
+        res.status(200).json(mkApiResponse('Session invalid', 'error'));
         logValidate.info('validateSession failed');
         return;
     }
-    res.status(200).json({ valid: true });
+    res.status(200).json(mkApiResponse('Session valid', 'success'));
 });
 
 // --------=[ Fallback enpoint for catching invalid methods etc.. ]=-------- //
 
 app.all('/api/login', (req: Request, res: Response) => {
     log.warn('Invalid Request:', req.method);
-    res.status(405).json({ error: 'Unsupported Method' });
+    res.status(405).json(mkApiResponse('Unsupported Method', 'error'));
 });
 
 // -----------------=[ launch the express server finally ]=----------------- //
