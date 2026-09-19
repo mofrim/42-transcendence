@@ -2,8 +2,8 @@
     "compilerOptions": {
         "rootDir": "../",
         "outDir": "./dist",
-        "target": "ES2023",
-        "lib": ["ES2023", "ES2024.Promise", "ES2025.Intl", "DOM"],
+        "target": "ESNext",
+        "lib": ["ESNext", "DOM"],
         "module": "ESNext",
         "types": ["vite/client", "node", "react"],
 
