@@ -1,4 +1,5 @@
 import request from 'supertest';
+import { API_EVENTLOG } from 'ftr-common/sharedTypes';
 // import type { GameEvent} from 'ftr-common/sharedTypes';
 
 const authBaseUrl = 'http://localhost:3001';
@@ -33,14 +34,14 @@ describe('basic get cookie test', () => {
 describe('resetting eventlog table for tests', () => {
     it('delete all eventlog', async () => {
         const res = await request(eventlogBaseUrl)
-            .delete('/api/eventlog')
+            .delete(API_EVENTLOG.root)
             .set('Cookie', authCookieFmaurer);
         expect(res.statusCode).toEqual(204);
     });
 
     it('should try to get all items but empty array is returned', async () => {
         const res = await request(eventlogBaseUrl)
-            .get('/api/eventlog')
+            .get(API_EVENTLOG.root)
             .set('Cookie', authCookieFmaurer);
         console.log(`got response: ${JSON.stringify(res.body, null, 2)}`);
         expect(res.statusCode).toEqual(200);
@@ -51,7 +52,7 @@ describe('resetting eventlog table for tests', () => {
 describe('matchhist test', () => {
     it('should create game event', async () => {
         const res = await request(eventlogBaseUrl)
-            .post('/api/eventlog')
+            .post(API_EVENTLOG.root)
             .set('Cookie', authCookieFmaurer)
             .send({
                 eventType: 'GameResult',
@@ -68,7 +69,7 @@ describe('matchhist test', () => {
 
     it('should create game event', async () => {
         const res = await request(eventlogBaseUrl)
-            .post('/api/eventlog')
+            .post(API_EVENTLOG.root)
             .set('Cookie', authCookieFmaurer)
             .send({
                 eventType: 'GameResult',
@@ -85,7 +86,7 @@ describe('matchhist test', () => {
 
     it('should create game event', async () => {
         const res = await request(eventlogBaseUrl)
-            .post('/api/eventlog')
+            .post(API_EVENTLOG.root)
             .set('Cookie', authCookieFmaurer)
             .send({
                 eventType: 'GameResult',
@@ -102,7 +103,7 @@ describe('matchhist test', () => {
 
     it('should create game event', async () => {
         const res = await request(eventlogBaseUrl)
-            .post('/api/eventlog')
+            .post(API_EVENTLOG.root)
             .set('Cookie', authCookieMpazouki)
             .send({
                 eventType: 'GameResult',
@@ -119,7 +120,7 @@ describe('matchhist test', () => {
 
     it('should create some other event', async () => {
         const res = await request(eventlogBaseUrl)
-            .post('/api/eventlog')
+            .post(API_EVENTLOG.root)
             .set('Cookie', authCookieFmaurer)
             .send({
                 eventType: 'PlayerLeft',
@@ -134,7 +135,7 @@ describe('matchhist test', () => {
 
     it('should get ...', async () => {
         const res = await request(eventlogBaseUrl)
-            .get('/api/eventlog/matchhist')
+            .get(API_EVENTLOG.matchHistory)
             .set('Cookie', authCookieFmaurer);
         console.log(`got response: ${JSON.stringify(res.body, null, 2)}`);
         expect(res.statusCode).toEqual(200);
@@ -144,7 +145,7 @@ describe('matchhist test', () => {
 
     it('should get ...', async () => {
         const res = await request(eventlogBaseUrl)
-            .get('/api/eventlog/matchhist')
+            .get(API_EVENTLOG.matchHistory)
             .set('Cookie', authCookieMpazouki);
         console.log(`got response: ${JSON.stringify(res.body, null, 2)}`);
         expect(res.statusCode).toEqual(200);

@@ -1,4 +1,5 @@
 import request from 'supertest';
+import { API_EVENTLOG } from 'ftr-common/sharedTypes';
 
 const authBaseUrl = 'http://localhost:3001';
 const eventlogBaseUrl = 'http://localhost:3002';
@@ -21,7 +22,7 @@ describe('basic get cookie test', () => {
 describe('eventlog test', () => {
     it('should create a chatmsg event', async () => {
         const res = await request(eventlogBaseUrl)
-            .post('/api/eventlog')
+            .post(API_EVENTLOG.root)
             .set('Cookie', authCookie)
             .send({
                 eventType: 'ChatMsg',
