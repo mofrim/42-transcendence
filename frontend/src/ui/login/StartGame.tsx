@@ -3,6 +3,7 @@ import { useLoginContext } from '../../hooks/useLoginContext';
 import { useAuth } from '../../hooks/useAuthContext';
 import { startGame, type GameMode, type GameRuntime } from '../../game/main';
 import {
+    BLACK_HOLE_DURATION_SECONDS,
     GameEvent,
     EventType,
     User,
@@ -54,6 +55,7 @@ export const Game: React.FC<{
     const mountRef = useRef<HTMLDivElement>(null);
     const gameRuntimeRef = useRef<GameRuntime | null>(null);
     const metPlayerNicknamesRef = useRef(new Set<string>());
+    const playerJoinedLoggedRef = useRef(false);
     const [completedQuestIds, setCompletedQuestIds] = useState<string[]>([]);
     const [gameResetVersion, setGameResetVersion] = useState(0);
     const [isGameplayReady, setIsGameplayReady] = useState(false);
@@ -108,6 +110,39 @@ export const Game: React.FC<{
     const { events, appendEvent } = isSpectator
         ? spectatorEventLog
         : { events: realEvents, appendEvent: realAppendEvent };
+
+    /** used for blackhole timer tracking in leaderboard */
+    useEffect(() => {
+        if (
+            isSpectator ||
+            user === null ||
+            playerJoinedLoggedRef.current ||
+            !isGameplayReady ||
+            !isSaveGameReady ||
+            !isGameConnected ||
+            blackHoleRestore.completed ||
+            blackHoleRestore.secondsRemaining !== BLACK_HOLE_DURATION_SECONDS
+        ) {
+            return;
+        }
+
+        playerJoinedLoggedRef.current = true;
+        void appendEvent({
+            eventType: EventType.PlayerJoined,
+            data: null,
+            logtime: new Date(),
+            user,
+        });
+    }, [
+        appendEvent,
+        blackHoleRestore.completed,
+        blackHoleRestore.secondsRemaining,
+        isGameConnected,
+        isGameplayReady,
+        isSaveGameReady,
+        isSpectator,
+        user,
+    ]);
 
     const {
         friends,
@@ -200,6 +235,7 @@ export const Game: React.FC<{
     }, []);
 
     const handleGameReset = useCallback((): void => {
+        playerJoinedLoggedRef.current = false;
         metPlayerNicknamesRef.current.clear();
         setCompletedQuestIds([]);
         resetSaveGame();

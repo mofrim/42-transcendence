@@ -248,8 +248,13 @@
     pointer-events: auto;
 }
 
-.hud-leaderboard-panel {
-    width: min(420px, calc(100vw - 94px));
+.hud-leaderboard-panel:not([hidden]) {
+    display: flex;
+    flex-direction: column;
+    width: min(760px, calc(100vw - 94px));
+    max-height: calc(100vh - 36px);
+    overflow: hidden;
+    pointer-events: auto;
 }
 
 .hud-dialog-panel {
@@ -364,32 +369,59 @@
     font-weight: 700;
 }
 
-.hud-leaderboard-table {
+.hud-leaderboard {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
     width: 100%;
-    border-collapse: collapse;
+    overflow-x: hidden;
     font-size: 14px;
     font-variant-numeric: tabular-nums;
 }
 
-.hud-leaderboard-table :is(th, td) {
-    padding: 8px 7px;
+/* row max width */
+.hud-leaderboard-row {
+    display: grid;
+    grid-template-columns:
+        minmax(0, 0.55fr)
+        minmax(0, 1.6fr)
+        repeat(4, minmax(0, 0.75fr))
+        minmax(0, 1.15fr)
+        minmax(0, 1.15fr)
+        minmax(0, 1.2fr);
+}
+
+.hud-leaderboard-row > div {
+    min-width: 0;
+    padding: 8px 10px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+    overflow: hidden;
+    text-align: center;
+    text-overflow: ellipsis;
+}
+
+.hud-leaderboard-header > div {
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1.2;
+    white-space: normal;
+}
+
+.hud-leaderboard-row > div:nth-child(2) {
     text-align: left;
     white-space: nowrap;
 }
 
-.hud-leaderboard-table th {
-    font-size: 12px;
-    opacity: 0.72;
+.hud-leaderboard-body {
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
 }
 
-.hud-leaderboard-table
-    :is(th, td):is(:first-child, :nth-child(3), :last-child) {
-    text-align: right;
-}
-
-.hud-leaderboard-table tbody tr:last-child td {
-    border-bottom: 0;
+.hud-leaderboard-body .hud-leaderboard-row:last-child > div {
+    border-bottom: none;
 }
 
 .hud-profile-logout {

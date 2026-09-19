@@ -479,7 +479,10 @@ export function GameUI({
                     hidden={!isLeaderboardOpen}
                 >
                     <h2 className='hud-title'>Leaderboard</h2>
-                    <Leaderboard />
+                    <Leaderboard
+                        currentNickname={nickname}
+                        isOpen={isLeaderboardOpen}
+                    />
                 </aside>
             </div>
 
