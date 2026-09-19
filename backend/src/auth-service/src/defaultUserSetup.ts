@@ -11,6 +11,7 @@ const defaultUsers = [
         character: true,
         hashedPw: bcrypt.hashSync('Anatolij', 10),
         quests: InitialQuestStatus,
+        friends: [],
     },
     {
         nickname: 'bob',
@@ -18,6 +19,7 @@ const defaultUsers = [
         character: true,
         hashedPw: bcrypt.hashSync('Daniel', 10),
         quests: InitialQuestStatus,
+        friends: [],
     },
     {
         nickname: 'jeff',
@@ -25,6 +27,7 @@ const defaultUsers = [
         character: true,
         hashedPw: bcrypt.hashSync('Lukas', 10),
         quests: InitialQuestStatus,
+        friends: [],
     },
     {
         nickname: 'mandy',
@@ -32,6 +35,7 @@ const defaultUsers = [
         character: false,
         hashedPw: bcrypt.hashSync('Maryam', 10),
         quests: InitialQuestStatus,
+        friends: [],
     },
     {
         nickname: 'freddy',
@@ -39,6 +43,7 @@ const defaultUsers = [
         character: true,
         hashedPw: bcrypt.hashSync('Moritz', 10),
         quests: InitialQuestStatus,
+        friends: [],
     },
 ];
 
@@ -76,6 +81,7 @@ export const setupDefaultUsers = async (DB: DataSource) => {
             // crashOverride 8)
             '$2b$10$3S0UNdtZnOzGM.NPPJtxUOt5rHD9GqvEcA8tk42IbSNhYYqXpmNyy',
         quests: InitialQuestStatus,
+        friends: [],
     };
     try {
         await userRepo.save(userRepo.create(root));
