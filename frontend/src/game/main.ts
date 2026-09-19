@@ -306,7 +306,6 @@ export function startGame(
             console.log('Player model path: ' + playerModelPath);
             player = new Player(
                 playerModelPath,
-                socket.id,
                 scene,
                 worldOctree,
                 worldOctreeInteractive

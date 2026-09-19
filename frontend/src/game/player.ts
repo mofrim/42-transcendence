@@ -78,17 +78,10 @@ export class Player {
 
     constructor(
         path: string,
-        id: string | undefined,
         scene: THREE.Scene,
         worldOctree: Octree,
         worldOctreeInteractive: Octree
     ) {
-        // we never want this to happen so this would be an exceptional error.
-        // we might even throw here...
-        if (id === undefined)
-            console.warn('Player ctor called with undefined socket.id');
-        this.id = id;
-
         this.model = null;
         this.group = new THREE.Group();
         this.chatBubble = new FloatingTextSprite(
