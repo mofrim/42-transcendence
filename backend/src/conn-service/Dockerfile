@@ -25,6 +25,7 @@ ENV NODE_ENV=production
 COPY package.json package-lock.json ./
 COPY backend/package.json backend/package.json
 COPY ftr-common/package.json ftr-common/package.json
+COPY backend/src/conn-service/package.json backend/src/conn-service/package.json
 
 # only production deps in the final image
 RUN --mount=type=cache,target=/root/.npm npm ci --no-audit --no-fund --omit=dev -w backend -w ftr-common -w backend/src/conn-service

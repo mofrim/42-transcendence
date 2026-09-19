@@ -14,5 +14,8 @@
         "lint": "eslint .",
         "lint-fix": "eslint . --fix",
         "start": "NODE_ENV=production node ../../dist/conn-service/main.js"
+    },
+    "dependencies": {
+        "dotenv": "^17.4.2"
     }
 }
