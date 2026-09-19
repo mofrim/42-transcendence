@@ -241,6 +241,7 @@ export class User extends BaseUser {
     }
 }
 
+// region: API
 // ------------=[ types related to the backend API in general ]=------------ //
 
 // this is what the frontend can expect for API-calls that do not explicitly
@@ -256,6 +257,15 @@ export type ApiStatusResponse = {
     id?: number;
 };
 
+const API_EVENTLOG_ROOT = '/api/eventlog' as const;
+
+export const API_EVENTLOG = Object.freeze({
+    root: API_EVENTLOG_ROOT,
+    all: `${API_EVENTLOG_ROOT}/all`,
+    matchHistory: `${API_EVENTLOG_ROOT}/matchhist`,
+});
+
+// endregion
 // ----------------------------=[ other types ]=---------------------------- //
 
 export enum PlayerState {

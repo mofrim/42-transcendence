@@ -11,6 +11,7 @@ import type { Express, Request, Response, NextFunction } from 'express';
 
 import { ORMEventLog, ORMUser } from 'ftr-common/ormTypes';
 import {
+    API_EVENTLOG,
     EventType,
     MAX_MATCH_HISTORY_ENTRIES,
     type MatchHistResponse,
@@ -98,7 +99,7 @@ const eventLogWithUserOptions = {
 
 // ------------------------=[  normal eventlogging ]=------------------------ //
 
-const eventLogRoute = app.route('/api/eventlog');
+const eventLogRoute = app.route(API_EVENTLOG.root);
 
 eventLogRoute.post(
     authenticate,
@@ -232,7 +233,7 @@ eventLogRoute.get(
 // get everything, regardless of user from eventlog
 // FIXME so far only here for debugging..
 app.get(
-    '/api/eventlog/all',
+    API_EVENTLOG.all,
     authenticate,
     async (req: Request, res: Response): Promise<void> => {
         const logGet = log.getSubLogger({ name: 'GET(eventlog)' });
@@ -253,7 +254,7 @@ app.get(
 
 // ----------------------=[ match history endpoints ]=---------------------- //
 
-const matchHistoryRoute = app.route('/api/eventlog/matchhist');
+const matchHistoryRoute = app.route(API_EVENTLOG.matchHistory);
 
 matchHistoryRoute.get(
     authenticate,
@@ -375,7 +376,7 @@ eventLogRoute.delete(
 // --------=[ fallback endpoint for catching unsuppoerted methods ]=-------- //
 
 eventLogRoute.all((req: Request, res: Response) => {
-    log.warn('Invalid Request to /api/eventlog:', req.method);
+    log.warn(`Invalid Request to ${API_EVENTLOG.root}:`, req.method);
     res.status(405).json({ error: 'Unsupported Method' });
 });
 

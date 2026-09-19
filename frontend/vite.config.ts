@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import { API_EVENTLOG } from 'ftr-common/sharedTypes';
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -28,7 +29,7 @@ export default defineConfig({
                 target: 'http://localhost:3001',
                 changeOrigin: true,
             },
-            '/api/eventlog': {
+            [API_EVENTLOG.root]: {
                 target: 'http://localhost:3002',
                 changeOrigin: true,
             },

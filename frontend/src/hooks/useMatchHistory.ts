@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import axios from 'axios';
 import {
+    API_EVENTLOG,
     EventType,
     GameEvent,
     MAX_MATCH_HISTORY_ENTRIES,
@@ -49,7 +50,7 @@ export function useMatchHistory({ isSpectator }: UseMatchHistoryOptions) {
             console.log('Loading MatchHistory from DB...');
             try {
                 const response = await axios.get<MatchHistResponse[]>(
-                    '/api/eventlog/matchhist',
+                    API_EVENTLOG.matchHistory,
                     {
                         params: {
                             limit: MAX_MATCH_HISTORY_ENTRIES,
@@ -92,7 +93,7 @@ export function useMatchHistory({ isSpectator }: UseMatchHistoryOptions) {
 
             try {
                 const response = await axios.post<MatchHistResponse>(
-                    '/api/eventlog/matchhist',
+                    API_EVENTLOG.matchHistory,
                     {
                         eventType: EventType.GameResult,
                         data: evData,
