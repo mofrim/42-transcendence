@@ -25,11 +25,7 @@ export class SaveGame {
         this.ownerSocketByUser.set(userId, socketId);
         this.restoreReadySocketIds.delete(socketId);
 
-        const save = this.saves.get(userId);
-        if (!save) {
-            return null;
-        }
-        return structuredClone(save);
+        return structuredClone(this.saves.get(userId) ?? null);
     }
 
     disconnect(
@@ -76,11 +72,7 @@ export class SaveGame {
         }
 
         this.restoreReadySocketIds.add(socketId);
-        const save = this.saves.get(userId);
-        if (!save) {
-            return null;
-        }
-        return structuredClone(save);
+        return structuredClone(this.saves.get(userId) ?? null);
     }
 
     updatePosition(
