@@ -28,6 +28,16 @@ import type {
     TTTMarkPayload,
 } from 'ftr-common/sharedTypes';
 import { SPECTATOR_NAME, TTTGameState, TTTMark } from 'ftr-common/sharedTypes';
+import { Logger, type ILogObj } from 'tslog';
+import dotenv from 'dotenv';
+
+// Initialize main tslog-logger
+const log = new Logger<ILogObj>({ name: 'conn', minLevel: 'INFO' });
+
+if (process.env['NODE_ENV'] === 'development') {
+    log.info('loading dev.env...');
+    dotenv.config({ path: '../../../dev.env', quiet: true });
+}
 
 const PORT = 3000;
 const SECRET_KEY: string = process.env['JWT_SECRET'] || 'FooBarBaz';
@@ -78,18 +88,20 @@ io.use((socket, next) => {
     }
 
     try {
-        const authenticatedUserId = verifyToken(token, SECRET_KEY);
+        const authenticatedUserId = verifyToken(token, SECRET_KEY, log);
         const requestedUserId = socket.handshake.auth['userId'];
         if (
             !Number.isSafeInteger(requestedUserId) ||
             requestedUserId !== authenticatedUserId
         ) {
+            log.error('requested & authenticated UID mismatch or invalid UID');
             next(new Error('Session identity mismatch'));
             return;
         }
         socket.data.userId = authenticatedUserId;
         next();
-    } catch {
+    } catch (err) {
+        log.error('miep:', err);
         next(new Error('Unauthorized'));
     }
 });
