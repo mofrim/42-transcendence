@@ -263,6 +263,16 @@ export const API_EVENTLOG = Object.freeze({
     matchHistory: `${API_EVENTLOG_ROOT}/matchhist`,
 });
 
+const API_USER_ROOT = '/api/user' as const;
+
+export const API_USER = Object.freeze({
+    root: API_USER_ROOT,
+    all: `${API_USER_ROOT}/all`,
+    health: `${API_USER_ROOT}/health`,
+    uid: `${API_USER_ROOT}/:userId`,
+    register: `${API_USER_ROOT}/register`,
+});
+
 // endregion
 // ----------------------------=[ other types ]=---------------------------- //
 

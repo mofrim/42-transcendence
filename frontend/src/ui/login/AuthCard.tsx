@@ -5,7 +5,7 @@ import { UserOutlined, LockOutlined, MailOutlined } from '@ant-design/icons';
 import { useAuth } from '../../hooks/useAuthContext';
 import type { ValidationError } from 'express-validator';
 import axios from 'axios';
-import type { ApiResponse } from 'ftr-common/sharedTypes';
+import { type ApiResponse, API_USER } from 'ftr-common/sharedTypes';
 
 // -------------------------=[ style the messages ]=------------------------- //
 
@@ -157,7 +157,7 @@ function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
         password: string;
     }) => {
         try {
-            await axios.post<ApiResponse>('/api/user/register', values);
+            await axios.post<ApiResponse>(API_USER.register, values);
         } catch (err) {
             if (
                 axios.isAxiosError<ApiResponse<ValidationError[]>>(err) &&

@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { AuthContext } from '../../contexts/AuthContext';
-import type { User, ApiResponse } from 'ftr-common/sharedTypes';
+import { type User, type ApiResponse, API_USER } from 'ftr-common/sharedTypes';
 import axios from 'axios';
 import type { AxiosRequestConfig } from 'axios';
 
@@ -15,7 +15,7 @@ const getAuthenticatedUser = async (signal?: AbortSignal): Promise<User> => {
     }
 
     const userResponse = await axios.get<ApiResponse<User>>(
-        '/api/user',
+        API_USER.root,
         config
     );
     return userResponse.data.data!;

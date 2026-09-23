@@ -1,5 +1,7 @@
 import request from 'supertest';
 
+import { API_USER } from 'ftr-common/sharedTypes';
+
 const authBaseUrl = 'http://localhost:3001';
 const userBaseUrl = 'http://localhost:3003';
 
@@ -30,7 +32,7 @@ describe('basic get cookie test', () => {
 describe('basic user-service test', () => {
     it('should get currently authenticated user (fm)', async () => {
         const res = await request(userBaseUrl)
-            .get('/api/user')
+            .get(API_USER.root)
             .set('Cookie', authCookieFm);
         // console.log(`got response: ${JSON.stringify(res.body, null, 2)}`);
         expect(res.statusCode).toEqual(200);
@@ -39,7 +41,7 @@ describe('basic user-service test', () => {
 
     it('should get user with id 0', async () => {
         const res = await request(userBaseUrl)
-            .get('/api/user/0')
+            .get(API_USER.root + '/0')
             .set('Cookie', authCookieRoot);
         // console.log(`got response: ${JSON.stringify(res.body, null, 2)}`);
         expect(res.statusCode).toEqual(200);
@@ -49,7 +51,7 @@ describe('basic user-service test', () => {
 
     it('should fail as unauthorized', async () => {
         const res = await request(userBaseUrl)
-            .get('/api/user/0')
+            .get(API_USER.root + '/0')
             .set('Cookie', authCookieFm);
         // console.log(`got response: ${JSON.stringify(res.body, null, 2)}`);
         expect(res.statusCode).toEqual(401);
@@ -57,7 +59,7 @@ describe('basic user-service test', () => {
 
     it('should fail as unauthorized (/all)', async () => {
         const res = await request(userBaseUrl)
-            .get('/api/user/all')
+            .get(API_USER.all)
             .set('Cookie', authCookieFm);
         // console.log(`got response: ${JSON.stringify(res.body, null, 2)}`);
         expect(res.statusCode).toEqual(401);
@@ -65,7 +67,7 @@ describe('basic user-service test', () => {
 
     it('should get all users', async () => {
         const res = await request(userBaseUrl)
-            .get('/api/user/all')
+            .get(API_USER.all)
             .set('Cookie', authCookieRoot);
         // console.log(`got response: ${JSON.stringify(res.body, null, 2)}`);
         expect(res.statusCode).toEqual(200);
@@ -80,7 +82,7 @@ describe('add/del user aka register tests', () => {
             email: 'moep@miep.de',
         };
         const res = await request(userBaseUrl)
-            .post('/api/user/register')
+            .post(API_USER.register)
             .send(user);
         // console.log(`got response: ${JSON.stringify(res.body, null, 2)}`);
         expect(res.statusCode).toEqual(403);
@@ -95,7 +97,7 @@ describe('add/del user aka register tests', () => {
             email: 'moep@miep.de',
         };
         const res = await request(userBaseUrl)
-            .post('/api/user/register')
+            .post(API_USER.register)
             .send(user);
         console.log(`got response: ${JSON.stringify(res.body, null, 2)}`);
         expect(res.statusCode).toEqual(201);
@@ -104,7 +106,7 @@ describe('add/del user aka register tests', () => {
 
     it('should successfully delete "moep" again', async () => {
         const res = await request(userBaseUrl)
-            .delete(`/api/user/${moepId}`)
+            .delete(API_USER.root + `/${moepId}`)
             .set('Cookie', authCookieRoot);
         console.log(`got response: ${JSON.stringify(res.body, null, 2)}`);
         expect(res.statusCode).toEqual(204);
@@ -117,7 +119,7 @@ describe('add/del user aka register tests', () => {
             email: 'moep@miep.de',
         };
         const res = await request(userBaseUrl)
-            .post('/api/user/register')
+            .post(API_USER.register)
             .send(user);
         console.log(`got response: ${JSON.stringify(res.body, null, 2)}`);
         expect(res.statusCode).toEqual(201);
@@ -126,7 +128,7 @@ describe('add/del user aka register tests', () => {
 
     it('should fail deleting user due to invalid creds', async () => {
         const res = await request(userBaseUrl)
-            .delete(`/api/user/${moepId}`)
+            .delete(API_USER.root + `/${moepId}`)
             .set('Cookie', authCookieFm);
         console.log(`got response: ${JSON.stringify(res.body, null, 2)}`);
         expect(res.statusCode).toEqual(401);
@@ -134,7 +136,7 @@ describe('add/del user aka register tests', () => {
 
     it('should successfully delete "moep2" again', async () => {
         const res = await request(userBaseUrl)
-            .delete(`/api/user/${moepId}`)
+            .delete(API_USER.root + `/${moepId}`)
             .set('Cookie', authCookieRoot);
         console.log(`got response: ${JSON.stringify(res.body, null, 2)}`);
         expect(res.statusCode).toEqual(204);
@@ -144,7 +146,7 @@ describe('add/del user aka register tests', () => {
 describe('simple output of response', () => {
     it('should get currently authenticated user (fm)', async () => {
         const res = await request(userBaseUrl)
-            .get('/api/user')
+            .get(API_USER.root)
             .set('Cookie', authCookieFm);
         console.log(`got response: ${JSON.stringify(res.body, null, 2)}`);
         expect(res.statusCode).toEqual(200);

@@ -18,7 +18,7 @@ import { authenticateMid } from 'ftr-common/middleware';
 import { ORMEventLog, ORMUser } from 'ftr-common/ormTypes';
 import 'ftr-common/expressTypes';
 import { getUserByIdNoPw, mkApiResponse } from 'backend-utils';
-import { User } from 'ftr-common/sharedTypes';
+import { User, API_USER } from 'ftr-common/sharedTypes';
 
 // Initialize main tslog-logger
 const log = new Logger<ILogObj>({
@@ -88,7 +88,7 @@ const userRepo = DB.getRepository(ORMUser);
 // -------------------------=[ user GET endpoints ]=------------------------- //
 
 // simply get user record of authenticated user
-app.get('/api/user', authenticate, async (req, res) => {
+app.get(API_USER.root, authenticate, async (req, res) => {
     const logGet = log.getSubLogger({ name: 'GET(user)' });
     try {
         const user = await getUserByIdNoPw(DB, req.userId!);
@@ -105,7 +105,7 @@ app.get('/api/user', authenticate, async (req, res) => {
 
 // get all users
 // NOTE admin only endpoint!
-app.get('/api/user/all', authenticate, async (req: Request, res: Response) => {
+app.get(API_USER.all, authenticate, async (req: Request, res: Response) => {
     const logGet = log.getSubLogger({ name: 'GET(userAll)' });
 
     // guard this endpoint
@@ -140,97 +140,85 @@ app.get('/api/user/all', authenticate, async (req: Request, res: Response) => {
 });
 
 // health-check endpoint
-app.get('/api/user/health', (_req: Request, res: Response) => {
+app.get(API_USER.health, (_req: Request, res: Response) => {
     res.json(mkApiResponse('user-service is running', 'success'));
 });
 
 // query users by uid
 // NOTE admin only endpoint!
-app.get(
-    '/api/user/:userId',
-    authenticate,
-    async (req: Request, res: Response) => {
-        const logGet = log.getSubLogger({ name: 'GET(userId)' });
+app.get(API_USER.uid, authenticate, async (req: Request, res: Response) => {
+    const logGet = log.getSubLogger({ name: 'GET(userId)' });
 
-        // guard this endpoint
-        if (req.userId !== 0) {
-            logGet.warn('access denied for uid', req.userId);
-            res.status(401).json(mkApiResponse('invalid credentials', 'error'));
-            return;
-        }
-
-        const userId = Number(req.params['userId']);
-        if (!Number.isInteger(userId)) {
-            logGet.warn(`userId-enpoint queried with invalid uid ${userId}`);
-            return res
-                .status(400)
-                .json(mkApiResponse('userId must be an integer', 'error'));
-        }
-
-        try {
-            const user = await getUserByIdNoPw(DB, userId);
-            if (user === null) {
-                logGet.warn(`userId-enpoint queried with wrong uid ${userId}`);
-                return res
-                    .status(401)
-                    .json(mkApiResponse('User not found', 'error'));
-            }
-            return res.json(
-                mkApiResponse<User>('User found', 'success', user.id, user)
-            );
-        } catch (err) {
-            logGet.error(err as Error);
-            return res
-                .status(500)
-                .json(mkApiResponse('Failed to fetch user profile', 'error'));
-        }
+    // guard this endpoint
+    if (req.userId !== 0) {
+        logGet.warn('access denied for uid', req.userId);
+        res.status(401).json(mkApiResponse('invalid credentials', 'error'));
+        return;
     }
-);
+
+    const userId = Number(req.params['userId']);
+    if (!Number.isInteger(userId)) {
+        logGet.warn(`userId-enpoint queried with invalid uid ${userId}`);
+        return res
+            .status(400)
+            .json(mkApiResponse('userId must be an integer', 'error'));
+    }
+
+    try {
+        const user = await getUserByIdNoPw(DB, userId);
+        if (user === null) {
+            logGet.warn(`userId-enpoint queried with wrong uid ${userId}`);
+            return res
+                .status(401)
+                .json(mkApiResponse('User not found', 'error'));
+        }
+        return res.json(
+            mkApiResponse<User>('User found', 'success', user.id, user)
+        );
+    } catch (err) {
+        logGet.error(err as Error);
+        return res
+            .status(500)
+            .json(mkApiResponse('Failed to fetch user profile', 'error'));
+    }
+});
 
 // delete users by uid
 // NOTE admin only endpoint!
-app.delete(
-    '/api/user/:userId',
-    authenticate,
-    async (req: Request, res: Response) => {
-        const logGet = log.getSubLogger({ name: 'DEL(userId)' });
+app.delete(API_USER.uid, authenticate, async (req: Request, res: Response) => {
+    const logGet = log.getSubLogger({ name: 'DEL(userId)' });
 
-        // guard this endpoint
-        if (req.userId !== 0) {
-            logGet.warn('access denied for uid', req.userId);
-            res.status(401).json(mkApiResponse('invalid credentials', 'error'));
-            return;
-        }
-
-        const userId = Number(req.params['userId']);
-        if (!Number.isInteger(userId)) {
-            logGet.warn(`DelUserId-enpoint queried with invalid uid ${userId}`);
-            return res
-                .status(400)
-                .json(mkApiResponse('userId must be an integer', 'error'));
-        }
-
-        try {
-            const result = await userRepo.delete(userId);
-            if (result.affected == null) {
-                logGet.warn(`userId-enpoint queried with wrong uid ${userId}`);
-                return res
-                    .status(404)
-                    .json(mkApiResponse('invalid id', 'error'));
-            }
-            return res
-                .status(204)
-                .json(
-                    mkApiResponse('Successfully fetche user by ID', 'success')
-                );
-        } catch (err) {
-            logGet.error(err as Error);
-            return res
-                .status(500)
-                .json(mkApiResponse('Failed to fetch user profile', 'error'));
-        }
+    // guard this endpoint
+    if (req.userId !== 0) {
+        logGet.warn('access denied for uid', req.userId);
+        res.status(401).json(mkApiResponse('invalid credentials', 'error'));
+        return;
     }
-);
+
+    const userId = Number(req.params['userId']);
+    if (!Number.isInteger(userId)) {
+        logGet.warn(`DelUserId-enpoint queried with invalid uid ${userId}`);
+        return res
+            .status(400)
+            .json(mkApiResponse('userId must be an integer', 'error'));
+    }
+
+    try {
+        const result = await userRepo.delete(userId);
+        if (result.affected == null) {
+            logGet.warn(`userId-enpoint queried with wrong uid ${userId}`);
+            return res.status(404).json(mkApiResponse('invalid id', 'error'));
+        }
+        return res
+            .status(204)
+            .json(mkApiResponse('Successfully fetche user by ID', 'success'));
+    } catch (err) {
+        logGet.error(err as Error);
+        return res
+            .status(500)
+            .json(mkApiResponse('Failed to fetch user profile', 'error'));
+    }
+});
 // ------------------------=[ user POST endpoints ]=------------------------ //
 
 const registrationValidation = checkSchema(
@@ -263,7 +251,7 @@ const registrationValidation = checkSchema(
 );
 
 app.post(
-    '/api/user/register',
+    API_USER.register,
     registrationValidation,
     async (req: Request, res: Response) => {
         const logReg = log.getSubLogger({ name: 'register' });
@@ -321,7 +309,7 @@ app.post(
 
 // --------=[ fallback endpoint for catching unsuppoerted methods ]=-------- //
 
-app.all('/api/user', (req: Request, res: Response) => {
+app.all(API_USER.root, (req: Request, res: Response) => {
     log.warn('Invalid Request to /api/user:', req.method);
     res.status(405).json(mkApiResponse('Unsupported Method', 'error'));
 });
