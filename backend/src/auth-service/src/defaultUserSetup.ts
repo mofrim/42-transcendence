@@ -8,6 +8,7 @@ const defaultUsers = [
     {
         nickname: 'alice',
         email: 'alice@example.com',
+        TOSPPchecked: false,
         character: true,
         hashedPw: bcrypt.hashSync('Anatolij', 10),
         quests: InitialQuestStatus,
@@ -16,6 +17,7 @@ const defaultUsers = [
     {
         nickname: 'bob',
         email: 'bob@example.com',
+        TOSPPchecked: false,
         character: true,
         hashedPw: bcrypt.hashSync('Daniel', 10),
         quests: InitialQuestStatus,
@@ -24,6 +26,7 @@ const defaultUsers = [
     {
         nickname: 'jeff',
         email: 'jeff@example.com',
+        TOSPPchecked: false,
         character: true,
         hashedPw: bcrypt.hashSync('Lukas', 10),
         quests: InitialQuestStatus,
@@ -32,6 +35,7 @@ const defaultUsers = [
     {
         nickname: 'mandy',
         email: 'mandy@example.com',
+        TOSPPchecked: false,
         character: false,
         hashedPw: bcrypt.hashSync('Maryam', 10),
         quests: InitialQuestStatus,
@@ -40,6 +44,7 @@ const defaultUsers = [
     {
         nickname: 'freddy',
         email: 'freddy@example.com',
+        TOSPPchecked: false,
         character: true,
         hashedPw: bcrypt.hashSync('Moritz', 10),
         quests: InitialQuestStatus,
@@ -76,6 +81,7 @@ export const setupDefaultUsers = async (DB: DataSource) => {
     const root = {
         nickname: 'root',
         email: 'root@admin.dev',
+        TOSPPchecked: false,
         character: true,
         hashedPw:
             // crashOverride 8)

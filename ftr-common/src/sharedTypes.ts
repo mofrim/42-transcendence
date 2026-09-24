@@ -227,6 +227,7 @@ export const MAX_MATCH_HISTORY_ENTRIES = 10;
 export abstract class BaseUser {
     abstract id: number;
     abstract nickname: string;
+    abstract TOSPPchecked: boolean;
     abstract character: boolean;
     abstract email: string;
     abstract hashedPw?: string;
@@ -237,6 +238,7 @@ export class User extends BaseUser {
     id: number = 0;
     nickname: string = '';
     email: string = '';
+    TOSPPchecked = false;
     character: boolean = true;
     hashedPw?: string = '';
 
@@ -279,6 +281,7 @@ export const API_USER = Object.freeze({
     uid: `${API_USER_ROOT}/:userId`,
     register: `${API_USER_ROOT}/register`,
     quests: `${API_USER_ROOT}/quests`,
+    tospp: `${API_USER_ROOT}/tospp`,
 });
 
 // endregion

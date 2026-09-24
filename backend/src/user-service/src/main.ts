@@ -179,8 +179,64 @@ app.get(API_USER.quests, authenticate, async (req: Request, res: Response) => {
     }
 });
 
+// get users tospp settings from DB
+app.get(API_USER.tospp, authenticate, async (req: Request, res: Response) => {
+    const logTosPp = log.getSubLogger({ name: 'GET(TOS/PP)' });
+    try {
+        const user = await getUserByIdNoPw(DB, req.userId!);
+        if (user === null) {
+            logTosPp.error('somehow user not found in DB');
+            res.status(401).json(mkApiResponse('User not found', 'error'));
+            return;
+        }
+        res.status(200).json(
+            mkApiResponse<boolean>(
+                'Found TOS/PP setting',
+                'success',
+                undefined,
+                user.TOSPPchecked
+            )
+        );
+    } catch (err) {
+        logTosPp.error('could not get user from DB:', err);
+        res.status(401).json(mkApiResponse('Internal server error', 'error'));
+    }
+});
+
+// set users TOS/PP settings in DB to `true`
+app.post(API_USER.tospp, authenticate, async (req: Request, res: Response) => {
+    const logTosPp = log.getSubLogger({ name: 'POST(TOS/PP)' });
+    try {
+        const user = await userRepo.findOneBy({ id: req.userId! });
+        if (user === null) {
+            logTosPp.error('somehow user not found in DB');
+            res.status(401).json(mkApiResponse('User not found', 'error'));
+            return;
+        }
+        user.TOSPPchecked = true;
+        const result = await userRepo.update(user.id, user);
+        if (result.affected == null) {
+            logTosPp.warn(`updating TOS/PP of uid ${user.id} failed`);
+            res.status(500).json(
+                mkApiResponse('TOS/PP update failure', 'error')
+            );
+            return;
+        }
+        res.status(200).json(
+            mkApiResponse<boolean>('TOS/PP settings updated', 'success')
+        );
+    } catch (err) {
+        logTosPp.error('could not get user from DB:', err);
+        res.status(401).json(mkApiResponse('Internal server error', 'error'));
+    }
+});
+
+// ----------=[ UID GET endpoint - keep as last GET endpoint!!! ]=---------- //
+
 // query users by uid
 // NOTE admin only endpoint!
+// ATTENTION this has to be the last GET-endpoint declared as otherwise other
+// endpoints will match this
 app.get(API_USER.uid, authenticate, async (req: Request, res: Response) => {
     const logGet = log.getSubLogger({ name: 'GET(userId)' });
 

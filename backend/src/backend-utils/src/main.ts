@@ -45,11 +45,10 @@ export const getUserByIdNoPw = async (
             select: {
                 id: true,
                 nickname: true,
+                TOSPPchecked: true,
                 email: true,
                 character: true,
-                quests: true, // quests are needed for store/and load
-                // NOTE eventlogs are never needed
-                // QUESTION add friends here?!
+                quests: true,
             },
         });
     } catch (err) {

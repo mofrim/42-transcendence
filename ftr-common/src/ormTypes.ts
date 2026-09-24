@@ -30,6 +30,12 @@ export class ORMUser extends BaseUser {
 
     @Column({
         type: 'bool',
+        default: false,
+    })
+    declare TOSPPchecked: boolean;
+
+    @Column({
+        type: 'bool',
         default: true,
     })
     declare character: boolean;
