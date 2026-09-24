@@ -20,4 +20,4 @@ RUN  groupadd -f -g $GROUP_ID appuser && \
     mkdir -p /dist && \
     chown $USER_ID:$GROUP_ID /dist
 
-ENTRYPOINT rm -rf /dist/* && cp -r /app/frontend/dist/* /dist && chown -R $USER_ID:$GROUP_ID /dist && ls -al /dist
+ENTRYPOINT rm -rf /dist/* && cp -r /app/frontend/dist/* /dist && chown -R $USER_ID:$GROUP_ID /dist
