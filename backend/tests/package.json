@@ -13,6 +13,7 @@
         "simple-ev": "tsc -b && NODE_OPTIONS=\"$NODE_OPTIONS --experimental-vm-modules --no-warnings\" npx jest -- simple-eventlog.test.ts",
         "user": "tsc -b && NODE_OPTIONS=\"$NODE_OPTIONS --experimental-vm-modules --no-warnings\" npx jest -- user.test.ts",
         "getall": "tsc -b && NODE_OPTIONS=\"$NODE_OPTIONS --experimental-vm-modules --no-warnings\" npx jest -- getall.test.ts",
+        "quest": "tsc -b && NODE_OPTIONS=\"$NODE_OPTIONS --experimental-vm-modules --no-warnings\" npx jest -- quest.test.ts",
         "lint": "eslint .",
         "lint-fix": "eslint . --fix"
     },

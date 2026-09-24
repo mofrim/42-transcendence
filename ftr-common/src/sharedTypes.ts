@@ -75,15 +75,22 @@ export const QUESTS = Object.freeze({
     },
 });
 
-// generate a `type` from the above object.. awesome TS feature BTW
+// use only the IDs for this one as this is the info that will be transfered
+// between BE and FE (BackEnd & FrontEnd)
 export type QuestStatus = {
-    [K in keyof typeof QUESTS]: boolean;
+    [K in keyof typeof QUESTS as (typeof QUESTS)[K]['id']]: boolean;
 };
+
+// An array with only the ID props from QUESTS -> useful when trying to check
+// for valid questIds
+export const QuestIDs = Object.freeze(Object.values(QUESTS).map((q) => q.id));
 
 // the quests object with every boolean set to false.
 export const InitialQuestStatus: QuestStatus = Object.fromEntries(
-    Object.keys(QUESTS).map((key) => [key, false])
+    Object.values(QUESTS).map((q) => [q.id, false])
 ) as QuestStatus;
+
+export type QuestTuple = Record<string, boolean>;
 
 export const PREPARATION_QUEST_IDS = [
     QUESTS.RUBBER_DUCK_QUEST_ID.id,
@@ -271,6 +278,7 @@ export const API_USER = Object.freeze({
     health: `${API_USER_ROOT}/health`,
     uid: `${API_USER_ROOT}/:userId`,
     register: `${API_USER_ROOT}/register`,
+    quests: `${API_USER_ROOT}/quests`,
 });
 
 // endregion

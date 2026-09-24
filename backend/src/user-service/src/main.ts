@@ -18,7 +18,12 @@ import { authenticateMid } from 'ftr-common/middleware';
 import { ORMEventLog, ORMUser } from 'ftr-common/ormTypes';
 import 'ftr-common/expressTypes';
 import { getUserByIdNoPw, mkApiResponse } from 'backend-utils';
-import { User, API_USER } from 'ftr-common/sharedTypes';
+import {
+    User,
+    API_USER,
+    QuestIDs,
+    type QuestTuple,
+} from 'ftr-common/sharedTypes';
 
 // Initialize main tslog-logger
 const log = new Logger<ILogObj>({
@@ -142,6 +147,36 @@ app.get(API_USER.all, authenticate, async (req: Request, res: Response) => {
 // health-check endpoint
 app.get(API_USER.health, (_req: Request, res: Response) => {
     res.json(mkApiResponse('user-service is running', 'success'));
+});
+
+// GET endpoint which will return the QuestStatus object
+app.get(API_USER.quests, authenticate, async (req: Request, res: Response) => {
+    const logQst = log.getSubLogger({ name: 'quests' });
+    try {
+        const user = await userRepo.findOneBy({ id: req.userId! });
+
+        if (user === null) {
+            res.status(401).json(mkApiResponse('User not found', 'error'));
+            return;
+        }
+        const questsArr: QuestTuple[] = Array.from(
+            Object.entries(user.quests),
+            ([k, v]) => {
+                return { [k]: v };
+            }
+        );
+        res.status(200).json(
+            mkApiResponse<QuestTuple[]>(
+                'User quests',
+                'success',
+                undefined,
+                questsArr
+            )
+        );
+    } catch (err) {
+        logQst.error('something went wrong: ', err);
+        res.status(500).json(mkApiResponse('DB query failed', 'error'));
+    }
 });
 
 // query users by uid
@@ -306,6 +341,40 @@ app.post(
         }
     }
 );
+
+// -----------------------=[ quest update endpoint ]=----------------------- //
+
+app.post(API_USER.quests, authenticate, async (req: Request, res: Response) => {
+    const logQst = log.getSubLogger({ name: 'quests' });
+
+    if (!QuestIDs.some((val) => val === req.body.quest)) {
+        logQst.error(`requested quest '${req.body.quest}' not found in QUESTS`);
+        res.status(400).json(mkApiResponse('Quest not found', 'error'));
+        return;
+    }
+
+    try {
+        const user = await userRepo.findOneBy({ id: req.userId! });
+
+        if (user === null) {
+            res.status(401).json(mkApiResponse('User not found', 'error'));
+            return;
+        }
+        user.quests[req.body.quest] = true;
+        const result = await userRepo.update(user.id, user);
+        if (result.affected == null) {
+            logQst.warn(`updating quests of uid ${user.id} failed`);
+            res.status(500).json(
+                mkApiResponse('quest update failure', 'error')
+            );
+            return;
+        }
+        res.status(200).json(mkApiResponse('Quests updated', 'success'));
+    } catch (err) {
+        logQst.error('something went wrong: ', err);
+        res.status(500).json(mkApiResponse('DB query failed', 'error'));
+    }
+});
 
 // --------=[ fallback endpoint for catching unsuppoerted methods ]=-------- //
 
