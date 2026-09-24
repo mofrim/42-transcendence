@@ -76,7 +76,7 @@ export function startGame(
     onGameplayReady?: () => void,
     onFriendRequestChange?: FriendRequestChangeHandler,
     onFriendStateSnapshot?: FriendStateSnapshotHandler,
-    onSaveGameRestore?: (snapshot: SaveGameSnapshot | null) => void,
+    onSaveGameRestore?: (snapshot: SaveGameSnapshot | null) => Promise<void>,
     onConnectionChange?: (connected: boolean) => void
 ): GameRuntime {
     // ============================================================================

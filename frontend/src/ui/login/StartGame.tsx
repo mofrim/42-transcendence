@@ -7,6 +7,9 @@ import {
     GameEvent,
     EventType,
     User,
+    API_USER,
+    type QuestTuple,
+    type ApiResponse,
     type ReceivedChatPayload,
     type EventDataPlayerInRange,
     type SaveGameSnapshot,
@@ -20,6 +23,7 @@ import {
     type QuestStatusChange,
 } from '../ingame/QuestLog';
 import * as THREE from 'three';
+import axios from 'axios';
 
 import { useEventLog } from '../../hooks/useEventLog';
 
@@ -78,8 +82,41 @@ export const Game: React.FC<{
     });
 
     const SaveGameRestore = useCallback(
-        (snapshot: SaveGameSnapshot | null): void => {
-            setCompletedQuestIds(Array.from(snapshot?.completedQuestIds ?? []));
+        async (snapshot: SaveGameSnapshot | null): Promise<void> => {
+            let completedQsts: string[] = [];
+
+            // get completed quests from DB first...
+            try {
+                const response = await axios.get<ApiResponse<QuestTuple[]>>(
+                    API_USER.quests
+                );
+                const quests: QuestTuple[] = response.data.data!;
+
+                quests.forEach((obj) => {
+                    const [key, val] = Object.entries(obj)[0]!;
+                    if (val) {
+                        completedQsts.push(key);
+                    }
+                });
+            } catch {
+                console.log(
+                    '[SaveGameRestore] getting user-quests from DB failed'
+                );
+            }
+
+            // merge quests from DB with possible quests from snapshot..
+            // QUESTION what is the scenario for quests not being saved to DB
+            // but to the snapshot?
+            completedQsts = [
+                ...new Set([
+                    ...Array.from(snapshot?.completedQuestIds ?? []),
+                    ...completedQsts,
+                ]),
+            ];
+
+            console.log('[SaveGameRestore] restored quests:', completedQsts);
+
+            setCompletedQuestIds(completedQsts);
             handleSaveGameStateRestore(snapshot);
         },
         [handleSaveGameStateRestore]

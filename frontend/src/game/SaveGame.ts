@@ -10,7 +10,7 @@ type SaveGameOptions = {
     readonly socket: Socket;
     readonly isDisposed: () => boolean;
     readonly onSaveGameRestore:
-        ((snapshot: SaveGameSnapshot | null) => void) | undefined;
+        ((snapshot: SaveGameSnapshot | null) => Promise<void>) | undefined;
     readonly onConnectionChange: ((connected: boolean) => void) | undefined;
     readonly onPositionRestore: (position: PlayerPosition) => void;
     readonly onRestoreReady: () => void;

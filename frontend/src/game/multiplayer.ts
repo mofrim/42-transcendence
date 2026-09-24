@@ -99,7 +99,7 @@ type MultiplayerManagerOptions = {
     readonly onFriendRequestChange: FriendRequestChangeHandler | undefined;
     readonly onFriendStateSnapshot: FriendStateSnapshotHandler | undefined;
     readonly onSaveGameRestore:
-        ((snapshot: SaveGameSnapshot | null) => void) | undefined;
+        ((snapshot: SaveGameSnapshot | null) => Promise<void>) | undefined;
     readonly onConnectionChange: ((connected: boolean) => void) | undefined;
     readonly gameHandlers?: MultiplayerGameHandlers;
 };
