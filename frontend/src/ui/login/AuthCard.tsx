@@ -1,59 +1,11 @@
 import React, { useState } from 'react';
-import { Form, Input, Button, Card, message } from 'antd';
-import type { GetProp, MessageArgsProps } from 'antd';
+import { Form, Input, Button, Card } from 'antd';
 import { UserOutlined, LockOutlined, MailOutlined } from '@ant-design/icons';
 import { useAuth } from '../../hooks/useAuthContext';
 import type { ValidationError } from 'express-validator';
 import axios from 'axios';
 import { type ApiResponse, API_USER } from 'ftr-common/sharedTypes';
-
-// -------------------------=[ style the messages ]=------------------------- //
-
-const errorStyles: GetProp<MessageArgsProps, 'styles', 'Return'> = {
-    root: {
-        backgroundColor: 'rgba(250, 250, 250, 0.6)',
-        border: '2px solid #bb3333',
-        borderRadius: 12,
-        boxShadow: '0 10px 30px rgba(0, 0, 0, 0.3)',
-    },
-    icon: {
-        color: '#952222',
-    },
-    title: {
-        color: '#952222',
-        fontWeight: 600,
-    },
-};
-
-const successStyles: GetProp<MessageArgsProps, 'styles', 'Return'> = {
-    root: {
-        backgroundColor: 'rgba(250, 250, 250, 0.6)',
-        border: '2px solid #95de64',
-        borderRadius: 12,
-        boxShadow: '0 10px 30px rgba(0, 0, 0, 0.3)',
-    },
-    icon: {
-        color: '#237804',
-    },
-    title: {
-        color: '#237804',
-        fontWeight: 600,
-    },
-};
-
-const showErrMsg = (content: string) => {
-    message.error({
-        content,
-        styles: errorStyles,
-    });
-};
-
-const showSuccessMsg = (content: string) => {
-    message.success({
-        content,
-        styles: successStyles,
-    });
-};
+import { showErrMsg, showSuccessMsg } from '../../lib/antdUtils';
 
 // ---------------------------=[ the login form ]=--------------------------- //
 

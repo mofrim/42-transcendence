@@ -1,10 +1,7 @@
 import React from 'react';
-import { UserInfo } from './ui/login/UserInfo';
 import { AuthCard } from './ui/login/AuthCard';
-import { CharacterPreview } from './ui/login/PreviewCharacter';
 import { MapPreview } from './ui/login/PreviewMap';
-import { PlayerSelect } from './ui/login/PlayerSelect';
-import { Agreements } from './ui/login/Agreements';
+import { Entrance } from './ui/login/Entrance';
 import { useLoginContext } from './hooks/useLoginContext';
 import { useAuth } from './hooks/useAuthContext';
 import axios from 'axios';
@@ -107,26 +104,12 @@ const App: React.FC<AppProps> = (props: AppProps) => {
     }
 
     return (
-        <>
-            <MapPreview />
-            <div id='login-ui'>
-                <div className='login-title'>{props.title}</div>
-                <div className='login-subtitle'>{props.subtitle}</div>
-                <UserInfo />
-                <PlayerSelect />
-                <CharacterPreview />
-                <Agreements />
-                <button
-                    id='start-btn'
-                    onClick={() => {
-                        setIsSpectator(false);
-                        setGameRunning(true);
-                    }}
-                >
-                    ENTER
-                </button>
-            </div>
-        </>
+        <Entrance
+            title={props.title}
+            subtitle={props.subtitle}
+            setIsSpectator={setIsSpectator}
+            setGameRunning={setGameRunning}
+        />
     );
 };
 

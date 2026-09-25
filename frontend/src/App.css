@@ -538,6 +538,7 @@ body {
     cursor: pointer;
 }
 
+.terms-link,
 .terms a {
     color: #3c7d7d;
     text-decoration: none;
