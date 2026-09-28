@@ -14,6 +14,7 @@ import {
     InitialQuestStatus,
     type EventData,
     type QuestStatus,
+    BLACK_HOLE_DURATION_SECONDS,
 } from 'ftr-common/sharedTypes';
 
 @Entity('users')
@@ -60,6 +61,18 @@ export class ORMUser extends BaseUser {
         default: InitialQuestStatus,
     })
     declare quests: QuestStatus;
+
+    @Column({
+        type: 'bool',
+        default: false,
+    })
+    declare isLoggedIn: boolean;
+
+    @Column({
+        type: 'integer',
+        default: BLACK_HOLE_DURATION_SECONDS,
+    })
+    declare blackholeTimer: number;
 
     // in order to have friends list we need a jointable which will create an
     // extra table "user_friends" in the DB. for each friendship we will end up

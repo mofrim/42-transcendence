@@ -231,6 +231,8 @@ export abstract class BaseUser {
     abstract character: boolean;
     abstract email: string;
     abstract hashedPw?: string;
+    abstract blackholeTimer: number;
+    abstract isLoggedIn: boolean;
 }
 
 // this is the child class of BaseUser for use in frontend
@@ -241,6 +243,8 @@ export class User extends BaseUser {
     TOSPPchecked = false;
     character: boolean = true;
     hashedPw?: string = '';
+    blackholeTimer = BLACK_HOLE_DURATION_SECONDS;
+    isLoggedIn = false;
 
     constructor(data?: Partial<User>) {
         super();

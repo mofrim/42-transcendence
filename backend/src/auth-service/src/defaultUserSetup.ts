@@ -1,5 +1,8 @@
 import { ORMUser } from 'ftr-common/ormTypes';
-import { InitialQuestStatus } from 'ftr-common/sharedTypes';
+import {
+    BLACK_HOLE_DURATION_SECONDS,
+    InitialQuestStatus,
+} from 'ftr-common/sharedTypes';
 import bcrypt from 'bcryptjs';
 import { exit } from 'node:process';
 import type { DataSource } from 'typeorm';
@@ -13,6 +16,8 @@ const defaultUsers = [
         hashedPw: bcrypt.hashSync('Anatolij', 10),
         quests: InitialQuestStatus,
         friends: [],
+        isLoggedIn: false,
+        blackholeTimer: BLACK_HOLE_DURATION_SECONDS,
     },
     {
         nickname: 'bob',
@@ -22,6 +27,8 @@ const defaultUsers = [
         hashedPw: bcrypt.hashSync('Daniel', 10),
         quests: InitialQuestStatus,
         friends: [],
+        isLoggedIn: false,
+        blackholeTimer: BLACK_HOLE_DURATION_SECONDS,
     },
     {
         nickname: 'jeff',
@@ -31,6 +38,8 @@ const defaultUsers = [
         hashedPw: bcrypt.hashSync('Lukas', 10),
         quests: InitialQuestStatus,
         friends: [],
+        isLoggedIn: false,
+        blackholeTimer: BLACK_HOLE_DURATION_SECONDS,
     },
     {
         nickname: 'mandy',
@@ -40,6 +49,8 @@ const defaultUsers = [
         hashedPw: bcrypt.hashSync('Maryam', 10),
         quests: InitialQuestStatus,
         friends: [],
+        isLoggedIn: false,
+        blackholeTimer: BLACK_HOLE_DURATION_SECONDS,
     },
     {
         nickname: 'freddy',
@@ -49,6 +60,8 @@ const defaultUsers = [
         hashedPw: bcrypt.hashSync('Moritz', 10),
         quests: InitialQuestStatus,
         friends: [],
+        isLoggedIn: false,
+        blackholeTimer: BLACK_HOLE_DURATION_SECONDS,
     },
 ];
 
@@ -77,10 +90,10 @@ export const setupDefaultUsers = async (DB: DataSource) => {
             userSetupError(user.nickname, error);
         }
     }
-    // add root
-    const root = {
-        nickname: 'root',
-        email: 'root@admin.dev',
+    // add superadmin
+    const superadmin = {
+        nickname: 'superadmin',
+        email: 'superadmin@admin.dev',
         TOSPPchecked: false,
         character: true,
         hashedPw:
@@ -90,10 +103,10 @@ export const setupDefaultUsers = async (DB: DataSource) => {
         friends: [],
     };
     try {
-        await userRepo.save(userRepo.create(root));
+        await userRepo.save(userRepo.create(superadmin));
         console.log(`defaultUser superadmin successfully created!`);
-        await userRepo.update({ nickname: 'root' }, { id: 0 });
+        await userRepo.update({ nickname: 'superadmin' }, { id: 0 });
     } catch (error) {
-        userSetupError(root.nickname, error);
+        userSetupError(superadmin.nickname, error);
     }
 };
