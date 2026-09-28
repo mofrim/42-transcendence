@@ -90,6 +90,8 @@ dock-db-down:
 backend-dev:
 	$(call log_msg_start,Launching all backend for dev...)
 	$(output_color_grey)
+	npm run build:common
+	npm run build:backend-utils
 	cd backend && docker compose -f ./compose-db.yaml up -d && npm run dev:all
 	$(call log_msg_end,Done.)
 

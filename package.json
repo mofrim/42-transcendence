@@ -20,6 +20,7 @@
         "dev:backend": "npm run dev -w backend",
         "dev:frontend": "npm run dev -w frontend",
         "build:common": "npm run build -w ftr-common",
+        "build:backend-utils": "npm run build -w backend/src/backend-utils",
         "build": "npm run build -w ftr-common && npm run build -w ftr-backend && npm run build -w frontend"
     },
     "devDependencies": {
