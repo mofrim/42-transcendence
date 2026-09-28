@@ -5,7 +5,7 @@ import type { Socket } from 'socket.io-client';
 import type { Player } from './player.js';
 import { Remote_Player } from './remote_player.js';
 import { Chat } from './Chat.js';
-import { SaveGame } from './SaveGame.js';
+import { SaveGameFrontend } from './SaveGameFrontend.js';
 import {
     createFriendRequestRuntimeActions,
     FriendRequestManager,
@@ -154,7 +154,7 @@ export class MultiplayerManager {
     private readonly user: User;
     private readonly onGameEvent: ((event: GameEvent) => void) | undefined;
     private readonly gameHandlers: MultiplayerGameHandlers;
-    private readonly saveGame: SaveGame;
+    private readonly saveGame: SaveGameFrontend;
     private readonly chat: Chat;
     private readonly friendRequest: FriendRequestManager;
     private readonly departingPlayers: Set<Remote_Player>;
@@ -191,7 +191,7 @@ export class MultiplayerManager {
         this.playerUpdateIntervalId = null;
         this.disposePromise = null;
         this.disposed = false;
-        this.saveGame = new SaveGame({
+        this.saveGame = new SaveGameFrontend({
             socket: this.socket,
             isDisposed: () => this.disposed,
             onSaveGameRestore: options.onSaveGameRestore,

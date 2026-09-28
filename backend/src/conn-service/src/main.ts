@@ -8,7 +8,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { Server } from 'socket.io';
 import type { Socket } from 'socket.io';
 import { GameManager } from './gameManager.ts';
-import { SaveGame } from './SaveGame.ts';
+import { SaveGameBackend } from './SaveGameBackend.ts';
 import { verifyToken } from 'ftr-common/middleware';
 import type {
     ChatSendPayload,
@@ -63,7 +63,7 @@ const io = new Server(server, {
 });
 io.engine.use(cookieParser());
 const gameManager = new GameManager();
-const saveGame = new SaveGame();
+const saveGame = new SaveGameBackend();
 
 function getAuthenticatedUserId(socket: Socket | undefined): number | null {
     const userId = Number(socket?.data.userId);
@@ -105,9 +105,6 @@ io.use((socket, next) => {
         next(new Error('Unauthorized'));
     }
 });
-
-// TODO add event logging to all loggable socket-events like chat-msg,
-// player_connect, etc.
 
 io.on('connection', (socket) => {
     const requestedRole = socket.handshake.auth['role'];

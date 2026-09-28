@@ -10,7 +10,7 @@ type MutableSaveGameSnapshot = {
     -readonly [Key in keyof SaveGameSnapshot]: SaveGameSnapshot[Key];
 };
 
-export class SaveGame {
+export class SaveGameBackend {
     private readonly saves = new Map<number, MutableSaveGameSnapshot>();
     private readonly activeSocketsByUser = new Map<number, Set<string>>();
     private readonly ownerSocketByUser = new Map<number, string>();
@@ -151,7 +151,6 @@ export class SaveGame {
         );
     }
 
-    /** TODO: Quests in der users-table in der DB speichern & von da auch wider laden bei login */
     SaveGameQuestStatus(
         userId: number | null,
         socketId: string,

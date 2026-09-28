@@ -21,7 +21,7 @@ type SaveGameUpdatePayload =
     | SaveGameQuestStatusPayload
     | { readonly type: 'black_hole_timeout' | 'save_game_restart' };
 
-export class SaveGame {
+export class SaveGameFrontend {
     private restoreReady = false;
 
     constructor(private readonly options: SaveGameOptions) {}
