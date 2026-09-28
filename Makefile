@@ -48,38 +48,54 @@ dock-fclean:
 
 dock-backend:
 	$(call log_msg_start,Launching ftr-backend using docker compose..)
+	$(output_color_grey)
 	docker compose --project-directory ./backend up --build
 	$(call log_msg_end,Done.)
 
 dock-frontend:
 	$(call log_msg_start,Launching ftr-frontend using docker compose..)
+	$(output_color_grey)
 	docker compose --project-directory ./frontend up --build
 	$(call log_msg_end,Done.)
 
 dock-db:
 	$(call log_msg_start,Launching all backend for dev...)
+	$(output_color_grey)
 	cd backend && docker compose -f ./compose-db.yaml up -d
 	$(call log_msg_end,Done.)
 
 dock-db-clean: dock-db-down
 	$(call log_msg_start,Cleaning ftr-db...)
-	docker volume rm ftr-db
+	$(output_color_grey)
+	docker volume rm -f ftr-db
 	$(call log_msg_end,Done.)
 
 dock-db-re: dock-db-down dock-db-clean dock-db
 
+dock-re:
+	$(call log_msg_start,Compose down...)
+	@make --no-print-directory dock-clean
+	$(call log_msg_mid,Resetting DB...)
+	@make --no-print-directory dock-db-clean
+	$(call log_msg_mid,Compose up...)
+	@make --no-print-directory all
+	$(call log_msg_end,Done.)
+
 dock-db-down:
-	$(call log_msg_start,Launching all backend for dev...)
+	$(call log_msg_start,Shutting down DB...)
+	$(output_color_grey)
 	cd backend && docker compose -f ./compose-db.yaml down
 	$(call log_msg_end,Done.)
 
 backend-dev:
 	$(call log_msg_start,Launching all backend for dev...)
+	$(output_color_grey)
 	cd backend && docker compose -f ./compose-db.yaml up -d && npm run dev:all
 	$(call log_msg_end,Done.)
 
 frontend-dev:
 	$(call log_msg_start,Launching frontend for dev...)
+	$(output_color_grey)
 	npm run dev:frontend
 	$(call log_msg_end,Done.)
 
@@ -93,4 +109,4 @@ backend-dev-win:
 	$(call log_msg_end,Done.)
 
 .phony: all dock-clean dock-fclean dock-backend dock-frontend dock-db \
-	dock-db-down backend-dev certs
+	dock-db-down backend-dev certs dock-re
