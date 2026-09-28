@@ -1,5 +1,7 @@
 // -----------=[ all maybe-multi-use utility-functions go here ]=----------- //
 
+import { type ApiResponse } from './sharedTypes.ts';
+
 /**
  * Convert a JS-Date-Object to a valid `YYYY-MM-DD HH:MM:SS` PostgreSQL timestamp
  *
@@ -46,4 +48,22 @@ export const psqlstamp2date = (tstamp: string): Date | null => {
         return null;
     }
     return date;
+};
+
+/**
+ * Api-Response factory func. Can be called like
+ * `mkApiResponse('your message', 'error'|'success')`
+ * `mkApiResponse('your message', 'error'|'success', id)`,
+ * or `mkApiResponse('your message', 'error'|'success', id | undefined, data)`
+ */
+export const mkApiResponse = <T>(
+    message: string,
+    status: 'error' | 'success',
+    id?: number,
+    data?: T
+): ApiResponse<T> => {
+    const baseRespo: ApiResponse<T> = { message, status };
+    if (id !== undefined) baseRespo.id = id;
+    if (data !== undefined) baseRespo.data = data;
+    return baseRespo;
 };

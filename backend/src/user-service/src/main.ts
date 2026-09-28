@@ -14,10 +14,11 @@ import {
 } from 'express-validator';
 import bcrypt from 'bcryptjs';
 
+import 'ftr-common/expressTypes';
 import { authenticateMid } from 'ftr-common/middleware';
 import { ORMEventLog, ORMUser } from 'ftr-common/ormTypes';
-import 'ftr-common/expressTypes';
-import { getUserByIdNoPw, mkApiResponse } from 'backend-utils';
+import { mkApiResponse } from 'ftr-common/utils';
+import { getUserByIdNoPw } from 'backend-utils';
 import {
     User,
     API_USER,

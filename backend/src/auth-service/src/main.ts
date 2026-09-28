@@ -31,7 +31,8 @@ import type { Request, Express, Response, NextFunction } from 'express';
 import { ORMEventLog, ORMUser } from 'ftr-common/ormTypes';
 import { authenticateMid, verifyToken } from 'ftr-common/middleware';
 import { setupDefaultUsers } from './defaultUserSetup.ts';
-import { getUserById, mkApiResponse } from 'backend-utils';
+import { getUserById } from 'backend-utils';
+import { mkApiResponse } from 'ftr-common/utils';
 import 'ftr-common/expressTypes';
 
 // Initialize main tslog-logger
@@ -185,9 +186,13 @@ app.post(
                 return;
             }
 
-            const token = jwt.sign({ userId: user.id }, SECRET_KEY, {
+            // using standard claim fields here. no need for custom fields in
+            // our case -> https://en.wikipedia.org/wiki/JSON_Web_Token#Standard_fields
+            const token = jwt.sign({ sub: String(user.id) }, SECRET_KEY, {
+                issuer: 'auth-service',
                 algorithm: 'HS256',
                 expiresIn: '6h',
+                audience: 'backend',
             });
 
             res.cookie('token', token, {

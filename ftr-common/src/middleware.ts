@@ -3,6 +3,7 @@
 import jwt from 'jsonwebtoken';
 import type { Request, Response, NextFunction } from 'express';
 import { Logger, type ILogObj } from 'tslog';
+import { mkApiResponse } from './utils.ts';
 
 export const verifyToken = (
     token: string,
@@ -10,7 +11,7 @@ export const verifyToken = (
     log: Logger<ILogObj>
 ): number => {
     try {
-        const decoded = jwt.verify(token, secretKey);
+        const decoded = jwt.verify(token, secretKey, { algorithms: ['HS256'] });
         log.debug(
             'decoded:',
             typeof decoded === 'string' ? decoded : JSON.stringify(decoded)
@@ -19,8 +20,11 @@ export const verifyToken = (
             log.error('verify: invalid token data');
             throw new Error('Invalid token');
         }
-        const userId = Number(decoded['userId']);
-        if (!Number.isSafeInteger(userId)) {
+        const userId = Number(decoded?.sub);
+
+        // comparing only `!Number.isSafeInteger` would be a bug because `null`
+        // and empty string also coerce to `0`
+        if (!decoded.sub || !Number.isSafeInteger(userId)) {
             log.error('verify: invalid UID');
             throw new Error('Invalid token');
         }
@@ -40,13 +44,12 @@ export const authenticateMid = (
 ) => {
     const authLog = log.getSubLogger({ name: 'authMid' });
 
-    let token;
-    try {
-        token = req.cookies['token'];
-    } catch (err) {
-        void err;
-        res.status(401).json({ error: 'Unauthorized' });
-        authLog.warn('Unauthorized request');
+    // guard against req.cookies being `undefined` which would lead to TypeError
+    // being thrown
+    const token = req.cookies?.['token'];
+    if (!token) {
+        res.status(401).json(mkApiResponse('Missing token', 'error'));
+        authLog.warn('Missing token in request');
         return;
     }
 
@@ -54,8 +57,7 @@ export const authenticateMid = (
         req.userId = verifyToken(token, secretKey, authLog);
         next();
     } catch (err) {
-        void err;
-        authLog.warn('Got invalid JWT from', req.ip);
-        res.status(401).json({ error: 'Invalid token' });
+        authLog.warn('Got invalid JWT from', req.ip, ' -> ', err);
+        res.status(401).json(mkApiResponse('Invalid token', 'error'));
     }
 };

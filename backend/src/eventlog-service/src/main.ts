@@ -18,7 +18,8 @@ import {
     type EventDataGameResult,
 } from 'ftr-common/sharedTypes';
 import { authenticateMid } from 'ftr-common/middleware';
-import { getUserById, mkApiResponse } from 'backend-utils';
+import { getUserById } from 'backend-utils';
+import { mkApiResponse } from 'ftr-common/utils';
 import 'ftr-common/expressTypes';
 
 // Initialize main tslog-logger
