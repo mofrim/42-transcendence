@@ -6,6 +6,7 @@ const IMG = '/textures/';
 export const MODEL_MAP = `${MODEL}42WOB_v6.glb`;
 export const MODEL_DOOR_A = `${MODEL}ES_DOOR_A.glb`;
 export const MODEL_DOOR_B = `${MODEL}ES_DOOR_B.glb`;
+export const MODEL_DOOR_MAIN = `${MODEL}MAIN_DOOR.glb`;
 export const MODEL_CLOUDS = `${MODEL}Clouds1.glb`;
 export const MODEL_ROCKS = `${MODEL}RocksBorder4.glb`;
 export const MODEL_DUCK_DOWN = `${MODEL}Duck_down.glb`;

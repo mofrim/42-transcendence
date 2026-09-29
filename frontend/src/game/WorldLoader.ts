@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import type { Octree } from 'three/addons/math/Octree.js';
 
-import { MODEL_DOOR_A, MODEL_DOOR_B } from './Assets.js';
+import { MODEL_DOOR_A, MODEL_DOOR_B, MODEL_DOOR_MAIN } from './Assets.js';
 import type { ResourceDisposer } from './ResourceDisposer.js';
 
 import { type GLBMesh, type TTTMeshBoard } from 'ftr-common/sharedTypes';
@@ -16,6 +16,7 @@ type WorldLoaderOptions = {
     readonly tttBoard: TTTMeshBoard;
     readonly doorGroupA: THREE.Group;
     readonly doorGroupB: THREE.Group;
+    readonly doorGroupMain: THREE.Group;
     readonly gradientTexture: THREE.Texture;
     readonly resourceDisposer: ResourceDisposer;
     readonly isDisposed: () => boolean;
@@ -33,11 +34,13 @@ export class WorldLoader {
     private readonly tttBoard: TTTMeshBoard;
     private readonly doorGroupA: THREE.Group;
     private readonly doorGroupB: THREE.Group;
+    private readonly doorGroupMain: THREE.Group;
     private readonly doorMeshNames: string[] = [];
     private readonly gradientTexture: THREE.Texture;
     private readonly resourceDisposer: ResourceDisposer;
     private readonly isDisposed: () => boolean;
     private eventSpaceDoorsOpenState = false;
+    private mainDoorsOpenState = false;
 
     constructor(options: WorldLoaderOptions) {
         this.scene = options.scene;
@@ -47,6 +50,7 @@ export class WorldLoader {
         this.tttBoard = options.tttBoard;
         this.doorGroupA = options.doorGroupA;
         this.doorGroupB = options.doorGroupB;
+        this.doorGroupMain = options.doorGroupMain;
         this.gradientTexture = options.gradientTexture;
         this.resourceDisposer = options.resourceDisposer;
         this.isDisposed = options.isDisposed;
@@ -54,6 +58,10 @@ export class WorldLoader {
 
     get eventSpaceDoorsOpen(): boolean {
         return this.eventSpaceDoorsOpenState;
+    }
+
+    get mainDoorsOpen(): boolean {
+        return this.mainDoorsOpenState;
     }
 
     async loadMesh(
@@ -84,6 +92,12 @@ export class WorldLoader {
                 this.doorGroupB.add(object);
                 this.worldOctreeInteractive.fromGraphNode(object);
             }
+            if (path === MODEL_DOOR_MAIN) {
+                console.log(mesh.name + ' added to groupDoorMain');
+                this.doorMeshNames.push(mesh.name);
+                this.doorGroupMain.add(object);
+                this.worldOctreeInteractive.fromGraphNode(object);
+            }
 
             if (mesh.name.includes('TTT_Board')) {
                 if (this.tttBoard.cells.length >= 9) {
@@ -100,14 +114,16 @@ export class WorldLoader {
             return null;
         }
 
-        if (path !== MODEL_DOOR_A && path !== MODEL_DOOR_B) {
+        if (
+            path !== MODEL_DOOR_A &&
+            path !== MODEL_DOOR_B &&
+            path !== MODEL_DOOR_MAIN
+        ) {
             this.scene.add(object);
             this.octreeObjects.push(object);
-        }
-
-        if (path !== MODEL_DOOR_A && path !== MODEL_DOOR_B) {
             this.worldOctree.fromGraphNode(object);
         }
+
         this.isEnvironmentLoaded = true;
 
         return object;
@@ -145,12 +161,25 @@ export class WorldLoader {
         this.removeFromColliderAndOctree(this.doorMeshNames);
     }
 
+    openMainDoor(): void {
+        this.doorGroupMain.rotation.y = -Math.PI / 2;
+        this.mainDoorsOpenState = true;
+
+        this.removeFromColliderAndOctree(this.doorMeshNames);
+    }
+
     resetEventSpaceDoors(): void {
         this.doorGroupA.rotation.set(0, 0, 0);
         this.doorGroupB.rotation.set(0, 0, 0);
+        this.doorGroupMain.rotation.set(0, 0, 0);
+        this.mainDoorsOpenState = false;
         this.eventSpaceDoorsOpenState = false;
 
-        for (const doorGroup of [this.doorGroupA, this.doorGroupB]) {
+        for (const doorGroup of [
+            this.doorGroupA,
+            this.doorGroupB,
+            this.doorGroupMain,
+        ]) {
             const doorMeshes = doorGroup.getObjectsByProperty(
                 'isMesh',
                 true
@@ -162,7 +191,11 @@ export class WorldLoader {
             }
         }
 
-        this.rebuildWorldOctree(this.doorGroupA, this.doorGroupB);
+        this.rebuildWorldOctree(
+            this.doorGroupA,
+            this.doorGroupB,
+            this.doorGroupMain
+        );
     }
 
     private async loadObject(

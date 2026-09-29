@@ -30,6 +30,7 @@ import {
     MODEL_DISPLAY,
     MODEL_DOOR_A,
     MODEL_DOOR_B,
+    MODEL_DOOR_MAIN,
     MODEL_DUCK_DOWN,
     MODEL_DUCK_UP,
     MODEL_MAP,
@@ -139,6 +140,7 @@ export function startGame(
     const fillLight = new THREE.DirectionalLight(0xffffff, 1.25);
     const groupDoorA = new THREE.Group();
     const groupDoorB = new THREE.Group();
+    const groupDoorMain = new THREE.Group();
     let duck_down: THREE.Object3D | null = null;
     let duck_up: THREE.Object3D | null = null;
     let display: THREE.Object3D | null = null;
@@ -235,6 +237,7 @@ export function startGame(
         tttBoard: tttBox,
         doorGroupA: groupDoorA,
         doorGroupB: groupDoorB,
+        doorGroupMain: groupDoorMain,
         gradientTexture: texture,
         resourceDisposer: runtimeResourceDisposer,
         isDisposed: (): boolean => renderLoop.isDisposed,
@@ -266,7 +269,8 @@ export function startGame(
         // Door A and B positions from Blender 3D scene
         groupDoorA.position.set(15.913, 3.72467, -17.421);
         groupDoorB.position.set(16.0871, 3.72467, -9.1304);
-        scene.add(groupDoorA, groupDoorB);
+        groupDoorMain.position.set(9.9817, 0.01149, -0.7933);
+        scene.add(groupDoorA, groupDoorB, groupDoorMain);
 
         //dirLight = new THREE.DirectionalLight(0xffffff, 2.5);
         // initial position (local to followGroup) - matches previous values
@@ -391,6 +395,12 @@ export function startGame(
                 ) {
                     worldLoader.openEventSpaceDoors();
                 }
+                if (
+                    interactionManager?.frontDoorQuest.interaction ===
+                    interaction
+                ) {
+                    worldLoader.openMainDoor();
+                }
             };
             storyManager = new Story_Manager(
                 scene,
@@ -445,6 +455,8 @@ export function startGame(
         await worldLoader.loadMesh(MODEL_DOOR_A);
         if (renderLoop.isDisposed) return;
         await worldLoader.loadMesh(MODEL_DOOR_B);
+        if (renderLoop.isDisposed) return;
+        await worldLoader.loadMesh(MODEL_DOOR_MAIN);
         if (renderLoop.isDisposed) return;
 
         // TODO: Need to check with quest state.
