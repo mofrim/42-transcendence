@@ -4,12 +4,10 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { NPCState } from 'ftr-common/sharedTypes';
 import {
     IMG_GRADIENT,
-    MODEL_NPC_1,
     MODEL_NPC_2,
     MODEL_NPC_3,
     MODEL_NPC_4,
     MODEL_NPC_5,
-    MODEL_NPC_6,
     MODEL_NPC_WOMAN_1,
     MODEL_NPC_WOMAN_2,
 } from './Assets.js';

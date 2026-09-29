@@ -14,7 +14,11 @@ export class CanvasTextSprite extends THREE.Sprite {
     private readonly canvas: HTMLCanvasElement;
     private readonly context: CanvasRenderingContext2D;
 
-    constructor(text: string, size: number) {
+    constructor(
+        text: string,
+        size: number,
+        visibleThroughMeshes: boolean = false
+    ) {
         const canvas = document.createElement('canvas');
         canvas.width = TEXT_SPRITE_WIDTH;
         canvas.height = TEXT_SPRITE_HEIGHT;
@@ -34,10 +38,10 @@ export class CanvasTextSprite extends THREE.Sprite {
 
         super(material);
 
-        this.renderOrder = 1;
         this.canvas = canvas;
         this.context = context;
 
+        this.setSeeThroughMeshes(visibleThroughMeshes, material);
         this.context.fillStyle = 'white';
         this.context.textAlign = 'center';
         this.context.textBaseline = 'middle';
@@ -46,6 +50,15 @@ export class CanvasTextSprite extends THREE.Sprite {
 
         this.scale.set(this.canvas.width / this.canvas.height, 1, 1);
         this.setText(text, size);
+    }
+
+    setSeeThroughMeshes(
+        visibleThroughMeshes: boolean,
+        material: THREE.SpriteMaterial
+    ): void {
+        material.depthTest = !visibleThroughMeshes;
+        this.renderOrder = visibleThroughMeshes ? 1 : 0;
+        material.needsUpdate = true;
     }
 
     setText(text: string, size: number): void {

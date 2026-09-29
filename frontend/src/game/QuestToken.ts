@@ -37,7 +37,7 @@ export class LostTokenQuest {
         );
 
         /** TODO: leider kein 3D Modell für den Schlüssel habe */
-        this.marker = new CanvasTextSprite('🔑', 64);
+        this.marker = new CanvasTextSprite('🔑', 100, true);
         this.marker.position
             .copy(LOST_TOKEN_POSITION)
             .setY(LOST_TOKEN_POSITION.y + LOST_TOKEN_MARKER_HEIGHT);
