@@ -318,6 +318,7 @@ export enum NPCState {
     Standing = 'Standing',
     Nod = 'Nod',
     ComputerSitting = 'ComputerSitting',
+    Pointing = 'Pointing',
 }
 
 export const SPECTATOR_NAME = '42Staff' as const;

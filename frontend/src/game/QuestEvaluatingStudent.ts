@@ -7,7 +7,7 @@ import {
     type QuestDialogHandler,
 } from 'ftr-common/sharedTypes';
 
-import { MODEL_NPC } from './Assets.js';
+import { MODEL_NPC_6 } from './Assets.js';
 import { CanvasTextSprite } from './CanvasTextSprite.js';
 import {
     CHAT_BUBBLE_HEIGHT,
@@ -100,7 +100,7 @@ export class EvaluatingStudentQuest {
         }
 
         const student = new NPC(
-            MODEL_NPC,
+            MODEL_NPC_6,
             EVALUATING_STUDENT_NPC_ID,
             this.scene,
             NPCState.Standing

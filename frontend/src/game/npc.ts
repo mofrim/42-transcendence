@@ -2,7 +2,17 @@ import * as THREE from 'three';
 
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { NPCState } from 'ftr-common/sharedTypes';
-import { IMG_GRADIENT, MODEL_NPC } from './Assets.js';
+import {
+    IMG_GRADIENT,
+    MODEL_NPC_1,
+    MODEL_NPC_2,
+    MODEL_NPC_3,
+    MODEL_NPC_4,
+    MODEL_NPC_5,
+    MODEL_NPC_6,
+    MODEL_NPC_WOMAN_1,
+    MODEL_NPC_WOMAN_2,
+} from './Assets.js';
 import {
     CHAT_BUBBLE_HEIGHT,
     CHAT_BUBBLE_PREFIX,
@@ -16,6 +26,12 @@ const ENTRY_NPC_CHAT_BUBBLE_TEXTS = [
     `${CHAT_BUBBLE_PREFIX}The Event Space opens after finishing evaluation`,
     `${CHAT_BUBBLE_PREFIX}Letting someone in without a token is not allowed`,
     `${CHAT_BUBBLE_PREFIX}I must evaluate before Blackhole`,
+] as const;
+
+const MEME_NPC_CHAT_BUBBLE_TEXTS = [
+    `${CHAT_BUBBLE_PREFIX}YOU broke the code!`,
+    `${CHAT_BUBBLE_PREFIX}No, YOU broke the code!`,
+    `${CHAT_BUBBLE_PREFIX}It was YOU!`,
 ] as const;
 
 /** ohne jump bisher */
@@ -140,9 +156,46 @@ export class NPCManager {
     }
 
     initialize(): void {
-        const entry1 = new NPC(MODEL_NPC, 2, this.scene, NPCState.Nod);
-        const entry2 = new NPC(MODEL_NPC, 3, this.scene, NPCState.Talking_2);
-        const entry3 = new NPC(MODEL_NPC, 4, this.scene, NPCState.Nod);
+        // NPCs 1Floor doing the Spiderman meme
+        const spider1 = new NPC(
+            MODEL_NPC_4,
+            200,
+            this.scene,
+            NPCState.Pointing
+        );
+        const spider2 = new NPC(
+            MODEL_NPC_5,
+            300,
+            this.scene,
+            NPCState.Pointing
+        );
+        const spider3 = new NPC(
+            MODEL_NPC_2,
+            400,
+            this.scene,
+            NPCState.Pointing
+        );
+        spider2.group.position.set(9.5, 3.71 - 0.1, -7.3);
+        spider3.group.position.set(9.5, 3.71 - 0.1, -5.6);
+        spider1.group.position.set(11.3, 3.71 - 0.1, -6.5);
+
+        spider1.group.lookAt(spider3.group.position);
+        spider2.group.lookAt(spider1.group.position);
+        spider3.group.lookAt(spider2.group.position);
+
+        this.scene.add(spider1.group, spider2.group, spider3.group);
+
+        this.npcs.set(spider1.id, spider1);
+        this.npcs.set(spider2.id, spider2);
+        this.npcs.set(spider3.id, spider3);
+
+        this.addChatBubble(spider1, MEME_NPC_CHAT_BUBBLE_TEXTS[0]);
+        this.addChatBubble(spider2, MEME_NPC_CHAT_BUBBLE_TEXTS[1]);
+        this.addChatBubble(spider3, MEME_NPC_CHAT_BUBBLE_TEXTS[2]);
+
+        const entry1 = new NPC(MODEL_NPC_WOMAN_2, 2, this.scene, NPCState.Nod);
+        const entry2 = new NPC(MODEL_NPC_2, 3, this.scene, NPCState.Talking_2);
+        const entry3 = new NPC(MODEL_NPC_3, 4, this.scene, NPCState.Nod);
 
         entry1.group.position.set(6.5, 0, 1);
         entry2.group.position.set(8, 0, 1.5);
@@ -162,7 +215,12 @@ export class NPCManager {
         this.npcs.set(entry2.id, entry2);
         this.npcs.set(entry3.id, entry3);
 
-        const frontdesk = new NPC(MODEL_NPC, 5, this.scene, NPCState.Standing);
+        const frontdesk = new NPC(
+            MODEL_NPC_WOMAN_1,
+            5,
+            this.scene,
+            NPCState.Standing
+        );
         frontdesk.group.position.set(12.1, 0, -5.8);
         frontdesk.group.lookAt(
             frontdesk.group.position.x,

@@ -12,7 +12,14 @@ export const MODEL_ROCKS = `${MODEL}RocksBorder4.glb`;
 export const MODEL_DUCK_DOWN = `${MODEL}Duck_down.glb`;
 export const MODEL_DUCK_UP = `${MODEL}Duck_up.glb`;
 export const MODEL_DISPLAY = `${MODEL}Display.glb`;
-export const MODEL_NPC = `${MODEL}NPC_Man_1.glb`;
+export const MODEL_NPC_1 = `${MODEL}NPC_Man_1.glb`;
+export const MODEL_NPC_2 = `${MODEL}NPC_Man_2.glb`;
+export const MODEL_NPC_3 = `${MODEL}NPC_Man_3.glb`;
+export const MODEL_NPC_4 = `${MODEL}NPC_Man_4.glb`;
+export const MODEL_NPC_5 = `${MODEL}NPC_Man_5.glb`;
+export const MODEL_NPC_6 = `${MODEL}NPC_Man_6.glb`;
+export const MODEL_NPC_WOMAN_1 = `${MODEL}NPC_Woman_01.glb`;
+export const MODEL_NPC_WOMAN_2 = `${MODEL}NPC_Woman_02.glb`;
 export const MODEL_MALE = `${MODEL}Main_Male.glb`;
 export const MODEL_FEMALE = `${MODEL}Main_Female.glb`;
 // endregion
