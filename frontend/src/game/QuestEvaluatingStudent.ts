@@ -153,7 +153,7 @@ export class EvaluatingStudentQuest {
             return true;
         }
 
-        if (interaction.typeID !== QUESTS.EVALUATING_STUDENT_QUEST_ID.id) {
+        if (interaction.typeID !== QUESTS.EVALUATING_STUDENT_QUEST_ID) {
             return false;
         }
 
