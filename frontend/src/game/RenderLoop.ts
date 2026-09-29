@@ -162,8 +162,6 @@ export class RenderLoop {
             return;
         }
 
-        console.log('RenderLoop animate called');
-
         const multiplayer = this.options.getMultiplayer();
         if (
             !this.activeCamera ||

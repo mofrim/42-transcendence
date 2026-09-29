@@ -562,9 +562,9 @@ export class Story_Manager {
             interaction.typeID
         );
         let onPreparationHandled: (() => void) | undefined;
-        if (interaction.typeID === QUESTS.RUBBER_DUCK_QUEST_ID) {
+        if (interaction.typeID === QUESTS.RUBBER_DUCK_QUEST_ID.id) {
             onPreparationHandled = () => this.onQuestDuckFound?.();
-        } else if (interaction.typeID === QUESTS.COMPUTER_LOGIN_QUEST_ID) {
+        } else if (interaction.typeID === QUESTS.COMPUTER_LOGIN_QUEST_ID.id) {
             onPreparationHandled = () => this.onQuestLogin?.();
         }
 

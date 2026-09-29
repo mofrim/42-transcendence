@@ -431,6 +431,7 @@ export function startGame(
             };
             storyManager.onQuestLogin = async () => {
                 display = await worldLoader.loadMesh(MODEL_DISPLAY);
+                console.log('Display loaded');
                 changeObjectTexture(display, IMG_DISPLAY_INTRA);
             };
             storyManager.onQuestEvaluator = async () => {
