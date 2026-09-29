@@ -1,7 +1,7 @@
 // in this file we collect types that are shared at least among multiple files.
 import type * as THREE from 'three';
 
-export const BLACK_HOLE_DURATION_SECONDS = 5 * 60;
+export const BLACK_HOLE_DURATION_SECONDS = 30 * 60;
 
 // ----------------------------=[ quest types ]=---------------------------- //
 
