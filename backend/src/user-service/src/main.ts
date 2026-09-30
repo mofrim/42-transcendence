@@ -160,6 +160,53 @@ app.get(API_USER.rootInternal, authenticateInternal, async (req, res) => {
     }
 });
 
+app.patch(
+    API_USER.rootInternal,
+    authenticateInternal,
+    async (req: Request, res: Response) => {
+        const logPatch = log.getSubLogger({ name: 'PATCH-InternalPresence' });
+
+        if (req.actingForUID === undefined) {
+            logPatch.error('actingForUID missing in request!');
+            res.status(400).json(
+                mkApiResponse('actingForUID missing', 'error')
+            );
+            return;
+        }
+
+        const isLoggedIn = req.body?.isLoggedIn;
+        if (typeof isLoggedIn !== 'boolean') {
+            res.status(400).json(
+                mkApiResponse('isLoggedIn must be a boolean', 'error')
+            );
+            return;
+        }
+
+        try {
+            const result = await userRepo.update(req.actingForUID, {
+                isLoggedIn,
+            });
+            if (result.affected !== 1) {
+                res.status(404).json(mkApiResponse('User not found', 'error'));
+                return;
+            }
+
+            res.json(
+                mkApiResponse(
+                    'User presence updated',
+                    'success',
+                    req.actingForUID
+                )
+            );
+        } catch (err) {
+            logPatch.error(err as Error);
+            res.status(500).json(
+                mkApiResponse('Failed to update user presence', 'error')
+            );
+        }
+    }
+);
+
 // get all users
 // NOTE admin only endpoint!
 app.get(API_USER.all, authenticate, async (req: Request, res: Response) => {

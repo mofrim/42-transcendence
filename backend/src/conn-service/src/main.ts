@@ -29,6 +29,7 @@ import type {
     SaveGameSnapshot,
 } from 'ftr-common/sharedTypes';
 import {
+    API_USER,
     User,
     SPECTATOR_NAME,
     TTTGameState,
@@ -36,7 +37,7 @@ import {
 } from 'ftr-common/sharedTypes';
 import { Logger, type ILogObj } from 'tslog';
 import dotenv from 'dotenv';
-import axios from 'axios';
+import axios, { type AxiosRequestConfig } from 'axios';
 import { exit } from 'node:process';
 import { mintInternalToken } from 'ftr-common/internalAuth';
 
@@ -63,17 +64,11 @@ if (
     exit(1);
 }
 
-const USER_POST_ENDPOINT =
-    process.env['USER_SERVICE_ADDR'] +
-    ':' +
-    process.env['USER_SERVICE_PORT'] +
-    '/api/user';
+const USER_SERVICE_ENDPOINT =
+    process.env['USER_SERVICE_ADDR'] + ':' + process.env['USER_SERVICE_PORT'];
 
-const USER_GET_ENDPOINT =
-    process.env['USER_SERVICE_ADDR'] +
-    ':' +
-    process.env['USER_SERVICE_PORT'] +
-    '/api/user/internal';
+const USER_POST_ENDPOINT = USER_SERVICE_ENDPOINT + API_USER.root;
+const USER_INTERNAL_ENDPOINT = USER_SERVICE_ENDPOINT + API_USER.rootInternal;
 
 const PORT = 3000;
 const SECRET_KEY: string = process.env['JWT_SECRET'];
@@ -100,6 +95,32 @@ function getAuthenticatedUserId(socket: Socket | undefined): number | null {
 
 function getUserRoom(userId: number): string {
     return `user:${userId}`;
+}
+
+function createInternalRequestConfig(userId: number): AxiosRequestConfig {
+    const internalToken = mintInternalToken(
+        'connService',
+        'userService',
+        { actingForUID: userId },
+        INTERNAL_SECRET_KEY
+    );
+
+    return { headers: { Cookie: `token=${internalToken}` } };
+}
+
+async function updateUserPresence(
+    userId: number,
+    isLoggedIn: boolean
+): Promise<void> {
+    try {
+        await axios.patch(
+            USER_INTERNAL_ENDPOINT,
+            { isLoggedIn },
+            createInternalRequestConfig(userId)
+        );
+    } catch (err) {
+        log.error('Failed updating presence for UID', userId, err as Error);
+    }
 }
 
 // --------------=[ launching the express / socket.io server ]=-------------- //
@@ -275,6 +296,7 @@ io.on('connection', async (socket) => {
     // -----------------=[ Game-State persistence logic ]=------------------- //
 
     const restoredSaveGame = saveGame.connect(playerUserId, socket.id);
+    await updateUserPresence(playerUserId, true);
 
     if (restoredSaveGame) {
         Object.assign(playerData.position, restoredSaveGame.position);
@@ -287,16 +309,11 @@ io.on('connection', async (socket) => {
         // DB... All of this is a little bit hacky as it would be a reasonable
         // refac to use _only_ the DB for storing state. But this is where we
         // are now :/
-        const internalToken = mintInternalToken(
-            'connService',
-            'userService',
-            { actingForUID: socket.data.userId },
-            INTERNAL_SECRET_KEY
-        );
         try {
-            const res = await axios.get(USER_GET_ENDPOINT, {
-                headers: { Cookie: `token=${internalToken}` },
-            });
+            const res = await axios.get(
+                USER_INTERNAL_ENDPOINT,
+                createInternalRequestConfig(playerUserId)
+            );
             const userData = res.data.data as User;
 
             if (userData !== undefined) {
@@ -342,7 +359,7 @@ io.on('connection', async (socket) => {
             socket.id
         );
 
-        saveGame.disconnect(
+        const shouldMarkOffline = !saveGame.disconnect(
             playerUserId,
             socket.id,
             gameManager.players.get(socket.id)?.position
@@ -352,6 +369,10 @@ io.on('connection', async (socket) => {
         gameManager.players.delete(socket.id);
 
         socket.broadcast.emit('player_disconnected', socket.id);
+
+        if (shouldMarkOffline) {
+            await updateUserPresence(playerUserId, false);
+        }
 
         // sync playerData to DB on disco...
         //
@@ -365,15 +386,6 @@ io.on('connection', async (socket) => {
         //
         // TODO maybe also move quests syncing to backend correspondingly
 
-        // get OneTime token...
-        const internalToken = mintInternalToken(
-            'connService',
-            'userService',
-            { actingForUID: socket.data.userId },
-            INTERNAL_SECRET_KEY
-        );
-
-        // ...use it, setting it as cookie manually.
         if (snapshot !== null) {
             try {
                 await axios.post(
@@ -383,9 +395,7 @@ io.on('connection', async (socket) => {
                         blackHoleSecondsRemaining:
                             snapshot.blackHoleSecondsRemaining,
                     },
-                    {
-                        headers: { Cookie: `token=${internalToken}` },
-                    }
+                    createInternalRequestConfig(playerUserId)
                 );
                 log.info('Snapshot stored in DB for UID', socket.data.userId);
             } catch {

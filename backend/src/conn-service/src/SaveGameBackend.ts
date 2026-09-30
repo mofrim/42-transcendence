@@ -32,7 +32,7 @@ export class SaveGameBackend {
         userId: number,
         socketId: string,
         position: PlayerPosition | undefined
-    ): void {
+    ): boolean {
         if (this.isWritable(userId, socketId) && position) {
             const save = this.saves.get(userId);
             if (save) {
@@ -49,8 +49,10 @@ export class SaveGameBackend {
             this.activeSocketsByUser.delete(userId);
         }
 
+        const hasActiveConnection = (activeSockets?.size ?? 0) > 0;
+
         if (!this.isOwnerSocket(userId, socketId)) {
-            return;
+            return hasActiveConnection;
         }
 
         const replacementOwner = activeSockets
@@ -61,6 +63,8 @@ export class SaveGameBackend {
         } else {
             this.ownerSocketByUser.delete(userId);
         }
+
+        return hasActiveConnection;
     }
 
     getSnapshot(userId: number, socketId: string): SaveGameSnapshot | null {
