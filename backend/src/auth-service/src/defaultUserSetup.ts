@@ -7,6 +7,9 @@ import bcrypt from 'bcryptjs';
 import { exit } from 'node:process';
 import type { DataSource } from 'typeorm';
 
+// NEXT
+// FIXME remove crazy code-dup here!!!!
+
 const defaultUsers = [
     {
         nickname: 'alice',
@@ -18,6 +21,7 @@ const defaultUsers = [
         friends: [],
         isLoggedIn: false,
         blackholeTimer: BLACK_HOLE_DURATION_SECONDS,
+        posistion: { x: 0, y: 0, z: 0 },
     },
     {
         nickname: 'bob',
@@ -29,6 +33,7 @@ const defaultUsers = [
         friends: [],
         isLoggedIn: false,
         blackholeTimer: BLACK_HOLE_DURATION_SECONDS,
+        posistion: { x: 0, y: 0, z: 0 },
     },
     {
         nickname: 'jeff',
@@ -40,6 +45,7 @@ const defaultUsers = [
         friends: [],
         isLoggedIn: false,
         blackholeTimer: BLACK_HOLE_DURATION_SECONDS,
+        posistion: { x: 0, y: 0, z: 0 },
     },
     {
         nickname: 'mandy',
@@ -51,6 +57,7 @@ const defaultUsers = [
         friends: [],
         isLoggedIn: false,
         blackholeTimer: BLACK_HOLE_DURATION_SECONDS,
+        posistion: { x: 0, y: 0, z: 0 },
     },
     {
         nickname: 'freddy',
@@ -62,6 +69,7 @@ const defaultUsers = [
         friends: [],
         isLoggedIn: false,
         blackholeTimer: BLACK_HOLE_DURATION_SECONDS,
+        posistion: { x: 0, y: 0, z: 0 },
     },
 ];
 
@@ -101,6 +109,9 @@ export const setupDefaultUsers = async (DB: DataSource) => {
             '$2b$10$3S0UNdtZnOzGM.NPPJtxUOt5rHD9GqvEcA8tk42IbSNhYYqXpmNyy',
         quests: InitialQuestStatus,
         friends: [],
+        isLoggedIn: false,
+        blackholeTimer: BLACK_HOLE_DURATION_SECONDS,
+        posistion: { x: 0, y: 0, z: 0 },
     };
     try {
         await userRepo.save(userRepo.create(superadmin));

@@ -16,7 +16,11 @@ export const getUserId = async (
     }
 };
 
-// get the id belonging to a UID
+/**
+ * Get the full user record by UID.
+ * CAUTION: can reveal sensitive info like the hashed PW! Therefore should only
+ * be used in protected context and not exposed to frontend.
+ */
 export const getUserById = async (
     db: DataSource,
     userId: number
@@ -46,9 +50,12 @@ export const getUserByIdNoPw = async (
                 id: true,
                 nickname: true,
                 TOSPPchecked: true,
-                email: true,
+                email: true, // NOTE: this is not optimal from a privacy persp
                 character: true,
                 quests: true,
+                position: true,
+                blackholeTimer: true,
+                isLoggedIn: true,
             },
         });
     } catch (err) {

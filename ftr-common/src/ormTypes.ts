@@ -14,6 +14,7 @@ import {
     InitialQuestStatus,
     type EventData,
     type QuestStatus,
+    type PlayerPosition,
     BLACK_HOLE_DURATION_SECONDS,
 } from 'ftr-common/sharedTypes';
 
@@ -92,6 +93,12 @@ export class ORMUser extends BaseUser {
         },
     })
     declare friends: ORMUser[];
+
+    @Column({
+        type: 'simple-json',
+        default: { x: 0, y: 0, z: 0 },
+    })
+    declare position: PlayerPosition;
 
     constructor(data?: Partial<ORMUser>) {
         super();

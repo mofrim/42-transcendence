@@ -233,6 +233,7 @@ export abstract class BaseUser {
     abstract hashedPw?: string;
     abstract blackholeTimer: number;
     abstract isLoggedIn: boolean;
+    abstract position: PlayerPosition;
 }
 
 // this is the child class of BaseUser for use in frontend
@@ -245,6 +246,7 @@ export class User extends BaseUser {
     hashedPw?: string = '';
     blackholeTimer = BLACK_HOLE_DURATION_SECONDS;
     isLoggedIn = false;
+    position = { x: 0, y: 0, z: 0 };
 
     constructor(data?: Partial<User>) {
         super();
