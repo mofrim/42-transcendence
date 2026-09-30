@@ -150,6 +150,7 @@ export class TokenQuestFrontdesk {
             eventType: EventType.ChatMsg,
             data: {
                 chatmsg: message,
+                senderType: 'npc',
             },
             logtime: new Date(),
             // FIXME is this save and working?

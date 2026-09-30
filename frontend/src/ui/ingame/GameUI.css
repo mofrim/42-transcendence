@@ -319,10 +319,36 @@
 }
 
 .hud-profile-nickname,
-.hud-profile-email {
+.hud-profile-email,
+.hud-profile-status {
     margin: 0 0 16px;
 }
 
+.hud-player-profile-link {
+    max-width: 100%;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+    font: inherit;
+    text-align: inherit;
+    text-decoration: underline;
+    text-decoration-color: rgba(255, 255, 255, 0.45);
+    text-underline-offset: 2px;
+    pointer-events: auto;
+}
+
+.hud-player-profile-link:hover {
+    color: #f4c542;
+    text-decoration-color: currentColor;
+}
+
+.hud-player-profile-link:focus-visible {
+    border-radius: 3px;
+    outline: 2px solid #f4c542;
+    outline-offset: 2px;
+}
 .hud-match-history-list {
     max-height: 220px;
 }
@@ -412,6 +438,12 @@
     white-space: nowrap;
 }
 
+.hud-leaderboard-row>div:nth-child(2)>.hud-player-profile-link {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
 .hud-leaderboard-body {
     min-height: 0;
     overflow-x: hidden;

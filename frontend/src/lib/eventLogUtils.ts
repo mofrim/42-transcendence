@@ -16,6 +16,18 @@ export const EVENT_TIME_FORMAT = new Intl.DateTimeFormat('en-US', {
     hourCycle: 'h23',
 });
 
+function getLifecyclePlayerNickname(event: GameEvent): string {
+    const { data } = event;
+    if (data !== null && 'playerNickname' in data) {
+        const playerNickname = data.playerNickname.trim();
+        if (playerNickname) {
+            return playerNickname;
+        }
+    }
+
+    return event.user.nickname;
+}
+
 /**
  * The single source of truth for event-descriptions.
  *
@@ -26,9 +38,9 @@ export const EVENT_TIME_FORMAT = new Intl.DateTimeFormat('en-US', {
 export const describeGameEvent = (event: GameEvent): string => {
     switch (event.eventType) {
         case 'PlayerJoined':
-            return `${event.user.nickname} 👋🏻 joined`;
+            return `${getLifecyclePlayerNickname(event)} 👋🏻 joined`;
         case 'PlayerLeft':
-            return `${event.user.nickname} 🚪 logged out`;
+            return `${getLifecyclePlayerNickname(event)} 🚪 logged out`;
         case 'PlayerInRange':
             return `Met ${(event.data as EventDataPlayerInRange).remoteNick} nearby`;
         case 'FriendRequest': {
@@ -81,5 +93,36 @@ export const describeGameEvent = (event: GameEvent): string => {
             // QUESTION
             // FIXME can we ever reach this? Are all possible events handled
             return `Something else happened...`;
+    }
+};
+
+export const getGameEventProfileNicknames = (
+    event: GameEvent
+): readonly string[] => {
+    switch (event.eventType) {
+        case 'PlayerJoined':
+        case 'PlayerLeft':
+            return [getLifecyclePlayerNickname(event)];
+        case 'QuestCompleted':
+        case 'Blackholed':
+            return [event.user.nickname];
+        case 'ChatMsg': {
+            const evData = event.data as EventDataChatMsg;
+            /** filter out NPC messages for profile links */
+            if (evData.senderType === 'npc') {
+                return [];
+            }
+            return [event.user.nickname];
+        }
+        case 'PlayerInRange':
+            return [(event.data as EventDataPlayerInRange).remoteNick];
+        case 'FriendRequest':
+            return [(event.data as EventDataFriendRequest).friendNick];
+        case 'GameResult': {
+            const evData = event.data as EventDataGameResult;
+            return [event.user.nickname, evData.opponentNickname];
+        }
+        default:
+            return [];
     }
 };

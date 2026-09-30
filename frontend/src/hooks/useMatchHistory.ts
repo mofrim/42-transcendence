@@ -34,6 +34,7 @@ function parseMatchHistoryEntry(respoData: MatchHistResponse): EventLogEntry {
         id: String(respoData.id),
         timestamp: MATCH_HISTORY_DATE_TIME_FORMAT.format(matchDate),
         description: `${respoData.data.game}: ${result} vs ${respoData.data.opponentNickname}`,
+        profileNicknames: [respoData.data.opponentNickname],
     };
 }
 

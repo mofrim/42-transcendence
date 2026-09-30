@@ -4,16 +4,24 @@ import { type Ref } from 'react';
 type MatchHistoryProps = {
     readonly entries: readonly EventLogEntry[];
     readonly listref: Ref<HTMLOListElement>;
+    readonly onPlayerProfileOpen: (nickname: string) => void;
 };
 
-export function MatchHistory({ entries, listref }: MatchHistoryProps) {
+export function MatchHistory({
+    entries,
+    listref,
+    onPlayerProfileOpen,
+}: MatchHistoryProps) {
     if (entries.length === 0) {
         return <p className='hud-match-history-empty'>No matches yet.</p>;
     }
 
     return (
         <ol ref={listref} className='hud-event-list hud-match-history-list'>
-            <EventLogItems entries={entries} />
+            <EventLogItems
+                entries={entries}
+                onPlayerProfileOpen={onPlayerProfileOpen}
+            />
         </ol>
     );
 }

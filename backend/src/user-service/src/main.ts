@@ -23,6 +23,7 @@ import {
     User,
     API_USER,
     QuestIDs,
+    type PublicUserProfile,
     type PersistentSaveGameSnapshot,
     type QuestTuple,
 } from 'ftr-common/sharedTypes';
@@ -194,6 +195,69 @@ app.get(API_USER.all, authenticate, async (req: Request, res: Response) => {
         );
     }
 });
+
+/**
+ * required for profile system (view user information)
+ */
+app.get(
+    API_USER.profile + '/:nickname',
+    authenticate,
+    async (req: Request, res: Response) => {
+        const logGet = log.getSubLogger({ name: 'GET(publicProfile)' });
+        const nicknameParam = req.params['nickname'];
+        let nickname = '';
+        if (typeof nicknameParam === 'string') {
+            nickname = nicknameParam.trim();
+        }
+
+        if (
+            !nickname ||
+            nickname.length > 64 ||
+            !/^[A-Za-z0-9]+$/.test(nickname)
+        ) {
+            res.status(400).json(mkApiResponse('Invalid nickname', 'error'));
+            return;
+        }
+
+        try {
+            const user = await userRepo.findOne({
+                select: {
+                    id: true,
+                    nickname: true,
+                    character: true,
+                    isLoggedIn: true,
+                },
+                where: { nickname },
+            });
+
+            if (user === null) {
+                res.status(404).json(mkApiResponse('User not found', 'error'));
+                return;
+            }
+
+            const profile: PublicUserProfile = {
+                id: user.id,
+                nickname: user.nickname,
+                character: user.character,
+                isLoggedIn: user.isLoggedIn,
+            };
+
+            res.json(
+                mkApiResponse<PublicUserProfile>(
+                    'User profile found',
+                    'success',
+                    profile.id,
+                    profile
+                )
+            );
+        } catch (err) {
+            logGet.error(err as Error);
+            res.status(500).json(
+                mkApiResponse('Failed to fetch user profile', 'error')
+            );
+        }
+    }
+);
 
 // health-check endpoint
 app.get(API_USER.health, (_req: Request, res: Response) => {
@@ -494,7 +558,9 @@ app.post(
 
         if (req.actingForUID === undefined) {
             logInt.error('actingForUID missing in request!');
-            res.status(400).json(mkApiResponse('actingForUID missing', 'error'));
+            res.status(400).json(
+                mkApiResponse('actingForUID missing', 'error')
+            );
             return;
         }
         log.info('actingForUID', req.actingForUID);
@@ -508,8 +574,13 @@ app.post(
             }
 
             const bodyData = req.body as PersistentSaveGameSnapshot;
-            if (bodyData.position === undefined || bodyData.blackHoleSecondsRemaining === undefined) {
-                res.status(401).json(mkApiResponse('Invalid snapshot', 'error'));
+            if (
+                bodyData.position === undefined ||
+                bodyData.blackHoleSecondsRemaining === undefined
+            ) {
+                res.status(401).json(
+                    mkApiResponse('Invalid snapshot', 'error')
+                );
                 return;
             }
             user.blackholeTimer = bodyData.blackHoleSecondsRemaining;
@@ -523,7 +594,14 @@ app.post(
                 );
                 return;
             }
-            res.status(200).json(mkApiResponse<ORMUser>('User state stored in DB', 'success', undefined, user));
+            res.status(200).json(
+                mkApiResponse<ORMUser>(
+                    'User state stored in DB',
+                    'success',
+                    undefined,
+                    user
+                )
+            );
         } catch (err) {
             logInt.error('something went wrong: ', err);
             res.status(500).json(mkApiResponse('DB query failed', 'error'));

@@ -15,6 +15,7 @@ import {
     EVENT_TIME_FORMAT,
     MAX_EVENT_LOG_ENTRIES,
     describeGameEvent,
+    getGameEventProfileNicknames,
 } from '../lib/eventLogUtils.ts';
 
 // TODO handle reset / loading of old events on login
@@ -42,6 +43,7 @@ export const EventLogProvider: React.FC<{ children: React.ReactNode }> = ({
                 id: response.data.id!.toString(),
                 timestamp,
                 description,
+                profileNicknames: getGameEventProfileNicknames(event),
             };
 
             setEvents((currentEvents) =>

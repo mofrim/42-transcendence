@@ -6,6 +6,7 @@ import {
     type ReactNode,
     type SyntheticEvent,
 } from 'react';
+import axios from 'axios';
 
 import {
     getQuestStatusChanges,
@@ -17,24 +18,26 @@ import {
 import { formatQuestCountdown } from '../../game/QuestBlackHole';
 
 import {
+    API_USER,
     BLACK_HOLE_DURATION_SECONDS,
+    type ApiResponse,
     type Character,
     type FriendListEntry,
     type FriendRequestState,
+    type PublicUserProfile,
     QUESTS,
 } from 'ftr-common/sharedTypes';
 
-import { CharacterPreviewView } from '../login/PreviewCharacter';
 import { EventLogItems, type EventLogEntry } from './EventLogItems';
 import { FRIENDS_PANEL_ID, FriendList, useFriendListPanel } from './FriendList';
 import { Leaderboard } from './Leaderboard';
 import { MatchHistory } from './MatchHistory';
+import { PROFILE_PANEL_ID, ProfilePanel } from './Profile';
 import { MAX_EVENT_LOG_ENTRIES } from '../../lib/eventLogUtils';
 
 import './GameUI.css';
 
 const QUEST_LOG_ID = 'game-quest-log';
-const PROFILE_PANEL_ID = 'game-profile-panel';
 const MATCH_HISTORY_PANEL_ID = 'game-match-history-panel';
 const LEADERBOARD_PANEL_ID = 'game-leaderboard-panel';
 const EVENT_LOG_TITLE_ID = 'game-event-log-title';
@@ -94,16 +97,16 @@ function HudPanelToggle({
     panelLabel,
     onToggle,
 }: HudPanelToggleProps) {
-    let action = 'öffnen';
+    let action = 'open';
     if (isOpen) {
-        action = 'schließen';
+        action = 'close';
     }
     let actionLabel = `${panelLabel} ${action}`;
     let badge: ReactNode = null;
     let bottomBadgeElement: ReactNode = null;
 
     if (questProgress !== undefined) {
-        const questProgressLabel = `${questProgress.completed} von ${questProgress.total} Aufgaben erledigt`;
+        const questProgressLabel = `${questProgress.completed} of ${questProgress.total} quests completed`;
 
         actionLabel = `${actionLabel}, ${questProgressLabel}`;
         badge = (
@@ -173,6 +176,12 @@ export function GameUI({
     const [isChatOpen, setIsChatOpen] = useState(false);
     const [chatMessage, setChatMessage] = useState('');
     const [isLoggingOut, setIsLoggingOut] = useState(false);
+    const [selectedProfileNickname, setSelectedProfileNickname] =
+        useState(nickname);
+    const [publicProfile, setPublicProfile] =
+        useState<PublicUserProfile | null>(null);
+    const [isProfileLoading, setIsProfileLoading] = useState(false);
+    const [profileLoadFailed, setProfileLoadFailed] = useState(false);
     const [blackHoleSecondsRemaining, setBlackHoleSecondsRemaining] = useState(
         restoredBlackHoleSecondsRemaining
     );
@@ -190,7 +199,34 @@ export function GameUI({
     };
 
     const handleProfileToggle = (): void => {
-        setIsProfileOpen((isOpen) => !isOpen);
+        if (isProfileOpen) {
+            setIsProfileOpen(false);
+            return;
+        }
+
+        setSelectedProfileNickname(nickname);
+        setPublicProfile(null);
+        setIsProfileLoading(false);
+        setProfileLoadFailed(false);
+        setIsProfileOpen(true);
+    };
+
+    const handlePlayerProfileOpen = (playerNickname: string): void => {
+        const normalizedNickname = playerNickname.trim();
+        if (!normalizedNickname) {
+            return;
+        }
+        if (isProfileOpen && selectedProfileNickname === normalizedNickname) {
+            return;
+        }
+
+        setSelectedProfileNickname(normalizedNickname);
+        setPublicProfile(null);
+        setIsProfileLoading(false);
+        setProfileLoadFailed(false);
+        setIsMatchHistoryOpen(false);
+        setIsLeaderboardOpen(false);
+        setIsProfileOpen(true);
     };
 
     const handleMatchHistoryToggle = (): void => {
@@ -333,7 +369,7 @@ export function GameUI({
         };
     }, [isBlackHoleCountdownRunning]);
 
-    /** Meldet ausschließlich tatsächliche Änderungen eines Quest-Status. */
+    /** Reports only actual changes to a quest status. */
     useEffect(() => {
         const statusChanges = getQuestStatusChanges(
             previousResolvedQuestsRef.current,
@@ -347,7 +383,7 @@ export function GameUI({
         }
     }, [onQuestStatusChange, resolvedQuests]);
 
-    /** Auto Scroll des Eventlogs zum neuesten Eintrag. */
+    /** Automatically scrolls the event log to the latest entry. */
     useEffect(() => {
         const eventList = eventListRef.current;
         if (!eventList) return;
@@ -355,7 +391,7 @@ export function GameUI({
         eventList.scrollTop = eventList.scrollHeight;
     }, [latestEventId]);
 
-    /** Auto Scroll der MatchHistory zum neuesten Eintrag. */
+    /** Automatically scrolls the match history to the latest entry. */
     useEffect(() => {
         const matchHistoryList = matchHistoryListRef.current;
         if (!matchHistoryList) return;
@@ -370,6 +406,53 @@ export function GameUI({
     }, [isChatOpen]);
 
     useEffect(() => {
+        if (!isProfileOpen || selectedProfileNickname === nickname) {
+            return;
+        }
+
+        const controller = new AbortController();
+
+        const loadPublicProfile = async (): Promise<void> => {
+            setIsProfileLoading(true);
+            setProfileLoadFailed(false);
+
+            try {
+                const response = await axios.get<
+                    ApiResponse<PublicUserProfile>
+                >(
+                    API_USER.profile +
+                        '/' +
+                        encodeURIComponent(selectedProfileNickname),
+                    { signal: controller.signal }
+                );
+                const profile = response.data.data;
+                if (!profile) {
+                    throw new Error('Public profile response has no data');
+                }
+
+                if (!controller.signal.aborted) {
+                    setPublicProfile(profile);
+                }
+            } catch (error) {
+                if (controller.signal.aborted) {
+                    return;
+                }
+
+                console.error('Failed to load player profile:', error);
+                setProfileLoadFailed(true);
+            } finally {
+                if (!controller.signal.aborted) {
+                    setIsProfileLoading(false);
+                }
+            }
+        };
+
+        void loadPublicProfile();
+
+        return () => controller.abort();
+    }, [isProfileOpen, nickname, selectedProfileNickname]);
+
+    useEffect(() => {
         window.addEventListener('keydown', handleChatToggle, true);
 
         return () => {
@@ -381,6 +464,7 @@ export function GameUI({
     if (isSpectator) {
         hudClassName += ' spectator-hud';
     }
+
     return (
         <div
             id='game-ui'
@@ -394,7 +478,7 @@ export function GameUI({
                         controls={PROFILE_PANEL_ID}
                         icon='👤'
                         isOpen={isProfileOpen}
-                        panelLabel='Profil'
+                        panelLabel='Profile'
                         onToggle={handleProfileToggle}
                     />
                     <HudPanelToggle
@@ -420,37 +504,19 @@ export function GameUI({
                     />
                 </div>
 
-                <aside
-                    id={PROFILE_PANEL_ID}
-                    className='hud-panel hud-profile-panel'
-                    aria-label='Spielerprofil'
-                    hidden={!isProfileOpen}
-                >
-                    <h2 className='hud-title'>🪪 Student ID</h2>
-                    {isProfileOpen && (
-                        <CharacterPreviewView
-                            character={character}
-                            className='hud-profile-character-preview'
-                            canvasClassName='hud-profile-character-preview-canvas'
-                        />
-                    )}
-                    <p className='hud-profile-nickname'>
-                        {/* TODO: edit nickname */}
-                        <strong>Intraname:</strong> {nickname} ✏️
-                    </p>
-                    <p className='hud-profile-email'>
-                        <strong>E-Mail:</strong> {email}
-                    </p>
-                    <button
-                        type='button'
-                        className='hud-profile-logout'
-                        disabled={isLoggingOut || !onLogout}
-                        aria-busy={isLoggingOut}
-                        onClick={() => void handleLogout()}
-                    >
-                        {isLoggingOut ? 'Logging out…' : '🚪 Logout'}
-                    </button>
-                </aside>
+                <ProfilePanel
+                    character={character}
+                    email={email}
+                    isLoading={isProfileLoading}
+                    isLoggingOut={isLoggingOut}
+                    isOpen={isProfileOpen}
+                    loadFailed={profileLoadFailed}
+                    nickname={nickname}
+                    publicProfile={publicProfile}
+                    selectedNickname={selectedProfileNickname}
+                    canLogout={onLogout !== undefined}
+                    onLogout={handleLogout}
+                />
 
                 <FriendList
                     friendRequest={friendRequest}
@@ -469,6 +535,7 @@ export function GameUI({
                     <MatchHistory
                         entries={matchHistory}
                         listref={matchHistoryListRef}
+                        onPlayerProfileOpen={handlePlayerProfileOpen}
                     />
                 </aside>
 
@@ -482,6 +549,7 @@ export function GameUI({
                     <Leaderboard
                         currentNickname={nickname}
                         isOpen={isLeaderboardOpen}
+                        onPlayerProfileOpen={handlePlayerProfileOpen}
                     />
                 </aside>
             </div>
@@ -519,7 +587,7 @@ export function GameUI({
                             blackHoleTimer = (
                                 <time
                                     className='hud-black-hole-timer'
-                                    aria-label={`🕳️ Black Hole Timer: ${blackHoleCountdown} verbleibend`}
+                                    aria-label={`🕳️ Black Hole Timer: ${blackHoleCountdown} remaining`}
                                 >
                                     {blackHoleCountdown}
                                 </time>
@@ -584,7 +652,10 @@ export function GameUI({
                         role='log'
                         aria-live='polite'
                     >
-                        <EventLogItems entries={displayedEvents} />
+                        <EventLogItems
+                            entries={displayedEvents}
+                            onPlayerProfileOpen={handlePlayerProfileOpen}
+                        />
                     </ol>
                 </aside>
             )}
@@ -596,8 +667,8 @@ export function GameUI({
                     className='hud-chat-input'
                     type='text'
                     value={chatMessage}
-                    aria-label='Chat-Nachricht'
-                    placeholder='Nachricht eingeben...'
+                    aria-label='Chat message'
+                    placeholder='Enter a message...'
                     autoComplete='off'
                     onChange={(event) =>
                         setChatMessage(event.currentTarget.value)

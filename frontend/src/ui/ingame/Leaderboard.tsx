@@ -14,6 +14,7 @@ import {
 type LeaderboardProps = {
     readonly currentNickname: string;
     readonly isOpen: boolean;
+    readonly onPlayerProfileOpen: (nickname: string) => void;
 };
 
 type LeaderboardEntry = {
@@ -238,7 +239,11 @@ function buildLeaderboard(
     );
 }
 
-export function Leaderboard({ currentNickname, isOpen }: LeaderboardProps) {
+export function Leaderboard({
+    currentNickname,
+    isOpen,
+    onPlayerProfileOpen,
+}: LeaderboardProps) {
     const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [loadFailed, setLoadFailed] = useState(false);
@@ -329,7 +334,18 @@ export function Leaderboard({ currentNickname, isOpen }: LeaderboardProps) {
                         key={entry.nickname}
                     >
                         <div role='cell'>{index + 1}.</div>
-                        <div role='cell'>{entry.nickname}</div>
+                        <div role='cell'>
+                            <button
+                                type='button'
+                                className='hud-player-profile-link'
+                                title={'Open ' + entry.nickname + ' profile'}
+                                onClick={() =>
+                                    onPlayerProfileOpen(entry.nickname)
+                                }
+                            >
+                                {entry.nickname}
+                            </button>
+                        </div>
                         <div role='cell'>{entry.wins}</div>
                         <div role='cell'>{entry.draws}</div>
                         <div role='cell'>{entry.losses}</div>

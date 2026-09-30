@@ -2,8 +2,8 @@ import request from 'supertest';
 
 import { API_USER } from 'ftr-common/sharedTypes';
 
-const authBaseUrl = 'http://localhost:3001';
-const userBaseUrl = 'http://localhost:3003';
+const authBaseUrl = process.env['AUTH_BASE_URL'] ?? 'http://localhost:3001';
+const userBaseUrl = process.env['USER_BASE_URL'] ?? 'http://localhost:3003';
 
 let authCookieFm: string;
 let authCookieRoot: string;
@@ -37,6 +37,33 @@ describe('basic user-service test', () => {
         // console.log(`got response: ${JSON.stringify(res.body, null, 2)}`);
         expect(res.statusCode).toEqual(200);
         expect(res.body.data.nickname).toEqual('freddy');
+    });
+
+    it('should get another users public profile', async () => {
+        const res = await request(userBaseUrl)
+            .get(API_USER.profile + '/root')
+            .set('Cookie', authCookieFm);
+
+        expect(res.statusCode).toEqual(200);
+        expect(res.body.data.nickname).toEqual('root');
+        expect(res.body.data.character).toBeDefined();
+        expect(res.body.data.isLoggedIn).toBeDefined();
+        expect(res.body.data.email).toBeUndefined();
+        expect(res.body.data.hashedPw).toBeUndefined();
+    });
+
+    it('should reject public profile lookup without authentication', async () => {
+        const res = await request(userBaseUrl).get(API_USER.profile + '/root');
+
+        expect(res.statusCode).toEqual(401);
+    });
+
+    it('should return 404 for an unknown public profile', async () => {
+        const res = await request(userBaseUrl)
+            .get(API_USER.profile + '/doesnotexist')
+            .set('Cookie', authCookieFm);
+
+        expect(res.statusCode).toEqual(404);
     });
 
     it('should get user with id 0', async () => {

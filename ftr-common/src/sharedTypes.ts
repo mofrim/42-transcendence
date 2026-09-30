@@ -161,6 +161,7 @@ export type EventData =
       }
     | {
           readonly chatmsg: string;
+          readonly senderType?: 'player' | 'npc';
       }
     | {
           readonly questId: string;
@@ -256,6 +257,11 @@ export class User extends BaseUser {
     }
 }
 
+export type PublicUserProfile = Pick<
+    User,
+    'id' | 'nickname' | 'character' | 'isLoggedIn'
+>;
+
 // region: API
 // ------------=[ types related to the backend API in general ]=------------ //
 
@@ -284,6 +290,7 @@ export const API_USER = Object.freeze({
     root: API_USER_ROOT,
     rootInternal: `${API_USER_ROOT}/internal`,
     all: `${API_USER_ROOT}/all`,
+    profile: `${API_USER_ROOT}/profile`,
     health: `${API_USER_ROOT}/health`,
     uid: `${API_USER_ROOT}/:userId`,
     register: `${API_USER_ROOT}/register`,
