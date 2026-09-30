@@ -72,6 +72,57 @@ export class EvaluatingStudentQuest {
         ];
     }
 
+    placeEvaluatingStudentAtStartPosition(): void {
+        this.evaluatingStudent?.group.scale.set(1, 1, 1);
+        this.evaluatingStudent?.group.position.copy(
+            EVALUATING_STUDENT_POSITION
+        );
+        this.evaluatingStudent?.group.lookAt(
+            EVALUATING_STUDENT_POSITION.x,
+            EVALUATING_STUDENT_POSITION.y,
+            EVALUATING_STUDENT_POSITION.z + 1
+        );
+    }
+
+    placeEvaluatingStudentAtStudentPosition(): void {
+        this.evaluatingStudent?.group.scale.set(1, 1, 1);
+        const evalPosition = new THREE.Vector3(7.94, 3.72, -14.46);
+        this.evaluatingStudent?.group.position.copy(evalPosition);
+        this.evaluatingStudent?.group.lookAt(
+            evalPosition.x - 1,
+            evalPosition.y,
+            evalPosition.z + 0.5
+        );
+    }
+
+    async depawnEvaluatingStudentAnimation(): Promise<void> {
+        return new Promise((resolve) => {
+            let frame = 0;
+            const totalFrames = 20;
+
+            const despawnAnimation = () => {
+                frame++;
+
+                const progress = frame / totalFrames;
+
+                const group = this.evaluatingStudent?.group;
+                if (!group) return;
+
+                group.position.y += 1 / totalFrames;
+                group.scale.x = 1 - progress;
+                group.scale.z = 1 - progress;
+
+                if (frame < totalFrames) {
+                    requestAnimationFrame(despawnAnimation);
+                } else {
+                    resolve();
+                }
+            };
+
+            despawnAnimation();
+        });
+    }
+
     unlock(): void {
         for (const interaction of this.interactions) {
             interaction.enableInteraction();
@@ -83,6 +134,8 @@ export class EvaluatingStudentQuest {
         for (const interaction of this.interactions) {
             interaction.reset(false);
         }
+
+        this.placeEvaluatingStudentAtStartPosition();
         this.setEvaluatingStudentAvailability(false);
     }
 
@@ -166,6 +219,8 @@ export class EvaluatingStudentQuest {
             questInteraction.disableInteraction();
         }
         onStudentFound?.();
+        await this.depawnEvaluatingStudentAnimation();
+        this.placeEvaluatingStudentAtStudentPosition();
         return true;
     }
 }
