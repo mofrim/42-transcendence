@@ -46,6 +46,7 @@ if (process.env['NODE_ENV'] === 'development') {
     dotenv.config({ path: '../../../dev.env', quiet: true });
 }
 
+// FIXME use no fallback. if there is no env-var -> exit
 const SECRET_KEY: string = process.env['JWT_SECRET'] || 'FooBarBaz';
 const PORT = Number(process.env['AUTH_SERVICE_PORT']) || 3001;
 const IS_PRODUCTION = process.env['NODE_ENV'] === 'production';

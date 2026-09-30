@@ -38,6 +38,7 @@ if (process.env['NODE_ENV'] === 'development') {
 const authenticate = (req: Request, res: Response, next: NextFunction) =>
     authenticateMid(req, res, next, log, SECRET_KEY);
 
+// FIXME use no fallback. if there is no env-var -> exit
 const SECRET_KEY: string = process.env['JWT_SECRET'] || 'FooBarBaz';
 const PORT = Number(process.env['EVENTLOG_SERVICE_PORT']) || 3002;
 
