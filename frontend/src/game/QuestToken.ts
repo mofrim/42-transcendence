@@ -4,14 +4,11 @@ import {
     User,
     type GameEvent,
     QUESTS,
-    PlayerState,
-    type QuestCompleteHandler,
 } from 'ftr-common/sharedTypes';
 
 import { CanvasTextSprite } from './CanvasTextSprite.js';
 import { CHAT_BUBBLE_PREFIX, CHAT_BUBBLE_SIZE } from './FloatingTextSprite.js';
 import { Interaction } from './interaction';
-import type { PlayerAnimationState } from './player';
 
 const LOST_TOKEN_POSITION = new THREE.Vector3(
     1.2922068884555726,
@@ -20,8 +17,6 @@ const LOST_TOKEN_POSITION = new THREE.Vector3(
 );
 const LOST_TOKEN_MARKER_HEIGHT = 0.65;
 const LOST_TOKEN_MARKER_SCALE = 0.5;
-const LOST_TOKEN_SUCCESS_MESSAGE =
-    'There it is 🔑! I found my lost campus token. Now I can finally unlock the frontdoor.';
 
 export class LostTokenQuest {
     readonly interaction: Interaction;
@@ -57,19 +52,19 @@ export class LostTokenQuest {
 
     async handleInteraction(
         interaction: Interaction,
-        completeQuest: QuestCompleteHandler<PlayerAnimationState>,
         onCollected?: () => void
     ): Promise<boolean> {
         if (interaction.typeID !== QUESTS.FIND_LOST_DROPPED_TOKEN_QUEST_ID) {
             return false;
         }
 
-        await completeQuest(
+        /* await completeQuest(
             QUESTS.FIND_LOST_DROPPED_TOKEN_QUEST_ID.id,
             LOST_TOKEN_SUCCESS_MESSAGE,
             PlayerState.ThumbsUp
-        );
+        ); */
         this.collect();
+
         onCollected?.();
         return true;
     }

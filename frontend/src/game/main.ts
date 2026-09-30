@@ -439,10 +439,17 @@ export function startGame(
             storyManager.onQuestStartEvaluation = async () => {
                 changeObjectTexture(display, IMG_DISPLAY_EVAL);
             };
-            storyManager.onQuestFinished = () => {
+            storyManager.onQuestFinished = async () => {
                 console.log('Quest finished');
                 changeObjectTexture(display, IMG_DISPLAY_GRAPH);
+
+                worldLoader.openEventSpaceDoorA();
+                await storyManager?.openEventSpaceDoorACutscene();
+                worldLoader.openEventSpaceDoorB();
+                await storyManager?.openEventSpaceDoorBCutscene();
                 worldLoader.openEventSpaceDoors();
+
+                interactionManager?.evaluatingStudentQuest.placeEvaluatingStudentAtStartPosition();
             };
         }
         await worldLoader.loadMesh(MODEL_MAP);
