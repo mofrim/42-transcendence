@@ -282,6 +282,7 @@ const API_USER_ROOT = '/api/user' as const;
 
 export const API_USER = Object.freeze({
     root: API_USER_ROOT,
+    rootInternal: `${API_USER_ROOT}/internal`,
     all: `${API_USER_ROOT}/all`,
     health: `${API_USER_ROOT}/health`,
     uid: `${API_USER_ROOT}/:userId`,
@@ -472,6 +473,11 @@ export type SaveGameSnapshot = {
     readonly blackHoleCountdownCompleted: boolean;
     readonly completedQuestIds: readonly string[];
 };
+
+export type PersistentSaveGameSnapshot = Pick<
+    SaveGameSnapshot,
+    'position' | 'blackHoleSecondsRemaining'
+>;
 
 export type SaveGameTimerPayload = {
     readonly type: 'save_game_timer';

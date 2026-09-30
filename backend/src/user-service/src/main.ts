@@ -23,8 +23,10 @@ import {
     User,
     API_USER,
     QuestIDs,
+    type PersistentSaveGameSnapshot,
     type QuestTuple,
 } from 'ftr-common/sharedTypes';
+import { authenticateInternalMid } from 'ftr-common/internalAuth';
 
 // Initialize main tslog-logger
 const log = new Logger<ILogObj>({
@@ -38,8 +40,11 @@ if (process.env['NODE_ENV'] === 'development') {
     dotenv.config({ path: '../../../dev.env', quiet: true });
 }
 
+// FIXME use no fallback. if there is no env-var -> exit
 const PORT = Number(process.env['USER_SERVICE_PORT']) || 3003;
 const SECRET_KEY: string = process.env['JWT_SECRET'] || 'FooBarBaz';
+const INTERNAL_SECRET_KEY: string =
+    process.env['INTERNAL_JWT_SECRET'] || 'FooBarBazInternal';
 const app: Express = express();
 
 app.use(cors({ credentials: true }));
@@ -63,6 +68,20 @@ app.use(cookieParser());
 const authenticate = (req: Request, res: Response, next: NextFunction) =>
     authenticateMid(req, res, next, log, SECRET_KEY);
 
+// same.. but different
+const authenticateInternal = (
+    req: Request,
+    res: Response,
+    next: NextFunction
+) =>
+    authenticateInternalMid(
+        req,
+        res,
+        next,
+        log,
+        'userService',
+        INTERNAL_SECRET_KEY
+    );
 // -------------------------=[ DB initialization ]=------------------------- //
 
 const DB = new DataSource({
@@ -98,6 +117,37 @@ app.get(API_USER.root, authenticate, async (req, res) => {
     const logGet = log.getSubLogger({ name: 'GET(user)' });
     try {
         const user = await getUserByIdNoPw(DB, req.userId!);
+        if (user === null) {
+            res.status(401).json(mkApiResponse('User not found', 'error'));
+            return;
+        }
+        res.json(mkApiResponse<User>('User found', 'success', user.id, user));
+    } catch (err) {
+        logGet.error(err as Error);
+        res.status(500).json(mkApiResponse('Internal server error', 'error'));
+    }
+});
+
+// NOTE: Endpoint for internal use. Why not simply use the same endpoint as
+// above?
+//
+//  - If we were to add rate-limiting (which would be a very pro thing to do ;)
+//    we need different rates for frontend and backend-exposed services
+//
+//  - Separation of tokens: if we were to use the frontend-exposed service
+//    we would need to pass the frontend JWT to the backend or we would need a
+//    hacky auth-wrapper that makes auth via both middlewares possible.
+app.get(API_USER.rootInternal, authenticateInternal, async (req, res) => {
+    const logGet = log.getSubLogger({ name: 'GET-Internal' });
+
+    if (req.actingForUID === undefined) {
+        logGet.error('actingForUID missing in request!');
+        res.status(400).json(mkApiResponse('actingForUID missing', 'error'));
+        return;
+    }
+
+    try {
+        const user = await getUserByIdNoPw(DB, req.actingForUID);
         if (user === null) {
             res.status(401).json(mkApiResponse('User not found', 'error'));
             return;
@@ -432,6 +482,54 @@ app.post(API_USER.quests, authenticate, async (req: Request, res: Response) => {
         res.status(500).json(mkApiResponse('DB query failed', 'error'));
     }
 });
+
+// -------------=[ the internal endpoint for data persistence ]=------------- //
+
+// NOTE: Internal endpoint! Only to be used for backend internal com
+app.post(
+    API_USER.root,
+    authenticateInternal,
+    async (req: Request, res: Response) => {
+        const logInt = log.getSubLogger({ name: 'InternalSaveGame' });
+
+        if (req.actingForUID === undefined) {
+            logInt.error('actingForUID missing in request!');
+            res.status(400).json(mkApiResponse('actingForUID missing', 'error'));
+            return;
+        }
+        log.info('actingForUID', req.actingForUID);
+
+        try {
+            const user = await userRepo.findOneBy({ id: req.actingForUID });
+
+            if (user === null) {
+                res.status(401).json(mkApiResponse('User not found', 'error'));
+                return;
+            }
+
+            const bodyData = req.body as PersistentSaveGameSnapshot;
+            if (bodyData.position === undefined || bodyData.blackHoleSecondsRemaining === undefined) {
+                res.status(401).json(mkApiResponse('Invalid snapshot', 'error'));
+                return;
+            }
+            user.blackholeTimer = bodyData.blackHoleSecondsRemaining;
+            user.position = bodyData.position;
+
+            const result = await userRepo.update(user.id, user);
+            if (result.affected == null) {
+                logInt.warn(`Saving state for user ${user.id} failed`);
+                res.status(500).json(
+                    mkApiResponse('User state update failure', 'error')
+                );
+                return;
+            }
+            res.status(200).json(mkApiResponse<ORMUser>('User state stored in DB', 'success', undefined, user));
+        } catch (err) {
+            logInt.error('something went wrong: ', err);
+            res.status(500).json(mkApiResponse('DB query failed', 'error'));
+        }
+    }
+);
 
 // --------=[ fallback endpoint for catching unsuppoerted methods ]=-------- //
 

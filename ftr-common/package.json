@@ -21,6 +21,10 @@
             "import": "./dist/expressTypes.js",
             "types": "./dist/expressTypes.d.ts"
         },
+        "./internalAuth": {
+            "import": "./dist/internalAuth.js",
+            "types": "./dist/internalAuth.d.ts"
+        },
         "./utils": {
             "import": "./dist/utils.js",
             "types": "./dist/expressTypes.d.ts"

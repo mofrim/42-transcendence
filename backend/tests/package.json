@@ -15,6 +15,7 @@
         "getall": "tsc -b && NODE_OPTIONS=\"$NODE_OPTIONS --experimental-vm-modules --no-warnings\" npx jest -- getall.test.ts",
         "quest": "tsc -b && NODE_OPTIONS=\"$NODE_OPTIONS --experimental-vm-modules --no-warnings\" npx jest -- quest.test.ts",
         "tospp": "tsc -b && NODE_OPTIONS=\"$NODE_OPTIONS --experimental-vm-modules --no-warnings\" npx jest -- tospp.test.ts",
+        "internal": "tsc -b && NODE_OPTIONS=\"$NODE_OPTIONS --experimental-vm-modules --no-warnings\" npx jest -- internal.test.ts",
         "lint": "eslint .",
         "lint-fix": "eslint . --fix"
     },

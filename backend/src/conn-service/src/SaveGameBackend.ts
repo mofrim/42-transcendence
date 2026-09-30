@@ -211,9 +211,10 @@ export class SaveGameBackend {
         return this.ownerSocketByUser.get(userId) === socketId;
     }
 
-    private getOrCreateSave(
+    getOrCreateSave(
         userId: number,
-        position: PlayerPosition
+        position: PlayerPosition,
+        blackHoleSecondsRemaining?: number
     ): MutableSaveGameSnapshot {
         const existingSave = this.saves.get(userId);
         if (existingSave) {
@@ -222,7 +223,8 @@ export class SaveGameBackend {
 
         const save: MutableSaveGameSnapshot = {
             position: structuredClone(position),
-            blackHoleSecondsRemaining: BLACK_HOLE_DURATION_SECONDS,
+            blackHoleSecondsRemaining:
+                blackHoleSecondsRemaining ?? BLACK_HOLE_DURATION_SECONDS,
             blackHoleCountdownCompleted: false,
             completedQuestIds: [],
         };

@@ -26,24 +26,58 @@ import type {
     PlayerConnectedPayload,
     PlayerUpdatePayload,
     TTTMarkPayload,
+    SaveGameSnapshot,
 } from 'ftr-common/sharedTypes';
-import { SPECTATOR_NAME, TTTGameState, TTTMark } from 'ftr-common/sharedTypes';
+import {
+    User,
+    SPECTATOR_NAME,
+    TTTGameState,
+    TTTMark,
+} from 'ftr-common/sharedTypes';
 import { Logger, type ILogObj } from 'tslog';
 import dotenv from 'dotenv';
+import axios from 'axios';
+import { exit } from 'node:process';
+import { mintInternalToken } from 'ftr-common/internalAuth';
 
 // Initialize main tslog-logger
-const log = new Logger<ILogObj>({ name: 'conn', minLevel: 'INFO' });
+const log = new Logger<ILogObj>({
+    name: 'connService',
+    minLevel: process.env['NODE_ENV'] === 'development' ? 'DEBUG' : 'INFO',
+});
+
+// ---------------------------=[ env parsing... ]=--------------------------- //
 
 if (process.env['NODE_ENV'] === 'development') {
     log.info('loading dev.env...');
     dotenv.config({ path: '../../../dev.env', quiet: true });
 }
 
-const PORT = 3000;
-const SECRET_KEY: string = process.env['JWT_SECRET'] || 'FooBarBaz';
-const app: Express = express();
+if (
+    process.env['USER_SERVICE_ADDR'] === undefined ||
+    process.env['USER_SERVICE_PORT'] === undefined ||
+    process.env['INTERNAL_JWT_SECRET'] === undefined ||
+    process.env['JWT_SECRET'] === undefined
+) {
+    log.error(`env not like it should be! exiting...`);
+    exit(1);
+}
 
-app.use(cors());
+const USER_POST_ENDPOINT =
+    process.env['USER_SERVICE_ADDR'] +
+    ':' +
+    process.env['USER_SERVICE_PORT'] +
+    '/api/user';
+
+const USER_GET_ENDPOINT =
+    process.env['USER_SERVICE_ADDR'] +
+    ':' +
+    process.env['USER_SERVICE_PORT'] +
+    '/api/user/internal';
+
+const PORT = 3000;
+const SECRET_KEY: string = process.env['JWT_SECRET'];
+const INTERNAL_SECRET_KEY: string = process.env['INTERNAL_JWT_SECRET'];
 
 type PendingFriendRequest = {
     readonly requesterUserId: number;
@@ -55,13 +89,7 @@ type PendingFriendRequest = {
 const pendingFriendRequests = new Map<number, PendingFriendRequest>();
 const friendsByUser = new Map<number, Set<number>>();
 const userNicknames = new Map<number, string>();
-const server: http.Server = app.listen(PORT, (): void => {
-    console.log(`listening on port: ${PORT}`);
-});
-const io = new Server(server, {
-    cors: { origin: '*' },
-});
-io.engine.use(cookieParser());
+
 const gameManager = new GameManager();
 const saveGame = new SaveGameBackend();
 
@@ -74,6 +102,21 @@ function getUserRoom(userId: number): string {
     return `user:${userId}`;
 }
 
+// --------------=[ launching the express / socket.io server ]=-------------- //
+
+const app: Express = express();
+
+app.use(cors());
+
+const server: http.Server = app.listen(PORT, (): void => {
+    console.log(`listening on port: ${PORT}`);
+});
+const io = new Server(server, {
+    cors: { origin: '*' },
+});
+
+io.engine.use(cookieParser());
+
 io.use((socket, next) => {
     const requestedRole = socket.handshake.auth['role'];
     if (requestedRole === 'spectator') {
@@ -83,6 +126,7 @@ io.use((socket, next) => {
 
     const token = (socket.request as Request).cookies['token'];
     if (typeof token !== 'string') {
+        log.error('Received invalid token:', token);
         next(new Error('Unauthorized'));
         return;
     }
@@ -101,12 +145,14 @@ io.use((socket, next) => {
         socket.data.userId = authenticatedUserId;
         next();
     } catch (err) {
-        log.error('miep:', err);
+        log.error('Token verification failed:', err);
         next(new Error('Unauthorized'));
     }
 });
 
-io.on('connection', (socket) => {
+// ------------=[ this is where all events handling is defined ]=------------ //
+
+io.on('connection', async (socket) => {
     const requestedRole = socket.handshake.auth['role'];
     let authenticatedPlayerUserId: number | null = null;
 
@@ -115,7 +161,7 @@ io.on('connection', (socket) => {
         requestedRole !== 'player' &&
         requestedRole !== 'spectator'
     ) {
-        console.log(
+        log.info(
             `disconnecting client: ${JSON.stringify(socket.conn.remoteAddress)}`
         );
         socket.disconnect(true);
@@ -217,26 +263,65 @@ io.on('connection', (socket) => {
         return;
     }
     const playerUserId = authenticatedPlayerUserId;
-    const restoredSaveGame = saveGame.connect(playerUserId, socket.id);
     const playerData = gameManager.createPlayer(socket.id, nickname);
-    if (restoredSaveGame) {
-        Object.assign(playerData.position, restoredSaveGame.position);
-    }
-    gameManager.players.set(socket.id, playerData);
 
-    // the only other action preformed currently by the backend apart from
-    // handling ttt and rps game
     const connectedPlayer: PlayerConnectedPayload = {
         id: socket.id,
         character,
         nickname,
         isInitialSnapshot: false,
     };
+
+    // -----------------=[ Game-State persistence logic ]=------------------- //
+
+    const restoredSaveGame = saveGame.connect(playerUserId, socket.id);
+
     if (restoredSaveGame) {
+        Object.assign(playerData.position, restoredSaveGame.position);
         Object.assign(connectedPlayer, restoredSaveGame.position, {
             state: playerData.state,
         });
+        log.info('Restored player state from SaveGame');
+    } else {
+        // NOTE: if no SaveGame found (null) try to get player position from
+        // DB... All of this is a little bit hacky as it would be a reasonable
+        // refac to use _only_ the DB for storing state. But this is where we
+        // are now :/
+        const internalToken = mintInternalToken(
+            'connService',
+            'userService',
+            { actingForUID: socket.data.userId },
+            INTERNAL_SECRET_KEY
+        );
+        try {
+            const res = await axios.get(USER_GET_ENDPOINT, {
+                headers: { Cookie: `token=${internalToken}` },
+            });
+            const userData = res.data.data as User;
+
+            if (userData !== undefined) {
+                const pos = userData.position;
+                const bhTimer = userData.blackholeTimer;
+                // unfortunately need to create an initial SaveGame in order to
+                // easily hook into propagation of the restored state.
+                saveGame.getOrCreateSave(
+                    socket.data.userId,
+                    pos,
+                    bhTimer != 0 ? bhTimer : undefined
+                );
+                Object.assign(playerData.position, pos);
+                Object.assign(connectedPlayer, pos, {
+                    state: playerData.state,
+                });
+            }
+            log.info('Restored player state from DB!');
+        } catch {
+            log.error('Failed getting player pos from DB');
+        }
     }
+
+    gameManager.players.set(socket.id, playerData);
+
     socket.broadcast.emit('player_connected', connectedPlayer);
     console.log('Client connected:', socket.id);
 
@@ -247,10 +332,16 @@ io.on('connection', (socket) => {
         acknowledge(saveGame.getSnapshot(playerUserId, socket.id));
     });
 
-    // TTT-Disconnect
-    // dissconnect and remove player from gameManager
-    socket.on('disconnect', () => {
-        console.log('Client disconnected:', socket.id);
+    // disconnect and remove player from gameManager
+    socket.on('disconnect', async () => {
+        log.info('Client disconnected:', socket.id);
+
+        // get latest saveGameSnap for disconnecting user.. process it later.
+        const snapshot: SaveGameSnapshot | null = saveGame.getSnapshot(
+            playerUserId,
+            socket.id
+        );
+
         saveGame.disconnect(
             playerUserId,
             socket.id,
@@ -261,8 +352,56 @@ io.on('connection', (socket) => {
         gameManager.players.delete(socket.id);
 
         socket.broadcast.emit('player_disconnected', socket.id);
+
+        // sync playerData to DB on disco...
+        //
+        // NOTE: in order to avoid cheating and/or users messing with this data
+        // the requests to backend services should only be made **inside** the
+        // backend so they are not visible and callable from frontend! this
+        // would have been secure backend-design!!!
+        // However, this means the backend needs some at least authenticated
+        // connection to backend services, or we just expose some services,
+        // which are not proxied which are backend-internal
+        //
+        // TODO maybe also move quests syncing to backend correspondingly
+
+        // get OneTime token...
+        const internalToken = mintInternalToken(
+            'connService',
+            'userService',
+            { actingForUID: socket.data.userId },
+            INTERNAL_SECRET_KEY
+        );
+
+        // ...use it, setting it as cookie manually.
+        if (snapshot !== null) {
+            try {
+                await axios.post(
+                    USER_POST_ENDPOINT,
+                    {
+                        position: snapshot.position,
+                        blackHoleSecondsRemaining:
+                            snapshot.blackHoleSecondsRemaining,
+                    },
+                    {
+                        headers: { Cookie: `token=${internalToken}` },
+                    }
+                );
+                log.info('Snapshot stored in DB for UID', socket.data.userId);
+            } catch {
+                log.error(
+                    'Storing snapshot in DB failed for UID',
+                    socket.data.userId
+                );
+            }
+        }
     });
 
+    // NEXT
+    // NOTE: from an anti-cheat / backend-frontend trust-design - perspective it
+    // would be the correct workflow to let the Quests emit update events which
+    // then would be collected here and corresponding action be taken like
+    // toggling quest-status etc.
     socket.on('update', (data, acknowledge) => {
         switch (data.type) {
             case 'player_update':

@@ -98,14 +98,13 @@ export function startGame(
         };
     }
 
-    /**
-     * Use the page origin for the Socket.IO server address and
-     * remove the redundant unsanitized pass-through variable.
-     * */
+    // Use the page origin for the Socket.IO server address and remove the
+    // redundant unsanitized pass-through variable.
     const socket = io(serverUrl, {
         auth: socketAuth,
         withCredentials: true,
     });
+
     let player: Player | null = null;
     let multiplayer: MultiplayerManager | null = null;
     let camera: Camera | null = null;

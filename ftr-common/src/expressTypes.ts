@@ -4,6 +4,8 @@ declare global {
     namespace Express {
         interface Request {
             userId?: number;
+            internalCaller?: string;
+            actingForUID?: number;
         }
     }
 }
