@@ -12,10 +12,6 @@ export const verifyToken = (
 ): number => {
     try {
         const decoded = jwt.verify(token, secretKey, { algorithms: ['HS256'] });
-        log.debug(
-            'decoded:',
-            typeof decoded === 'string' ? decoded : JSON.stringify(decoded)
-        );
         if (typeof decoded === 'string') {
             log.error('verify: invalid token data');
             throw new Error('Invalid token');
