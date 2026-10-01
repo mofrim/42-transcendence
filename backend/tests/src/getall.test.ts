@@ -7,9 +7,10 @@ let authCookieRoot: string;
 
 describe('basic get cookie test', () => {
     it('should authenticate as root and receive a JWT cookie', async () => {
-        const res = await request(authBaseUrl)
-            .post('/api/login')
-            .send({ nickname: 'root', password: process.env['FTR_ROOT_PW'] });
+        const res = await request(authBaseUrl).post('/api/login').send({
+            nickname: 'superadmin',
+            password: process.env['FTR_ROOT_PW'],
+        });
         expect(res.statusCode).toEqual(200);
         expect(res.headers['set-cookie']).toBeDefined();
         authCookieRoot = res.headers['set-cookie'] as string;
