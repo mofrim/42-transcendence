@@ -377,6 +377,20 @@ export class Story_Manager {
         this.camera.orbitControls.enabled = true;
     }
 
+    transformModelForCutscene(position: THREE.Vector3Like): void {
+        const worldPosition = new THREE.Vector3().copy(position);
+        this.player.group.worldToLocal(worldPosition);
+        this.player.model?.position.copy(worldPosition);
+    }
+
+    resetModelPosition(): void {
+        this.player.model?.position.setScalar(0);
+    }
+
+    // ==================================================
+    // CUTSCENES
+    // ==================================================
+
     async GameIntro(): Promise<void> {
         this.startCutscene();
 
@@ -432,16 +446,6 @@ export class Story_Manager {
         this.endCutscene();
     }
 
-    transformModelForCutscene(position: THREE.Vector3Like): void {
-        const worldPosition = new THREE.Vector3().copy(position);
-        this.player.group.worldToLocal(worldPosition);
-        this.player.model?.position.copy(worldPosition);
-    }
-
-    resetModelPosition(): void {
-        this.player.model?.position.setScalar(0);
-    }
-
     async blackHoleCutscene(): Promise<void> {
         this.startCutscene();
 
@@ -491,6 +495,73 @@ export class Story_Manager {
         this.endCutscene();
     }
 
+    async openFrontDoorCutscene(): Promise<void> {
+        this.startCutscene();
+
+        this.moveCameraDialog(
+            new THREE.Vector3(9.78, 2, 2.61),
+            new THREE.Vector3(11.26, 2, 2.62),
+            10,
+            new THREE.Vector3(9.78, 1, -0.48)
+        );
+
+        await this.showDialog(
+            'There it is 🔑! I found my lost campus token. Now I can finally unlock the frontdoor.'
+        );
+        this.stopCurrentDialogueCamera();
+
+        this.endCutscene();
+    }
+
+    async openEventSpaceDoorACutscene(): Promise<void> {
+        this.startCutscene();
+
+        await this.moveCameraDialog(
+            new THREE.Vector3(13.49, 5.72, -16.93),
+            new THREE.Vector3(14.01, 5.72, -15.61),
+            4,
+            new THREE.Vector3(15.53, 5, -17.62)
+        );
+
+        this.stopCurrentDialogueCamera();
+        await this.returnCameraToPlayer(0.01);
+        this.endCutscene();
+    }
+
+    async openEventSpaceDoorBCutscene(): Promise<void> {
+        this.startCutscene();
+
+        await this.moveCameraDialog(
+            new THREE.Vector3(15.93, 5.73, -6),
+            new THREE.Vector3(17.29, 5.73, -6),
+            4,
+            new THREE.Vector3(15.93, 5, -8)
+        );
+
+        this.stopCurrentDialogueCamera();
+        await this.returnCameraToPlayer(0.01);
+        this.endCutscene();
+    }
+
+    async evaluationCutscene(): Promise<void> {
+        this.startCutscene();
+
+        await this.moveCameraDialog(
+            new THREE.Vector3(5, 5.72, -15.04),
+            new THREE.Vector3(5, 5.72, -13.29),
+            5,
+            new THREE.Vector3(7.94, 5, -15.04)
+        );
+
+        this.stopCurrentDialogueCamera();
+        await this.returnCameraToPlayer(0.5);
+        this.endCutscene();
+    }
+
+    // ==================================================
+    //
+    // ==================================================
+
     async playDialogInteraction(
         message: string,
         animation: PlayerAnimationState
@@ -532,11 +603,14 @@ export class Story_Manager {
         if (
             await this.interactionManager.lostTokenQuest.handleInteraction(
                 interaction,
-                completeQuest,
                 () =>
                     this.interactionManager.frontDoorQuest.interaction.enableInteraction()
             )
         ) {
+            const questId = QUESTS.FIND_LOST_DROPPED_TOKEN_QUEST_ID.id;
+            this.questState.set(questId, true);
+            this.onQuestInteraction?.(questId);
+            await this.openFrontDoorCutscene();
             return;
         }
 
@@ -599,6 +673,9 @@ export class Story_Manager {
             interaction,
             completeQuest,
             () => this.onQuestStartEvaluation?.(),
+            async () => {
+                await this.evaluationCutscene();
+            },
             () => {
                 this.interactionManager.eventSpaceQuest.disableInteractions();
                 this.onQuestFinished?.();

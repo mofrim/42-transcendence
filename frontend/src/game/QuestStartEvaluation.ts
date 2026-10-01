@@ -29,6 +29,7 @@ export class StartEvaluationQuest {
         interaction: Interaction,
         completeQuest: QuestCompleteHandler<PlayerAnimationState>,
         onStart?: () => void,
+        onEvalCutscene?: () => void | Promise<void>,
         onFinished?: () => void
     ): Promise<boolean> {
         if (interaction.typeID !== QUESTS.START_EVALUATION_QUEST_ID.id) {
@@ -41,6 +42,8 @@ export class StartEvaluationQuest {
             START_EVALUATION_MESSAGE,
             PlayerState.Strong
         );
+
+        await onEvalCutscene?.();
 
         // TODO: Do small quiz or something here to simulate evaluation. For now, just wait a few seconds.
         await completeQuest(

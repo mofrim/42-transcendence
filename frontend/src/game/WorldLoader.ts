@@ -161,6 +161,52 @@ export class WorldLoader {
         this.removeFromColliderAndOctree(this.doorMeshNames);
     }
 
+    async openEventSpaceDoorA(): Promise<void> {
+        const doorOpenValue = -1.83;
+        const move = 0.01;
+
+        return new Promise((resolve) => {
+            let cr = this.doorGroupA.rotation.y;
+
+            const openDoor = () => {
+                cr -= move;
+                console.log('cr: ' + cr);
+                this.doorGroupA.rotation.y = cr;
+
+                if (cr > doorOpenValue) {
+                    requestAnimationFrame(openDoor);
+                } else {
+                    resolve();
+                }
+            };
+
+            openDoor();
+        });
+    }
+
+    async openEventSpaceDoorB(): Promise<void> {
+        const doorOpenValue = 1.42;
+        const move = 0.01;
+
+        return new Promise((resolve) => {
+            let cr = this.doorGroupB.rotation.y;
+
+            const openDoor = () => {
+                cr += move;
+                console.log('cr: ' + cr);
+                this.doorGroupB.rotation.y = cr;
+
+                if (cr < doorOpenValue) {
+                    requestAnimationFrame(openDoor);
+                } else {
+                    resolve();
+                }
+            };
+
+            openDoor();
+        });
+    }
+
     openMainDoor(): void {
         this.doorGroupMain.rotation.y = -Math.PI / 2;
         this.mainDoorsOpenState = true;
