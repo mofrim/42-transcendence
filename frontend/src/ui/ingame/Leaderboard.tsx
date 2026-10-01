@@ -26,8 +26,7 @@ type LeaderboardEntry = {
     readonly quests: number;
     readonly blackHoles: number;
     /**
-     * Black Haole Time Out Timer minus der Startzeit die
-     * aktuell bei 5 Minuten liegt,
+     * Black Hole Time Out Timer minus der konfigurierten Startzeit,
      * ist die Zeit, die der Spieler gebraucht hat,
      * um die Quest szu erledigen und umso schneller,
      * desto besser.
@@ -128,7 +127,7 @@ function buildLeaderboard(
         const eventTimeMs = getEventTimeMs(event.logtime);
 
         // A local PlayerJoined event uses data:null and marks the beginning of
-        // a fresh five-minute Black Hole window. Remote join notifications use
+        // a fresh Black Hole window. Remote join notifications use
         // playerId data and therefore do not reset this player's timer.
         if (event.eventType === EventType.PlayerJoined) {
             if (event.data === null && eventTimeMs !== null) {
