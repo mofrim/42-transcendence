@@ -3,9 +3,11 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { createResourceDisposer } from './ResourceDisposer.js';
 import { MODEL_MAP } from './Assets.js';
+import { type GLBMesh } from 'ftr-common/sharedTypes';
+import { IMG_GRADIENT } from './Assets.js';
 
 const MAX_PIXEL_RATIO = 1.5;
-const ROTATION_SPEED = THREE.MathUtils.degToRad(1.15);
+const ROTATION_SPEED = THREE.MathUtils.degToRad(0.1);
 const MAX_PREVIEW_FPS = 30;
 const PREVIEW_FRAME_INTERVAL = 1 / MAX_PREVIEW_FPS;
 
@@ -89,7 +91,8 @@ export function createMapPreview({
     renderer.shadowMap.type = THREE.PCFShadowMap;
 
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(38, 1, 0.01, 1_000);
+    // const camera = new THREE.PerspectiveCamera(38, 1, 0.01, 1_000);
+    const camera = new THREE.PerspectiveCamera(20, 1, 0.01, 1_000);
     const resourceDisposer = createResourceDisposer({
         shouldCloseImageBitmap: () => true,
         onError: (error: unknown) => {
@@ -97,13 +100,13 @@ export function createMapPreview({
         },
     });
 
-    const hemisphereLight = new THREE.HemisphereLight(0xffffff, 0x536579, 1.8);
+    const hemisphereLight = new THREE.HemisphereLight(0xffffff, 0x536579, 1.1);
     const keyLight = new THREE.DirectionalLight(0xffffff, 2.6);
-    keyLight.position.set(4, 7, 6);
+    keyLight.position.set(-4, 4, 6);
     keyLight.castShadow = true;
     /** Shadow map size is set to balance between quality and performance. */
     keyLight.shadow.mapSize.setScalar(1024);
-    const fillLight = new THREE.DirectionalLight(0xbfd8ff, 1.2);
+    const fillLight = new THREE.DirectionalLight(0xbfd8ff, 0);
     fillLight.position.set(-5, 3, -2);
     scene.add(hemisphereLight, keyLight, keyLight.target, fillLight);
 
@@ -112,7 +115,7 @@ export function createMapPreview({
     const rendererSize = new THREE.Vector2();
     const cameraViewSize = new THREE.Vector2();
     const animationTimer = new THREE.Timer();
-    const cameraDirection = new THREE.Vector3(0.75, 0.37, 1).normalize();
+    //const cameraDirection = new THREE.Vector3(0.75, 0.37, 1).normalize();
 
     let reducedMotionQuery: MediaQueryList | null = null;
     if (typeof window.matchMedia === 'function') {
@@ -156,10 +159,15 @@ export function createMapPreview({
          * Aber an den Bildschirmrändern noch sehr viel ungenutzter Raum ist */
         const distance = (modelRadius / Math.sin(limitingHalfFov)) * 0.42;
 
-        camera.position.copy(cameraDirection).multiplyScalar(distance);
-        camera.near = Math.max(0.01, distance - modelRadius * 1.25);
+        // camera.position.copy(cameraDirection).multiplyScalar(distance);
+        // camera.position.set(0, 0, 15);
+        const py = 0;
+        const px = -1;
+        camera.position.set(px, py, 25);
+        // camera.near = Math.max(0.01, distance - modelRadius * 1.25);
+        camera.near = 1;
         camera.far = Math.max(camera.near + 1, distance + modelRadius * 2.5);
-        camera.lookAt(0, 0, 0);
+        camera.lookAt(px, py, 0);
         camera.updateProjectionMatrix();
     }
 
@@ -336,6 +344,62 @@ export function createMapPreview({
     resizeRenderer();
     renderOnce();
 
+    const textureLoader = new THREE.TextureLoader();
+    const texture = textureLoader.load(IMG_GRADIENT);
+    texture.minFilter = THREE.NearestFilter;
+    texture.magFilter = THREE.NearestFilter;
+
+    function prepareWorldMesh(mesh: GLBMesh): void {
+        let glassOpacity: number | null = null;
+
+        if (mesh.material.name === 'Glass_mtl') {
+            glassOpacity = 0.3;
+        } else if (mesh.material.name === 'Glass_outside') {
+            glassOpacity = 0.8;
+        } else if (mesh.material.name === 'Glass_block') {
+            glassOpacity = 1;
+        }
+
+        if (glassOpacity !== null) {
+            mesh.material = new THREE.MeshToonMaterial({
+                color: 0xaaddff,
+                transparent: glassOpacity < 1,
+                opacity: glassOpacity,
+            });
+            mesh.castShadow = false;
+            mesh.receiveShadow = false;
+            return;
+        }
+        if (
+            mesh.material.name !== 'Tile_White' &&
+            mesh.material.name !== 'Tile_Dark'
+        )
+            applyOutlinedToonMaterial(mesh, true);
+    }
+
+    /** Cartoon Style */
+    function applyOutlinedToonMaterial(
+        mesh: GLBMesh,
+        castShadow: boolean
+    ): void {
+        // outline
+        const edges = new THREE.EdgesGeometry(mesh.geometry, 50);
+        const line = new THREE.LineSegments(
+            edges,
+            new THREE.LineBasicMaterial({ color: 0x000000 })
+        );
+        mesh.add(line);
+
+        mesh.material = new THREE.MeshToonMaterial({
+            color: mesh.material.color,
+            map: mesh.material.map,
+            gradientMap: texture,
+        });
+
+        mesh.castShadow = castShadow;
+        mesh.receiveShadow = true;
+    }
+
     const loader = new GLTFLoader();
 
     async function loadMap(generation: number): Promise<void> {
@@ -361,6 +425,7 @@ export function createMapPreview({
         ) as THREE.Mesh[];
         for (const mesh of meshes) {
             configureMapPreviewMesh(mesh);
+            prepareWorldMesh(mesh as GLBMesh);
         }
 
         pivot = new THREE.Group();
