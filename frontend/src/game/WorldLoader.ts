@@ -313,7 +313,11 @@ export class WorldLoader {
             return;
         }
 
-        this.applyOutlinedToonMaterial(mesh, true);
+        if (
+            mesh.material.name !== 'Tile_White' &&
+            mesh.material.name !== 'Tile_Dark'
+        )
+            this.applyOutlinedToonMaterial(mesh, true);
     }
 
     /** Cartoon Style */
