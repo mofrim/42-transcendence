@@ -24,7 +24,6 @@ import {
     API_USER,
     QuestIDs,
     type PublicUserProfile,
-    type PersistentSaveGameSnapshot,
     type QuestTuple,
 } from 'ftr-common/sharedTypes';
 import { authenticateInternalMid } from 'ftr-common/internalAuth';
@@ -137,8 +136,9 @@ app.get(API_USER.root, authenticate, async (req, res) => {
     }
 });
 
-// NOTE: Endpoint for internal use. Why not simply use the same endpoint as
-// above?
+// -------------=[ Internal endpoints for data persistence ]=-------------- //
+
+// NOTE: Why not simply use the same endpoint as above?
 //
 //  - If we were to add rate-limiting (which would be a very pro thing to do ;)
 //    we need different rates for frontend and backend-exposed services
@@ -146,6 +146,8 @@ app.get(API_USER.root, authenticate, async (req, res) => {
 //  - Separation of tokens: if we were to use the frontend-exposed service
 //    we would need to pass the frontend JWT to the backend or we would need a
 //    hacky auth-wrapper that makes auth via both middlewares possible.
+
+// Endpoint for GETting user-state
 app.get(API_USER.rootInternal, authenticateInternal, async (req, res) => {
     const logGet = log.getSubLogger({ name: 'GET-Internal' });
 
@@ -168,11 +170,12 @@ app.get(API_USER.rootInternal, authenticateInternal, async (req, res) => {
     }
 });
 
+// Endpoint for updating user state in DB.
 app.patch(
     API_USER.rootInternal,
     authenticateInternal,
     async (req: Request, res: Response) => {
-        const logPatch = log.getSubLogger({ name: 'PATCH-InternalPresence' });
+        const logPatch = log.getSubLogger({ name: 'PATCH-UserState' });
 
         if (req.actingForUID === undefined) {
             logPatch.error('actingForUID missing in request!');
@@ -183,29 +186,25 @@ app.patch(
         }
 
         const isLoggedIn = req.body?.isLoggedIn;
-        if (typeof isLoggedIn !== 'boolean') {
-            res.status(400).json(
-                mkApiResponse('isLoggedIn must be a boolean', 'error')
-            );
+        const snap = req.body?.snap;
+
+        if (isLoggedIn === undefined && snap === undefined) {
+            res.status(400).json(mkApiResponse('Invalid request', 'error'));
             return;
         }
 
         try {
             const result = await userRepo.update(req.actingForUID, {
                 isLoggedIn,
+                position: snap?.position,
+                blackholeTimer: snap?.blackHoleSecondsRemaining,
             });
             if (result.affected !== 1) {
                 res.status(404).json(mkApiResponse('User not found', 'error'));
                 return;
             }
 
-            res.json(
-                mkApiResponse(
-                    'User presence updated',
-                    'success',
-                    req.actingForUID
-                )
-            );
+            res.json(mkApiResponse('User state updated', 'success'));
         } catch (err) {
             logPatch.error(err as Error);
             res.status(500).json(
@@ -214,42 +213,6 @@ app.patch(
         }
     }
 );
-
-// get all users
-// NOTE admin only endpoint!
-app.get(API_USER.all, authenticate, async (req: Request, res: Response) => {
-    const logGet = log.getSubLogger({ name: 'GET(userAll)' });
-
-    // guard this endpoint
-    if (req.userId !== 0) {
-        logGet.warn('access denied for uid', req.userId);
-        res.status(401).json(mkApiResponse('invalid credentials', 'error'));
-        return;
-    }
-
-    try {
-        const users = await userRepo.find({
-            relations: {
-                friends: true,
-                eventLogs: true,
-            },
-        });
-        if (users.length === 0) {
-            res.status(401).json(
-                mkApiResponse('no users in users table?!', 'error')
-            );
-            return;
-        }
-        res.json(
-            mkApiResponse<ORMUser[]>('all users', 'success', undefined, users)
-        );
-    } catch (err) {
-        logGet.error(err as Error);
-        res.status(500).json(
-            mkApiResponse('Failed to fetch user profile', 'error')
-        );
-    }
-});
 
 /**
  * required for profile system (view user information)
@@ -403,8 +366,44 @@ app.post(API_USER.tospp, authenticate, async (req: Request, res: Response) => {
 
 // ----------=[ UID GET endpoint - keep as last GET endpoint!!! ]=---------- //
 
+// get all users
+// WARN admin only endpoint!
+app.get(API_USER.all, authenticate, async (req: Request, res: Response) => {
+    const logGet = log.getSubLogger({ name: 'GET(userAll)' });
+
+    // guard this endpoint
+    if (req.userId !== 0) {
+        logGet.warn('access denied for uid', req.userId);
+        res.status(401).json(mkApiResponse('invalid credentials', 'error'));
+        return;
+    }
+
+    try {
+        const users = await userRepo.find({
+            relations: {
+                friends: true,
+                eventLogs: true,
+            },
+        });
+        if (users.length === 0) {
+            res.status(401).json(
+                mkApiResponse('no users in users table?!', 'error')
+            );
+            return;
+        }
+        res.json(
+            mkApiResponse<ORMUser[]>('all users', 'success', undefined, users)
+        );
+    } catch (err) {
+        logGet.error(err as Error);
+        res.status(500).json(
+            mkApiResponse('Failed to fetch user profile', 'error')
+        );
+    }
+});
+
 // query users by uid
-// NOTE admin only endpoint!
+// WARN admin only endpoint!
 // ATTENTION this has to be the last GET-endpoint declared as otherwise other
 // endpoints will match this
 app.get(API_USER.uid, authenticate, async (req: Request, res: Response) => {
@@ -601,68 +600,6 @@ app.post(API_USER.quests, authenticate, async (req: Request, res: Response) => {
         res.status(500).json(mkApiResponse('DB query failed', 'error'));
     }
 });
-
-// -------------=[ the internal endpoint for data persistence ]=------------- //
-
-// NOTE: Internal endpoint! Only to be used for backend internal com
-app.post(
-    API_USER.root,
-    authenticateInternal,
-    async (req: Request, res: Response) => {
-        const logInt = log.getSubLogger({ name: 'InternalSaveGame' });
-
-        if (req.actingForUID === undefined) {
-            logInt.error('actingForUID missing in request!');
-            res.status(400).json(
-                mkApiResponse('actingForUID missing', 'error')
-            );
-            return;
-        }
-        log.info('actingForUID', req.actingForUID);
-
-        try {
-            const user = await userRepo.findOneBy({ id: req.actingForUID });
-
-            if (user === null) {
-                res.status(401).json(mkApiResponse('User not found', 'error'));
-                return;
-            }
-
-            const bodyData = req.body as PersistentSaveGameSnapshot;
-            if (
-                bodyData.position === undefined ||
-                bodyData.blackHoleSecondsRemaining === undefined
-            ) {
-                res.status(401).json(
-                    mkApiResponse('Invalid snapshot', 'error')
-                );
-                return;
-            }
-            user.blackholeTimer = bodyData.blackHoleSecondsRemaining;
-            user.position = bodyData.position;
-
-            const result = await userRepo.update(user.id, user);
-            if (result.affected == null) {
-                logInt.warn(`Saving state for user ${user.id} failed`);
-                res.status(500).json(
-                    mkApiResponse('User state update failure', 'error')
-                );
-                return;
-            }
-            res.status(200).json(
-                mkApiResponse<ORMUser>(
-                    'User state stored in DB',
-                    'success',
-                    undefined,
-                    user
-                )
-            );
-        } catch (err) {
-            logInt.error('something went wrong: ', err);
-            res.status(500).json(mkApiResponse('DB query failed', 'error'));
-        }
-    }
-);
 
 // --------=[ fallback endpoint for catching unsuppoerted methods ]=-------- //
 

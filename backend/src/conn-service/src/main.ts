@@ -30,16 +30,14 @@ import type {
 } from 'ftr-common/sharedTypes';
 import {
     API_USER,
-    User,
     SPECTATOR_NAME,
     TTTGameState,
     TTTMark,
 } from 'ftr-common/sharedTypes';
 import { Logger, type ILogObj } from 'tslog';
 import dotenv from 'dotenv';
-import axios, { type AxiosRequestConfig } from 'axios';
 import { exit } from 'node:process';
-import { mintInternalToken } from 'ftr-common/internalAuth';
+import { UserServiceClient } from './userServiceClient.ts';
 
 // Initialize main tslog-logger
 const log = new Logger<ILogObj>({
@@ -75,7 +73,6 @@ const INTERNAL_SECRET_KEY: string = process.env['INTERNAL_JWT_SECRET']!;
 const USER_SERVICE_ENDPOINT =
     process.env['USER_SERVICE_ADDR'] + ':' + process.env['USER_SERVICE_PORT'];
 
-const USER_POST_ENDPOINT = USER_SERVICE_ENDPOINT + API_USER.root;
 const USER_INTERNAL_ENDPOINT = USER_SERVICE_ENDPOINT + API_USER.rootInternal;
 
 type PendingFriendRequest = {
@@ -99,32 +96,6 @@ function getAuthenticatedUserId(socket: Socket | undefined): number | null {
 
 function getUserRoom(userId: number): string {
     return `user:${userId}`;
-}
-
-function createInternalRequestConfig(userId: number): AxiosRequestConfig {
-    const internalToken = mintInternalToken(
-        'connService',
-        'userService',
-        { actingForUID: userId },
-        INTERNAL_SECRET_KEY
-    );
-
-    return { headers: { Cookie: `token=${internalToken}` } };
-}
-
-async function updateUserPresence(
-    userId: number,
-    isLoggedIn: boolean
-): Promise<void> {
-    try {
-        await axios.patch(
-            USER_INTERNAL_ENDPOINT,
-            { isLoggedIn },
-            createInternalRequestConfig(userId)
-        );
-    } catch (err) {
-        log.error('Failed updating presence for UID', userId, err as Error);
-    }
 }
 
 // --------------=[ launching the express / socket.io server ]=-------------- //
@@ -300,7 +271,14 @@ io.on('connection', async (socket) => {
     // -----------------=[ Game-State persistence logic ]=------------------- //
 
     const restoredSaveGame = saveGame.connect(playerUserId, socket.id);
-    await updateUserPresence(playerUserId, true);
+    const userService = new UserServiceClient(
+        playerUserId,
+        USER_INTERNAL_ENDPOINT,
+        INTERNAL_SECRET_KEY,
+        log
+    );
+
+    await userService.updateUserPresence(true);
 
     if (restoredSaveGame) {
         Object.assign(playerData.position, restoredSaveGame.position);
@@ -314,11 +292,7 @@ io.on('connection', async (socket) => {
         // refac to use _only_ the DB for storing state. But this is where we
         // are now :/
         try {
-            const res = await axios.get(
-                USER_INTERNAL_ENDPOINT,
-                createInternalRequestConfig(playerUserId)
-            );
-            const userData = res.data.data as User;
+            const userData = await userService.getUserState();
 
             if (userData !== undefined) {
                 const pos = userData.position;
@@ -375,7 +349,7 @@ io.on('connection', async (socket) => {
         socket.broadcast.emit('player_disconnected', socket.id);
 
         if (shouldMarkOffline) {
-            await updateUserPresence(playerUserId, false);
+            await userService.updateUserPresence(false);
         }
 
         // sync playerData to DB on disco...
@@ -392,14 +366,9 @@ io.on('connection', async (socket) => {
 
         if (snapshot !== null) {
             try {
-                await axios.post(
-                    USER_POST_ENDPOINT,
-                    {
-                        position: snapshot.position,
-                        blackHoleSecondsRemaining:
-                            snapshot.blackHoleSecondsRemaining,
-                    },
-                    createInternalRequestConfig(playerUserId)
+                await userService.updateUserState(
+                    snapshot.position,
+                    snapshot.blackHoleSecondsRemaining
                 );
                 log.info('Snapshot stored in DB for UID', socket.data.userId);
             } catch {
