@@ -35,17 +35,28 @@ const log = new Logger<ILogObj>({
     minLevel: process.env['NODE_ENV'] === 'development' ? 'DEBUG' : 'INFO',
 });
 
-// load env vars from global dotenv (correct when running from backend/src/user-service)
 if (process.env['NODE_ENV'] === 'development') {
     log.info('loading dev.env...');
     dotenv.config({ path: '../../../dev.env', quiet: true });
 }
 
-// FIXME use no fallback. if there is no env-var -> exit
-const PORT = Number(process.env['USER_SERVICE_PORT']) || 3003;
-const SECRET_KEY: string = process.env['JWT_SECRET'] || 'FooBarBaz';
-const INTERNAL_SECRET_KEY: string =
-    process.env['INTERNAL_JWT_SECRET'] || 'FooBarBazInternal';
+// enforce config through dotenv only! add any require env-vars here
+const REQUIRED_ENV = [
+    'USER_SERVICE_PORT',
+    'JWT_SECRET',
+    'DB_HOST',
+    'DB_USER',
+    'DB_PASSWD',
+    'DB_NAME',
+];
+if (REQUIRED_ENV.some((v) => process.env[v] === undefined)) {
+    log.error(`env not like it should be! exiting...`);
+    exit(1);
+}
+
+const PORT = Number(process.env['USER_SERVICE_PORT']);
+const SECRET_KEY: string = process.env['JWT_SECRET']!;
+const INTERNAL_SECRET_KEY: string = process.env['INTERNAL_JWT_SECRET']!;
 const app: Express = express();
 
 app.use(cors({ credentials: true }));
@@ -87,14 +98,11 @@ const authenticateInternal = (
 
 const DB = new DataSource({
     type: 'postgres',
-    host:
-        process.env['NODE_ENV'] === 'production'
-            ? process.env['DB_HOST'] || 'localhost'
-            : 'localhost',
-    port: Number(process.env['DB_PORT']) || 5432,
-    username: process.env['DB_USER'] || 'postgres',
-    password: process.env['DB_PASSWD'] || 'postgres',
-    database: process.env['DB_NAME'] || 'postgres',
+    host: process.env['DB_HOST']!,
+    port: Number(process.env['DB_PORT']),
+    username: process.env['DB_USER']!,
+    password: process.env['DB_PASSWD']!,
+    database: process.env['DB_NAME']!,
     entities: [ORMUser, ORMEventLog],
     synchronize: true,
     logging: false,

@@ -36,29 +36,33 @@ import { mkApiResponse } from 'ftr-common/utils';
 import 'ftr-common/expressTypes';
 
 // Initialize main tslog-logger
-const log = new Logger<ILogObj>({ name: 'auth', minLevel: 'INFO' });
+const log = new Logger<ILogObj>({
+    name: 'authService',
+    minLevel: process.env['NODE_ENV'] === 'development' ? 'DEBUG' : 'INFO',
+});
 
-// Load env vars from global dotenv...
-// this path is correct if ran from backend/src/auth-service dir
-// TODO add proper handling for production `.env`
 if (process.env['NODE_ENV'] === 'development') {
     log.info('loading dev.env...');
     dotenv.config({ path: '../../../dev.env', quiet: true });
 }
 
-// FIXME use no fallback. if there is no env-var -> exit
-const SECRET_KEY: string = process.env['JWT_SECRET'] || 'FooBarBaz';
-const PORT = Number(process.env['AUTH_SERVICE_PORT']) || 3001;
+// enforce config through dotenv only! add any require env-vars here
+const REQUIRED_ENV = ['AUTH_SERVICE_PORT', 'JWT_SECRET', 'DB_HOST'];
+if (REQUIRED_ENV.some((v) => process.env[v] === undefined)) {
+    log.error(`env not like it should be! exiting...`);
+    exit(1);
+}
+
+const DB_HOST: string = process.env['DB_HOST']!;
+const SECRET_KEY: string = process.env['JWT_SECRET']!;
+const PORT = Number(process.env['AUTH_SERVICE_PORT']);
+
 const IS_PRODUCTION = process.env['NODE_ENV'] === 'production';
 const TOKEN_COOKIE_OPTIONS = {
     httpOnly: true,
     secure: IS_PRODUCTION,
     sameSite: 'strict',
 } as const;
-let dbHost = 'localhost';
-if (IS_PRODUCTION) {
-    dbHost = process.env['DB_HOST'] || 'localhost';
-}
 
 // using partial function evaluation here to set the local logger and SECRET_KEY
 // in auth middleware function
@@ -87,7 +91,7 @@ app.use(cookieParser());
 
 const DB = new DataSource({
     type: 'postgres',
-    host: dbHost,
+    host: DB_HOST,
     port: Number(process.env['DB_PORT']) || 5432,
     username: process.env['DB_USER'] || 'postgres',
     password: process.env['DB_PASSWD'] || 'postgres',

@@ -33,14 +33,20 @@ if (process.env['NODE_ENV'] === 'development') {
     dotenv.config({ path: '../../../dev.env', quiet: true });
 }
 
+// enforce config through dotenv only! add any require env-vars here
+const REQUIRED_ENV = ['EVENTLOG_SERVICE_PORT', 'JWT_SECRET'];
+if (REQUIRED_ENV.some((v) => process.env[v] === undefined)) {
+    log.error(`env not like it should be! exiting...`);
+    exit(1);
+}
+
+const SECRET_KEY: string = process.env['JWT_SECRET']!;
+const PORT = Number(process.env['EVENTLOG_SERVICE_PORT'])!;
+
 // using partial function evaluation here to set the local logger and SECRET_KEY
 // in auth middleware function
 const authenticate = (req: Request, res: Response, next: NextFunction) =>
     authenticateMid(req, res, next, log, SECRET_KEY);
-
-// FIXME use no fallback. if there is no env-var -> exit
-const SECRET_KEY: string = process.env['JWT_SECRET'] || 'FooBarBaz';
-const PORT = Number(process.env['EVENTLOG_SERVICE_PORT']) || 3002;
 
 const app: Express = express();
 

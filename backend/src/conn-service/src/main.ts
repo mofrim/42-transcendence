@@ -54,25 +54,29 @@ if (process.env['NODE_ENV'] === 'development') {
     dotenv.config({ path: '../../../dev.env', quiet: true });
 }
 
-if (
-    process.env['USER_SERVICE_ADDR'] === undefined ||
-    process.env['USER_SERVICE_PORT'] === undefined ||
-    process.env['INTERNAL_JWT_SECRET'] === undefined ||
-    process.env['JWT_SECRET'] === undefined
-) {
+// enforce config through dotenv only! add any require env-vars here
+const REQUIRED_ENV = [
+    'CONN_SERVICE_PORT',
+    'USER_SERVICE_ADDR',
+    'USER_SERVICE_PORT',
+    'INTERNAL_JWT_SECRET',
+    'JWT_SECRET',
+];
+if (REQUIRED_ENV.some((v) => process.env[v] === undefined)) {
     log.error(`env not like it should be! exiting...`);
     exit(1);
 }
+
+// TS sadly does not realize they were checked for undefness ;(
+const PORT: string = process.env['CONN_SERVICE_PORT']!;
+const SECRET_KEY: string = process.env['JWT_SECRET']!;
+const INTERNAL_SECRET_KEY: string = process.env['INTERNAL_JWT_SECRET']!;
 
 const USER_SERVICE_ENDPOINT =
     process.env['USER_SERVICE_ADDR'] + ':' + process.env['USER_SERVICE_PORT'];
 
 const USER_POST_ENDPOINT = USER_SERVICE_ENDPOINT + API_USER.root;
 const USER_INTERNAL_ENDPOINT = USER_SERVICE_ENDPOINT + API_USER.rootInternal;
-
-const PORT = 3000;
-const SECRET_KEY: string = process.env['JWT_SECRET'];
-const INTERNAL_SECRET_KEY: string = process.env['INTERNAL_JWT_SECRET'];
 
 type PendingFriendRequest = {
     readonly requesterUserId: number;
