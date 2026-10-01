@@ -80,11 +80,8 @@ export function startGame(
     onSaveGameRestore?: (snapshot: SaveGameSnapshot | null) => Promise<void>,
     onConnectionChange?: (connected: boolean) => void
 ): GameRuntime {
-    // ============================================================================
-    // SERVER CONNECTION
-    // ============================================================================
-
     const isSpectator = mode === 'spectator';
+
     let socketAuth: SocketAuth;
 
     if (isSpectator) {
@@ -98,8 +95,7 @@ export function startGame(
         };
     }
 
-    // Use the page origin for the Socket.IO server address and remove the
-    // redundant unsanitized pass-through variable.
+    // Establish server connection.
     const socket = io(serverUrl, {
         auth: socketAuth,
         withCredentials: true,
@@ -126,9 +122,9 @@ export function startGame(
         onGameEvent,
     });
 
-    // ============================================================================
+    // ========================================================================
     // GAME SETUP
-    // ============================================================================
+    // ========================================================================
 
     const scene = new THREE.Scene();
     const npcManager = new NPCManager(scene, tokenQuestFrontdesk);
