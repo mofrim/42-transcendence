@@ -42,6 +42,9 @@ import {
     GameEvent,
     EventType,
     User,
+    API_USER,
+    type ApiResponse,
+    type QuestTuple,
     type FriendRequestChangeHandler,
     type FriendStateSnapshotHandler,
     type GLBMesh,
@@ -49,6 +52,7 @@ import {
     type SaveGameSnapshot,
     type SocketAuth,
 } from 'ftr-common/sharedTypes';
+import { api } from '../lib/utils.ts';
 
 export type GameRuntime = {
     readonly sendChatMessage: (message: string) => void;
@@ -378,6 +382,43 @@ export function startGame(
                     });
                 }
             );
+
+            // Not because it makes much sense from a code-architectural POV
+            // but, yeah, fetch quests from DB and set door-states
+            // accordingly...
+
+            // NOTE: not usin signals here bc we are not in a useEffect or sth
+            let quests: QuestTuple[] | undefined = undefined;
+            try {
+                const res = await api.get<ApiResponse<QuestTuple[]>>(
+                    API_USER.quests
+                );
+                if (res.data.data !== undefined) quests = res.data.data;
+            } catch {
+                console.warn('Could not get quests from DB');
+            }
+
+            if (quests !== undefined) {
+                // Arrrghl! TYPE-HELL!! Make a simple Set from QuestTuple-arrrr
+                // in order to not get stupid every time (well by now its 2
+                // times, but who knows?) we query for solved quests.
+                const completedQuests = new Set<string>(
+                    quests.flatMap((obj) =>
+                        Object.entries(obj)
+                            .filter(([, v]) => v)
+                            .map(([k]) => k)
+                    )
+                );
+                if (completedQuests.has('ENTER_EVENT_SPACE')) {
+                    console.log('[init] opening event space doors...');
+                    worldLoader.openEventSpaceDoors();
+                }
+                if (completedQuests.has('ENTER_CAMPUS_TOKEN')) {
+                    console.log('[init] opening front doors...');
+                    worldLoader.openMainDoor();
+                }
+            }
+
             interactionManager = new InteractionManager(scene, npcManager);
             interactionManager.onInteraction = (interaction) => {
                 storyManager?.handleInteraction(interaction);
