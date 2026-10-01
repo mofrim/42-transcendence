@@ -23,10 +23,11 @@ services:
             auth-service:
                 condition: service_started
         environment:
-          - INTERNAL_JWT_SECRET
-          - JWT_SECRET
-          - USER_SERVICE_PORT
-          - USER_SERVICE_ADDR
+            - INTERNAL_JWT_SECRET
+            - JWT_SECRET
+            - USER_SERVICE_PORT
+            - USER_SERVICE_ADDR
+            - CONN_SERVICE_PORT
 
         networks:
             - ftr-net
@@ -41,13 +42,13 @@ services:
             postgres:
                 condition: service_healthy
         environment:
-          - JWT_SECRET
-          - AUTH_SERVICE_PORT
-          - DB_HOST
-          - DB_PORT
-          - DB_USER
-          - DB_PASSWD
-          - DB_NAME
+            - JWT_SECRET
+            - AUTH_SERVICE_PORT
+            - DB_HOST
+            - DB_PORT
+            - DB_USER
+            - DB_PASSWD
+            - DB_NAME
         networks:
             - ftr-net
 
@@ -61,13 +62,13 @@ services:
             postgres:
                 condition: service_healthy
         environment:
-          - JWT_SECRET
-          - EVENTLOG_SERVICE_PORT
-          - DB_HOST
-          - DB_PORT
-          - DB_USER
-          - DB_PASSWD
-          - DB_NAME
+            - JWT_SECRET
+            - EVENTLOG_SERVICE_PORT
+            - DB_HOST
+            - DB_PORT
+            - DB_USER
+            - DB_PASSWD
+            - DB_NAME
         networks:
             - ftr-net
 
@@ -81,14 +82,14 @@ services:
             postgres:
                 condition: service_healthy
         environment:
-          - USER_SERVICE_PORT
-          - INTERNAL_JWT_SECRET
-          - JWT_SECRET
-          - DB_HOST
-          - DB_PORT
-          - DB_USER
-          - DB_PASSWD
-          - DB_NAME
+            - USER_SERVICE_PORT
+            - INTERNAL_JWT_SECRET
+            - JWT_SECRET
+            - DB_HOST
+            - DB_PORT
+            - DB_USER
+            - DB_PASSWD
+            - DB_NAME
         networks:
             - ftr-net
 

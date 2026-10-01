@@ -30,9 +30,12 @@ log_msg_single = @$(ECHO) "\n$(MSGOPN) $(1) $(MSGEND)\n"
 output_color_grey = @$(ECHON) "$(GRE)"
 output_colr_reset =  @$(ECHON) "$(RST)"
 
-all:
+all: frontend-build-dir
 	$(call log_msg_single,Launching ftr using docker compose..)
 	docker compose up --build
+
+frontend-build-dir:
+	mkdir -p ./frontend/docker-dist
 
 dock-clean:
 	$(call log_msg_start,Cleaning docker containers...)
@@ -111,4 +114,4 @@ backend-dev-win:
 	$(call log_msg_end,Done.)
 
 .phony: all dock-clean dock-fclean dock-backend dock-frontend dock-db \
-	dock-db-down backend-dev certs dock-re
+	dock-db-down backend-dev certs dock-re frontend-build-dir
