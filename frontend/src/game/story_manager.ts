@@ -446,7 +446,7 @@ export class Story_Manager {
         this.endCutscene();
     }
 
-    async blackHoleCutscene(): Promise<void> {
+    async blackHoleCutscene(showIntroCutscene: boolean = false): Promise<void> {
         this.startCutscene();
 
         this.player.controls.requestedAnimation = PlayerState.Falling;
@@ -493,6 +493,10 @@ export class Story_Manager {
 
         await this.onGameReset?.();
         this.endCutscene();
+
+        if (showIntroCutscene) {
+            await this.GameIntro();
+        }
     }
 
     async openFrontDoorCutscene(): Promise<void> {

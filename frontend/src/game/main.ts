@@ -64,6 +64,7 @@ export type GameRuntime = {
     readonly removeFriend: (friendPlayerId: string) => void;
     readonly despawnLocalPlayer: () => Promise<void>;
     readonly dispose: () => Promise<void>;
+    readonly playIntroCutscene: () => Promise<void>;
     readonly continueDialogue: () => void;
     readonly triggerBlackHoleCutscene: () => void;
 };
@@ -111,6 +112,8 @@ export function startGame(
     let tttGame: TTT_Game | null = null;
     let rpsGame: RPS_Game | null = null;
     let storyManager: Story_Manager | null = null;
+    const { promise: storyManagerReady, resolve: resolveStoryManagerReady } =
+        Promise.withResolvers<Story_Manager>();
     let interactionManager: InteractionManager | null = null;
     let isLocalPlayerDespawning = false;
     let localPlayerDespawnPromise: Promise<void> | null = null;
@@ -449,6 +452,7 @@ export function startGame(
                 onDialogChange,
                 resetGameStateAfterBlackHole
             );
+            resolveStoryManagerReady(storyManager);
             storyManager.onQuestInteraction = (questId) => {
                 onGameEvent?.({
                     eventType: EventType.QuestCompleted,
@@ -509,8 +513,6 @@ export function startGame(
         if (renderLoop.isDisposed) return;
         addBlackhole(scene);
         if (storyManager) {
-            await storyManager.GameIntro();
-            if (renderLoop.isDisposed) return;
             onGameplayReady?.();
         }
         /* const testCube = new THREE.Mesh(
@@ -586,6 +588,16 @@ export function startGame(
         ...multiplayerRuntimeActions,
         despawnLocalPlayer,
         dispose: () => renderLoop.dispose(),
+        async playIntroCutscene(): Promise<void> {
+            if (renderLoop.isDisposed) {
+                return;
+            }
+            const manager = storyManager ?? (await storyManagerReady);
+            if (renderLoop.isDisposed) {
+                return;
+            }
+            await manager.GameIntro();
+        },
         continueDialogue(): void {
             storyManager?.continueDialogue();
         },
@@ -595,7 +607,11 @@ export function startGame(
             }
             multiplayer?.emitBlackHoleTimeout();
             multiplayer?.emitGameReset();
-            storyManager?.blackHoleCutscene();
+            void storyManager?.blackHoleCutscene(true).then(() => {
+                if (!renderLoop.isDisposed) {
+                    onGameplayReady?.();
+                }
+            });
         },
     };
 }

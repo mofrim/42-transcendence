@@ -3,6 +3,7 @@ import { AuthContext } from '../../contexts/AuthContext';
 import { type User, type ApiResponse, API_USER } from 'ftr-common/sharedTypes';
 import axios from 'axios';
 import type { AxiosRequestConfig } from 'axios';
+import { resetIntroCutsceneSession } from './IntroCutsceneSession';
 
 const getAuthenticatedUser = async (signal?: AbortSignal): Promise<User> => {
     const config: AxiosRequestConfig = {
@@ -118,6 +119,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
             const currentUser = await getAuthenticatedUser();
             console.log(`user authenticated: ${currentUser.nickname}`);
 
+            resetIntroCutsceneSession();
             setUser(currentUser);
             return true;
         },
@@ -133,6 +135,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
                     withCredentials: true,
                 }
             );
+            resetIntroCutsceneSession();
             setUser(null);
             console.log('token cookie has been cleared!');
         } catch (error) {

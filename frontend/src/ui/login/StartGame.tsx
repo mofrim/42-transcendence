@@ -19,6 +19,10 @@ import { GameUI, type DialogPanelState } from '../ingame/GameUI';
 import { useFriendRequest } from '../ingame/FriendRequest';
 import { useSaveGame } from './SaveGame';
 import {
+    sawShownIntroCutscene,
+    IntroCutsceneSeen,
+} from './IntroCutsceneSession';
+import {
     applyQuestCompletionEvent,
     type QuestStatusChange,
 } from '../ingame/QuestLog';
@@ -60,6 +64,9 @@ export const Game: React.FC<{
     const gameRuntimeRef = useRef<GameRuntime | null>(null);
     const metPlayerNicknamesRef = useRef(new Set<string>());
     const playerJoinedLoggedRef = useRef(false);
+    const sawIntroCutsceneRef = useRef(
+        authUser !== null && sawShownIntroCutscene(authUser.id)
+    );
     const [completedQuestIds, setCompletedQuestIds] = useState<string[]>([]);
     const [gameResetVersion, setGameResetVersion] = useState(0);
     const [isGameplayReady, setIsGameplayReady] = useState(false);
@@ -116,10 +123,27 @@ export const Game: React.FC<{
 
             console.log('[SaveGameRestore] restored quests:', completedQsts);
 
+            /** used to prevent repeated Intro Cutscene */
+            const restoredCountdownAlreadyStarted =
+                snapshot !== null &&
+                (snapshot.blackHoleCountdownCompleted ||
+                    snapshot.blackHoleSecondsRemaining <
+                        BLACK_HOLE_DURATION_SECONDS);
+
+            if (!sawIntroCutsceneRef.current) {
+                sawIntroCutsceneRef.current = true;
+                if (authUser !== null) {
+                    IntroCutsceneSeen(authUser.id);
+                }
+                if (!restoredCountdownAlreadyStarted) {
+                    await gameRuntimeRef.current?.playIntroCutscene();
+                }
+            }
+
             setCompletedQuestIds(completedQsts);
             handleSaveGameStateRestore(snapshot);
         },
-        [handleSaveGameStateRestore]
+        [authUser, handleSaveGameStateRestore]
     );
 
     useEffect(() => {
@@ -272,6 +296,7 @@ export const Game: React.FC<{
     }, []);
 
     const handleGameReset = useCallback((): void => {
+        setIsGameplayReady(false);
         playerJoinedLoggedRef.current = false;
         metPlayerNicknamesRef.current.clear();
         setCompletedQuestIds([]);
