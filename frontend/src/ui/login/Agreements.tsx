@@ -99,12 +99,10 @@ const AgreementCheckbox: React.FC<AgreementCheckboxProps> = (
                     checked={props.checked}
                     onChange={onChange}
                 ></Checkbox>
-                <span style={{ marginLeft: '8px' }}>
+                <span className='terms-copy'>
                     I agree to the
                     <Button
-                        className='terms-link'
-                        style={{ marginLeft: '-10px', fontSize: '12px' }}
-                        color='default'
+                        className='terms-link terms-checkbox-link'
                         variant='link'
                         onClick={showModal}
                     >
