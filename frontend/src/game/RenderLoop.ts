@@ -14,6 +14,7 @@ import type { RPS_Game } from './MinigameRPS.js';
 import type { Story_Manager } from './story_manager.js';
 import type { TTT_Game } from './MinigameTTT.js';
 import type { WorldLoader } from './WorldLoader.js';
+import type { FriendInteraction } from '../ui/ingame/FriendRequest.js';
 
 import {
     EventType,
@@ -40,6 +41,7 @@ type RenderLoopOptions = {
     readonly getCamera: () => Camera | null;
     readonly getTTTGame: () => TTT_Game | null;
     readonly getRPSGame: () => RPS_Game | null;
+    readonly getFriendInteraction: () => FriendInteraction | null;
     readonly getStoryManager: () => Story_Manager | null;
     readonly getInteractionManager: () => InteractionManager | null;
     readonly isLocalPlayerDespawning: () => boolean;
@@ -123,6 +125,7 @@ export class RenderLoop {
 
         this.disposePromise = (async () => {
             this.options.getRPSGame()?.dispose();
+            this.options.getFriendInteraction()?.dispose();
             this.options.getTTTGame()?.dispose();
             this.spectatorControls?.dispose();
             this.options.getCamera()?.orbitControls.dispose();
@@ -237,15 +240,18 @@ export class RenderLoop {
 
         const player = this.options.getPlayer();
         const rpsGame = this.options.getRPSGame();
+        const friendInteraction = this.options.getFriendInteraction();
         const interactionManager = this.options.getInteractionManager();
         if (
             !this.options.isSpectator &&
             player &&
             rpsGame &&
+            friendInteraction &&
             interactionManager
         ) {
             if (!this.options.isLocalPlayerDespawning()) {
                 rpsGame.updateCheck();
+                friendInteraction.updateCheck();
             }
 
             const interactionInZone = interactionManager.update(

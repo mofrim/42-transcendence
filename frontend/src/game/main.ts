@@ -19,6 +19,7 @@ import { WorldLoader } from './WorldLoader.js';
 import { RenderLoop } from './RenderLoop.js';
 import { MinigameEvent } from './MinigameEvent.js';
 import { EnvCubeAnimationManager } from './EnvCubeAnimationManager.js';
+import { FriendInteraction } from '../ui/ingame/FriendRequest.js';
 import {
     getPlayerModelPath,
     IMG_DISPLAY_BOOKING,
@@ -111,6 +112,7 @@ export function startGame(
     let camera: Camera | null = null;
     let tttGame: TTT_Game | null = null;
     let rpsGame: RPS_Game | null = null;
+    let friendInteraction: FriendInteraction | null = null;
     let storyManager: Story_Manager | null = null;
     const { promise: storyManagerReady, resolve: resolveStoryManagerReady } =
         Promise.withResolvers<Story_Manager>();
@@ -192,6 +194,7 @@ export function startGame(
         getCamera: () => camera,
         getMultiplayer: () => multiplayer,
         getRPSGame: () => rpsGame,
+        getNearbyPlayer: () => multiplayer?.getNearbyPlayer() ?? null,
         getTTTGame: () => tttGame,
         getStoryManager: () => storyManager,
         getInteractionManager: () => interactionManager,
@@ -216,6 +219,7 @@ export function startGame(
         getCamera: () => camera,
         getTTTGame: () => tttGame,
         getRPSGame: () => rpsGame,
+        getFriendInteraction: () => friendInteraction,
         getStoryManager: () => storyManager,
         getInteractionManager: () => interactionManager,
         isLocalPlayerDespawning: () => isLocalPlayerDespawning,
@@ -226,6 +230,7 @@ export function startGame(
             camera = null;
             tttGame = null;
             rpsGame = null;
+            friendInteraction = null;
             minigameEvent.reset();
         },
         onGameEvent,
@@ -362,28 +367,16 @@ export function startGame(
         if (!isSpectator && player && camera) {
             // Removed the unused TTT button constructor argument
             tttGame = new TTT_Game(scene, player, tttBox, renderer);
+            friendInteraction = new FriendInteraction(
+                scene,
+                () => multiplayer?.getNearbyPlayer() ?? null
+            );
             rpsGame = new RPS_Game(
                 scene,
                 socket,
                 player,
-                multiplayer.players,
                 renderer,
-                // Connecting RPS range detection to meet student Quest
-                (nearbyPlayer) => {
-                    onGameEvent?.({
-                        id: 0,
-                        eventType: EventType.PlayerInRange,
-                        data: {
-                            playerId: nearbyPlayer.id,
-                            remoteNick: minigameEvent.resolvePlayerNickname(
-                                nearbyPlayer.id,
-                                nearbyPlayer.nickname
-                            ),
-                        },
-                        logtime: new Date(),
-                        user,
-                    });
-                }
+                () => multiplayer?.getNearbyPlayer() ?? null
             );
 
             // Not because it makes much sense from a code-architectural POV

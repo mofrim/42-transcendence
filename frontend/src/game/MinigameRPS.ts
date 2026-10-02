@@ -18,11 +18,9 @@ import { createResourceDisposer } from './ResourceDisposer';
 import type { Socket } from 'socket.io-client';
 import { RPSChoice } from 'ftr-common/sharedTypes';
 
-// TODO: freinds seperate from battle
-const BATTLE_PROMPT_TEXT = '⌨️ [B] Battle Challenge   ⌨️ [F] Friend Request';
+const BATTLE_PROMPT_TEXT = '⌨️ [B] Battle Challenge';
 const BATTLE_PROMPT_SIZE = 20;
 const BATTLE_PROMPT_HEIGHT = 1.6;
-const BATTLE_RANGE_SQUARED = 4;
 const RPS_FAST_ANIMATION_STEP = 0.0075;
 const RPS_WINNING_MATCHUPS = [
     [RPSChoice.Rock, RPSChoice.Scissors],
@@ -33,15 +31,10 @@ const RPS_WINNING_MATCHUPS = [
 export class RPS_Game extends MinigameOverlay {
     socket: Socket;
     player: Player;
-    players: Map<string, Remote_Player>;
 
-    inRange: boolean;
-    playerInRange: Remote_Player | null;
     battleRequestedPlayer: string;
     private readonly battlePrompt: FloatingTextSprite;
-    private readonly onPlayerInRange:
-        ((player: Remote_Player) => void) | undefined;
-    private hasReportedPlayerInRange: boolean;
+    private readonly getNearbyPlayer: () => Remote_Player | null;
     private readonly resourceDisposer: ReturnType<
         typeof createResourceDisposer
     >;
@@ -62,20 +55,15 @@ export class RPS_Game extends MinigameOverlay {
         scene: THREE.Scene,
         socket: Socket,
         player: Player,
-        players: Map<string, Remote_Player>,
         renderer: THREE.WebGLRenderer,
-        onPlayerInRange?: (player: Remote_Player) => void
+        getNearbyPlayer: () => Remote_Player | null
     ) {
         super();
         this.socket = socket;
         this.player = player;
-        this.players = players;
 
-        this.inRange = false;
-        this.playerInRange = null;
         this.battleRequestedPlayer = '';
-        this.onPlayerInRange = onPlayerInRange;
-        this.hasReportedPlayerInRange = false;
+        this.getNearbyPlayer = getNearbyPlayer;
         this.resourceDisposer = createResourceDisposer();
         this.disposed = false;
         this.battlePrompt = new FloatingTextSprite(
@@ -106,47 +94,13 @@ export class RPS_Game extends MinigameOverlay {
             return;
         }
 
-        const previousPlayer = this.playerInRange;
-        let nearestPlayer: Remote_Player | null = null;
-        let nearestDistanceSquared = Infinity;
-
-        for (const player of this.players.values()) {
-            if (!player.isActive()) {
-                continue;
-            }
-
-            const distanceSquared =
-                this.player.group.position.distanceToSquared(
-                    player.group.position
-                );
-
-            if (
-                distanceSquared < BATTLE_RANGE_SQUARED &&
-                distanceSquared < nearestDistanceSquared
-            ) {
-                nearestDistanceSquared = distanceSquared;
-                nearestPlayer = player;
-            }
-        }
-
-        this.playerInRange = nearestPlayer;
-        this.inRange = nearestPlayer !== null;
-
-        if (previousPlayer !== nearestPlayer) {
-            this.hasReportedPlayerInRange = false;
-        }
-
-        if (!nearestPlayer) {
+        const nearbyPlayer = this.getNearbyPlayer();
+        if (!nearbyPlayer) {
             this.battlePrompt.hide();
             return;
         }
 
-        if (!this.hasReportedPlayerInRange && this.onPlayerInRange) {
-            this.hasReportedPlayerInRange = true;
-            this.onPlayerInRange(nearestPlayer);
-        }
-
-        this.battlePrompt.follow(nearestPlayer.group);
+        this.battlePrompt.follow(nearbyPlayer.group);
     }
 
     BattleRequest(
@@ -365,8 +319,5 @@ export class RPS_Game extends MinigameOverlay {
 
         disposeOverlaySprites(this.rpsSprite, this.resourceDisposer);
         this.overlayScene.clear();
-        this.playerInRange = null;
-        this.inRange = false;
-        this.hasReportedPlayerInRange = false;
     }
 }

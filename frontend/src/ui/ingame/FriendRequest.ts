@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useState, type RefObject } from 'react';
+import * as THREE from 'three';
 import type { Socket } from 'socket.io-client';
+import { FloatingTextSprite } from '../../game/FloatingTextSprite.js';
+import { createResourceDisposer } from '../../game/ResourceDisposer.js';
 import type { Remote_Player } from '../../game/remote_player.js';
 import { useFriendList } from './FriendList';
 export { getFriendRequestMessage } from './FriendList';
@@ -21,6 +24,51 @@ import {
 } from 'ftr-common/sharedTypes';
 
 const FRIEND_REQUEST_RESULT_DISPLAY_MS = 4_000;
+const FRIEND_PROMPT_TEXT = '⌨️ [F] Friend Request';
+const FRIEND_PROMPT_SIZE = 20;
+const FRIEND_PROMPT_HEIGHT = 1.5;
+
+export class FriendInteraction {
+    private readonly prompt: FloatingTextSprite;
+    private readonly resourceDisposer = createResourceDisposer();
+    private disposed = false;
+
+    constructor(
+        scene: THREE.Scene,
+        private readonly getNearbyPlayer: () => Remote_Player | null
+    ) {
+        this.prompt = new FloatingTextSprite(
+            FRIEND_PROMPT_TEXT,
+            FRIEND_PROMPT_SIZE,
+            new THREE.Vector3(0, FRIEND_PROMPT_HEIGHT, 0)
+        );
+        scene.add(this.prompt);
+    }
+
+    updateCheck(): void {
+        if (this.disposed) {
+            return;
+        }
+
+        const nearbyPlayer = this.getNearbyPlayer();
+        if (!nearbyPlayer) {
+            this.prompt.hide();
+            return;
+        }
+
+        this.prompt.follow(nearbyPlayer.group);
+    }
+
+    dispose(): void {
+        if (this.disposed) {
+            return;
+        }
+
+        this.disposed = true;
+        this.prompt.hide();
+        this.resourceDisposer.disposeObject3D(this.prompt);
+    }
+}
 
 type UseFriendRequestOptions = {
     readonly onFriendListChange?: FriendRequestChangeHandler;

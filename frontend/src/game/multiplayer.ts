@@ -41,6 +41,7 @@ import {
 } from 'ftr-common/sharedTypes';
 
 const MIN_POSITION_CHANGE_SQUARED = 0.001 ** 2;
+const PLAYER_INTERACTION_RANGE_SQUARED = 4;
 const PLAYER_NETWORK_KEYFRAME_INTERVAL_MS = 1_000;
 
 type RemotePlayerUpdate = PlayerPosition & Pick<PlayerUpdatePayload, 'state'>;
@@ -166,6 +167,8 @@ export class MultiplayerManager {
     private playerUpdateIntervalId: number | null;
     private disposePromise: Promise<void> | null;
     private disposed: boolean;
+    private nearbyPlayer: Remote_Player | null;
+    private hasReportedPlayerInRange: boolean;
     private readonly desired: THREE.Vector3;
 
     constructor(
@@ -191,6 +194,8 @@ export class MultiplayerManager {
         this.playerUpdateIntervalId = null;
         this.disposePromise = null;
         this.disposed = false;
+        this.nearbyPlayer = null;
+        this.hasReportedPlayerInRange = false;
         this.saveGame = new SaveGameFrontend({
             socket: this.socket,
             isDisposed: () => this.disposed,
@@ -573,6 +578,18 @@ export class MultiplayerManager {
         this.chat.sendMessage(message);
     }
 
+    getNearbyPlayer(): Remote_Player | null {
+        const nearbyPlayer = this.nearbyPlayer;
+        if (
+            !nearbyPlayer ||
+            !nearbyPlayer.isActive() ||
+            this.players.get(nearbyPlayer.id) !== nearbyPlayer
+        ) {
+            return null;
+        }
+        return nearbyPlayer;
+    }
+
     resolvePlayerNickname(playerId: string, fallbackNickname?: string): string {
         if (playerId === this.localPlayer?.id || playerId === this.socket.id) {
             return this.user.nickname;
@@ -698,6 +715,59 @@ export class MultiplayerManager {
         return Promise.all(completions).then(() => undefined);
     }
 
+    private updateNearbyPlayer(): void {
+        const localPlayer = this.localPlayer;
+        if (!localPlayer) {
+            this.nearbyPlayer = null;
+            this.hasReportedPlayerInRange = false;
+            return;
+        }
+
+        const previousPlayer = this.nearbyPlayer;
+        let nearestPlayer: Remote_Player | null = null;
+        let nearestDistanceSquared = Infinity;
+
+        for (const remotePlayer of this.players.values()) {
+            if (!remotePlayer.isActive()) {
+                continue;
+            }
+
+            const distanceSquared =
+                localPlayer.group.position.distanceToSquared(
+                    remotePlayer.group.position
+                );
+            if (
+                distanceSquared < PLAYER_INTERACTION_RANGE_SQUARED &&
+                distanceSquared < nearestDistanceSquared
+            ) {
+                nearestDistanceSquared = distanceSquared;
+                nearestPlayer = remotePlayer;
+            }
+        }
+
+        this.nearbyPlayer = nearestPlayer;
+        if (previousPlayer !== nearestPlayer) {
+            this.hasReportedPlayerInRange = false;
+        }
+        if (!nearestPlayer || this.hasReportedPlayerInRange) {
+            return;
+        }
+
+        this.hasReportedPlayerInRange = true;
+        this.onGameEvent?.({
+            eventType: EventType.PlayerInRange,
+            data: {
+                playerId: nearestPlayer.id,
+                remoteNick: this.resolvePlayerNickname(
+                    nearestPlayer.id,
+                    nearestPlayer.nickname
+                ),
+            },
+            logtime: new Date(),
+            user: this.user,
+        });
+    }
+
     updateMultiplayer(
         animationDelta: number,
         lifecycleDelta: number = animationDelta
@@ -724,6 +794,8 @@ export class MultiplayerManager {
                 this.departingPlayers.delete(player);
             }
         }
+
+        this.updateNearbyPlayer();
     }
 
     dispose(): Promise<void> {
@@ -738,6 +810,8 @@ export class MultiplayerManager {
         this.friendRequest.dispose();
         this.knownPlayerNicknames.clear();
         this.blockedPlayerUpdates.clear();
+        this.nearbyPlayer = null;
+        this.hasReportedPlayerInRange = false;
         const ownedPlayers = new Set<Remote_Player>([
             ...this.players.values(),
             ...this.departingPlayers,

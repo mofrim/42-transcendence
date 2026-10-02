@@ -17,6 +17,7 @@ type InputOptions = {
     readonly getCamera: () => Camera | null;
     readonly getMultiplayer: () => MultiplayerManager | null;
     readonly getRPSGame: () => RPS_Game | null;
+    readonly getNearbyPlayer: () => Remote_Player | null;
     readonly getTTTGame: () => TTT_Game | null;
     readonly getStoryManager: () => Story_Manager | null;
     readonly getInteractionManager: () => InteractionManager | null;
@@ -34,6 +35,7 @@ export class Input {
     private readonly getCamera: () => Camera | null;
     private readonly getMultiplayer: () => MultiplayerManager | null;
     private readonly getRPSGame: () => RPS_Game | null;
+    private readonly resolveNearbyPlayer: () => Remote_Player | null;
     private readonly getTTTGame: () => TTT_Game | null;
     private readonly getStoryManager: () => Story_Manager | null;
     private readonly getInteractionManager: () => InteractionManager | null;
@@ -53,6 +55,7 @@ export class Input {
         this.getCamera = options.getCamera;
         this.getMultiplayer = options.getMultiplayer;
         this.getRPSGame = options.getRPSGame;
+        this.resolveNearbyPlayer = options.getNearbyPlayer;
         this.getTTTGame = options.getTTTGame;
         this.getStoryManager = options.getStoryManager;
         this.getInteractionManager = options.getInteractionManager;
@@ -143,8 +146,12 @@ export class Input {
         if (!player || !rpsGame) return;
         if (player.battleRequested) {
             player.battleRequested = false;
-            if (rpsGame.playerInRange)
-                rpsGame.playerInRange.battleRequested = false;
+            const requestedPlayer = multiplayer?.players.get(
+                rpsGame.battleRequestedPlayer
+            );
+            if (requestedPlayer) {
+                requestedPlayer.battleRequested = false;
+            }
             rpsGame.removeText();
             if (rpsGame.battleRequestedPlayer) {
                 const multiplayer = this.getMultiplayer();
@@ -180,8 +187,12 @@ export class Input {
         if (!player || !rpsGame) return;
         if (player.battleRequested) {
             player.battleRequested = false;
-            if (rpsGame.playerInRange)
-                rpsGame.playerInRange.battleRequested = false;
+            const requestedPlayer = multiplayer?.players.get(
+                rpsGame.battleRequestedPlayer
+            );
+            if (requestedPlayer) {
+                requestedPlayer.battleRequested = false;
+            }
             rpsGame.removeText();
             if (rpsGame.battleRequestedPlayer) {
                 console.log(
@@ -214,12 +225,11 @@ export class Input {
     }
 
     private getNearbyPlayer(): Remote_Player | null {
-        const rpsGame = this.getRPSGame();
         const multiplayer = this.getMultiplayer();
-        if (!rpsGame?.inRange || !multiplayer) {
+        if (!multiplayer) {
             return null;
         }
-        const nearbyPlayer = rpsGame.playerInRange;
+        const nearbyPlayer = this.resolveNearbyPlayer();
         if (
             !nearbyPlayer ||
             !nearbyPlayer.isActive() ||
