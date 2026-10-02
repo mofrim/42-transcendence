@@ -57,7 +57,8 @@ export class CanvasTextSprite extends THREE.Sprite {
         material: THREE.SpriteMaterial
     ): void {
         material.depthTest = !visibleThroughMeshes;
-        this.renderOrder = visibleThroughMeshes ? 1 : 0;
+        // hide tesxt behind glas
+        this.renderOrder = 1;
         material.needsUpdate = true;
     }
 

@@ -307,6 +307,8 @@ export class WorldLoader {
                 color: 0xaaddff,
                 transparent: glassOpacity < 1,
                 opacity: glassOpacity,
+                // GlassOcclusion
+                depthWrite: true,
             });
             mesh.castShadow = false;
             mesh.receiveShadow = false;
