@@ -586,26 +586,7 @@ export class Player {
         }
 
         // move object
-        // TODO: only if not idle for performance ?
         if (active) {
-            /*             let damping = Math.exp( - 4 * delta ) - 1;
-            if ( ! this.playerOnFloor ) {
-                this.playerVelocity.y -= this.GRAVITY * delta;
-                // small air resistance
-                damping *= 0.01;
-            }
-            this.playerVelocity.addScaledVector( this.playerVelocity, damping );
-            const deltaPosition = this.playerVelocity.clone().multiplyScalar( delta );
-            this.playerCollider.translate( deltaPosition );
-            this.playerCollisions();
-            const newPos = new THREE.Vector3()
-                .addVectors(this.playerCollider.start, this.playerCollider.end)
-                .multiplyScalar(0.5) ;
-            newPos.y -= Player.offset;
-
-            //camera.position.add( newPos.clone().sub(this.group.position) );
-            this.group.position.copy( newPos ); */
-
             // calculate camera direction and rotate input into world
             const direction = deltaPosition.setY(0);
             if (direction.lengthSq() === 0) {
