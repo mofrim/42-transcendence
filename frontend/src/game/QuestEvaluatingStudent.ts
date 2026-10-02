@@ -30,7 +30,6 @@ const EVALUATING_STUDENT_CHAT_BUBBLE_TEXT = `${CHAT_BUBBLE_PREFIX}Ready for Eval
 const EVALUATING_STUDENT_NAME_SIZE = 48;
 const EVALUATING_STUDENT_NAME_HEIGHT = 1.9;
 const EVALUATING_STUDENT_NAME_SCALE = 0.3;
-const EVALUATING_STUDENT_CHAT_BUBBLE_HEIGHT = CHAT_BUBBLE_HEIGHT + 0.4;
 const EVALUATOR_LOCATION_MESSAGE =
     "Someone's been assigned to my evaluation. They're at c1r12s2. Let's go.";
 const EVALUATING_STUDENT_SUCCESS_MESSAGE =
@@ -171,7 +170,7 @@ export class EvaluatingStudentQuest {
             EVALUATING_STUDENT_CHAT_BUBBLE_TEXT,
             CHAT_BUBBLE_SIZE
         );
-        chatBubble.position.set(0, EVALUATING_STUDENT_CHAT_BUBBLE_HEIGHT, 0);
+        chatBubble.position.set(0, CHAT_BUBBLE_HEIGHT, 0);
         chatBubble.scale.multiplyScalar(CHAT_BUBBLE_SCALE);
 
         student.group.add(nameLabel, chatBubble);
