@@ -3,7 +3,6 @@ import { useLoginContext } from '../../hooks/useLoginContext';
 import { useAuth } from '../../hooks/useAuthContext';
 import { startGame, type GameMode, type GameRuntime } from '../../game/main';
 import {
-    BLACK_HOLE_DURATION_SECONDS,
     GameEvent,
     EventType,
     User,
@@ -14,6 +13,10 @@ import {
     type EventDataPlayerInRange,
     type SaveGameSnapshot,
 } from 'ftr-common/sharedTypes';
+import {
+    hasRestoredBlackHoleCountdownStarted,
+    isInitialBlackHoleRestore,
+} from '../../game/BlackHoleTimeout';
 import { useMatchHistory } from '../../hooks/useMatchHistory';
 import { GameUI, type DialogPanelState } from '../ingame/GameUI';
 import { useFriendRequest } from '../ingame/FriendRequest';
@@ -128,10 +131,7 @@ export const Game: React.FC<{
 
             /** used to prevent repeated Intro Cutscene */
             const restoredCountdownAlreadyStarted =
-                snapshot !== null &&
-                (snapshot.blackHoleCountdownCompleted ||
-                    snapshot.blackHoleSecondsRemaining <
-                        BLACK_HOLE_DURATION_SECONDS);
+                hasRestoredBlackHoleCountdownStarted(snapshot);
 
             if (!sawIntroCutsceneRef.current) {
                 sawIntroCutsceneRef.current = true;
@@ -185,8 +185,10 @@ export const Game: React.FC<{
             !isGameplayReady ||
             !isSaveGameReady ||
             !isGameConnected ||
-            blackHoleRestore.completed ||
-            blackHoleRestore.secondsRemaining !== BLACK_HOLE_DURATION_SECONDS
+            !isInitialBlackHoleRestore(
+                blackHoleRestore.completed,
+                blackHoleRestore.secondsRemaining
+            )
         ) {
             return;
         }

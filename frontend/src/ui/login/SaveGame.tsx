@@ -1,20 +1,10 @@
 import { useCallback, useState, type RefObject } from 'react';
+import type { SaveGameSnapshot } from 'ftr-common/sharedTypes';
 import {
-    BLACK_HOLE_DURATION_SECONDS,
-    type SaveGameSnapshot,
-} from 'ftr-common/sharedTypes';
+    createBlackHoleRestore,
+    type BlackHoleRestore,
+} from '../../game/BlackHoleTimeout';
 import type { GameRuntime } from '../../game/main';
-
-type BlackHoleRestore = {
-    readonly version: number;
-    readonly secondsRemaining: number;
-    readonly completed: boolean;
-};
-
-const DEFAULT_BLACK_HOLE_RESTORE = {
-    secondsRemaining: BLACK_HOLE_DURATION_SECONDS,
-    completed: false,
-} satisfies Omit<BlackHoleRestore, 'version'>;
 
 type UseSaveGameOptions = {
     readonly isSpectator: boolean;
@@ -27,22 +17,15 @@ export function useSaveGame({
 }: UseSaveGameOptions) {
     const [isSaveGameReady, setIsSaveGameReady] = useState(isSpectator);
     const [isGameConnected, setIsGameConnected] = useState(isSpectator);
-    const [blackHoleRestore, setBlackHoleRestore] = useState<BlackHoleRestore>({
-        version: 0,
-        ...DEFAULT_BLACK_HOLE_RESTORE,
-    });
+    const [blackHoleRestore, setBlackHoleRestore] = useState<BlackHoleRestore>(
+        () => createBlackHoleRestore(null, 0)
+    );
 
     const SaveGameRestore = useCallback(
         (snapshot: SaveGameSnapshot | null): void => {
-            setBlackHoleRestore((currentRestore) => ({
-                version: currentRestore.version + 1,
-                secondsRemaining:
-                    snapshot?.blackHoleSecondsRemaining ??
-                    DEFAULT_BLACK_HOLE_RESTORE.secondsRemaining,
-                completed:
-                    snapshot?.blackHoleCountdownCompleted ??
-                    DEFAULT_BLACK_HOLE_RESTORE.completed,
-            }));
+            setBlackHoleRestore((currentRestore) =>
+                createBlackHoleRestore(snapshot, currentRestore.version + 1)
+            );
             setIsSaveGameReady(true);
         },
         []
@@ -69,10 +52,9 @@ export function useSaveGame({
     );
 
     const resetSaveGame = useCallback((): void => {
-        setBlackHoleRestore((currentRestore) => ({
-            version: currentRestore.version + 1,
-            ...DEFAULT_BLACK_HOLE_RESTORE,
-        }));
+        setBlackHoleRestore((currentRestore) =>
+            createBlackHoleRestore(null, currentRestore.version + 1)
+        );
     }, []);
 
     return {
