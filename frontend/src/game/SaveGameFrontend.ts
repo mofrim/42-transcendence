@@ -23,6 +23,7 @@ type SaveGameUpdatePayload =
 
 export class SaveGameFrontend {
     private restoreReady = false;
+    private restoreGeneration = 0;
 
     constructor(private readonly options: SaveGameOptions) {}
 
@@ -32,25 +33,45 @@ export class SaveGameFrontend {
 
     prepareRestore(): void {
         this.restoreReady = false;
+        this.restoreGeneration += 1;
     }
 
     requestRestore(socketId: string): void {
         const { socket } = this.options;
+        const restoreGeneration = ++this.restoreGeneration;
+        this.restoreReady = false;
         socket.emit(
             'save_game_restore',
-            (snapshot: SaveGameSnapshot | null): void => {
+            async (snapshot: SaveGameSnapshot | null): Promise<void> => {
                 if (
                     this.options.isDisposed() ||
                     !socket.connected ||
-                    socket.id !== socketId
+                    socket.id !== socketId ||
+                    this.restoreGeneration !== restoreGeneration
                 ) {
                     return;
                 }
                 if (snapshot) {
                     this.options.onPositionRestore(snapshot.position);
                 }
+
+                try {
+                    await this.options.onSaveGameRestore?.(snapshot);
+                } catch (error) {
+                    console.error('[SaveGameRestore] restore failed:', error);
+                    return;
+                }
+
+                if (
+                    this.options.isDisposed() ||
+                    !socket.connected ||
+                    socket.id !== socketId ||
+                    this.restoreGeneration !== restoreGeneration
+                ) {
+                    return;
+                }
+
                 this.restoreReady = true;
-                this.options.onSaveGameRestore?.(snapshot);
                 this.options.onConnectionChange?.(true);
                 this.options.onRestoreReady();
             }

@@ -123,6 +123,9 @@ export const Game: React.FC<{
 
             console.log('[SaveGameRestore] restored quests:', completedQsts);
 
+            setCompletedQuestIds(completedQsts);
+            handleSaveGameStateRestore(snapshot);
+
             /** used to prevent repeated Intro Cutscene */
             const restoredCountdownAlreadyStarted =
                 snapshot !== null &&
@@ -136,22 +139,23 @@ export const Game: React.FC<{
                     IntroCutsceneSeen(authUser.id);
                 }
                 if (!restoredCountdownAlreadyStarted) {
-                    await gameRuntimeRef.current?.playIntroCutscene();
+                    try {
+                        await gameRuntimeRef.current?.playIntroCutscene();
+                    } catch (error) {
+                        console.error('Intro cutscene failed:', error);
+                    }
                 }
             }
-
-            setCompletedQuestIds(completedQsts);
-            handleSaveGameStateRestore(snapshot);
         },
         [authUser, handleSaveGameStateRestore]
     );
 
     useEffect(() => {
-        if (isSpectator || !isSaveGameReady) {
+        if (isSpectator || !isSaveGameReady || !isGameConnected) {
             return;
         }
         gameRuntimeRef.current?.updateQuestStatus(completedQuestIds);
-    }, [completedQuestIds, isSaveGameReady, isSpectator]);
+    }, [completedQuestIds, isGameConnected, isSaveGameReady, isSpectator]);
 
     const { matchHistory, saveMatchResult } = useMatchHistory({
         isSpectator,

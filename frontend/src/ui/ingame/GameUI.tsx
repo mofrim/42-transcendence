@@ -323,12 +323,20 @@ export function GameUI({
     ).length;
 
     useEffect(() => {
-        if (!blackHoleCountdownActive || !isStartEvaluationCompleted) {
+        if (
+            !blackHoleCountdownActive ||
+            !blackHoleConnected ||
+            !isStartEvaluationCompleted
+        ) {
             return;
         }
 
         BlackHoleTimerChange(getBlackHoleSecondsRemaining(), true);
-    }, [blackHoleCountdownActive, isStartEvaluationCompleted]);
+    }, [
+        blackHoleConnected,
+        blackHoleCountdownActive,
+        isStartEvaluationCompleted,
+    ]);
 
     /** blackhole timer */
     useEffect(() => {
