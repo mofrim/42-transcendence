@@ -4,12 +4,14 @@ import type {
     FriendRequestChangeHandler,
     FriendRequestState,
 } from 'ftr-common/sharedTypes';
+import { HudPanelHeader } from './HudPanelHeader';
 export const FRIENDS_PANEL_ID = 'game-friends-panel';
 
 type FriendListProps = {
     readonly friendRequest: FriendRequestState | null | undefined;
     readonly friends: readonly FriendListEntry[];
     readonly isOpen: boolean;
+    readonly onClose: () => void;
     readonly onRemoveFriend?: ((friendPlayerId: string) => void) | undefined;
 };
 
@@ -88,12 +90,30 @@ export function useFriendListPanel(
     friendRequest: FriendRequestState | null | undefined
 ) {
     const [isOpen, setIsOpen] = useState(false);
+    const [dismissedFriendRequest, setDismissedFriendRequest] = useState<
+        FriendRequestState | null | undefined
+    >(undefined);
+    const hasUndismissedFriendRequest = Boolean(
+        friendRequest && friendRequest !== dismissedFriendRequest
+    );
+    const close = useCallback((): void => {
+        setDismissedFriendRequest(friendRequest);
+        setIsOpen(false);
+    }, [friendRequest]);
+
     const toggle = useCallback((): void => {
-        setIsOpen((currentIsOpen) => !currentIsOpen);
-    }, []);
+        if (isOpen || hasUndismissedFriendRequest) {
+            close();
+            return;
+        }
+
+        setIsOpen(true);
+    }, [close, hasUndismissedFriendRequest, isOpen]);
+
     return {
-        isOpen: isOpen || Boolean(friendRequest),
+        isOpen: isOpen || hasUndismissedFriendRequest,
         toggle,
+        close,
     };
 }
 
@@ -102,6 +122,7 @@ export function FriendList({
     friendRequest,
     friends,
     isOpen,
+    onClose,
     onRemoveFriend,
 }: FriendListProps) {
     let friendListContent = (
@@ -145,7 +166,9 @@ export function FriendList({
             aria-label='Friendlist'
             hidden={!isOpen}
         >
-            <h2 className='hud-title'>Friendlist</h2>
+            <HudPanelHeader panelLabel='Friendlist' onClose={onClose}>
+                Friendlist
+            </HudPanelHeader>
             {friendListContent}
             <p className='hud-friends-placeholder'>
                 {getFriendRequestMessage(friendRequest)}

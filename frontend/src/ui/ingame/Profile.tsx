@@ -1,6 +1,7 @@
 import type { Character, PublicUserProfile } from 'ftr-common/sharedTypes';
 
 import { CharacterPreviewView } from '../login/PreviewCharacter';
+import { HudPanelHeader } from './HudPanelHeader';
 
 export const PROFILE_PANEL_ID = 'game-profile-panel';
 
@@ -15,6 +16,7 @@ type ProfilePanelProps = {
     readonly publicProfile: PublicUserProfile | null;
     readonly selectedNickname: string;
     readonly canLogout: boolean;
+    readonly onClose: () => void;
     readonly onLogout: () => Promise<void>;
 };
 
@@ -29,6 +31,7 @@ export function ProfilePanel({
     publicProfile,
     selectedNickname,
     canLogout,
+    onClose,
     onLogout,
 }: ProfilePanelProps) {
     const isOwnProfile = selectedNickname === nickname;
@@ -55,7 +58,9 @@ export function ProfilePanel({
             aria-label={profileAriaLabel}
             hidden={!isOpen}
         >
-            <h2 className='hud-title'>🪪 {profileTitle}</h2>
+            <HudPanelHeader panelLabel='Profile' onClose={onClose}>
+                🪪 {profileTitle}
+            </HudPanelHeader>
             {isLoading && (
                 <p className='hud-match-history-empty'>Loading profile...</p>
             )}

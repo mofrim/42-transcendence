@@ -33,6 +33,7 @@ import { FRIENDS_PANEL_ID, FriendList, useFriendListPanel } from './FriendList';
 import { Leaderboard } from './Leaderboard';
 import { MatchHistory } from './MatchHistory';
 import { PROFILE_PANEL_ID, ProfilePanel } from './Profile';
+import { HudPanelHeader } from './HudPanelHeader';
 import { MAX_EVENT_LOG_ENTRIES } from '../../lib/eventLogUtils';
 
 import './GameUI.css';
@@ -191,8 +192,11 @@ export function GameUI({
     const previousResolvedQuestsRef = useRef<
         readonly ResolvedQuestLogEntry[] | null
     >(null);
-    const { isOpen: friendsPanelOpen, toggle: handleFriendsToggle } =
-        useFriendListPanel(friendRequest);
+    const {
+        isOpen: friendsPanelOpen,
+        toggle: handleFriendsToggle,
+        close: handleFriendsClose,
+    } = useFriendListPanel(friendRequest);
 
     const handleQuestLogToggle = (): void => {
         setIsQuestLogOpen((isOpen) => !isOpen);
@@ -209,6 +213,10 @@ export function GameUI({
         setIsProfileLoading(false);
         setProfileLoadFailed(false);
         setIsProfileOpen(true);
+    };
+
+    const handleProfileClose = (): void => {
+        setIsProfileOpen(false);
     };
 
     const handlePlayerProfileOpen = (playerNickname: string): void => {
@@ -233,8 +241,20 @@ export function GameUI({
         setIsMatchHistoryOpen((isOpen) => !isOpen);
     };
 
+    const handleMatchHistoryClose = (): void => {
+        setIsMatchHistoryOpen(false);
+    };
+
     const handleLeaderboardToggle = (): void => {
         setIsLeaderboardOpen((isOpen) => !isOpen);
+    };
+
+    const handleLeaderboardClose = (): void => {
+        setIsLeaderboardOpen(false);
+    };
+
+    const handleQuestLogClose = (): void => {
+        setIsQuestLogOpen(false);
     };
 
     const handleLogout = async (): Promise<void> => {
@@ -515,6 +535,7 @@ export function GameUI({
                     publicProfile={publicProfile}
                     selectedNickname={selectedProfileNickname}
                     canLogout={onLogout !== undefined}
+                    onClose={handleProfileClose}
                     onLogout={handleLogout}
                 />
 
@@ -522,6 +543,7 @@ export function GameUI({
                     friendRequest={friendRequest}
                     friends={friends}
                     isOpen={friendsPanelOpen}
+                    onClose={handleFriendsClose}
                     onRemoveFriend={onFriendRemove}
                 />
 
@@ -531,7 +553,12 @@ export function GameUI({
                     aria-label='Match History'
                     hidden={!isMatchHistoryOpen}
                 >
-                    <h2 className='hud-title'>Match History</h2>
+                    <HudPanelHeader
+                        panelLabel='Match History'
+                        onClose={handleMatchHistoryClose}
+                    >
+                        Match History
+                    </HudPanelHeader>
                     <MatchHistory
                         entries={matchHistory}
                         listref={matchHistoryListRef}
@@ -545,7 +572,12 @@ export function GameUI({
                     aria-label='Leaderboard'
                     hidden={!isLeaderboardOpen}
                 >
-                    <h2 className='hud-title'>Leaderboard</h2>
+                    <HudPanelHeader
+                        panelLabel='Leaderboard'
+                        onClose={handleLeaderboardClose}
+                    >
+                        Leaderboard
+                    </HudPanelHeader>
                     <Leaderboard
                         currentNickname={nickname}
                         isOpen={isLeaderboardOpen}
@@ -573,7 +605,12 @@ export function GameUI({
                 aria-label='Quest Log'
                 hidden={!isQuestLogOpen}
             >
-                <h2 className='hud-title'>Quest Log Checklist:</h2>
+                <HudPanelHeader
+                    panelLabel='Quest Log'
+                    onClose={handleQuestLogClose}
+                >
+                    Quest Log Checklist:
+                </HudPanelHeader>
                 <ul className='hud-quest-list'>
                     {resolvedQuests.map((quest) => {
                         let marker = '🟥';
