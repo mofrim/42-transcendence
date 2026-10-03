@@ -15,7 +15,7 @@ import {
     type ResolvedQuestLogEntry,
 } from './QuestLog';
 
-import { formatQuestCountdown } from '../../game/QuestBlackHole';
+import { useBlackHoleTimeout } from '../../game/BlackHoleTimeout';
 
 import {
     API_USER,
@@ -183,9 +183,6 @@ export function GameUI({
         useState<PublicUserProfile | null>(null);
     const [isProfileLoading, setIsProfileLoading] = useState(false);
     const [profileLoadFailed, setProfileLoadFailed] = useState(false);
-    const [blackHoleSecondsRemaining, setBlackHoleSecondsRemaining] = useState(
-        restoredBlackHoleSecondsRemaining
-    );
     const eventListRef = useRef<HTMLOListElement>(null);
     const matchHistoryListRef = useRef<HTMLOListElement>(null);
     const chatInputRef = useRef<HTMLInputElement>(null);
@@ -300,39 +297,23 @@ export function GameUI({
         setIsChatOpen(true);
     });
 
-    const handleBlackHoleCountdownExpired = useEffectEvent((): void => {
-        onBlackHoleCountdownExpired?.();
-    });
-    const BlackHoleTimerChange = useEffectEvent(
-        (secondsRemaining: number, completed: boolean): void => {
-            onBlackHoleTimerChange?.(secondsRemaining, completed);
-        }
-    );
-    const getBlackHoleSecondsRemaining = useEffectEvent(
-        (): number => blackHoleSecondsRemaining
-    );
-
     const displayedEvents = events.slice(-MAX_EVENT_LOG_ENTRIES);
     const latestEventId = displayedEvents.at(-1)?.id;
-    let blackHoleHourglass = '⌛';
-    if (blackHoleSecondsRemaining % 2 !== 0) {
-        blackHoleHourglass = '⏳';
-    }
-    const blackHoleCountdown =
-        blackHoleHourglass + formatQuestCountdown(blackHoleSecondsRemaining);
     const isStartEvaluationCompleted = completedQuestIds.includes(
         QUESTS.START_EVALUATION_QUEST_ID.id
     );
-    const isBlackHoleCountdownCompleted =
-        restoredBlackHoleCountdownCompleted || isStartEvaluationCompleted;
-    const isBlackHoleCountdownRunning =
-        blackHoleCountdownActive &&
-        blackHoleConnected &&
-        !isBlackHoleCountdownCompleted;
-    const isBlackHoleQuestCompleted =
-        blackHoleCountdownActive &&
-        isBlackHoleCountdownCompleted &&
-        blackHoleSecondsRemaining > 0;
+    const {
+        countdown: blackHoleCountdown,
+        questCompleted: isBlackHoleQuestCompleted,
+    } = useBlackHoleTimeout({
+        active: blackHoleCountdownActive,
+        connected: blackHoleConnected,
+        restoredSecondsRemaining: restoredBlackHoleSecondsRemaining,
+        restoredCompleted: restoredBlackHoleCountdownCompleted,
+        evaluationCompleted: isStartEvaluationCompleted,
+        onCountdownExpired: onBlackHoleCountdownExpired,
+        onTimerChange: onBlackHoleTimerChange,
+    });
     const resolvedQuests = resolveQuestLogEntries(
         quests,
         completedQuestIds,
@@ -341,53 +322,6 @@ export function GameUI({
     const completedQuestCount = resolvedQuests.filter(
         (quest) => quest.completed
     ).length;
-
-    useEffect(() => {
-        if (!blackHoleCountdownActive || !isStartEvaluationCompleted) {
-            return;
-        }
-
-        BlackHoleTimerChange(getBlackHoleSecondsRemaining(), true);
-    }, [blackHoleCountdownActive, isStartEvaluationCompleted]);
-
-    /** blackhole timer */
-    useEffect(() => {
-        if (!isBlackHoleCountdownRunning) {
-            return;
-        }
-
-        const blackHoleDeadline =
-            Date.now() + getBlackHoleSecondsRemaining() * 1_000;
-        let intervalId: number | undefined;
-
-        const updateBlackHoleTimer = (): void => {
-            const millisecondsRemaining = blackHoleDeadline - Date.now();
-            const secondsRemaining = Math.max(
-                0,
-                Math.ceil(millisecondsRemaining / 1_000)
-            );
-
-            setBlackHoleSecondsRemaining(secondsRemaining);
-
-            if (secondsRemaining > 0) {
-                BlackHoleTimerChange(secondsRemaining, false);
-            } else if (intervalId !== undefined) {
-                window.clearInterval(intervalId);
-                intervalId = undefined;
-                BlackHoleTimerChange(0, false);
-                handleBlackHoleCountdownExpired();
-            }
-        };
-
-        intervalId = window.setInterval(updateBlackHoleTimer, 1_000);
-        updateBlackHoleTimer();
-
-        return () => {
-            if (intervalId !== undefined) {
-                window.clearInterval(intervalId);
-            }
-        };
-    }, [isBlackHoleCountdownRunning]);
 
     /** Reports only actual changes to a quest status. */
     useEffect(() => {

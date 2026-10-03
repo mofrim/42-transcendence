@@ -2,7 +2,6 @@ import axios from 'axios';
 import { useEffect, useState } from 'react';
 import {
     API_EVENTLOG,
-    BLACK_HOLE_DURATION_SECONDS,
     EventType,
     QUESTS,
     type ApiResponse,
@@ -10,6 +9,10 @@ import {
     type EventDataGameResult,
     type EventDataQuestCompleted,
 } from 'ftr-common/sharedTypes';
+import {
+    calculateBlackHoleSecondsRemaining,
+    formatBlackHoleTime,
+} from '../../game/BlackHoleTimeout';
 
 type LeaderboardProps = {
     readonly currentNickname: string;
@@ -70,28 +73,6 @@ function getEventTimeMs(logtime: Date | string): number | null {
     }
 
     return timestamp;
-}
-
-function calculateBlackHoleSecondsRemaining(
-    sessionStartedAtMs: number,
-    completedAtMs: number
-): number {
-    const elapsedMs = Math.max(0, completedAtMs - sessionStartedAtMs);
-    const remainingMs = BLACK_HOLE_DURATION_SECONDS * 1_000 - elapsedMs;
-    return Math.max(
-        0,
-        Math.min(BLACK_HOLE_DURATION_SECONDS, Math.ceil(remainingMs / 1_000))
-    );
-}
-
-function formatBlackHoleTime(secondsRemaining: number | null): string {
-    if (secondsRemaining === null) {
-        return '—';
-    }
-
-    const minutes = Math.floor(secondsRemaining / 60);
-    const seconds = secondsRemaining % 60;
-    return minutes + ':' + seconds.toString().padStart(2, '0');
 }
 
 function createPlayerStats(): PlayerStats {
