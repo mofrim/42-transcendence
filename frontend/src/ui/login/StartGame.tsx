@@ -443,7 +443,7 @@ export const Game: React.FC<{
             onLogout: handleLogout,
             dialog,
             onDialogNext: handleDialogNext,
-            blackHoleCountdownActive: isGameplayReady && isSaveGameReady,
+            blackHoleCountdownActive: isGameplayReady,
             blackHoleConnected: isGameConnected,
             restoredBlackHoleSecondsRemaining:
                 blackHoleRestore.secondsRemaining,
@@ -459,21 +459,23 @@ export const Game: React.FC<{
         <>
             <div ref={mountRef} className='game-canvas-container' />
             {spectatorExitButton}
-            <GameUI
-                key={gameResetVersion + ':' + blackHoleRestore.version}
-                // NOTE now we can just use the users nickname from DB here..
-                // this might change when we want to allow change user-prefs
-                // from a in-game ui
-                nickname={user!.nickname}
-                email={user!.email}
-                character={character}
-                completedQuestIds={completedQuestIds}
-                events={events}
-                matchHistory={matchHistory}
-                onChatMessage={handleChatMessage}
-                {...playerOnlyGameUIProps}
-                isSpectator={isSpectator}
-            />
+            {isSaveGameReady && (
+                <GameUI
+                    key={gameResetVersion + ':' + blackHoleRestore.version}
+                    // NOTE now we can just use the users nickname from DB here..
+                    // this might change when we want to allow change user-prefs
+                    // from a in-game ui
+                    nickname={user!.nickname}
+                    email={user!.email}
+                    character={character}
+                    completedQuestIds={completedQuestIds}
+                    events={events}
+                    matchHistory={matchHistory}
+                    onChatMessage={handleChatMessage}
+                    {...playerOnlyGameUIProps}
+                    isSpectator={isSpectator}
+                />
+            )}
         </>
     );
 };
