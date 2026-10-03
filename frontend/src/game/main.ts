@@ -379,42 +379,6 @@ export function startGame(
                 () => multiplayer?.getNearbyPlayer() ?? null
             );
 
-            // Not because it makes much sense from a code-architectural POV
-            // but, yeah, fetch quests from DB and set door-states
-            // accordingly...
-
-            // NOTE: not usin signals here bc we are not in a useEffect or sth
-            let quests: QuestTuple[] | undefined = undefined;
-            try {
-                const res = await api.get<ApiResponse<QuestTuple[]>>(
-                    API_USER.quests
-                );
-                if (res.data.data !== undefined) quests = res.data.data;
-            } catch {
-                console.warn('Could not get quests from DB');
-            }
-
-            if (quests !== undefined) {
-                // Arrrghl! TYPE-HELL!! Make a simple Set from QuestTuple-arrrr
-                // in order to not get stupid every time (well by now its 2
-                // times, but who knows?) we query for solved quests.
-                const completedQuests = new Set<string>(
-                    quests.flatMap((obj) =>
-                        Object.entries(obj)
-                            .filter(([, v]) => v)
-                            .map(([k]) => k)
-                    )
-                );
-                if (completedQuests.has('ENTER_EVENT_SPACE')) {
-                    console.log('[init] opening event space doors...');
-                    worldLoader.openEventSpaceDoors();
-                }
-                if (completedQuests.has('ENTER_CAMPUS_TOKEN')) {
-                    console.log('[init] opening front doors...');
-                    worldLoader.openMainDoor();
-                }
-            }
-
             interactionManager = new InteractionManager(scene, npcManager);
             interactionManager.onInteraction = (interaction) => {
                 storyManager?.handleInteraction(interaction);
@@ -500,8 +464,6 @@ export function startGame(
         await worldLoader.loadMesh(MODEL_DOOR_MAIN);
         if (renderLoop.isDisposed) return;
 
-        // TODO: Need to check with quest state.
-        // If duck already found, than show duck_up, else show duck_down.
         duck_down = await worldLoader.loadMesh(MODEL_DUCK_DOWN);
         if (renderLoop.isDisposed) return;
         addBlackhole(scene);
@@ -515,6 +477,149 @@ export function startGame(
         testCube.position.copy(new THREE.Vector3(0, 0.5, 0));
         scene.add(testCube);
         scene.add(new THREE.AmbientLight(0xffffff, 12)); */
+
+        await loadAndSetQuestStateFromDB();
+    }
+
+    async function loadAndSetQuestStateFromDB(): Promise<void> {
+        // Not because it makes much sense from a code-architectural POV
+        // but, yeah, fetch quests from DB and set door-states
+        // accordingly...
+
+        // NOTE: not usin signals here bc we are not in a useEffect or sth
+        let quests: QuestTuple[] | undefined = undefined;
+        try {
+            const res = await api.get<ApiResponse<QuestTuple[]>>(
+                API_USER.quests
+            );
+            if (res.data.data !== undefined) quests = res.data.data;
+        } catch {
+            console.warn('Could not get quests from DB');
+        }
+
+        if (quests !== undefined) {
+            // Arrrghl! TYPE-HELL!! Make a simple Set from QuestTuple-arrrr
+            // in order to not get stupid every time (well by now its 2
+            // times, but who knows?) we query for solved quests.
+            const completedQuests = new Set<string>(
+                quests.flatMap((obj) =>
+                    Object.entries(obj)
+                        .filter(([, v]) => v)
+                        .map(([k]) => k)
+                )
+            );
+            // Play Intro only if the player has not completed the FIND_LOST_DROPPED_TOKEN quest yet
+            /* if (!completedQuests.has('FIND_LOST_DROPPED_TOKEN'))
+                await storyManager?.GameIntro(); */
+
+            // Set the state of the environment based on the completed quests
+            if (completedQuests.has('ENTER_CAMPUS_TOKEN')) {
+                console.log('[init] opening front doors...');
+                worldLoader.openMainDoor();
+            }
+            if (completedQuests.has('RUBBER_DUCK')) {
+                duck_up = await worldLoader.loadMesh(MODEL_DUCK_UP);
+                if (duck_down) {
+                    runtimeResourceDisposer.disposeObject3D(duck_down);
+                    duck_down = null;
+                }
+                storyManager?.questState.set('RUBBER_DUCK', true);
+                interactionManager?.interactions
+                    .find((interaction) => interaction.typeID === 'RUBBER_DUCK')
+                    ?.reset(false);
+            }
+            if (completedQuests.has('COFFEE')) {
+                storyManager?.questState.set('COFFEE', true);
+                interactionManager?.interactions
+                    .find((interaction) => interaction.typeID === 'COFFEE')
+                    ?.reset(false);
+            }
+            if (completedQuests.has('PAPER')) {
+                storyManager?.questState.set('PAPER', true);
+                interactionManager?.interactions
+                    .find((interaction) => interaction.typeID === 'PAPER')
+                    ?.reset(false);
+            }
+            if (completedQuests.has('COMPUTER_LOGIN')) {
+                storyManager?.questState.set('COMPUTER_LOGIN', true);
+                interactionManager?.interactions
+                    .find(
+                        (interaction) => interaction.typeID === 'COMPUTER_LOGIN'
+                    )
+                    ?.reset(false);
+            }
+            if (completedQuests.has('FIND_LOST_DROPPED_TOKEN')) {
+                console.log('resetting FIND_LOST_DROPPED_TOKEN interaction...');
+                interactionManager?.interactions
+                    .find(
+                        (interaction) =>
+                            typeof interaction.typeID === 'object' &&
+                            interaction.typeID.id === 'FIND_LOST_DROPPED_TOKEN'
+                    )
+                    ?.reset(false);
+            }
+            if (
+                [...(storyManager?.questState.values() ?? [])].every(Boolean) &&
+                !completedQuests.has('EVALUATING_STUDENT')
+            ) {
+                if (!display)
+                    display = await worldLoader.loadMesh(MODEL_DISPLAY);
+                console.log('Display loaded');
+                changeObjectTexture(display, IMG_DISPLAY_INTRA);
+                interactionManager?.interactions
+                    .find(
+                        (interaction) =>
+                            interaction.typeID === 'WHERE_IS_EVALUATOR'
+                    )
+                    ?.reset(true);
+                storyManager?.interactionManager.evaluatingStudentQuest.unlock();
+            }
+            if (
+                [...(storyManager?.questState.values() ?? [])].every(Boolean) &&
+                completedQuests.has('EVALUATING_STUDENT') &&
+                !completedQuests.has('START_EVALUATION')
+            ) {
+                if (!display)
+                    display = await worldLoader.loadMesh(MODEL_DISPLAY);
+                changeObjectTexture(display, IMG_DISPLAY_EVAL);
+                interactionManager?.interactions
+                    .find(
+                        (interaction) =>
+                            interaction.typeID === 'START_EVALUATION'
+                    )
+                    ?.reset(true);
+            }
+            if (completedQuests.has('START_EVALUATION')) {
+                console.log('[init] opening event space doors...');
+                worldLoader.openEventSpaceDoors();
+                interactionManager?.interactions
+                    .find(
+                        (interaction) =>
+                            interaction.typeID === 'EVENT_SPACE_DOOR_A'
+                    )
+                    ?.reset(false);
+                interactionManager?.interactions
+                    .find(
+                        (interaction) =>
+                            interaction.typeID === 'EVENT_SPACE_DOOR_B'
+                    )
+                    ?.reset(false);
+                if (!display)
+                    display = await worldLoader.loadMesh(MODEL_DISPLAY);
+                console.log('Display loaded');
+                changeObjectTexture(display, IMG_DISPLAY_GRAPH);
+            }
+        }
+
+        if (interactionManager?.interactions) {
+            for (const inter of interactionManager.interactions) {
+                console.log(
+                    typeof inter.typeID === 'object'
+                        ? inter.typeID.id
+                        : inter.typeID
+                );
+            }
+        } else console.log('No interactions found in interactionManager');
     }
 
     function changeObjectTexture(
