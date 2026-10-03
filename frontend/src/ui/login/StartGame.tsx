@@ -459,6 +459,7 @@ export const Game: React.FC<{
         <>
             <div ref={mountRef} className='game-canvas-container' />
             {spectatorExitButton}
+            {/* render GameUI after  SaveGameRestore */}
             {isSaveGameReady && (
                 <GameUI
                     key={gameResetVersion + ':' + blackHoleRestore.version}
