@@ -14,6 +14,10 @@ import { Story_Manager } from './story_manager.js';
 import { InteractionManager } from './interaction_manager.js';
 import { Input } from './Input.js';
 import { TokenQuestFrontdesk } from './QuestToken.js';
+import {
+    isLostTokenQuestCompleted,
+    shouldEnableFrontDoorQuest,
+} from './QuestTokenState.js';
 import { addBlackhole } from './QuestBlackHole.js';
 import { WorldLoader } from './WorldLoader.js';
 import { RenderLoop } from './RenderLoop.js';
@@ -117,6 +121,7 @@ export function startGame(
     const { promise: storyManagerReady, resolve: resolveStoryManagerReady } =
         Promise.withResolvers<Story_Manager>();
     let interactionManager: InteractionManager | null = null;
+    let completedQuestIdsForWorld: readonly string[] = [];
     let isLocalPlayerDespawning = false;
     let localPlayerDespawnPromise: Promise<void> | null = null;
     const tokenQuestFrontdesk = new TokenQuestFrontdesk(onGameEvent);
@@ -250,6 +255,24 @@ export function startGame(
         isDisposed: (): boolean => renderLoop.isDisposed,
     });
 
+    function syncLostTokenQuestStatus(): void {
+        if (!interactionManager) {
+            return;
+        }
+
+        if (isLostTokenQuestCompleted(completedQuestIdsForWorld)) {
+            interactionManager.lostTokenQuest.collect();
+        } else {
+            interactionManager.lostTokenQuest.reset();
+        }
+
+        if (shouldEnableFrontDoorQuest(completedQuestIdsForWorld)) {
+            interactionManager.frontDoorQuest.interaction.enableInteraction();
+        } else {
+            interactionManager.frontDoorQuest.interaction.disableInteraction();
+        }
+    }
+
     //let camDistance = 0;
 
     /* function createSkyBox():void {
@@ -380,6 +403,7 @@ export function startGame(
             );
 
             interactionManager = new InteractionManager(scene, npcManager);
+            syncLostTokenQuestStatus();
             interactionManager.onInteraction = (interaction) => {
                 storyManager?.handleInteraction(interaction);
                 //onQuestComplete?.(interaction);
@@ -550,13 +574,7 @@ export function startGame(
             }
             if (completedQuests.has('FIND_LOST_DROPPED_TOKEN')) {
                 console.log('resetting FIND_LOST_DROPPED_TOKEN interaction...');
-                interactionManager?.interactions
-                    .find(
-                        (interaction) =>
-                            typeof interaction.typeID === 'object' &&
-                            interaction.typeID.id === 'FIND_LOST_DROPPED_TOKEN'
-                    )
-                    ?.reset(false);
+                interactionManager?.lostTokenQuest.collect();
             }
             if (
                 [...(storyManager?.questState.values() ?? [])].every(Boolean) &&
@@ -684,6 +702,11 @@ export function startGame(
     });
     return {
         ...multiplayerRuntimeActions,
+        updateQuestStatus(completedQuestIds: readonly string[]): void {
+            completedQuestIdsForWorld = completedQuestIds;
+            syncLostTokenQuestStatus();
+            multiplayerRuntimeActions.updateQuestStatus(completedQuestIds);
+        },
         despawnLocalPlayer,
         dispose: () => renderLoop.dispose(),
         async playIntroCutscene(): Promise<void> {

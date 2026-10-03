@@ -119,13 +119,14 @@ export const Game: React.FC<{
             // but to the snapshot?
             completedQsts = [
                 ...new Set([
-                    ...Array.from(snapshot?.completedQuestIds ?? []),
+                    ...(snapshot?.completedQuestIds ?? []),
                     ...completedQsts,
                 ]),
             ];
 
             console.log('[SaveGameRestore] restored quests:', completedQsts);
 
+            gameRuntimeRef.current?.updateQuestStatus(completedQsts);
             setCompletedQuestIds(completedQsts);
             handleSaveGameStateRestore(snapshot);
 
