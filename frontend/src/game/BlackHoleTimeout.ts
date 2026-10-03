@@ -60,6 +60,13 @@ export function isInitialBlackHoleRestore(
     return !completed && secondsRemaining === BLACK_HOLE_DURATION_SECONDS;
 }
 
+export function isBlackHoleQuestCompleted(
+    countdownCompleted: boolean,
+    secondsRemaining: number
+): boolean {
+    return countdownCompleted && secondsRemaining > 0;
+}
+
 export function calculateBlackHoleSecondsRemaining(
     sessionStartedAtMs: number,
     completedAtMs: number
@@ -113,7 +120,10 @@ export function useBlackHoleTimeout({
 
     const countdownCompleted = restoredCompleted || evaluationCompleted;
     const countdownRunning = active && connected && !countdownCompleted;
-    const questCompleted = active && countdownCompleted && secondsRemaining > 0;
+    const questCompleted = isBlackHoleQuestCompleted(
+        countdownCompleted,
+        secondsRemaining
+    );
 
     let hourglass = '⌛';
     if (secondsRemaining % 2 !== 0) {
