@@ -481,6 +481,10 @@ export type SaveGameSnapshot = {
     readonly completedQuestIds: readonly string[];
 };
 
+export type PersistentUserGameState = Readonly<
+    Pick<BaseUser, 'position' | 'blackholeTimer'> & { quests: QuestStatus }
+>;
+
 export type PersistentSaveGameSnapshot = Pick<
     SaveGameSnapshot,
     'position' | 'blackHoleSecondsRemaining'

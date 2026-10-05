@@ -6,6 +6,10 @@ import type {
     SaveGameTimerPayload,
 } from 'ftr-common/sharedTypes';
 
+const RESTORE_ACK_TIMEOUT_MS = 1_000;
+/** retry */
+const RESTORE_MAX_ATTEMPTS = 10;
+
 type SaveGameOptions = {
     readonly socket: Socket;
     readonly isDisposed: () => boolean;
@@ -37,44 +41,105 @@ export class SaveGameFrontend {
     }
 
     requestRestore(socketId: string): void {
-        const { socket } = this.options;
         const restoreGeneration = ++this.restoreGeneration;
         this.restoreReady = false;
-        socket.emit(
-            'save_game_restore',
-            async (snapshot: SaveGameSnapshot | null): Promise<void> => {
-                if (
-                    this.options.isDisposed() ||
-                    !socket.connected ||
-                    socket.id !== socketId ||
-                    this.restoreGeneration !== restoreGeneration
-                ) {
-                    return;
-                }
-                if (snapshot) {
-                    this.options.onPositionRestore(snapshot.position);
-                }
+        this.requestRestoreAttempt(socketId, restoreGeneration, 1);
+    }
 
-                try {
-                    await this.options.onSaveGameRestore?.(snapshot);
-                } catch (error) {
-                    console.error('[SaveGameRestore] restore failed:', error);
-                    return;
-                }
+    private requestRestoreAttempt(
+        socketId: string,
+        restoreGeneration: number,
+        attempt: number
+    ): void {
+        const { socket } = this.options;
+        if (!this.isRestoreRequestCurrent(socketId, restoreGeneration)) {
+            return;
+        }
 
-                if (
-                    this.options.isDisposed() ||
-                    !socket.connected ||
-                    socket.id !== socketId ||
-                    this.restoreGeneration !== restoreGeneration
-                ) {
-                    return;
-                }
+        socket
+            .timeout(RESTORE_ACK_TIMEOUT_MS)
+            .emit(
+                'save_game_restore',
+                async (
+                    error: Error | null,
+                    snapshot: SaveGameSnapshot | null
+                ): Promise<void> => {
+                    if (
+                        !this.isRestoreRequestCurrent(
+                            socketId,
+                            restoreGeneration
+                        )
+                    ) {
+                        return;
+                    }
+                    if (error) {
+                        if (attempt < RESTORE_MAX_ATTEMPTS) {
+                            this.requestRestoreAttempt(
+                                socketId,
+                                restoreGeneration,
+                                attempt + 1
+                            );
+                            return;
+                        }
+                        console.error(
+                            '[SaveGameRestore] restore acknowledgement timed out'
+                        );
+                        return;
+                    }
+                    if (snapshot) {
+                        this.options.onPositionRestore(snapshot.position);
+                    }
 
-                this.restoreReady = true;
-                this.options.onConnectionChange?.(true);
-                this.options.onRestoreReady();
-            }
+                    try {
+                        await this.options.onSaveGameRestore?.(snapshot);
+                    } catch (error) {
+                        if (
+                            this.isRestoreRequestCurrent(
+                                socketId,
+                                restoreGeneration
+                            ) &&
+                            attempt < RESTORE_MAX_ATTEMPTS
+                        ) {
+                            this.requestRestoreAttempt(
+                                socketId,
+                                restoreGeneration,
+                                attempt + 1
+                            );
+                            return;
+                        }
+                        console.error(
+                            '[SaveGameRestore] restore failed:',
+                            error
+                        );
+                        return;
+                    }
+
+                    if (
+                        !this.isRestoreRequestCurrent(
+                            socketId,
+                            restoreGeneration
+                        )
+                    ) {
+                        return;
+                    }
+
+                    this.restoreReady = true;
+                    this.options.onConnectionChange?.(true);
+                    this.options.onRestoreReady();
+                }
+            );
+    }
+
+    private isRestoreRequestCurrent(
+        socketId: string,
+        restoreGeneration: number
+    ): boolean {
+        const { socket } = this.options;
+        return (
+            !this.options.isDisposed() &&
+            socket.connected &&
+            socket.id === socketId &&
+            this.restoreGeneration === restoreGeneration
         );
     }
 

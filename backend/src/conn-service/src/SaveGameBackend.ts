@@ -194,13 +194,20 @@ export class SaveGameBackend {
         }
     }
 
-    restartAfterBlackHole(userId: number, socketId: string): void {
+    restartAfterBlackHole(
+        userId: number,
+        socketId: string,
+        position: PlayerPosition | undefined
+    ): void {
         if (!this.isOwnerSocket(userId, socketId)) {
             return;
         }
 
         this.saves.delete(userId);
         this.blockedSocketIds.delete(socketId);
+        if (position !== undefined) {
+            this.getOrCreateSave(userId, position);
+        }
     }
 
     private isWritable(userId: number, socketId: string): boolean {

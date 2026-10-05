@@ -2,9 +2,10 @@ import axios, { type AxiosRequestConfig } from 'axios';
 import { Logger, type ILogObj } from 'tslog';
 import { mintInternalToken } from 'ftr-common/internalAuth';
 import type {
+    ApiResponse,
     PersistentSaveGameSnapshot,
+    PersistentUserGameState,
     PlayerPosition,
-    User,
 } from 'ftr-common/sharedTypes';
 
 /**
@@ -65,10 +66,13 @@ export class UserServiceClient {
     /**
      * Get the user state from DB.
      */
-    async getUserState(): Promise<User | undefined> {
+    async getUserState(): Promise<PersistentUserGameState | undefined> {
         this.refreshToken();
-        const res = await axios.get(this.endpoint, this.axiosCfg!);
-        return res.data.data as User;
+        const res = await axios.get<ApiResponse<PersistentUserGameState>>(
+            this.endpoint,
+            this.axiosCfg!
+        );
+        return res.data.data;
     }
 
     /**

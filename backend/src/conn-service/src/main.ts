@@ -297,12 +297,16 @@ io.on('connection', async (socket) => {
             if (userData !== undefined) {
                 const pos = userData.position;
                 const bhTimer = userData.blackholeTimer;
+                let restoredBlackHoleTimer: number | undefined;
+                if (bhTimer !== 0) {
+                    restoredBlackHoleTimer = bhTimer;
+                }
                 // unfortunately need to create an initial SaveGame in order to
                 // easily hook into propagation of the restored state.
                 saveGame.getOrCreateSave(
-                    socket.data.userId,
+                    playerUserId,
                     pos,
-                    bhTimer != 0 ? bhTimer : undefined
+                    restoredBlackHoleTimer
                 );
                 Object.assign(playerData.position, pos);
                 Object.assign(connectedPlayer, pos, {
@@ -324,7 +328,11 @@ io.on('connection', async (socket) => {
         if (typeof acknowledge !== 'function') {
             return;
         }
-        acknowledge(saveGame.getSnapshot(playerUserId, socket.id));
+        const snapshot = saveGame.getSnapshot(playerUserId, socket.id);
+        if (snapshot === null) {
+            return;
+        }
+        acknowledge(snapshot);
     });
 
     // disconnect and remove player from gameManager
@@ -410,7 +418,11 @@ io.on('connection', async (socket) => {
                 saveGame.clearForBlackHoleTimeout(playerUserId, socket.id);
                 break;
             case 'save_game_restart':
-                saveGame.restartAfterBlackHole(playerUserId, socket.id);
+                saveGame.restartAfterBlackHole(
+                    playerUserId,
+                    socket.id,
+                    gameManager.players.get(socket.id)?.position
+                );
                 break;
 
             case 'ttt_mark':
