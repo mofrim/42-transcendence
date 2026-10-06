@@ -13,7 +13,7 @@ export const verifyToken = (
     try {
         const decoded = jwt.verify(token, secretKey, { algorithms: ['HS256'] });
         if (typeof decoded === 'string') {
-            log.error('verify: invalid token data');
+            log.warn('verify: invalid token data');
             throw new Error('Invalid token');
         }
         const userId = Number(decoded?.sub);
@@ -21,12 +21,12 @@ export const verifyToken = (
         // comparing only `!Number.isSafeInteger` would be a bug because `null`
         // and empty string also coerce to `0`
         if (!decoded.sub || !Number.isSafeInteger(userId)) {
-            log.error('verify: invalid UID');
+            log.warn('verify: invalid UID');
             throw new Error('Invalid token');
         }
         return userId;
     } catch (err) {
-        log.error('verify: jwt.verify failed');
+        log.warn('verify: jwt.verify failed');
         throw new Error('Invalid token', { cause: err });
     }
 };
