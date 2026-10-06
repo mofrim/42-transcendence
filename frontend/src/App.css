@@ -538,6 +538,9 @@ body {
     cursor: pointer;
 }
 
+#login-ui .terms-copy {
+    margin-left: 8px;
+}
 .terms-link,
 .terms a {
     color: #3c7d7d;
@@ -545,6 +548,19 @@ body {
     font-weight: 600;
 }
 
+#login-ui .terms-checkbox-link {
+    margin-left: -10px;
+    font-size: 12px;
+}
+
+#login-ui .terms-accepted {
+    font-size: 14px;
+}
+
+#login-ui .terms-accepted-link {
+    margin: auto -10px;
+    font-size: 14px;
+}
 .terms a:hover {
     text-decoration: underline;
 }
