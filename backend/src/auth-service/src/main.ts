@@ -206,7 +206,7 @@ app.post(
             const token = jwt.sign({ sub: String(user.id) }, SECRET_KEY, {
                 issuer: 'auth-service',
                 algorithm: 'HS256',
-                expiresIn: '6h',
+                expiresIn: '24h',
                 audience: 'backend',
             });
 
@@ -222,7 +222,7 @@ app.post(
 
             res.cookie('token', token, {
                 ...TOKEN_COOKIE_OPTIONS,
-                maxAge: 360 * 60 * 1000, // 6h
+                maxAge: 24 * 60 * 60 * 1000, // 24h
             });
             res.json(
                 mkApiResponse('Setting auth cookie successful', 'success')
