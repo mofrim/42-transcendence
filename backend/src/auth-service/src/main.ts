@@ -222,7 +222,7 @@ app.post(
 
             res.cookie('token', token, {
                 ...TOKEN_COOKIE_OPTIONS,
-                maxAge: 60 * 60 * 1000, // 1h
+                maxAge: 360 * 60 * 1000, // 6h
             });
             res.json(
                 mkApiResponse('Setting auth cookie successful', 'success')
