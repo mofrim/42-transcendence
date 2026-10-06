@@ -49,22 +49,10 @@ dock-fclean:
 	docker compose down -v
 	$(call log_msg_end,Done.)
 
-dock-backend:
-	$(call log_msg_start,Launching ftr-backend using docker compose..)
-	$(output_color_grey)
-	docker compose --project-directory ./backend up --build
-	$(call log_msg_end,Done.)
-
-dock-frontend:
-	$(call log_msg_start,Launching ftr-frontend using docker compose..)
-	$(output_color_grey)
-	docker compose --project-directory ./frontend up --build
-	$(call log_msg_end,Done.)
-
 dock-db:
-	$(call log_msg_start,Launching all backend for dev...)
+	$(call log_msg_start,Launching DB for dev...)
 	$(output_color_grey)
-	cd backend && docker compose -f ./compose-db.yaml up -d
+	cd backend && docker compose -f ./compose-db.yaml -f ./compose-db.dev.yaml up -d
 	$(call log_msg_end,Done.)
 
 dock-db-clean: dock-db-down
@@ -95,7 +83,7 @@ backend-dev:
 	$(output_color_grey)
 	npm run build:common
 	npm run build:backend-utils
-	cd backend && docker compose -f ./compose-db.yaml up -d && npm run dev:all
+	cd backend && docker compose -f ./compose-db.yaml -f ./compose-db.dev.yaml up -d && npm run dev:all
 	$(call log_msg_end,Done.)
 
 frontend-dev:
@@ -107,12 +95,13 @@ frontend-dev:
 # for Windows development
 backend-dev-win:
 	$(call log_msg_start,Launching all backend for dev-win...)
-	cd backend && docker compose -f ./compose-db.yaml up -d
+	cd backend && docker compose -f ./compose-db.yaml --profile dev up -d
 	cd backend && start powershell -NoExit -Command "npm --prefix .\src\conn-service run dev-win"
 	cd backend && start powershell -NoExit -Command "npm --prefix .\src\auth-service run dev-win"
 	cd backend && start powershell -NoExit -Command "npm --prefix .\src\user-service run dev-win"
 	cd backend && start powershell -NoExit -Command "npm --prefix .\src\eventlog-service run dev-win"
 	$(call log_msg_end,Done.)
 
-.phony: all dock-clean dock-fclean dock-backend dock-frontend dock-db \
-	dock-db-down backend-dev certs dock-re frontend-build-dir
+.phony: all dock-clean dock-dev-clean dock-fclean dock-dev-fclean dock-db \
+	dock-db-clean dock-db-re dock-dev-dbdown backend-dev frontend-dev \
+	backend-dev-win

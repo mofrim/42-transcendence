@@ -28,7 +28,6 @@ services:
             - USER_SERVICE_PORT
             - USER_SERVICE_ADDR
             - CONN_SERVICE_PORT
-
         networks:
             - ftr-net
 
