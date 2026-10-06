@@ -16,8 +16,8 @@ services:
         volumes:
             - ftr-db:/var/lib/postgresql
         # TODO: remove any exposed ports
-        ports:
-            - 5432:5432
+        # ports:
+        #     - 5432:5432
         healthcheck:
             test: pg_isready -U postgres -d postgres
             interval: 10s
@@ -42,8 +42,8 @@ services:
             PGADMIN_SERVER_JSON_FILE: /pgadmin4/servers.json
             PGADMIN_CONFIG_SERVER_MODE: 'False'
         # TODO: remove any exposed ports
-        ports:
-            - 80:80
+        # ports:
+        #     - 80:80
         networks:
             - ftr-net
 
