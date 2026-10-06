@@ -15,9 +15,7 @@ import type { PlayerAnimationState } from './player';
 const EVENT_SPACE_DOOR_A_POSITION = new THREE.Vector3(15.5, 3.72, -16.85);
 const EVENT_SPACE_DOOR_B_POSITION = new THREE.Vector3(16.7, 3.72, -8.5);
 const EVENT_SPACE_LOCKED_MESSAGE =
-    "I've got an evaluation to finish first. The championship can wait a little longer.";
-const EVENT_SPACE_DEV_MESSAGE =
-    'DEV NOTE: Door opens now for testing purposes. Remove this later.';
+    "Hmm, EventSpace is locked! I've got an evaluation to finish first. The championship can wait a little longer.";
 
 export class EventSpaceQuest {
     readonly interactions: readonly [Interaction, Interaction];
@@ -66,9 +64,6 @@ export class EventSpaceQuest {
         }
 
         await playDialog(EVENT_SPACE_LOCKED_MESSAGE, PlayerState.Angry);
-
-        // TODO: JUST INFO: REMOVE THAT LATER
-        await playDialog(EVENT_SPACE_DEV_MESSAGE, PlayerState.Angry);
         return true;
     }
 

@@ -404,14 +404,16 @@ export function startGame(
 
             interactionManager = new InteractionManager(scene, npcManager);
             syncLostTokenQuestStatus();
-            interactionManager.onInteraction = (interaction) => {
+            interactionManager.onInteraction = async (interaction) => {
                 storyManager?.handleInteraction(interaction);
                 //onQuestComplete?.(interaction);
+                const completedQuests = new Set(await initialQuestStateReady);
 
                 if (
                     interactionManager?.eventSpaceQuest.interactions.includes(
                         interaction
-                    )
+                    ) &&
+                    completedQuests.has('START_EVALUATION')
                 ) {
                     worldLoader.openEventSpaceDoors();
                 }
