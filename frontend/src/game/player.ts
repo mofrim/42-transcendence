@@ -19,7 +19,7 @@ import {
     CHAT_BUBBLE_SIZE,
     FloatingTextSprite,
 } from './FloatingTextSprite.js';
-import { PlayerState } from 'ftr-common/sharedTypes';
+import { PlayerState, PLAYER_START_POSITION } from 'ftr-common/sharedTypes';
 
 const PLAYER_FORWARD = new THREE.Vector3(0, 0, 1);
 const COLLISION_STEP_RADIUS_FACTOR = 0.5;
@@ -33,11 +33,8 @@ export class Player {
     static colEndY: number = 1;
     static offset: number = 0;
 
-    static readonly playerStartPosition: THREE.Vector3Like = {
-        x: 16,
-        y: 0,
-        z: 14,
-    };
+    static readonly playerStartPosition: THREE.Vector3Like =
+        PLAYER_START_POSITION;
 
     /** ugly random Socket ID strings */
     id: string | undefined;

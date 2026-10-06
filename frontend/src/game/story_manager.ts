@@ -33,6 +33,7 @@ export class Story_Manager {
     private dialogResolver: (() => void) | null;
     private readonly onDialogChange: ((state: DialogState) => void) | undefined;
     private readonly onGameReset: (() => void | Promise<void>) | undefined;
+    private camPositionBackup: THREE.Vector3;
 
     // TODO: TEMP - need to be changed with Database
     questState: Map<string, boolean>;
@@ -67,6 +68,7 @@ export class Story_Manager {
         // TODO: TEMP - need to be changed with Database
         this.questState = new Map();
         this.initQuestState();
+        this.camPositionBackup = camera.camera.position;
     }
 
     // TODO: TEMP - need to be changed with Database
@@ -90,7 +92,14 @@ export class Story_Manager {
         this.keys[1] = 0;
     }
 
-    returnCameraToPlayer(time: number): Promise<void> {
+    /**
+     * Return the Camera's position and LookAt to the Player
+     *
+     * @param isIntro For the Intro we want to have a different kind of
+     * Animation as for the other occations where we want to return to the same
+     * cam pos where we left before cutscene was triggerd
+     */
+    returnCameraToPlayer(time: number, isIntro?: boolean): Promise<void> {
         return new Promise((resolve) => {
             this.skipCameraAnimation = false;
 
@@ -102,12 +111,17 @@ export class Story_Manager {
                 .clone()
                 .setY(this.player.group.position.y + 1);
 
-            const direction = startPosition
-                .clone()
-                .sub(playerTarget)
-                .setLength(3);
+            let endPosition: THREE.Vector3;
+            if (isIntro) {
+                const direction = startPosition
+                    .clone()
+                    .sub(playerTarget)
+                    .setLength(3);
 
-            const endPosition = playerTarget.clone().add(direction);
+                endPosition = playerTarget.clone().add(direction);
+            } else {
+                endPosition = this.camPositionBackup.clone();
+            }
 
             const cameraDirection = new THREE.Vector3();
             this.camera.camera.getWorldDirection(cameraDirection);
@@ -367,6 +381,9 @@ export class Story_Manager {
         this.inCutscene = true;
         this.camera.orbitControls.enabled = false;
 
+        // backup last camera position to return to after cutscene.
+        this.camPositionBackup = this.camera.camera.position.clone();
+
         this.releaseAllKeys();
     }
 
@@ -441,7 +458,7 @@ export class Story_Manager {
 
         this.stopCurrentDialogueCamera();
 
-        await this.returnCameraToPlayer(1.0);
+        await this.returnCameraToPlayer(1.0, true);
 
         this.endCutscene();
     }
@@ -513,7 +530,7 @@ export class Story_Manager {
             'There it is 🔑! I found my lost campus token. Now I can finally unlock the frontdoor.'
         );
         this.stopCurrentDialogueCamera();
-
+        await this.returnCameraToPlayer(1);
         this.endCutscene();
     }
 
@@ -528,7 +545,7 @@ export class Story_Manager {
         );
 
         this.stopCurrentDialogueCamera();
-        await this.returnCameraToPlayer(0.01);
+        await this.returnCameraToPlayer(0.1);
         this.endCutscene();
     }
 

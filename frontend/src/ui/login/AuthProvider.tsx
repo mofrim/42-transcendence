@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { AuthContext } from '../../contexts/AuthContext';
+import { AuthContext, type LoginResponse } from '../../contexts/AuthContext';
 import { type User, type ApiResponse, API_USER } from 'ftr-common/sharedTypes';
 import axios from 'axios';
 import type { AxiosRequestConfig } from 'axios';
@@ -11,7 +11,8 @@ const getAuthenticatedUser = async (signal?: AbortSignal): Promise<User> => {
     };
 
     if (signal !== undefined) {
-        // Make the optional Axios abort signal compatible with exactOptionalPropertyTypes by only adding the signal property
+        // Make the optional Axios abort signal compatible with
+        // exactOptionalPropertyTypes by only adding the signal property
         config.signal = signal;
     }
 
@@ -94,7 +95,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     }, []);
 
     const login = useCallback(
-        async (nickname: string, password: string): Promise<boolean> => {
+        async (nickname: string, password: string): Promise<LoginResponse> => {
             try {
                 await axios.post(
                     '/api/login',
@@ -106,11 +107,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
             } catch (error) {
                 // Distinguish invalid credentials from operational login
                 // failures so AuthCard can show the correct error path.
-                if (
-                    axios.isAxiosError(error) &&
-                    error.response?.status === 401
-                ) {
-                    return false;
+                if (axios.isAxiosError(error)) {
+                    if (error.response?.status === 400) return 'bad_creds';
+                    if (error.response?.status === 401) return 'invalid_creds';
+                    if (error.response?.status === 409)
+                        return 'already_loggedin';
                 }
                 console.error('Login failed:', error);
                 throw error;
@@ -121,7 +122,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
             resetIntroCutsceneSession();
             setUser(currentUser);
-            return true;
+            return 'success';
         },
         []
     );

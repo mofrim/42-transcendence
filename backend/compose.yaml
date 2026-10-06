@@ -49,6 +49,24 @@ services:
             - DB_USER
             - DB_PASSWD
             - DB_NAME
+            - ASEMYKIN_NICK
+            - ASEMYKIN_MAIL
+            - ASEMYKIN_PW
+            - DHELMERT_NICK
+            - DHELMERT_MAIL
+            - DHELMERT_PW
+            - GWAGNER_NICK
+            - GWAGNER_MAIL
+            - GWAGNER_PW
+            - FMAURER_NICK
+            - FMAURER_MAIL
+            - FMAURER_PW
+            - MPAZOUKI_NICK
+            - MPAZOUKI_MAIL
+            - MPAZOUKI_PW
+            - SUPERADMIN_NICK
+            - SUPERADMIN_MAIL
+            - SUPERADMIN_PW
         networks:
             - ftr-net
 

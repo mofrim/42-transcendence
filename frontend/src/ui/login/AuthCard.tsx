@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Form, Input, Button, Card } from 'antd';
 import { UserOutlined, LockOutlined, MailOutlined } from '@ant-design/icons';
+import type { LoginResponse } from '../../contexts/AuthContext';
 import { useAuth } from '../../hooks/useAuthContext';
 import type { ValidationError } from 'express-validator';
 import axios from 'axios';
@@ -24,11 +25,18 @@ const LoginForm: React.FC<LoginFormProps> = ({
     const onFinish = async (values: { nickname: string; password: string }) => {
         setLoading(true);
         try {
-            const success = await login(values.nickname, values.password);
-            if (success) {
+            const result: LoginResponse = await login(
+                values.nickname,
+                values.password
+            );
+            if (result == 'success') {
                 showSuccessMsg('Login successful!');
-            } else {
+            } else if (result == 'invalid_creds') {
                 showErrMsg('Invalid credentials!');
+            } else if (result == 'bad_creds') {
+                showErrMsg('Bad credentials!');
+            } else {
+                showErrMsg('User already logged in!');
             }
         } catch (err) {
             void err;

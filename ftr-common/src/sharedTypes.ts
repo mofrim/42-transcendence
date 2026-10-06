@@ -247,7 +247,7 @@ export class User extends BaseUser {
     hashedPw?: string = '';
     blackholeTimer = BLACK_HOLE_DURATION_SECONDS;
     isLoggedIn = false;
-    position = { x: 0, y: 0, z: 0 };
+    position = PLAYER_START_POSITION;
 
     constructor(data?: Partial<User>) {
         super();
@@ -473,6 +473,12 @@ export type GLBMesh = THREE.Mesh<
 >;
 
 export type PlayerPosition = THREE.Vector3Like;
+
+export const PLAYER_START_POSITION: PlayerPosition = Object.freeze({
+    x: 16,
+    y: 0,
+    z: 14,
+});
 
 export type SaveGameSnapshot = {
     readonly position: PlayerPosition;
