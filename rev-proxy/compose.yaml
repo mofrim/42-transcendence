@@ -13,112 +13,114 @@ include:
       env_file: ../dev.env
 
 services:
-  # region Reverse proxy
-  # SSL nginx reverse-proxy für alle microservices endpoints!
-  nginx:
-    container_name: ftr-nginx
-    image: ftr-nginx
-    build:
-      context: ..
-      dockerfile: ./rev-proxy/Dockerfile
-    volumes:
-      - type: bind
-        source: ../frontend/docker-dist
-        target: /usr/share/nginx/html
-      - type: volume
-        source: tls-certs
-        target: /etc/nginx/ssl
+    # region Reverse proxy
+    # SSL nginx reverse-proxy für alle microservices endpoints!
+    nginx:
+        container_name: ftr-nginx
+        image: ftr-nginx
+        build:
+            context: ..
+            dockerfile: ./rev-proxy/Dockerfile
+        volumes:
+            - type: bind
+              source: ../frontend/docker-dist
+              target: /usr/share/nginx/html
+            - type: volume
+              source: tls-certs
+              target: /etc/nginx/ssl
+              read_only: true
+        ports:
+            - '1111:1111'
+        depends_on:
+            cert-generator: # ensure certificates before starting nginx
+                condition: service_completed_successfully
+            auth-service:
+                condition: service_started
+            conn-service:
+                condition: service_started
+            # pgadmin:
+            #   condition: service_started
+        networks:
+            - ftr-net
+    # endregion
+
+    # region TLS
+    cert-generator:
+        container_name: ftr-cert-generator
+        image: alpine/openssl
+        network_mode: none
         read_only: true
-    ports:
-      - "1111:1111"
-    depends_on:
-      cert-generator: # ensure certificates before starting nginx
-        condition: service_completed_successfully
-      auth-service:
-        condition: service_started
-      conn-service:
-        condition: service_started
-    networks:
-      - ftr-net
-  # endregion
+        environment:
+            TLS_DOMAIN: ${TLS_DOMAIN:-localhost}
+            TLS_CERT_DAYS: ${TLS_CERT_DAYS:-365}
+            TLS_ORG: ${TLS_ORG:-TranscendenceInc}
+            TLS_OU: ${TLS_OU:-TranscendenceCA}
+            TLS_CA_CN: ${TLS_CA_CN:-TranscendenceCA}
+        entrypoint:
+            - /bin/sh
+            - -ec
+        command:
+            - |
+                set -eu
+                umask 077
+                cd /certs
 
-  # region TLS
-  cert-generator:
-    container_name: ftr-cert-generator
-    image: alpine/openssl
-    network_mode: none
-    read_only: true
-    environment:
-      TLS_DOMAIN: ${TLS_DOMAIN:-localhost}
-      TLS_CERT_DAYS: ${TLS_CERT_DAYS:-365}
-      TLS_ORG: ${TLS_ORG:-TranscendenceInc}
-      TLS_OU: ${TLS_OU:-TranscendenceCA}
-      TLS_CA_CN: ${TLS_CA_CN:-TranscendenceCA}
-    entrypoint:
-      - /bin/sh
-      - -ec
-    command:
-      - |
-        set -eu
-        umask 077
-        cd /certs
+                regen_ca=0
+                if [ ! -s ca-key.pem ] || [ ! -s ca-cert.pem ]; then
+                  regen_ca=1
+                elif ! openssl x509 -checkend 0 -noout -in ca-cert.pem >/dev/null 2>&1; then
+                  regen_ca=1
+                fi
+                # gen the rootCA with all the extensions fields set required by modern browsers.
+                if [ "$$regen_ca" -eq 1 ]; then
+                  echo "Generating CA key and certificate..."
+                  rm -f ca-key.pem ca-cert.pem ca-cert.srl server-key.pem server-cert.pem server.csr
+                  openssl req -x509 -newkey rsa:4096 -sha256 -days "$$TLS_CERT_DAYS" \
+                    -nodes -keyout ca-key.pem -out ca-cert.pem \
+                    -subj "/O=$$TLS_ORG/OU=$$TLS_OU/CN=$$TLS_CA_CN" \
+                    -addext "keyUsage=critical,keyCertSign" \
+                    -addext "basicConstraints=critical,CA:TRUE,pathlen:0" \
+                    -addext "subjectKeyIdentifier=hash"
+                fi
 
-        regen_ca=0
-        if [ ! -s ca-key.pem ] || [ ! -s ca-cert.pem ]; then
-          regen_ca=1
-        elif ! openssl x509 -checkend 0 -noout -in ca-cert.pem >/dev/null 2>&1; then
-          regen_ca=1
-        fi
-        # gen the rootCA with all the extensions fields set required by modern browsers.
-        if [ "$$regen_ca" -eq 1 ]; then
-          echo "Generating CA key and certificate..."
-          rm -f ca-key.pem ca-cert.pem ca-cert.srl server-key.pem server-cert.pem server.csr
-          openssl req -x509 -newkey rsa:4096 -sha256 -days "$$TLS_CERT_DAYS" \
-            -nodes -keyout ca-key.pem -out ca-cert.pem \
-            -subj "/O=$$TLS_ORG/OU=$$TLS_OU/CN=$$TLS_CA_CN" \
-            -addext "keyUsage=critical,keyCertSign" \
-            -addext "basicConstraints=critical,CA:TRUE,pathlen:0" \
-            -addext "subjectKeyIdentifier=hash"
-        fi
+                regen_server=0
+                if [ ! -s server-key.pem ] || [ ! -s server-cert.pem ]; then
+                  regen_server=1
+                elif ! openssl verify -CAfile ca-cert.pem server-cert.pem >/dev/null 2>&1; then
+                  regen_server=1
+                elif ! openssl x509 -checkhost "$$TLS_DOMAIN" -noout -in server-cert.pem >/dev/null 2>&1; then
+                  regen_server=1
+                elif ! openssl x509 -checkend 0 -noout -in server-cert.pem >/dev/null 2>&1; then
+                  regen_server=1
+                fi
 
-        regen_server=0
-        if [ ! -s server-key.pem ] || [ ! -s server-cert.pem ]; then
-          regen_server=1
-        elif ! openssl verify -CAfile ca-cert.pem server-cert.pem >/dev/null 2>&1; then
-          regen_server=1
-        elif ! openssl x509 -checkhost "$$TLS_DOMAIN" -noout -in server-cert.pem >/dev/null 2>&1; then
-          regen_server=1
-        elif ! openssl x509 -checkend 0 -noout -in server-cert.pem >/dev/null 2>&1; then
-          regen_server=1
-        fi
+                if [ "$$regen_server" -eq 1 ]; then
+                  echo "Generating Nginx key and certificate..."
+                  rm -f server-key.pem server-cert.pem server.csr
+                  openssl req -new -newkey rsa:3072 -sha256 -nodes \
+                    -keyout server-key.pem -out server.csr \
+                    -subj "/O=$$TLS_ORG/OU=$$TLS_OU/CN=$$TLS_DOMAIN" \
+                    -addext "keyUsage=critical,digitalSignature,keyEncipherment" \
+                    -addext "extendedKeyUsage=serverAuth" \
+                    -addext "subjectAltName=DNS:$$TLS_DOMAIN"
+                  openssl x509 -req -in server.csr \
+                    -CA ca-cert.pem -CAkey ca-key.pem -CAcreateserial \
+                    -out server-cert.pem -days "$$TLS_CERT_DAYS" -sha256 \
+                    -copy_extensions copy
+                  rm -f server.csr
+                fi
 
-        if [ "$$regen_server" -eq 1 ]; then
-          echo "Generating Nginx key and certificate..."
-          rm -f server-key.pem server-cert.pem server.csr
-          openssl req -new -newkey rsa:3072 -sha256 -nodes \
-            -keyout server-key.pem -out server.csr \
-            -subj "/O=$$TLS_ORG/OU=$$TLS_OU/CN=$$TLS_DOMAIN" \
-            -addext "keyUsage=critical,digitalSignature,keyEncipherment" \
-            -addext "extendedKeyUsage=serverAuth" \
-            -addext "subjectAltName=DNS:$$TLS_DOMAIN"
-          openssl x509 -req -in server.csr \
-            -CA ca-cert.pem -CAkey ca-key.pem -CAcreateserial \
-            -out server-cert.pem -days "$$TLS_CERT_DAYS" -sha256 \
-            -copy_extensions copy
-          rm -f server.csr
-        fi
-
-        chmod 600 ca-key.pem server-key.pem
-        chmod 644 ca-cert.pem server-cert.pem
-        echo "TLS certificates are ready."
-    volumes:
-      - type: volume
-        source: tls-certs
-        target: /certs
-  # endregion
+                chmod 600 ca-key.pem server-key.pem
+                chmod 644 ca-cert.pem server-cert.pem
+                echo "TLS certificates are ready."
+        volumes:
+            - type: volume
+              source: tls-certs
+              target: /certs
+    # endregion
 networks:
-  ftr-net:
-    driver: bridge
+    ftr-net:
+        driver: bridge
 
 volumes:
-  tls-certs:
+    tls-certs:

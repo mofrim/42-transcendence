@@ -25,6 +25,59 @@ services:
         networks:
             - ftr-net
 
+    pgadmin:
+        container_name: ftr-pgadmin
+        image: dpage/pgadmin4:latest
+        depends_on:
+            postgres:
+                condition: service_started
+        configs:
+            - source: pgadmin_servers.json
+              target: /pgadmin4/servers.json
+            #   autologin db
+            - source: pgadmin_pgpass
+              target: /pgadmin4/pgpass
+        environment:
+            PGADMIN_DEFAULT_EMAIL: dev@ftr.com
+            PGADMIN_DEFAULT_PASSWORD: password
+            PGPASS_FILE: /pgadmin4/pgpass
+            PGADMIN_SERVER_JSON_FILE: /pgadmin4/servers.json
+            # to using server config
+            PGADMIN_REPLACE_SERVERS_ON_STARTUP: 'True'
+            # reverse-proxy  does the routing
+            PGADMIN_CONFIG_SERVER_MODE: 'True'
+            # Login with username and password only
+            PGADMIN_CONFIG_MFA_ENABLED: 'False'
+            SCRIPT_NAME: /pgadmin
+        # TODO: remove any exposed ports
+        # ports:
+        #     - 80:80
+        networks:
+            - ftr-net
+
+configs:
+    pgadmin_pgpass:
+        content: |
+            postgres:5432:*:postgres:postgres
+    pgadmin_servers.json:
+        content: |
+            {
+                "Servers": {
+                    "1": {
+                    "Name": "local",
+                    "Group": "Servers",
+                    "Port": 5432,
+                    "Username": "postgres",
+                    "Host": "postgres",
+                    "ConnectionParameters": {
+                        "sslmode": "prefer",
+                        "passfile": ".pgpass"
+                    },
+                    "MaintenanceDB": "postgres"
+                    }
+                }
+            }
+
 volumes:
     ftr-db:
         name: ftr-db
