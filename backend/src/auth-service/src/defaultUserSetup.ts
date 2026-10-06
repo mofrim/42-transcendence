@@ -7,71 +7,88 @@ import {
 import bcrypt from 'bcryptjs';
 import { exit } from 'node:process';
 import type { DataSource } from 'typeorm';
+import dotenv from 'dotenv';
+import { Logger, type ILogObj } from 'tslog';
 
-// NEXT
-// FIXME remove crazy code-dup here!!!!
+if (process.env['NODE_ENV'] === 'development') {
+    dotenv.config({ path: '../../../dev.env', quiet: true });
+}
+// Initialize main tslog-logger
+const log = new Logger<ILogObj>({
+    name: 'defaultUserSetup',
+    minLevel: process.env['NODE_ENV'] === 'development' ? 'DEBUG' : 'INFO',
+});
+
+// enforce config through dotenv only! add any require env-vars here
+const REQUIRED_ENV = [
+    'ASEMYKIN_NICK',
+    'ASEMYKIN_MAIL',
+    'ASEMYKIN_PW',
+    'DHELMERT_NICK',
+    'DHELMERT_MAIL',
+    'DHELMERT_PW',
+    'GWAGNER_NICK',
+    'GWAGNER_MAIL',
+    'GWAGNER_PW',
+    'FMAURER_NICK',
+    'FMAURER_MAIL',
+    'FMAURER_PW',
+    'MPAZOUKI_NICK',
+    'MPAZOUKI_MAIL',
+    'MPAZOUKI_PW',
+    'SUPERADMIN_NICK',
+    'SUPERADMIN_MAIL',
+    'SUPERADMIN_PW',
+];
+
+if (REQUIRED_ENV.some((v) => process.env[v] === undefined)) {
+    log.error(`env not like it should be! exiting...`);
+    exit(1);
+}
+
+const getEnv = (v: string): string => process.env[v]!;
+
+const mkUser = (nick: string, mail: string, hashedPw: string) => {
+    return {
+        nickname: nick,
+        email: mail,
+        hashedPw,
+        TOSPPchecked: false,
+        character: true,
+        quests: InitialQuestStatus,
+        friends: [],
+        isLoggedIn: false,
+        blackholeTimer: BLACK_HOLE_DURATION_SECONDS,
+        position: PLAYER_START_POSITION,
+    };
+};
 
 const defaultUsers = [
-    {
-        nickname: 'alice',
-        email: 'alice@example.com',
-        TOSPPchecked: false,
-        character: true,
-        hashedPw: bcrypt.hashSync('Anatolij', 10),
-        quests: InitialQuestStatus,
-        friends: [],
-        isLoggedIn: false,
-        blackholeTimer: BLACK_HOLE_DURATION_SECONDS,
-        position: PLAYER_START_POSITION,
-    },
-    {
-        nickname: 'bob',
-        email: 'bob@example.com',
-        TOSPPchecked: false,
-        character: true,
-        hashedPw: bcrypt.hashSync('Daniel', 10),
-        quests: InitialQuestStatus,
-        friends: [],
-        isLoggedIn: false,
-        blackholeTimer: BLACK_HOLE_DURATION_SECONDS,
-        position: PLAYER_START_POSITION,
-    },
-    {
-        nickname: 'jeff',
-        email: 'jeff@example.com',
-        TOSPPchecked: false,
-        character: true,
-        hashedPw: bcrypt.hashSync('Lukas', 10),
-        quests: InitialQuestStatus,
-        friends: [],
-        isLoggedIn: false,
-        blackholeTimer: BLACK_HOLE_DURATION_SECONDS,
-        position: PLAYER_START_POSITION,
-    },
-    {
-        nickname: 'mandy',
-        email: 'mandy@example.com',
-        TOSPPchecked: false,
-        character: false,
-        hashedPw: bcrypt.hashSync('Maryam', 10),
-        quests: InitialQuestStatus,
-        friends: [],
-        isLoggedIn: false,
-        blackholeTimer: BLACK_HOLE_DURATION_SECONDS,
-        position: PLAYER_START_POSITION,
-    },
-    {
-        nickname: 'freddy',
-        email: 'freddy@example.com',
-        TOSPPchecked: false,
-        character: true,
-        hashedPw: bcrypt.hashSync('Moritz', 10),
-        quests: InitialQuestStatus,
-        friends: [],
-        isLoggedIn: false,
-        blackholeTimer: BLACK_HOLE_DURATION_SECONDS,
-        position: PLAYER_START_POSITION,
-    },
+    mkUser(
+        getEnv('ASEMYKIN_NICK'),
+        getEnv('ASEMYKIN_MAIL'),
+        bcrypt.hashSync(getEnv('ASEMYKIN_PW'), 10)
+    ),
+    mkUser(
+        getEnv('DHELMERT_NICK'),
+        getEnv('DHELMERT_MAIL'),
+        bcrypt.hashSync(getEnv('DHELMERT_PW'), 10)
+    ),
+    mkUser(
+        getEnv('GWAGNER_NICK'),
+        getEnv('GWAGNER_MAIL'),
+        bcrypt.hashSync(getEnv('GWAGNER_PW'), 10)
+    ),
+    mkUser(
+        getEnv('MPAZOUKI_NICK'),
+        getEnv('MPAZOUKI_MAIL'),
+        bcrypt.hashSync(getEnv('MPAZOUKI_PW'), 10)
+    ),
+    mkUser(
+        getEnv('FMAURER_NICK'),
+        getEnv('FMAURER_MAIL'),
+        bcrypt.hashSync(getEnv('FMAURER_PW'), 10)
+    ),
 ];
 
 /** default user setup error */
@@ -100,20 +117,13 @@ export const setupDefaultUsers = async (DB: DataSource) => {
         }
     }
     // add superadmin
-    const superadmin = {
-        nickname: 'superadmin',
-        email: 'superadmin@admin.dev',
-        TOSPPchecked: false,
-        character: true,
-        hashedPw:
-            // crashOverride 8)
-            '$2b$10$3S0UNdtZnOzGM.NPPJtxUOt5rHD9GqvEcA8tk42IbSNhYYqXpmNyy',
-        quests: InitialQuestStatus,
-        friends: [],
-        isLoggedIn: false,
-        blackholeTimer: BLACK_HOLE_DURATION_SECONDS,
-        position: PLAYER_START_POSITION,
-    };
+    // NOTE: for extra-hackiness-feeling superadmins pw is stored hashed.. which
+    // would also be an option for the others!
+    const superadmin = mkUser(
+        getEnv('SUPERADMIN_NICK'),
+        getEnv('SUPERADMIN_MAIL'),
+        getEnv('SUPERADMIN_PW')
+    );
     try {
         await userRepo.save(userRepo.create(superadmin));
         console.log(`defaultUser superadmin successfully created!`);
