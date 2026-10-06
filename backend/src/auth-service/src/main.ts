@@ -109,6 +109,8 @@ try {
     exit(1);
 }
 
+const userRepo = DB.getRepository(ORMUser);
+
 // -------------------=[ add us + testy as users to DB ]=-------------------- //
 
 setupDefaultUsers(DB);
@@ -169,7 +171,7 @@ app.post(
         const userPass: string = bodyData['password'];
 
         try {
-            const user = await DB.manager.findOneBy(ORMUser, {
+            const user = await userRepo.findOneBy({
                 nickname: userNick,
             });
             if (user === null) {
@@ -191,7 +193,15 @@ app.post(
                 return;
             }
 
-            // using standard claim fields here. no need for custom fields in
+            // Fail if user already logged in!
+            if (user.isLoggedIn) {
+                res.status(409).json(
+                    mkApiResponse('Already logged in', 'error')
+                );
+                return;
+            }
+
+            // Using standard claim fields here. no need for custom fields in
             // our case -> https://en.wikipedia.org/wiki/JSON_Web_Token#Standard_fields
             const token = jwt.sign({ sub: String(user.id) }, SECRET_KEY, {
                 issuer: 'auth-service',
@@ -199,6 +209,16 @@ app.post(
                 expiresIn: '6h',
                 audience: 'backend',
             });
+
+            // Toggle login-status in DB
+            user.isLoggedIn = true;
+            const result = await userRepo.update({ id: user.id }, user);
+            if (result.affected !== 1) {
+                loginLog.error('Failed to update user login state in DB');
+                res.status(500).json(
+                    mkApiResponse('Failed updating login-status', 'error')
+                );
+            }
 
             res.cookie('token', token, {
                 ...TOKEN_COOKIE_OPTIONS,
@@ -218,8 +238,19 @@ app.post(
 
 // ------------------=[ logout aka clear-cookie endpoint ]=------------------ //
 
-app.post('/api/logout', authenticate, (req, res) => {
-    void req;
+app.post('/api/logout', authenticate, async (req, res) => {
+    const logLogout = log.getSubLogger({ name: 'logout' });
+
+    // Toggle login-status in DB
+    const result = await userRepo.update(req.userId!, {
+        isLoggedIn: false,
+    });
+    if (result.affected !== 1) {
+        logLogout.error('Failed to update user logout state in DB');
+        res.status(500).json(mkApiResponse('User update error', 'error'));
+        return;
+    }
+    logLogout.info(`User logout state updated in DB for UID ${req.userId}`);
     res.clearCookie('token', TOKEN_COOKIE_OPTIONS);
     res.json(mkApiResponse('Auth cookie cleared', 'success'));
 });
