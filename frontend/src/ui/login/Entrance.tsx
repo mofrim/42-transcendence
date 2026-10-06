@@ -86,9 +86,11 @@ export const Entrance: React.FC<EntranceProps> = (props: EntranceProps) => {
 
         return (
             <>
-                <p className='terms-accepted'>
+                <p style={{ fontSize: '14px' }}>
                     <Button
-                        className='terms-link terms-accepted-link'
+                        className='terms-link'
+                        style={{ margin: 'auto -10px', fontSize: '14px' }}
+                        color='default'
                         variant='link'
                         onClick={() => setIsTOSModalOpen(true)}
                     >
@@ -96,7 +98,9 @@ export const Entrance: React.FC<EntranceProps> = (props: EntranceProps) => {
                     </Button>
                     &
                     <Button
-                        className='terms-link terms-accepted-link'
+                        className='terms-link'
+                        style={{ margin: 'auto -10px', fontSize: '14px' }}
+                        color='default'
                         variant='link'
                         onClick={() => setIsPPModalOpen(true)}
                     >

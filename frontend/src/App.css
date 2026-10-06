@@ -165,33 +165,6 @@ body {
     z-index: 20000;
 }
 
-.ant-message-notice.app-message {
-    border-radius: 12px;
-    background-color: rgba(250, 250, 250, 0.6);
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-}
-
-.ant-message-notice.app-message-error {
-    border: 2px solid #bb3333;
-}
-
-.ant-message-notice.app-message-success {
-    border: 2px solid #95de64;
-}
-
-.ant-message-notice.app-message-error
-    :is(.ant-message-notice-icon, .ant-message-notice-title) {
-    color: #952222;
-}
-
-.ant-message-notice.app-message-success
-    :is(.ant-message-notice-icon, .ant-message-notice-title) {
-    color: #237804;
-}
-
-.ant-message-notice.app-message .ant-message-notice-title {
-    font-weight: 600;
-}
 /* sync antd-card's look with login-ui */
 .ant-card {
     background: rgba(250, 250, 250, 0.6);
@@ -565,29 +538,11 @@ body {
     cursor: pointer;
 }
 
-#login-ui .terms-copy {
-    margin-left: 8px;
-}
-
 .terms-link,
 .terms a {
     color: #3c7d7d;
     text-decoration: none;
     font-weight: 600;
-}
-
-#login-ui .terms-checkbox-link {
-    margin-left: -10px;
-    font-size: 12px;
-}
-
-#login-ui .terms-accepted {
-    font-size: 14px;
-}
-
-#login-ui .terms-accepted-link {
-    margin: auto -10px;
-    font-size: 14px;
 }
 
 .terms a:hover {
