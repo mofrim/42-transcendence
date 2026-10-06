@@ -240,8 +240,6 @@ export function Leaderboard({
             setLoadFailed(false);
 
             try {
-                // TODO: load from database instead of loading from the temporary in-memory event log?
-
                 const response = await axios.get<ApiResponse<BaseEventLog[]>>(
                     API_EVENTLOG.all,
                     {

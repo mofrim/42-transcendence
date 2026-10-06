@@ -79,8 +79,6 @@ const App: React.FC<AppProps> = (props: AppProps) => {
     }
 
     // user has not logged in yet -> display only login form
-    // TODO extend with registration possibility
-    // TODO either put agreemnents here or in the next view
     if (user == null) {
         return (
             <>
