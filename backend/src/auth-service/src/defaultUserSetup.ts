@@ -1,6 +1,7 @@
 import { ORMUser } from 'ftr-common/ormTypes';
 import {
     BLACK_HOLE_DURATION_SECONDS,
+    PLAYER_START_POSITION,
     InitialQuestStatus,
 } from 'ftr-common/sharedTypes';
 import bcrypt from 'bcryptjs';
@@ -21,7 +22,7 @@ const defaultUsers = [
         friends: [],
         isLoggedIn: false,
         blackholeTimer: BLACK_HOLE_DURATION_SECONDS,
-        posistion: { x: 0, y: 0, z: 0 },
+        position: PLAYER_START_POSITION,
     },
     {
         nickname: 'bob',
@@ -33,7 +34,7 @@ const defaultUsers = [
         friends: [],
         isLoggedIn: false,
         blackholeTimer: BLACK_HOLE_DURATION_SECONDS,
-        posistion: { x: 0, y: 0, z: 0 },
+        position: PLAYER_START_POSITION,
     },
     {
         nickname: 'jeff',
@@ -45,7 +46,7 @@ const defaultUsers = [
         friends: [],
         isLoggedIn: false,
         blackholeTimer: BLACK_HOLE_DURATION_SECONDS,
-        posistion: { x: 0, y: 0, z: 0 },
+        position: PLAYER_START_POSITION,
     },
     {
         nickname: 'mandy',
@@ -57,7 +58,7 @@ const defaultUsers = [
         friends: [],
         isLoggedIn: false,
         blackholeTimer: BLACK_HOLE_DURATION_SECONDS,
-        posistion: { x: 0, y: 0, z: 0 },
+        position: PLAYER_START_POSITION,
     },
     {
         nickname: 'freddy',
@@ -69,7 +70,7 @@ const defaultUsers = [
         friends: [],
         isLoggedIn: false,
         blackholeTimer: BLACK_HOLE_DURATION_SECONDS,
-        posistion: { x: 0, y: 0, z: 0 },
+        position: PLAYER_START_POSITION,
     },
 ];
 
@@ -111,7 +112,7 @@ export const setupDefaultUsers = async (DB: DataSource) => {
         friends: [],
         isLoggedIn: false,
         blackholeTimer: BLACK_HOLE_DURATION_SECONDS,
-        posistion: { x: 0, y: 0, z: 0 },
+        position: PLAYER_START_POSITION,
     };
     try {
         await userRepo.save(userRepo.create(superadmin));

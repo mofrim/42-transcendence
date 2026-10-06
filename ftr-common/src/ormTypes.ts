@@ -16,6 +16,7 @@ import {
     type QuestStatus,
     type PlayerPosition,
     BLACK_HOLE_DURATION_SECONDS,
+    PLAYER_START_POSITION,
 } from 'ftr-common/sharedTypes';
 
 @Entity('users')
@@ -96,7 +97,7 @@ export class ORMUser extends BaseUser {
 
     @Column({
         type: 'simple-json',
-        default: { x: 0, y: 0, z: 0 },
+        default: PLAYER_START_POSITION,
     })
     declare position: PlayerPosition;
 
