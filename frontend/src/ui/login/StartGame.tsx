@@ -1,42 +1,38 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useLoginContext } from '../../hooks/useLoginContext';
 import { useAuth } from '../../hooks/useAuthContext';
+import { startGame, type GameMode, type GameRuntime } from '../../game/main';
 import {
-    startGame,
-    type GameMode,
-    type GameRuntime,
-    type GameRuntimeEvent,
-} from '../../game/main';
-import type { ReceivedChatPayload } from 'common/sharedTypes';
+    GameEvent,
+    EventType,
+    User,
+    API_USER,
+    type QuestTuple,
+    type ApiResponse,
+    type ReceivedChatPayload,
+    type EventDataPlayerInRange,
+    type SaveGameSnapshot,
+} from 'ftr-common/sharedTypes';
+import {
+    hasRestoredBlackHoleCountdownStarted,
+    isInitialBlackHoleRestore,
+} from '../../game/BlackHoleTimeout';
 import { useMatchHistory } from '../../hooks/useMatchHistory';
+import { GameUI, type DialogPanelState } from '../ingame/GameUI';
+import { useFriendRequest } from '../ingame/FriendRequest';
+import { useSaveGame } from './SaveGame';
 import {
-    GameUI,
-    type DialogPanelState,
-    MAX_EVENT_LOG_ENTRIES,
-} from '../ingame/GameUI';
-import type { EventLogEntry } from '../ingame/EventLogItems';
+    sawShownIntroCutscene,
+    IntroCutsceneSeen,
+} from './IntroCutsceneSession';
 import {
     applyQuestCompletionEvent,
-    describeQuestStatusChange,
     type QuestStatusChange,
 } from '../ingame/QuestLog';
 import * as THREE from 'three';
+import axios from 'axios';
 
-function describeGameEvent(event: GameRuntimeEvent): string {
-    switch (event.type) {
-        case 'player_joined':
-            return `${event.nickname} 👋🏻 joined`;
-        case 'player_left':
-            return `${event.nickname} 🚪 logged out`;
-        case 'player_in_range':
-            return `Met ${event.nickname} nearby`;
-        case 'game_result':
-            if (event.outcome === 'draw') {
-                return `${event.playerNickname} drew a game of ${event.game} against ${event.opponentNickname}`;
-            }
-            return `${event.playerNickname} ${event.outcome} a game of ${event.game} against ${event.opponentNickname}`;
-    }
-}
+import { useEventLog } from '../../hooks/useEventLog';
 
 // the start-button. all this does is setting the gameRunning state var
 export const StartButton: React.FC = () => {
@@ -50,55 +46,208 @@ export const StartButton: React.FC = () => {
 };
 
 export const Game: React.FC<{
-    nickname: string;
-    email: string;
     isSpectator?: boolean;
-}> = ({ nickname, email, isSpectator = false }) => {
+}> = ({ isSpectator = false }) => {
     const { avatar, serverAddrRef, setGameRunning, setIsSpectator } =
         useLoginContext();
-    const { logout } = useAuth();
+    const { user: authUser, logout } = useAuth();
+
+    let user: User | null;
+    if (isSpectator) {
+        user = new User();
+        user.nickname = 'Spectator';
+    } else {
+        user = authUser;
+    }
+
     const [character] = useState(() => avatar === 'true');
 
     // using ref here a lot because th
     const mountRef = useRef<HTMLDivElement>(null);
     const gameRuntimeRef = useRef<GameRuntime | null>(null);
-    const eventSequenceRef = useRef(0);
-    const [events, setEvents] = useState<EventLogEntry[]>([]);
-    const { matchHistory, saveTicTacToeMatch } = useMatchHistory({
-        nickname,
-        isSpectator,
-    });
+    const metPlayerNicknamesRef = useRef(new Set<string>());
+    const playerJoinedLoggedRef = useRef(false);
+    const sawIntroCutsceneRef = useRef(
+        authUser !== null && sawShownIntroCutscene(authUser.id)
+    );
     const [completedQuestIds, setCompletedQuestIds] = useState<string[]>([]);
+    const [gameResetVersion, setGameResetVersion] = useState(0);
+    const [isGameplayReady, setIsGameplayReady] = useState(false);
     const [dialog, setDialog] = useState<DialogPanelState>({
         isOpen: false,
         message: '',
     });
+    /** SaveGame */
+    const {
+        isSaveGameReady,
+        isGameConnected,
+        blackHoleRestore,
+        SaveGameRestore: handleSaveGameStateRestore,
+        handleGameConnectionChange,
+        BlackHoleTimerChange,
+        resetSaveGame,
+    } = useSaveGame({
+        isSpectator,
+        gameRuntimeRef,
+    });
 
-    const appendEvent = useCallback((description: string): void => {
-        const now = new Date();
-        const event: EventLogEntry = {
-            id: `${now.getTime()}-${eventSequenceRef.current++}`,
-            timestamp: now.toTimeString().slice(0, 8),
-            description,
-        };
+    const SaveGameRestore = useCallback(
+        async (snapshot: SaveGameSnapshot | null): Promise<void> => {
+            let completedQsts: string[] = [];
 
-        setEvents((currentEvents) =>
-            [...currentEvents, event].slice(-MAX_EVENT_LOG_ENTRIES)
-        );
-    }, []);
+            // get completed quests from DB first...
+            try {
+                const response = await axios.get<ApiResponse<QuestTuple[]>>(
+                    API_USER.quests
+                );
+                const quests: QuestTuple[] = response.data.data!;
+
+                quests.forEach((obj) => {
+                    const [key, val] = Object.entries(obj)[0]!;
+                    if (val) {
+                        completedQsts.push(key);
+                    }
+                });
+            } catch {
+                console.log(
+                    '[SaveGameRestore] getting user-quests from DB failed'
+                );
+            }
+
+            // merge quests from DB with possible quests from snapshot..
+            // QUESTION what is the scenario for quests not being saved to DB
+            // but to the snapshot?
+            completedQsts = [
+                ...new Set([
+                    ...(snapshot?.completedQuestIds ?? []),
+                    ...completedQsts,
+                ]),
+            ];
+
+            console.log('[SaveGameRestore] restored quests:', completedQsts);
+
+            gameRuntimeRef.current?.updateQuestStatus(completedQsts);
+            setCompletedQuestIds(completedQsts);
+            handleSaveGameStateRestore(snapshot);
+
+            /** used to prevent repeated Intro Cutscene */
+            const restoredCountdownAlreadyStarted =
+                hasRestoredBlackHoleCountdownStarted(snapshot);
+
+            if (!sawIntroCutsceneRef.current) {
+                sawIntroCutsceneRef.current = true;
+                if (authUser !== null) {
+                    IntroCutsceneSeen(authUser.id);
+                }
+                if (!restoredCountdownAlreadyStarted) {
+                    try {
+                        await gameRuntimeRef.current?.playIntroCutscene();
+                    } catch (error) {
+                        console.error('Intro cutscene failed:', error);
+                    }
+                }
+            }
+        },
+        [authUser, handleSaveGameStateRestore]
+    );
+
+    useEffect(() => {
+        if (isSpectator || !isSaveGameReady || !isGameConnected) {
+            return;
+        }
+        gameRuntimeRef.current?.updateQuestStatus(completedQuestIds);
+    }, [completedQuestIds, isGameConnected, isSaveGameReady, isSpectator]);
+
+    const { matchHistory, saveMatchResult } = useMatchHistory({
+        isSpectator,
+    });
+
+    // FIXME unfortunately useEventLog() cannot be loaded conditionally (leads
+    // to lint-error) so we have to handle it like this for spectator-mode
+    const { events: realEvents, appendEvent: realAppendEvent } = useEventLog();
+
+    // dummies for spectator mode
+    const spectatorEventLog = {
+        events: [],
+        appendEvent: () => {},
+    };
+
+    // set events, appendEvent conditionally
+    const { events, appendEvent } = isSpectator
+        ? spectatorEventLog
+        : { events: realEvents, appendEvent: realAppendEvent };
+
+    /** used for blackhole timer tracking in leaderboard */
+    useEffect(() => {
+        if (
+            isSpectator ||
+            user === null ||
+            playerJoinedLoggedRef.current ||
+            !isGameplayReady ||
+            !isSaveGameReady ||
+            !isGameConnected ||
+            !isInitialBlackHoleRestore(
+                blackHoleRestore.completed,
+                blackHoleRestore.secondsRemaining
+            )
+        ) {
+            return;
+        }
+
+        playerJoinedLoggedRef.current = true;
+        void appendEvent({
+            eventType: EventType.PlayerJoined,
+            data: null,
+            logtime: new Date(),
+            user,
+        });
+    }, [
+        appendEvent,
+        blackHoleRestore.completed,
+        blackHoleRestore.secondsRemaining,
+        isGameConnected,
+        isGameplayReady,
+        isSaveGameReady,
+        isSpectator,
+        user,
+    ]);
+
+    const {
+        friends,
+        friendRequest,
+        handleFriendRequestChange,
+        handleFriendStateSnapshot,
+        resetFriendRequest,
+        removeFriend,
+    } = useFriendRequest({
+        appendEvent,
+        runtimeRef: gameRuntimeRef,
+        user: user!,
+    });
 
     /** Runtime-Ereignisse bleiben auch außerhalb des Sichtfelds sichtbar. */
     const handleGameEvent = useCallback(
-        (event: GameRuntimeEvent): void => {
-            appendEvent(describeGameEvent(event));
-            if (event.type === 'game_result') {
-                void saveTicTacToeMatch(event);
+        (event: GameEvent): void => {
+            if (event.eventType === EventType.PlayerInRange) {
+                const evData = event.data as EventDataPlayerInRange;
+                const metPlayerNicknames = metPlayerNicknamesRef.current;
+                // only log the first time we meet a player, not every time again
+                if (!metPlayerNicknames.has(evData.remoteNick!)) {
+                    metPlayerNicknames.add(evData.remoteNick!);
+                    appendEvent(event);
+                }
+            } else if (event.eventType !== EventType.QuestCompleted) {
+                appendEvent(event);
+            }
+
+            if (event.eventType === EventType.GameResult) {
+                void saveMatchResult(event);
             }
             setCompletedQuestIds((currentQuestIds) =>
                 applyQuestCompletionEvent(currentQuestIds, event)
             );
         },
-        [appendEvent, saveTicTacToeMatch]
+        [appendEvent, saveMatchResult]
     );
 
     const handleChatMessage = useCallback((message: string): void => {
@@ -107,42 +256,77 @@ export const Game: React.FC<{
 
     const handleReceivedChatMessage = useCallback(
         (message: ReceivedChatPayload): void => {
-            appendEvent(`${message.senderName} 💬 ${message.message}`);
+            const event: GameEvent = {
+                eventType: EventType.ChatMsg,
+                data: {
+                    chatmsg: message.message,
+                },
+                logtime: new Date(),
+                user: new User({ nickname: message.senderName }),
+            };
+            appendEvent(event);
         },
         [appendEvent]
     );
 
     const handleQuestStatusChange = useCallback(
         (statusChange: QuestStatusChange): void => {
-            appendEvent(describeQuestStatusChange(statusChange));
-            if (statusChange.questId === 'avoid-blackhole') {
-                gameRuntimeRef.current?.triggerBlackHoleCutscene();
-                //console.log('### Quest status change:', statusChange);
+            if (!statusChange.completed) {
+                return;
             }
+
+            appendEvent({
+                eventType: EventType.QuestCompleted,
+                data: {
+                    questText: statusChange.questText,
+                    questId: statusChange.questId,
+                },
+                logtime: new Date(),
+                user: user!,
+            });
         },
-        [appendEvent]
+        [appendEvent, user]
     );
+
+    const handleBlackHoleCountdownExpired = useCallback((): void => {
+        appendEvent({
+            eventType: EventType.Blackholed,
+            data: null,
+            logtime: new Date(),
+            user: user!,
+        });
+        gameRuntimeRef.current?.triggerBlackHoleCutscene();
+    }, [appendEvent, user]);
 
     const handleDialogNext = useCallback((): void => {
         gameRuntimeRef.current?.continueDialogue();
     }, []);
 
-    /** suck up */
-    const exitLocalPlayer = useCallback(
-        async (description: string): Promise<void> => {
-            appendEvent(description);
-            await gameRuntimeRef.current?.despawnLocalPlayer();
-        },
-        [appendEvent]
-    );
+    const handleGameReset = useCallback((): void => {
+        setIsGameplayReady(false);
+        playerJoinedLoggedRef.current = false;
+        metPlayerNicknamesRef.current.clear();
+        setCompletedQuestIds([]);
+        resetSaveGame();
+        resetFriendRequest();
+        setGameResetVersion((currentVersion) => currentVersion + 1);
+    }, [resetFriendRequest, resetSaveGame]);
 
-    const handleBlackHoleExpired = useCallback((): void => {
-        void exitLocalPlayer(`${nickname} 🕳️ was sucked into the Black Hole`);
-    }, [exitLocalPlayer, nickname]);
+    /** suck up */
+    const exitLocalPlayer = useCallback(async (): Promise<void> => {
+        const event: GameEvent = {
+            eventType: EventType.PlayerLeft,
+            data: null,
+            logtime: new Date(),
+            user: user!,
+        };
+        appendEvent(event);
+        await gameRuntimeRef.current?.despawnLocalPlayer();
+    }, [appendEvent, user]);
 
     const handleLogout = useCallback(async (): Promise<void> => {
         try {
-            await exitLocalPlayer(`${nickname} 🚪 logged out`);
+            await exitLocalPlayer();
         } catch (error) {
             console.error(
                 'Failed to despawn local player during logout:',
@@ -151,7 +335,7 @@ export const Game: React.FC<{
         }
 
         await logout();
-    }, [exitLocalPlayer, logout, nickname]);
+    }, [exitLocalPlayer, logout]);
 
     const handleSpectatorExit = useCallback((): void => {
         setIsSpectator(false);
@@ -167,26 +351,46 @@ export const Game: React.FC<{
         mount.appendChild(renderer.domElement);
 
         let gameMode: GameMode = 'spectator';
-        let runtimeGameEventHandler:
-            ((event: GameRuntimeEvent) => void) | undefined;
+        let runtimeGameEventHandler: ((event: GameEvent) => void) | undefined;
         let runtimeDialogHandler:
             ((state: DialogPanelState) => void) | undefined;
+        let runtimeGameResetHandler: (() => void) | undefined;
+        let runtimeGameplayReadyHandler: (() => void) | undefined;
+        let runtimeFriendRequestHandler:
+            typeof handleFriendRequestChange | undefined;
+        let runtimeFriendStateSnapshotHandler:
+            typeof handleFriendStateSnapshot | undefined;
+        let runtimeSaveGameRestoreHandler: typeof SaveGameRestore | undefined;
+        let runtimeConnectionChangeHandler:
+            typeof handleGameConnectionChange | undefined;
 
         if (!isSpectator) {
             gameMode = 'player';
             runtimeGameEventHandler = handleGameEvent;
             runtimeDialogHandler = setDialog;
+            runtimeGameResetHandler = handleGameReset;
+            runtimeGameplayReadyHandler = () => setIsGameplayReady(true);
+            runtimeFriendRequestHandler = handleFriendRequestChange;
+            runtimeFriendStateSnapshotHandler = handleFriendStateSnapshot;
+            runtimeSaveGameRestoreHandler = SaveGameRestore;
+            runtimeConnectionChangeHandler = handleGameConnectionChange;
         }
 
         const runtime: GameRuntime = startGame(
             character,
-            nickname,
+            user!,
             serverAddrRef.current,
             renderer,
             runtimeGameEventHandler,
             runtimeDialogHandler,
             gameMode,
-            handleReceivedChatMessage
+            handleReceivedChatMessage,
+            runtimeGameResetHandler,
+            runtimeGameplayReadyHandler,
+            runtimeFriendRequestHandler,
+            runtimeFriendStateSnapshotHandler,
+            runtimeSaveGameRestoreHandler,
+            runtimeConnectionChangeHandler
         );
         gameRuntimeRef.current = runtime;
 
@@ -208,9 +412,14 @@ export const Game: React.FC<{
     }, [
         character,
         handleGameEvent,
+        handleGameReset,
+        handleFriendRequestChange,
+        handleFriendStateSnapshot,
+        handleGameConnectionChange,
         handleReceivedChatMessage,
+        SaveGameRestore,
         isSpectator,
-        nickname,
+        user,
         serverAddrRef,
     ]);
 
@@ -231,10 +440,19 @@ export const Game: React.FC<{
     } else {
         playerOnlyGameUIProps = {
             onQuestStatusChange: handleQuestStatusChange,
-            onBlackHoleExpired: handleBlackHoleExpired,
+            onBlackHoleCountdownExpired: handleBlackHoleCountdownExpired,
             onLogout: handleLogout,
             dialog,
             onDialogNext: handleDialogNext,
+            blackHoleCountdownActive: isGameplayReady,
+            blackHoleConnected: isGameConnected,
+            restoredBlackHoleSecondsRemaining:
+                blackHoleRestore.secondsRemaining,
+            restoredBlackHoleCountdownCompleted: blackHoleRestore.completed,
+            onBlackHoleTimerChange: BlackHoleTimerChange,
+            friendRequest,
+            friends,
+            onFriendRemove: removeFriend,
         };
     }
 
@@ -242,20 +460,24 @@ export const Game: React.FC<{
         <>
             <div ref={mountRef} className='game-canvas-container' />
             {spectatorExitButton}
-            <GameUI
-                // NOTE now we can just use the users nickname from DB here..
-                // this might change when we want to allow change user-prefs
-                // from a in-game ui
-                nickname={nickname}
-                email={email}
-                character={character}
-                completedQuestIds={completedQuestIds}
-                events={events}
-                matchHistory={matchHistory}
-                onChatMessage={handleChatMessage}
-                {...playerOnlyGameUIProps}
-                isSpectator={isSpectator}
-            />
+            {/* render GameUI after  SaveGameRestore */}
+            {isSaveGameReady && (
+                <GameUI
+                    key={gameResetVersion + ':' + blackHoleRestore.version}
+                    // NOTE now we can just use the users nickname from DB here..
+                    // this might change when we want to allow change user-prefs
+                    // from a in-game ui
+                    nickname={user!.nickname}
+                    email={user!.email}
+                    character={character}
+                    completedQuestIds={completedQuestIds}
+                    events={events}
+                    matchHistory={matchHistory}
+                    onChatMessage={handleChatMessage}
+                    {...playerOnlyGameUIProps}
+                    isSpectator={isSpectator}
+                />
+            )}
         </>
     );
 };

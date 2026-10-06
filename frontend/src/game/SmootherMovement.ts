@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 
-import { PLAYER_NETWORK_UPDATE_INTERVAL_SECONDS } from 'common/sharedTypes';
+import { PLAYER_NETWORK_UPDATE_INTERVAL_SECONDS } from 'ftr-common/sharedTypes';
 
 /** Smooth remote positions between network updates. */
 export class SmootherMovement {

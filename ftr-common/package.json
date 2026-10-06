@@ -1,0 +1,49 @@
+{
+    "$schema": "https://json.schemastore.org/package.json",
+    "name": "ftr-common",
+    "version": "1.0.0",
+    "private": true,
+    "type": "module",
+    "exports": {
+        "./sharedTypes": {
+            "import": "./dist/sharedTypes.js",
+            "types": "./dist/sharedTypes.d.ts"
+        },
+        "./ormTypes": {
+            "import": "./dist/ormTypes.js",
+            "types": "./dist/ormTypes.d.ts"
+        },
+        "./middleware": {
+            "import": "./dist/middleware.js",
+            "types": "./dist/middleware.d.ts"
+        },
+        "./expressTypes": {
+            "import": "./dist/expressTypes.js",
+            "types": "./dist/expressTypes.d.ts"
+        },
+        "./internalAuth": {
+            "import": "./dist/internalAuth.js",
+            "types": "./dist/internalAuth.d.ts"
+        },
+        "./utils": {
+            "import": "./dist/utils.js",
+            "types": "./dist/expressTypes.d.ts"
+        }
+    },
+    "scripts": {
+        "build": "tsc -b",
+        "lint": "eslint .",
+        "lint-fix": "eslint . --fix"
+    },
+    "dependencies": {
+        "express": "^5.2.1",
+        "jsonwebtoken": "^9.0.3",
+        "three": "^0.185.1",
+        "tslog": "^5.1.0",
+        "typeorm": "^1.1.0"
+    },
+    "devDependencies": {
+        "@types/express": "^5.0.6",
+        "@types/jsonwebtoken": "^9.0.10"
+    }
+}

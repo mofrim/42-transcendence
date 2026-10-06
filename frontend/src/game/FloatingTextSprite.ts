@@ -2,6 +2,11 @@ import * as THREE from 'three';
 
 import { CanvasTextSprite } from './CanvasTextSprite';
 
+export const CHAT_BUBBLE_HEIGHT = 1.85;
+export const CHAT_BUBBLE_PREFIX = '🗨️ ';
+export const CHAT_BUBBLE_SCALE = 0.42;
+export const CHAT_BUBBLE_SIZE = 42;
+
 /**
  * World-space canvas text that follows a Three.js object with a fixed offset.
  * Text an einem 3D-Objekt as a Sprite, the text automatically faces the active camera.
@@ -13,12 +18,12 @@ export class FloatingTextSprite extends CanvasTextSprite {
     constructor(
         text: string,
         size: number,
-        worldOffset: THREE.Vector3 = new THREE.Vector3()
+        worldOffset: THREE.Vector3Like = new THREE.Vector3()
     ) {
         super(text, size);
 
         this.target = null;
-        this.worldOffset = worldOffset.clone();
+        this.worldOffset = new THREE.Vector3().copy(worldOffset);
         this.visible = false;
 
         this.onBeforeRender = (): void => {
@@ -37,8 +42,8 @@ export class FloatingTextSprite extends CanvasTextSprite {
         this.visible = false;
     }
 
-    setWorldOffset(x: number, y: number, z: number): void {
-        this.worldOffset.set(x, y, z);
+    setWorldOffset(worldOffset: THREE.Vector3Like): void {
+        this.worldOffset.copy(worldOffset);
         this.updatePosition();
     }
 

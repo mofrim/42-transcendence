@@ -1,135 +1,103 @@
 import * as THREE from 'three';
-import { Interaction } from './interaction';
+import { PREPARATION_QUEST_IDS } from 'ftr-common/sharedTypes';
+import { Interaction, type InteractionTypeId } from './interaction';
+import { FrontDoorQuest } from './QuestFrontDoor';
+import { EvaluatingStudentQuest } from './QuestEvaluatingStudent';
+import { EventSpaceQuest } from './QuestEventSpace';
+import { PreparationQuest } from './QuestPreparation';
+import { StartEvaluationQuest } from './QuestStartEvaluation';
+import { LostTokenQuest } from './QuestToken';
+import type { NPCManager } from './npc';
+
+const INTERACTION_RANGE = new THREE.Vector3(1, 2, 1);
 
 export class InteractionManager {
-    interactions: Interaction[] = [];
-    currentInteraction: Interaction | null = null;
+    readonly interactions: readonly Interaction[];
+    readonly preparationQuests: ReadonlyMap<
+        InteractionTypeId,
+        PreparationQuest
+    >;
+    readonly evaluatingStudentQuest: EvaluatingStudentQuest;
+    readonly startEvaluationQuest: StartEvaluationQuest;
+    readonly eventSpaceQuest: EventSpaceQuest;
+    readonly lostTokenQuest: LostTokenQuest;
+    readonly frontDoorQuest: FrontDoorQuest;
 
-    constructor(scene: THREE.Scene) {
-        this.initInteractions(scene);
-    }
+    constructor(scene: THREE.Scene, npcManager: NPCManager) {
+        this.preparationQuests = new Map<InteractionTypeId, PreparationQuest>(
+            PREPARATION_QUEST_IDS.map(
+                (questId) =>
+                    [
+                        questId,
+                        new PreparationQuest(scene, questId, INTERACTION_RANGE),
+                    ] as const
+            )
+        );
+        this.evaluatingStudentQuest = new EvaluatingStudentQuest(
+            scene,
+            INTERACTION_RANGE,
+            npcManager
+        );
+        this.startEvaluationQuest = new StartEvaluationQuest(
+            scene,
+            INTERACTION_RANGE
+        );
+        this.eventSpaceQuest = new EventSpaceQuest(scene, INTERACTION_RANGE);
+        this.lostTokenQuest = new LostTokenQuest(scene, INTERACTION_RANGE);
+        this.frontDoorQuest = new FrontDoorQuest(scene, INTERACTION_RANGE);
 
-    initInteractions(scene: THREE.Scene): void {
-        const interaction1 = new Interaction(
-            scene,
-            'FIND_RUBBERDUCK',
-            new THREE.Vector3(15.5, 0, -24),
-            new THREE.Vector3(1, 2, 1),
-            true
-        );
-        const interaction2 = new Interaction(
-            scene,
-            'GET_COFFEE',
-            new THREE.Vector3(24.5, 0, -8),
-            new THREE.Vector3(1, 2, 1),
-            true
-        );
-        const interaction3 = new Interaction(
-            scene,
-            'GET_PAPER',
-            new THREE.Vector3(12.5, 0, -10.5),
-            new THREE.Vector3(1, 2, 1),
-            true
-        );
-        const interaction4 = new Interaction(
-            scene,
-            'LOGIN_COMPUTER',
-            new THREE.Vector3(8, 3.72, -14),
-            new THREE.Vector3(1, 2, 1),
-            true
-        );
-        const interaction5 = new Interaction(
-            scene,
-            'WHERE_IS_EVALUATOR',
-            new THREE.Vector3(8, 3.72, -14),
-            new THREE.Vector3(1, 2, 1),
-            false
-        );
-        const interaction6 = new Interaction(
-            scene,
-            'FIND_EVALUATING_STUDENT',
-            new THREE.Vector3(4, 0, -22.5),
-            new THREE.Vector3(1, 2, 1),
-            false
-        );
-        const interaction7 = new Interaction(
-            scene,
-            'START_EVALUATION',
-            new THREE.Vector3(8, 3.72, -14),
-            new THREE.Vector3(1, 2, 1),
-            false
-        );
-
-        this.add(interaction1);
-        this.add(interaction2);
-        this.add(interaction3);
-        this.add(interaction4);
-        this.add(interaction5);
-        this.add(interaction6);
-        this.add(interaction7);
+        this.interactions = [
+            ...Array.from(
+                this.preparationQuests.values(),
+                (quest) => quest.interaction
+            ),
+            ...this.evaluatingStudentQuest.interactions,
+            this.startEvaluationQuest.interaction,
+            ...this.eventSpaceQuest.interactions,
+            this.lostTokenQuest.interaction,
+            this.frontDoorQuest.interaction,
+        ];
 
         this.interactionStartingState();
     }
 
-    add(interaction: Interaction): void {
-        this.interactions.push(interaction);
-    }
-
-    enableInteraction(typeID: string): void {
-        this.interactions
-            .find((interaction) => interaction.typeID === typeID)
-            ?.enableInteraction();
-    }
-
-    disableInteraction(typeID: string): void {
-        this.interactions
-            .find((interaction) => interaction.typeID === typeID)
-            ?.disableInteraction();
-    }
-
     interactionStartingState(): void {
-        this.enableInteraction('FIND_RUBBERDUCK');
-        this.enableInteraction('GET_COFFEE');
-        this.enableInteraction('GET_PAPER');
-        this.enableInteraction('LOGIN_COMPUTER');
-
-        this.disableInteraction('WHERE_IS_EVALUATOR');
-        this.disableInteraction('FIND_EVALUATING_STUDENT');
-        this.disableInteraction('START_EVALUATION');
+        for (const quest of this.preparationQuests.values()) {
+            quest.interaction.reset(true);
+        }
+        this.evaluatingStudentQuest.reset();
+        this.startEvaluationQuest.interaction.reset(false);
+        this.eventSpaceQuest.reset();
+        this.lostTokenQuest.reset();
+        this.frontDoorQuest.interaction.reset(false);
     }
 
     OnActivatePress(playerPosition: THREE.Vector3): void {
-        this.currentInteraction = null;
-
-        for (const interaction of this.interactions) {
-            if (
-                interaction.zone.containsPoint(playerPosition) &&
-                interaction.enabled
-            ) {
-                // console.log(`Interaction triggered: ${interaction.typeID}`);
-                this.currentInteraction = interaction;
-                this.interact();
-                break;
-            }
+        const interaction = this.interactions.find(
+            (candidate) =>
+                candidate.zone.containsPoint(playerPosition) &&
+                candidate.enabled
+        );
+        if (interaction) {
+            this.onInteraction?.(interaction);
         }
     }
 
-    update(playerPosition: THREE.Vector3): void {
+    update(playerPosition: THREE.Vector3): Interaction | null {
+        let interactionInZone: Interaction | null = null;
+
         for (const interaction of this.interactions) {
-            if (
-                interaction.zone.containsPoint(playerPosition) &&
-                interaction.enabled
-            )
-                interaction.showEngageButton();
+            const isInZone = interaction.zone.containsPoint(playerPosition);
+
+            if (interactionInZone === null && isInZone) {
+                interactionInZone = interaction;
+            }
+
+            if (isInZone && interaction.enabled) interaction.showEngageButton();
             else interaction.removeEngageButton();
         }
-    }
 
-    // Called when the player presses the interaction key
-    interact(): void {
-        if (this.currentInteraction && this.currentInteraction.enabled) {
-            this.onInteraction?.(this.currentInteraction);
-        }
+        return interactionInZone;
     }
 
     // Callback

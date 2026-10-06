@@ -3,7 +3,11 @@ import { Player, type PlayerAnimationState } from './player';
 import { Camera } from './camera';
 import { InteractionManager } from './interaction_manager';
 import { Interaction } from './interaction';
-import { PlayerState } from 'common/sharedTypes';
+import {
+    PREPARATION_QUEST_IDS,
+    PlayerState,
+    QUESTS,
+} from 'ftr-common/sharedTypes';
 
 // TODO: move this to sharedTypes.ts
 type DialogState = {
@@ -28,8 +32,7 @@ export class Story_Manager {
     // Keep dialogue handling internal and prevent accidental reassignment.
     private dialogResolver: (() => void) | null;
     private readonly onDialogChange: ((state: DialogState) => void) | undefined;
-
-    onQuestComplete: string | null = null;
+    private readonly onGameReset: (() => void | Promise<void>) | undefined;
 
     // TODO: TEMP - need to be changed with Database
     questState: Map<string, boolean>;
@@ -42,7 +45,8 @@ export class Story_Manager {
         keyStates: { [key: string]: boolean },
         keys: [number, number],
         interactionManager: InteractionManager,
-        onDialogChange?: (state: DialogState) => void
+        onDialogChange?: (state: DialogState) => void,
+        onGameReset?: () => void | Promise<void>
     ) {
         this.scene = scene;
         this.player = player;
@@ -53,8 +57,7 @@ export class Story_Manager {
         this.keys = keys;
         this.interactionManager = interactionManager;
         this.onDialogChange = onDialogChange;
-
-        this.onQuestComplete = null;
+        this.onGameReset = onGameReset;
 
         this.skipCameraAnimation = false;
         this.advanceDialogue = false;
@@ -68,10 +71,15 @@ export class Story_Manager {
 
     // TODO: TEMP - need to be changed with Database
     initQuestState(): void {
-        this.questState.set('FIND_RUBBERDUCK', false);
-        this.questState.set('GET_COFFEE', false);
-        this.questState.set('GET_PAPER', false);
-        this.questState.set('LOGIN_COMPUTER', false);
+        for (const questId of PREPARATION_QUEST_IDS) {
+            this.questState.set(questId, false);
+        }
+    }
+
+    resetGameState(): void {
+        this.questState.clear();
+        this.initQuestState();
+        this.interactionManager.interactionStartingState();
     }
 
     releaseAllKeys(): void {
@@ -347,14 +355,12 @@ export class Story_Manager {
         }
     }
 
-    async showDialog(message: string = ''): Promise<void> {
+    showDialog(message: string = ''): Promise<void> {
         this.onDialogChange?.({ isOpen: true, message });
 
-        return new Promise((resolve) => {
-            this.dialogResolver = () => {
-                resolve();
-            };
-        });
+        const { promise, resolve } = Promise.withResolvers<void>();
+        this.dialogResolver = resolve;
+        return promise;
     }
 
     startCutscene(): void {
@@ -370,6 +376,20 @@ export class Story_Manager {
         this.inCutscene = false;
         this.camera.orbitControls.enabled = true;
     }
+
+    transformModelForCutscene(position: THREE.Vector3Like): void {
+        const worldPosition = new THREE.Vector3().copy(position);
+        this.player.group.worldToLocal(worldPosition);
+        this.player.model?.position.copy(worldPosition);
+    }
+
+    resetModelPosition(): void {
+        this.player.model?.position.setScalar(0);
+    }
+
+    // ==================================================
+    // CUTSCENES
+    // ==================================================
 
     async GameIntro(): Promise<void> {
         this.startCutscene();
@@ -390,7 +410,7 @@ export class Story_Manager {
             new THREE.Vector3(18, 6, -10)
         );
 
-        this.transformModelForCutscene(16, 0, 14);
+        this.transformModelForCutscene({ x: 16, y: 0, z: 14 });
 
         await this.moveCameraAndLookAt(
             new THREE.Vector3(15, 0.2, 17),
@@ -400,7 +420,7 @@ export class Story_Manager {
             new THREE.Vector3(17, 7, 0)
         );
 
-        //this.transformModelForCutscene(10, 0, 10);
+        //this.transformModelForCutscene({ x: 10, y: 0, z: 10 });
 
         this.moveCameraDialog(
             new THREE.Vector3(16.3, 1.1, 13),
@@ -426,24 +446,16 @@ export class Story_Manager {
         this.endCutscene();
     }
 
-    transformModelForCutscene(X: number, Y: number, Z: number): void {
-        const worldPosition = new THREE.Vector3(X, Y, Z);
-        this.player.group.worldToLocal(worldPosition);
-        this.player.model?.position.copy(worldPosition);
-    }
-
-    resetModelPosition(): void {
-        this.player.model?.position.setScalar(0);
-    }
-
-    async blackHoleCutscene(): Promise<void> {
+    async blackHoleCutscene(showIntroCutscene: boolean = false): Promise<void> {
         this.startCutscene();
 
         this.player.controls.requestedAnimation = PlayerState.Falling;
 
-        this.transformModelForCutscene(16, 15, -5);
+        this.transformModelForCutscene({ x: 16, y: 15, z: -5 });
 
-        this.showDialog('OH NO... THE BLACK HOLE IS PULLING ME IN!');
+        const continueAfterBlackHole = this.showDialog(
+            'OH NO... THE BLACK HOLE IS PULLING ME IN!'
+        );
 
         await this.moveCameraAndLookAt(
             new THREE.Vector3(15.5, 11, -5),
@@ -453,8 +465,11 @@ export class Story_Manager {
             new THREE.Vector3(16, 15, -5)
         );
 
+        await continueAfterBlackHole;
+
         this.resetModelPosition();
         this.player.PlayerToStartPosition();
+        this.resetGameState();
 
         this.moveCameraDialog(
             new THREE.Vector3(16.3, 1.1, 13),
@@ -474,12 +489,82 @@ export class Story_Manager {
 
         this.stopCurrentDialogueCamera();
 
-        // TODO: Kompletter Reset? Alle Quests zurücksetzen etc.
-
         await this.returnCameraToPlayer(1.0);
+
+        await this.onGameReset?.();
+        this.endCutscene();
+
+        if (showIntroCutscene) {
+            await this.GameIntro();
+        }
+    }
+
+    async openFrontDoorCutscene(): Promise<void> {
+        this.startCutscene();
+
+        this.moveCameraDialog(
+            new THREE.Vector3(9.78, 2, 2.61),
+            new THREE.Vector3(11.26, 2, 2.62),
+            10,
+            new THREE.Vector3(9.78, 1, -0.48)
+        );
+
+        await this.showDialog(
+            'There it is 🔑! I found my lost campus token. Now I can finally unlock the frontdoor.'
+        );
+        this.stopCurrentDialogueCamera();
 
         this.endCutscene();
     }
+
+    async openEventSpaceDoorACutscene(): Promise<void> {
+        this.startCutscene();
+
+        await this.moveCameraDialog(
+            new THREE.Vector3(13.49, 5.72, -16.93),
+            new THREE.Vector3(14.01, 5.72, -15.61),
+            4,
+            new THREE.Vector3(15.53, 5, -17.62)
+        );
+
+        this.stopCurrentDialogueCamera();
+        await this.returnCameraToPlayer(0.01);
+        this.endCutscene();
+    }
+
+    async openEventSpaceDoorBCutscene(): Promise<void> {
+        this.startCutscene();
+
+        await this.moveCameraDialog(
+            new THREE.Vector3(15.93, 5.73, -6),
+            new THREE.Vector3(17.29, 5.73, -6),
+            4,
+            new THREE.Vector3(15.93, 5, -8)
+        );
+
+        this.stopCurrentDialogueCamera();
+        await this.returnCameraToPlayer(0.01);
+        this.endCutscene();
+    }
+
+    async evaluationCutscene(): Promise<void> {
+        this.startCutscene();
+
+        await this.moveCameraDialog(
+            new THREE.Vector3(5, 5.72, -15.04),
+            new THREE.Vector3(5, 5.72, -13.29),
+            5,
+            new THREE.Vector3(7.94, 5, -15.04)
+        );
+
+        this.stopCurrentDialogueCamera();
+        await this.returnCameraToPlayer(0.5);
+        this.endCutscene();
+    }
+
+    // ==================================================
+    //
+    // ==================================================
 
     async playDialogInteraction(
         message: string,
@@ -502,24 +587,7 @@ export class Story_Manager {
         this.endCutscene();
 
         this.questState.set(type, true);
-        this.onQuestComplete = type;
-        this.interact();
-    }
-
-    allQuestsCompleted(): boolean {
-        for (const [quest, check] of this.questState.entries()) {
-            void quest;
-            if (!check) return false;
-        }
-        return true;
-    }
-
-    enableInteraction(typeID: string): void {
-        this.interactionManager.enableInteraction(typeID);
-    }
-
-    disableInteraction(typeID: string): void {
-        this.interactionManager.disableInteraction(typeID);
+        this.onQuestInteraction?.(type);
     }
 
     async preparationsCompleted(): Promise<void> {
@@ -528,118 +596,114 @@ export class Story_Manager {
             PlayerState.Strong
         );
 
-        this.enableInteraction('WHERE_IS_EVALUATOR');
-        this.enableInteraction('FIND_EVALUATING_STUDENT');
-    }
-
-    async handlePreparationQuest(typeID: string): Promise<void> {
-        switch (typeID) {
-            case 'FIND_RUBBERDUCK':
-                await this.caseInteraction(
-                    'FIND_RUBBERDUCK',
-                    'Found the duck 🦆! One less thing to worry about.',
-                    PlayerState.Surprised
-                );
-                break;
-
-            case 'GET_COFFEE':
-                await this.caseInteraction(
-                    'GET_COFFEE',
-                    'Ahh ☕ much better... Now I can finally think!',
-                    PlayerState.Drinking
-                );
-                break;
-
-            case 'GET_PAPER':
-                await this.caseInteraction(
-                    'GET_PAPER',
-                    'I found some paper 📃! Now I can finally take some notes.',
-                    PlayerState.ThumbsUp
-                );
-                break;
-
-            case 'LOGIN_COMPUTER':
-                await this.caseInteraction(
-                    'LOGIN_COMPUTER',
-                    'Great, the computer is ready. Just a few more steps to go!',
-                    PlayerState.ThumbsUp
-                );
-                break;
-        }
-
-        this.disableInteraction(typeID);
-
-        if (this.allQuestsCompleted()) {
-            await this.preparationsCompleted();
-        }
+        this.interactionManager.evaluatingStudentQuest.unlock();
     }
 
     async handleInteraction(interaction: Interaction): Promise<void> {
         //console.log(`Interaction triggered: ${interaction.typeID}`);
-        this.onQuestComplete = null;
+        const completeQuest = this.caseInteraction.bind(this);
+        const playDialog = this.playDialogInteraction.bind(this);
 
-        // Checklist Preparation
-        switch (interaction.typeID) {
-            case 'FIND_RUBBERDUCK':
-            case 'GET_COFFEE':
-            case 'GET_PAPER':
-            case 'LOGIN_COMPUTER':
-                await this.handlePreparationQuest(interaction.typeID);
-                return;
-        }
-
-        // Find Evaluating Student
-        switch (interaction.typeID) {
-            case 'WHERE_IS_EVALUATOR':
-                await this.playDialogInteraction(
-                    "Someone's been assigned to my evaluation. They're at c1r12s2. Let's go.",
-                    PlayerState.ThumbsUp
-                );
-                return;
-
-            case 'FIND_EVALUATING_STUDENT':
-                await this.caseInteraction(
-                    'FIND_EVALUATING_STUDENT',
-                    'Found him! Time to head back and kick off the evaluation.',
-                    PlayerState.Strong
-                );
-
-                this.disableInteraction('WHERE_IS_EVALUATOR');
-                this.disableInteraction('FIND_EVALUATING_STUDENT');
-                this.enableInteraction('START_EVALUATION');
-
-                return;
-        }
-
-        // Start Evaluation
-        if (interaction.typeID === 'START_EVALUATION') {
-            await this.caseInteraction(
-                'START_EVALUATION',
-                "Evaluation is starting. Let's go!",
-                PlayerState.Strong
-            );
+        if (
+            await this.interactionManager.lostTokenQuest.handleInteraction(
+                interaction,
+                () =>
+                    this.interactionManager.frontDoorQuest.interaction.enableInteraction()
+            )
+        ) {
+            const questId = QUESTS.FIND_LOST_DROPPED_TOKEN_QUEST_ID.id;
+            this.questState.set(questId, true);
+            this.onQuestInteraction?.(questId);
+            await this.openFrontDoorCutscene();
             return;
         }
-    }
 
-    interact(): void {
-        if (this.onQuestComplete) {
-            this.onQuestInteraction?.(this.onQuestComplete);
+        if (
+            await this.interactionManager.frontDoorQuest.handleInteraction(
+                interaction,
+                completeQuest
+            )
+        ) {
+            return;
         }
+
+        if (
+            await this.interactionManager.eventSpaceQuest.handleInteraction(
+                interaction,
+                playDialog
+            )
+        ) {
+            return;
+        }
+
+        const preparationQuest = this.interactionManager.preparationQuests.get(
+            interaction.typeID
+        );
+        let onPreparationHandled: (() => void) | undefined;
+        if (interaction.typeID === QUESTS.RUBBER_DUCK_QUEST_ID.id) {
+            onPreparationHandled = () => this.onQuestDuckFound?.();
+        } else if (interaction.typeID === QUESTS.COMPUTER_LOGIN_QUEST_ID.id) {
+            onPreparationHandled = () => this.onQuestLogin?.();
+        }
+
+        if (
+            preparationQuest !== undefined &&
+            (await preparationQuest.handleInteraction(
+                interaction,
+                completeQuest,
+                onPreparationHandled
+            ))
+        ) {
+            if ([...this.questState.values()].every(Boolean)) {
+                await this.preparationsCompleted();
+            }
+            return;
+        }
+
+        if (
+            await this.interactionManager.evaluatingStudentQuest.handleInteraction(
+                interaction,
+                playDialog,
+                completeQuest,
+                () => this.onQuestEvaluator?.(),
+                () =>
+                    this.interactionManager.startEvaluationQuest.interaction.enableInteraction()
+            )
+        ) {
+            return;
+        }
+
+        await this.interactionManager.startEvaluationQuest.handleInteraction(
+            interaction,
+            completeQuest,
+            () => this.onQuestStartEvaluation?.(),
+            async () => {
+                await this.evaluationCutscene();
+            },
+            () => {
+                this.interactionManager.eventSpaceQuest.disableInteractions();
+                this.onQuestFinished?.();
+            }
+        );
     }
 
     // Callback
     // TODO: If Questlog Id is enum, than change also here?
     onQuestInteraction?: (questId: string) => void;
+    onQuestFinished?: () => void;
+    onQuestDuckFound?: () => void;
+    onQuestEvaluator?: () => void;
+    onQuestLogin?: () => void;
+    onQuestStartEvaluation?: () => void;
 
     // ===================================================
-    // TESTING FUNCTIONS. Delete if not needed anymore
+    // TODO: TESTING FUNCTIONS. Delete if not needed anymore
     // ===================================================
 
     async CutscenePositionTest(): Promise<void> {
         this.startCutscene();
 
-        this.transformModelForCutscene(10, 0, 5);
+        this.transformModelForCutscene({ x: 10, y: 0, z: 5 });
         //this.player.controls.requestedAnimation = 'Falling';
 
         await this.waitForMouseClick();

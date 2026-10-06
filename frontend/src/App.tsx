@@ -1,14 +1,11 @@
 import React from 'react';
-import { UserInfo } from './ui/login/UserInfo';
 import { AuthCard } from './ui/login/AuthCard';
-import { CharacterPreview } from './ui/login/CharacterPreview';
-import { MapPreview } from './ui/login/MapPreview';
-import { PlayerSelect } from './ui/login/PlayerSelect';
-import { Agreements } from './ui/login/Agreements';
+import { MapPreview } from './ui/login/PreviewMap';
+import { Entrance } from './ui/login/Entrance';
 import { useLoginContext } from './hooks/useLoginContext';
 import { useAuth } from './hooks/useAuthContext';
-import { SPECTATOR_NAME } from 'common/sharedTypes';
 import axios from 'axios';
+import { EventLogProvider } from './contexts/EventLogProvider.tsx';
 
 import './App.css';
 
@@ -56,15 +53,16 @@ const App: React.FC<AppProps> = (props: AppProps) => {
         return null;
     }
 
+    // FIXME unfortunately we still have to load EventLogProvider in
+    // spectator-moe to have it available in Game component. but do we really
+    // have to?
     if (gameRunning && isSpectator) {
         console.log('spectator mode running');
         return (
             <React.Suspense fallback={null}>
-                <LoadGame
-                    nickname={SPECTATOR_NAME}
-                    email=''
-                    isSpectator={true}
-                />
+                <EventLogProvider>
+                    <LoadGame isSpectator={true} />
+                </EventLogProvider>
             </React.Suspense>
         );
     }
@@ -73,18 +71,14 @@ const App: React.FC<AppProps> = (props: AppProps) => {
         console.log('game running');
         return (
             <React.Suspense fallback={null}>
-                <LoadGame
-                    nickname={user.nickname}
-                    email={user.email}
-                    isSpectator={false}
-                />
+                <EventLogProvider>
+                    <LoadGame isSpectator={false} />
+                </EventLogProvider>
             </React.Suspense>
         );
     }
 
     // user has not logged in yet -> display only login form
-    // TODO extend with registration possibility
-    // TODO either put agreemnents here or in the next view
     if (user == null) {
         return (
             <>
@@ -108,26 +102,12 @@ const App: React.FC<AppProps> = (props: AppProps) => {
     }
 
     return (
-        <>
-            <MapPreview />
-            <div id='login-ui'>
-                <div className='login-title'>{props.title}</div>
-                <div className='login-subtitle'>{props.subtitle}</div>
-                <UserInfo />
-                <PlayerSelect />
-                <CharacterPreview />
-                <Agreements />
-                <button
-                    id='start-btn'
-                    onClick={() => {
-                        setIsSpectator(false);
-                        setGameRunning(true);
-                    }}
-                >
-                    ENTER
-                </button>
-            </div>
-        </>
+        <Entrance
+            title={props.title}
+            subtitle={props.subtitle}
+            setIsSpectator={setIsSpectator}
+            setGameRunning={setGameRunning}
+        />
     );
 };
 

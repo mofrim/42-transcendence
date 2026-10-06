@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import { API_EVENTLOG } from 'ftr-common/sharedTypes';
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -10,6 +11,12 @@ export default defineConfig({
     },
     server: {
         proxy: {
+            '/socket.io/': {
+                target: 'http://localhost:3000',
+                changeOrigin: true,
+                secure: false,
+                ws: true,
+            },
             '/api/login': {
                 target: 'http://localhost:3001',
                 changeOrigin: true,
@@ -18,27 +25,21 @@ export default defineConfig({
                 target: 'http://localhost:3001',
                 changeOrigin: true,
             },
-            '/api/user': {
+            '/api/validateSession': {
                 target: 'http://localhost:3001',
                 changeOrigin: true,
             },
-            '/api/validateSession': {
-                target: 'http://localhost:3001',
+            [API_EVENTLOG.root]: {
+                target: 'http://localhost:3002',
                 changeOrigin: true,
             },
             '/api/protected': {
                 target: 'http://localhost:3001',
                 changeOrigin: true,
             },
-            '/api/eventlog': {
-                target: 'http://localhost:3002',
+            '/api/user': {
+                target: 'http://localhost:3003',
                 changeOrigin: true,
-            },
-            '/socket.io/': {
-                target: 'http://localhost:3000',
-                changeOrigin: true,
-                secure: false,
-                ws: true,
             },
         },
     },

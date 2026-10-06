@@ -49,9 +49,9 @@ export class PlayerVisibilityTransition {
             );
         }
 
-        this.completion = new Promise<void>((resolve) => {
-            this.resolveCompletion = resolve;
-        });
+        const { promise, resolve } = Promise.withResolvers<void>();
+        this.completion = promise;
+        this.resolveCompletion = resolve;
     }
 
     public get state(): PlayerLifecycleState {

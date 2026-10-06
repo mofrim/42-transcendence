@@ -1,4 +1,5 @@
 {
+    "$schema": "https://json.schemastore.org/package.json",
     "name": "eventlog-service",
     "description": "ft_transcendence eventlog service",
     "private": true,
@@ -6,20 +7,19 @@
     "type": "module",
     "scripts": {
         "dev": "NODE_ENV=development tsx watch src/main.ts",
+        "dev-win": "set NODE_ENV=development&& tsx watch src/main.ts",
         "build": "tsc -b",
-        "type-check": "tsc -b ../../../common/tsconfig.json && tsc --noEmit",
-        "type-check:watch": "tsc -b ../../../common/tsconfig.json && tsc --noEmit --watch",
         "lint": "eslint .",
         "lint-fix": "eslint . --fix",
-        "start": "NODE_ENV=production tsx src/main.ts"
+        "start": "NODE_ENV=production node ../../dist/eventlog-service/main.js"
     },
     "dependencies": {
-        "common": "*",
+        "backend-utils": "*",
         "dotenv": "^17.4.2",
         "express": "^5.1.0",
+        "ftr-common": "*",
         "pg": "^8.23.0",
-        "typeorm": "^1.1.0",
-        "express-validator": "^7.3.2",
-        "tslog": "^5.1.0"
+        "tslog": "^5.1.0",
+        "typeorm": "^1.1.0"
     }
 }

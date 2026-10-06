@@ -8,6 +8,7 @@ import {
     normalizePlayerAnimationState,
     transitionPlayerAnimation,
 } from './player_animation.js';
+import { getPlayerModelPath } from './Assets.js';
 import {
     PlayerVisibilityTransition,
     type PlayerLifecycleState,
@@ -16,9 +17,15 @@ import {
     createPlayerResourceDisposer,
     replacePlayerModelMaterials,
 } from './PlayerModelMaterials.js';
-import { FloatingTextSprite } from './FloatingTextSprite.js';
+import { CanvasTextSprite } from './CanvasTextSprite.js';
+import {
+    CHAT_BUBBLE_HEIGHT,
+    CHAT_BUBBLE_PREFIX,
+    CHAT_BUBBLE_SCALE,
+    CHAT_BUBBLE_SIZE,
+} from './FloatingTextSprite.js';
 import { SmootherMovement } from './SmootherMovement.js';
-import { PlayerState } from 'common/sharedTypes';
+import { PlayerState } from 'ftr-common/sharedTypes';
 
 type PlayerAnimationState = ReturnType<typeof normalizePlayerAnimationState>;
 type RemotePlayerState = PlayerState | PlayerAnimationState;
@@ -33,21 +40,25 @@ const REMOTE_PLAYER_LOADER = new GLTFLoader();
 const PLAYER_NAME_SIZE = 48;
 const PLAYER_NAME_HEIGHT = 1.9;
 const PLAYER_NAME_SCALE = 0.3;
+const REMOTE_CHAT_DURATION_MS = 30_000;
 
 const RemotePlayerImplementation = class Remote_Player {
     private readonly colAr: THREE.Mesh[];
     private readonly ownedCollisionMeshes: THREE.Mesh[];
-    private readonly nameLabel: FloatingTextSprite;
+    private readonly nameLabel: CanvasTextSprite;
+    private readonly chatBubble: CanvasTextSprite;
     private readonly positionInterpolator: SmootherMovement;
     private readonly resourceDisposer: ReturnType<
         typeof createPlayerResourceDisposer
     >;
     private readonly lifecycleController: PlayerVisibilityTransition;
+    private chatBubbleTimeout: ReturnType<typeof setTimeout> | null;
     private loadGeneration: number;
     private finalized: boolean;
     private remoteState: RemotePlayerState;
     private battleRequestedState: boolean;
     readonly id: string;
+    readonly character: boolean;
     nickname: string;
     model: THREE.Group | null;
     group: THREE.Group;
@@ -57,10 +68,9 @@ const RemotePlayerImplementation = class Remote_Player {
     isSpawned: boolean;
 
     constructor(
-        path: string,
         id: string,
+        character: boolean,
         nickname: string,
-        scene: THREE.Scene,
         mesh_RP: THREE.Mesh | THREE.Mesh[]
     ) {
         if (Array.isArray(mesh_RP)) {
@@ -71,16 +81,20 @@ const RemotePlayerImplementation = class Remote_Player {
         this.ownedCollisionMeshes = [];
 
         this.id = id;
+        this.character = character;
         this.nickname = nickname;
         this.model = null;
         this.group = new THREE.Group();
-        this.nameLabel = new FloatingTextSprite(
-            nickname,
-            PLAYER_NAME_SIZE,
-            new THREE.Vector3(0, PLAYER_NAME_HEIGHT, 0)
-        );
+        this.nameLabel = new CanvasTextSprite(nickname, PLAYER_NAME_SIZE);
+        this.nameLabel.position.set(0, PLAYER_NAME_HEIGHT, 0);
         this.nameLabel.scale.multiplyScalar(PLAYER_NAME_SCALE);
-        scene.add(this.nameLabel);
+        this.nameLabel.visible = false;
+        this.chatBubble = new CanvasTextSprite('', CHAT_BUBBLE_SIZE);
+        this.chatBubble.position.set(0, CHAT_BUBBLE_HEIGHT, 0);
+        this.chatBubble.scale.multiplyScalar(CHAT_BUBBLE_SCALE);
+        this.chatBubble.visible = false;
+        this.chatBubbleTimeout = null;
+        this.group.add(this.nameLabel, this.chatBubble);
         this.positionInterpolator = new SmootherMovement();
 
         this.loadGeneration = 0;
@@ -109,19 +123,19 @@ const RemotePlayerImplementation = class Remote_Player {
             },
         });
 
-        this.loadEnemyCharacter(path);
+        this.loadEnemyCharacter(getPlayerModelPath(character));
     }
 
-    animateSpawn(x: number, startY: number, z: number): void {
+    animateSpawn(position: THREE.Vector3Like): void {
         if (!this.isActive()) {
             return;
         }
 
         //console.log("Animating spawn " + this.id);
         //console.log("Animating spawn...");
-        this.group.position.set(x, startY, z);
+        this.group.position.copy(position);
         //console.log("spawnY: " + this.group.position.y.toFixed(4));
-        this.nameLabel.follow(this.group);
+        this.nameLabel.visible = true;
         this.lifecycleController.startSpawn();
     }
 
@@ -144,6 +158,56 @@ const RemotePlayerImplementation = class Remote_Player {
         this.positionInterpolator.update(this.group.position, deltaSeconds);
     }
 
+    showChatMessage(message: string): void {
+        if (!this.isActive()) {
+            return;
+        }
+
+        const trimmedMessage = message.trim();
+        if (!trimmedMessage) {
+            return;
+        }
+
+        this.clearChatBubbleTimeout();
+        this.chatBubble.setText(
+            `${CHAT_BUBBLE_PREFIX}${trimmedMessage}`,
+            CHAT_BUBBLE_SIZE
+        );
+        this.chatBubble.visible = true;
+
+        const timeout = setTimeout(() => {
+            if (this.chatBubbleTimeout !== timeout) {
+                return;
+            }
+            this.chatBubbleTimeout = null;
+
+            try {
+                this.chatBubble.visible = false;
+            } catch (error) {
+                console.error('Remote player chat bubble hide failed:', error);
+            }
+        }, REMOTE_CHAT_DURATION_MS);
+        this.chatBubbleTimeout = timeout;
+    }
+
+    private clearChatBubbleTimeout(): void {
+        if (this.chatBubbleTimeout === null) {
+            return;
+        }
+
+        const chatBubbleTimeout = this.chatBubbleTimeout;
+        this.chatBubbleTimeout = null;
+
+        try {
+            clearTimeout(chatBubbleTimeout);
+        } catch (error) {
+            console.error(
+                'Remote player chat timeout cancellation failed:',
+                error
+            );
+        }
+    }
+
     private prepareForTermination(): void {
         this.loadGeneration += 1;
         this.isSpawned = false;
@@ -160,7 +224,13 @@ const RemotePlayerImplementation = class Remote_Player {
             }
         };
 
-        runPreparation(() => this.nameLabel.hide());
+        runPreparation(() => {
+            this.nameLabel.visible = false;
+        });
+        runPreparation(() => {
+            this.chatBubble.visible = false;
+        });
+        runPreparation(() => this.clearChatBubbleTimeout());
         runPreparation(() => this.unregisterOwnedCollisionMeshes());
     }
 
@@ -244,9 +314,9 @@ const RemotePlayerImplementation = class Remote_Player {
         };
 
         this.loadGeneration += 1;
+        this.clearChatBubbleTimeout();
         runCleanup(() => this.unregisterOwnedCollisionMeshes());
 
-        const model = this.model;
         const mixer = this.mixer;
 
         if (mixer !== null) {
@@ -257,13 +327,7 @@ const RemotePlayerImplementation = class Remote_Player {
             });
         }
 
-        if (model !== null) {
-            runCleanup(() => this.resourceDisposer.disposeObject3D(model));
-        }
-
-        runCleanup(() => this.nameLabel.hide());
-        runCleanup(() => this.resourceDisposer.disposeObject3D(this.nameLabel));
-        runCleanup(() => this.group.removeFromParent());
+        runCleanup(() => this.resourceDisposer.disposeObject3D(this.group));
 
         this.actions = null;
         this.mixer = null;
@@ -522,10 +586,9 @@ type RemotePlayerInstance = InstanceType<typeof RemotePlayerImplementation>;
 
 interface RemotePlayerConstructor {
     new (
-        path: string,
         id: string,
+        character: boolean,
         nickname: string,
-        scene: THREE.Scene,
         mesh_RP: THREE.Mesh | THREE.Mesh[]
     ): RemotePlayerInstance & { readonly id: string };
 }

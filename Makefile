@@ -30,9 +30,12 @@ log_msg_single = @$(ECHO) "\n$(MSGOPN) $(1) $(MSGEND)\n"
 output_color_grey = @$(ECHON) "$(GRE)"
 output_colr_reset =  @$(ECHON) "$(RST)"
 
-all: .certs
+all: frontend-build-dir
 	$(call log_msg_single,Launching ftr using docker compose..)
 	docker compose up --build
+
+frontend-build-dir:
+	mkdir -p ./frontend/docker-dist
 
 dock-clean:
 	$(call log_msg_start,Cleaning docker containers...)
@@ -48,31 +51,56 @@ dock-fclean:
 
 dock-backend:
 	$(call log_msg_start,Launching ftr-backend using docker compose..)
+	$(output_color_grey)
 	docker compose --project-directory ./backend up --build
 	$(call log_msg_end,Done.)
 
 dock-frontend:
 	$(call log_msg_start,Launching ftr-frontend using docker compose..)
+	$(output_color_grey)
 	docker compose --project-directory ./frontend up --build
 	$(call log_msg_end,Done.)
 
 dock-db:
 	$(call log_msg_start,Launching all backend for dev...)
+	$(output_color_grey)
 	cd backend && docker compose -f ./compose-db.yaml up -d
 	$(call log_msg_end,Done.)
 
+dock-db-clean: dock-db-down
+	$(call log_msg_start,Cleaning ftr-db...)
+	$(output_color_grey)
+	docker volume rm -f ftr-db
+	$(call log_msg_end,Done.)
+
+dock-db-re: dock-db-down dock-db-clean dock-db
+
+dock-re:
+	$(call log_msg_start,Compose down...)
+	@make --no-print-directory dock-clean
+	$(call log_msg_mid,Resetting DB...)
+	@make --no-print-directory dock-db-clean
+	$(call log_msg_mid,Compose up...)
+	@make --no-print-directory all
+	$(call log_msg_end,Done.)
+
 dock-db-down:
-	$(call log_msg_start,Launching all backend for dev...)
+	$(call log_msg_start,Shutting down DB...)
+	$(output_color_grey)
 	cd backend && docker compose -f ./compose-db.yaml down
 	$(call log_msg_end,Done.)
 
 backend-dev:
 	$(call log_msg_start,Launching all backend for dev...)
+	$(output_color_grey)
+	npm run build:common
+	npm run build:backend-utils
 	cd backend && docker compose -f ./compose-db.yaml up -d && npm run dev:all
 	$(call log_msg_end,Done.)
 
 frontend-dev:
 	$(call log_msg_start,Launching frontend for dev...)
+	$(output_color_grey)
 	npm run dev:frontend
 	$(call log_msg_end,Done.)
 
@@ -82,19 +110,9 @@ backend-dev-win:
 	cd backend && docker compose -f ./compose-db.yaml up -d
 	cd backend && start powershell -NoExit -Command "npm --prefix .\src\conn-service run dev-win"
 	cd backend && start powershell -NoExit -Command "npm --prefix .\src\auth-service run dev-win"
-	$(call log_msg_end,Done.)
-
-.certs:
-	touch .certs
-	make certs
-
-certs:
-	$(call log_msg_start,Making & distributing certs...)
-	cd tools && ./genTLSCerts.sh
-	cp tools/nginx-server-key.pem rev-proxy/nginx/server-key.pem
-	cp tools/nginx-server-cert.pem rev-proxy/nginx/server-cert.pem
-	touch .certs
+	cd backend && start powershell -NoExit -Command "npm --prefix .\src\user-service run dev-win"
+	cd backend && start powershell -NoExit -Command "npm --prefix .\src\eventlog-service run dev-win"
 	$(call log_msg_end,Done.)
 
 .phony: all dock-clean dock-fclean dock-backend dock-frontend dock-db \
-	dock-db-down backend-dev certs
+	dock-db-down backend-dev certs dock-re frontend-build-dir

@@ -1,5 +1,7 @@
 import * as THREE from 'three';
 
+import { APP_FONT_WEIGHT_STRONG, getAppFontFamily } from '../typography';
+
 const TEXT_SPRITE_WIDTH = 2048;
 const TEXT_SPRITE_HEIGHT = 256;
 const TEXT_LINE_HEIGHT_FACTOR = 1.2;
@@ -12,7 +14,11 @@ export class CanvasTextSprite extends THREE.Sprite {
     private readonly canvas: HTMLCanvasElement;
     private readonly context: CanvasRenderingContext2D;
 
-    constructor(text: string, size: number) {
+    constructor(
+        text: string,
+        size: number,
+        visibleThroughMeshes: boolean = false
+    ) {
         const canvas = document.createElement('canvas');
         canvas.width = TEXT_SPRITE_WIDTH;
         canvas.height = TEXT_SPRITE_HEIGHT;
@@ -32,10 +38,10 @@ export class CanvasTextSprite extends THREE.Sprite {
 
         super(material);
 
-        this.renderOrder = 1;
         this.canvas = canvas;
         this.context = context;
 
+        this.setSeeThroughMeshes(visibleThroughMeshes, material);
         this.context.fillStyle = 'white';
         this.context.textAlign = 'center';
         this.context.textBaseline = 'middle';
@@ -46,9 +52,19 @@ export class CanvasTextSprite extends THREE.Sprite {
         this.setText(text, size);
     }
 
+    setSeeThroughMeshes(
+        visibleThroughMeshes: boolean,
+        material: THREE.SpriteMaterial
+    ): void {
+        material.depthTest = !visibleThroughMeshes;
+        // hide tesxt behind glas
+        this.renderOrder = 1;
+        material.needsUpdate = true;
+    }
+
     setText(text: string, size: number): void {
         this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
-        this.context.font = `${size}px Segoe UI Black`;
+        this.context.font = `${APP_FONT_WEIGHT_STRONG} ${size}px ${getAppFontFamily()}`;
 
         const lines = text.split('\n');
         const lineHeight = size * TEXT_LINE_HEIGHT_FACTOR;

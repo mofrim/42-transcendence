@@ -1,6 +1,6 @@
 import { AnimationClip } from 'three';
 import type { AnimationAction, AnimationMixer } from 'three';
-import { PlayerState } from 'common/sharedTypes';
+import { PlayerState } from 'ftr-common/sharedTypes';
 
 /** Es gibt noch kein Jump. */
 const PLAYER_ANIMATION_STATE = Object.freeze({
@@ -37,7 +37,6 @@ export function cleanupPlayerAnimationMixer(
         if (!onError) {
             return;
         }
-
         try {
             onError(error, operation);
         } catch {
@@ -50,7 +49,6 @@ export function cleanupPlayerAnimationMixer(
     } catch (error: unknown) {
         report(error, 'stopAllAction');
     }
-
     try {
         mixer.uncacheRoot(mixer.getRoot());
     } catch (error: unknown) {
@@ -76,6 +74,20 @@ const CLIP_NAME_BY_STATE: Readonly<Record<PlayerAnimationState, string>> =
         [PLAYER_ANIMATION_STATE.ThumbsUp]: 'ThumbsUp',
         [PLAYER_ANIMATION_STATE.Victory]: 'Victory',
     });
+
+const PLAYER_ANIMATION_ORDER = [
+    PLAYER_ANIMATION_STATE.Idle,
+    PLAYER_ANIMATION_STATE.Run,
+    PLAYER_ANIMATION_STATE.Angry,
+    PLAYER_ANIMATION_STATE.Falling,
+    PLAYER_ANIMATION_STATE.ArmStretch,
+    PLAYER_ANIMATION_STATE.Drinking,
+    PLAYER_ANIMATION_STATE.Relieved,
+    PLAYER_ANIMATION_STATE.Strong,
+    PLAYER_ANIMATION_STATE.Surprised,
+    PLAYER_ANIMATION_STATE.ThumbsUp,
+    PLAYER_ANIMATION_STATE.Victory,
+] as const;
 
 export function normalizePlayerAnimationState(
     state: unknown
@@ -113,7 +125,6 @@ export function resolvePlayerAnimationClip(
     if (clip) {
         return clip;
     }
-
     const availableNames = clips.length
         ? clips.map((clip) => clip?.name || '<unnamed>').join(', ')
         : '<none>';
@@ -128,86 +139,27 @@ export function createPlayerAnimationActions(
     animations: readonly AnimationClip[],
     modelPath: string
 ): PlayerAnimationActions {
-    const idleClip = resolvePlayerAnimationClip(
-        animations,
-        PLAYER_ANIMATION_STATE.Idle,
-        modelPath
+    const clips = PLAYER_ANIMATION_ORDER.map(
+        (state) =>
+            [
+                state,
+                resolvePlayerAnimationClip(animations, state, modelPath),
+            ] as const
     );
-    const runClip = resolvePlayerAnimationClip(
-        animations,
-        PLAYER_ANIMATION_STATE.Run,
-        modelPath
-    );
-    const angryClip = resolvePlayerAnimationClip(
-        animations,
-        PLAYER_ANIMATION_STATE.Angry,
-        modelPath
-    );
-    const fallingClip = resolvePlayerAnimationClip(
-        animations,
-        PLAYER_ANIMATION_STATE.Falling,
-        modelPath
-    );
-    const armStretchClip = resolvePlayerAnimationClip(
-        animations,
-        PLAYER_ANIMATION_STATE.ArmStretch,
-        modelPath
-    );
-    const drinkingClip = resolvePlayerAnimationClip(
-        animations,
-        PLAYER_ANIMATION_STATE.Drinking,
-        modelPath
-    );
-    const relievedClip = resolvePlayerAnimationClip(
-        animations,
-        PLAYER_ANIMATION_STATE.Relieved,
-        modelPath
-    );
-    const strongClip = resolvePlayerAnimationClip(
-        animations,
-        PLAYER_ANIMATION_STATE.Strong,
-        modelPath
-    );
-    const surprisedClip = resolvePlayerAnimationClip(
-        animations,
-        PLAYER_ANIMATION_STATE.Surprised,
-        modelPath
-    );
-    const thumbsUpClip = resolvePlayerAnimationClip(
-        animations,
-        PLAYER_ANIMATION_STATE.ThumbsUp,
-        modelPath
-    );
-    const victoryClip = resolvePlayerAnimationClip(
-        animations,
-        PLAYER_ANIMATION_STATE.Victory,
-        modelPath
-    );
+    const actions = {} as PlayerAnimationActions;
 
-    const actions = {
-        [PLAYER_ANIMATION_STATE.Idle]: mixer.clipAction(idleClip),
-        [PLAYER_ANIMATION_STATE.Run]: mixer.clipAction(runClip),
-        [PLAYER_ANIMATION_STATE.Angry]: mixer.clipAction(angryClip),
-        [PLAYER_ANIMATION_STATE.Falling]: mixer.clipAction(fallingClip),
-        [PLAYER_ANIMATION_STATE.ArmStretch]: mixer.clipAction(armStretchClip),
-        [PLAYER_ANIMATION_STATE.Drinking]: mixer.clipAction(drinkingClip),
-        [PLAYER_ANIMATION_STATE.Relieved]: mixer.clipAction(relievedClip),
-        [PLAYER_ANIMATION_STATE.Strong]: mixer.clipAction(strongClip),
-        [PLAYER_ANIMATION_STATE.Surprised]: mixer.clipAction(surprisedClip),
-        [PLAYER_ANIMATION_STATE.ThumbsUp]: mixer.clipAction(thumbsUpClip),
-        [PLAYER_ANIMATION_STATE.Victory]: mixer.clipAction(victoryClip),
-    };
-
-    for (const [state, action] of Object.entries(actions)) {
+    for (const [state, clip] of clips) {
+        const action = mixer.clipAction(clip);
         action.enabled = true;
         action.setEffectiveTimeScale(1);
-        action.setEffectiveWeight(
-            state === PLAYER_ANIMATION_STATE.Idle ? 1 : 0
-        );
+        let weight = 0;
+        if (state === PLAYER_ANIMATION_STATE.Idle) {
+            weight = 1;
+        }
+        action.setEffectiveWeight(weight);
+        actions[state] = action;
     }
-
     actions.Idle.reset().play();
-
     return actions;
 }
 
@@ -237,7 +189,6 @@ export function transitionPlayerAnimation(
 
     fromAction.stopFading();
     toAction.reset().setEffectiveTimeScale(1).setEffectiveWeight(1).play();
-
     if (duration === 0) {
         fromAction.stop();
     } else {

@@ -1,4 +1,5 @@
 {
+    "$schema": "https://json.schemastore.org/package.json",
     "name": "ftr-frontend",
     "description": "ft_transcendence frontend",
     "private": true,
@@ -7,6 +8,7 @@
     "scripts": {
         "dev": "vite --host",
         "build": "tsc -b && vite build",
+        "type-check": "tsc -b ../ftr-common/tsconfig.json && tsc --noEmit",
         "lint": "eslint .",
         "lint-fix": "eslint . --fix",
         "preview": "vite preview",
@@ -14,9 +16,10 @@
     },
     "dependencies": {
         "@ant-design/icons": "^6.3.2",
-        "common": "*",
+        "@fontsource-variable/atkinson-hyperlegible-next": "^5.3.0",
         "antd": "^6.5.3",
         "axios": "^1.19.0",
+        "ftr-common": "*",
         "react": "^19.2.6",
         "react-dom": "^19.2.6",
         "socket.io": "^4.8.3",
@@ -31,6 +34,7 @@
         "eslint-plugin-prettier": "^5.5.6",
         "eslint-plugin-react-hooks": "^7.1.1",
         "eslint-plugin-react-refresh": "^0.5.2",
+        "express-validator": "^7.3.2",
         "globals": "^17.6.0",
         "vite": "^8.0.12"
     }

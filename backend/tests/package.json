@@ -1,0 +1,30 @@
+{
+    "$schema": "https://json.schemastore.org/package.json",
+    "name": "backend-tests",
+    "description": "ft_transcendence backend tests",
+    "private": true,
+    "type": "module",
+    "version": "0.0.0",
+    "scripts": {
+        "all": "tsc -b && NODE_OPTIONS=\"$NODE_OPTIONS --experimental-vm-modules --no-warnings\" npx jest",
+        "event": "tsc -b && NODE_OPTIONS=\"$NODE_OPTIONS --experimental-vm-modules --no-warnings\" npx jest -- event.test.ts",
+        "auth": "tsc -b && NODE_OPTIONS=\"$NODE_OPTIONS --experimental-vm-modules --no-warnings\" npx jest -- auth.test.js",
+        "match": "tsc -b && NODE_OPTIONS=\"$NODE_OPTIONS --experimental-vm-modules --no-warnings\" npx jest -- matchhist.test.ts",
+        "simple-ev": "tsc -b && NODE_OPTIONS=\"$NODE_OPTIONS --experimental-vm-modules --no-warnings\" npx jest -- simple-eventlog.test.ts",
+        "user": "tsc -b && NODE_OPTIONS=\"$NODE_OPTIONS --experimental-vm-modules --no-warnings\" npx jest -- user.test.ts",
+        "getall": "tsc -b && NODE_OPTIONS=\"$NODE_OPTIONS --experimental-vm-modules --no-warnings\" npx jest -- getall.test.ts",
+        "quest": "tsc -b && NODE_OPTIONS=\"$NODE_OPTIONS --experimental-vm-modules --no-warnings\" npx jest -- quest.test.ts",
+        "tospp": "tsc -b && NODE_OPTIONS=\"$NODE_OPTIONS --experimental-vm-modules --no-warnings\" npx jest -- tospp.test.ts",
+        "internal": "tsc -b && NODE_OPTIONS=\"$NODE_OPTIONS --experimental-vm-modules --no-warnings\" npx jest -- internal.test.ts",
+        "lint": "eslint .",
+        "lint-fix": "eslint . --fix"
+    },
+    "devDependencies": {
+        "jest": "^30.5.1",
+        "supertest": "^7.2.2",
+        "ts-jest": "^29.4.12"
+    },
+    "dependencies": {
+        "ftr-common": "*"
+    }
+}

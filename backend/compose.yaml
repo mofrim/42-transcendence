@@ -1,3 +1,9 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/compose-spec/compose-spec/master/schema/compose-spec.json
+
+# NOTE: we specify env-vars explicitly here in order to be very explicit about
+# which container receives which vars. this is better DevOpsSec than simply
+# passing the whole .env to each service
+
 # set the project name. doing this in all sub-compose-files will make `docker
 # compose up --build` recognize the containers as belonging to the same proj
 # which will avoid the `name already in use` error.
@@ -7,58 +13,86 @@ include:
     - ./compose-db.yaml
 
 services:
+    conn-service:
+        container_name: ftr-conn-service
+        image: ftr-conn-service
+        build:
+            context: ..
+            dockerfile: ./backend/src/conn-service/Dockerfile
+        depends_on:
+            auth-service:
+                condition: service_started
+        environment:
+            - INTERNAL_JWT_SECRET
+            - JWT_SECRET
+            - USER_SERVICE_PORT
+            - USER_SERVICE_ADDR
+            - CONN_SERVICE_PORT
 
-  conn-service:
-    container_name: ftr-conn-service
-    image: ftr-conn-service
-    build:
-      context: ..
-      dockerfile: ./backend/src/conn-service/Dockerfile
-    depends_on:
-      auth-service:
-        condition: service_started
-    networks:
-      - ftr-net
+        networks:
+            - ftr-net
 
-  auth-service:
-    container_name: ftr-auth-service
-    image: ftr-auth-service
-    build:
-      context: ..
-      dockerfile: ./backend/src/auth-service/Dockerfile
-    env_file: ../dev.env
-    depends_on:
-      postgres:
-        condition: service_healthy
-    networks:
-      - ftr-net
+    auth-service:
+        container_name: ftr-auth-service
+        image: ftr-auth-service
+        build:
+            context: ..
+            dockerfile: ./backend/src/auth-service/Dockerfile
+        depends_on:
+            postgres:
+                condition: service_healthy
+        environment:
+            - JWT_SECRET
+            - AUTH_SERVICE_PORT
+            - DB_HOST
+            - DB_PORT
+            - DB_USER
+            - DB_PASSWD
+            - DB_NAME
+        networks:
+            - ftr-net
 
-  eventlog-service:
-    container_name: ftr-eventlog-service
-    image: ftr-eventlog-service
-    build:
-      context: ..
-      dockerfile: ./backend/src/eventlog-service/Dockerfile
-    env_file: ../dev.env
-    depends_on:
-      postgres:
-        condition: service_healthy
-    networks:
-      - ftr-net
+    eventlog-service:
+        container_name: ftr-eventlog-service
+        image: ftr-eventlog-service
+        build:
+            context: ..
+            dockerfile: ./backend/src/eventlog-service/Dockerfile
+        depends_on:
+            postgres:
+                condition: service_healthy
+        environment:
+            - JWT_SECRET
+            - EVENTLOG_SERVICE_PORT
+            - DB_HOST
+            - DB_PORT
+            - DB_USER
+            - DB_PASSWD
+            - DB_NAME
+        networks:
+            - ftr-net
 
-  user-service:
-      container_name: ftr-user-service
-      image: ftr-user-service
-      build:
-          context: ..
-          dockerfile: ./backend/src/user-service/Dockerfile
-      env_file: ../dev.env
-      depends_on:
-          postgres:
-              condition: service_healthy
-      networks:
-          - ftr-net
+    user-service:
+        container_name: ftr-user-service
+        image: ftr-user-service
+        build:
+            context: ..
+            dockerfile: ./backend/src/user-service/Dockerfile
+        depends_on:
+            postgres:
+                condition: service_healthy
+        environment:
+            - USER_SERVICE_PORT
+            - INTERNAL_JWT_SECRET
+            - JWT_SECRET
+            - DB_HOST
+            - DB_PORT
+            - DB_USER
+            - DB_PASSWD
+            - DB_NAME
+        networks:
+            - ftr-net
 
 networks:
-  ftr-net:
-    driver: bridge
+    ftr-net:
+        driver: bridge

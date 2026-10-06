@@ -18,29 +18,51 @@ import { DataSource } from 'typeorm';
 import { exit } from 'node:process';
 import cookieParser from 'cookie-parser';
 import { Logger } from 'tslog';
-import { body, matchedData, validationResult } from 'express-validator';
+import {
+    checkSchema,
+    matchedData,
+    validationResult,
+    type ValidationError,
+} from 'express-validator';
 
 import type { ILogObj } from 'tslog';
 import type { Request, Express, Response, NextFunction } from 'express';
 
-import { ORMEventLog, ORMUser } from 'common/ormTypes';
-import { authenticateMid, verifyToken } from 'common/middleware';
+import { ORMEventLog, ORMUser } from 'ftr-common/ormTypes';
+import { authenticateMid, verifyToken } from 'ftr-common/middleware';
 import { setupDefaultUsers } from './defaultUserSetup.ts';
-import 'common/expressTypes';
+import { getUserById } from 'backend-utils';
+import { mkApiResponse } from 'ftr-common/utils';
+import 'ftr-common/expressTypes';
 
 // Initialize main tslog-logger
-const log = new Logger<ILogObj>({ name: 'auth', minLevel: 'INFO' });
+const log = new Logger<ILogObj>({
+    name: 'authService',
+    minLevel: process.env['NODE_ENV'] === 'development' ? 'DEBUG' : 'INFO',
+});
 
-// Load env vars from global dotenv...
-// this path is correct if ran from backend/src/auth-service dir
-// TODO add proper handling for production `.env`
 if (process.env['NODE_ENV'] === 'development') {
     log.info('loading dev.env...');
     dotenv.config({ path: '../../../dev.env', quiet: true });
 }
 
-const SECRET_KEY: string = process.env['JWT_SECRET'] || 'FooBarBaz';
-const PORT = Number(process.env['AUTH_SERVICE_PORT']) || 3001;
+// enforce config through dotenv only! add any require env-vars here
+const REQUIRED_ENV = ['AUTH_SERVICE_PORT', 'JWT_SECRET', 'DB_HOST'];
+if (REQUIRED_ENV.some((v) => process.env[v] === undefined)) {
+    log.error(`env not like it should be! exiting...`);
+    exit(1);
+}
+
+const DB_HOST: string = process.env['DB_HOST']!;
+const SECRET_KEY: string = process.env['JWT_SECRET']!;
+const PORT = Number(process.env['AUTH_SERVICE_PORT']);
+
+const IS_PRODUCTION = process.env['NODE_ENV'] === 'production';
+const TOKEN_COOKIE_OPTIONS = {
+    httpOnly: true,
+    secure: IS_PRODUCTION,
+    sameSite: 'strict',
+} as const;
 
 // using partial function evaluation here to set the local logger and SECRET_KEY
 // in auth middleware function
@@ -55,10 +77,9 @@ app.use(express.json());
 
 // reject any non-JSON bodies early
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
-    void req;
     if (err instanceof SyntaxError && err.message.includes('JSON')) {
         log.warn('Got invalid JSON body from IP ', req.ip);
-        res.status(400).json({ error: 'Invalid JSON body' });
+        res.status(400).json(mkApiResponse('Invalid JSON body', 'error'));
     } else {
         next(err);
     }
@@ -70,10 +91,7 @@ app.use(cookieParser());
 
 const DB = new DataSource({
     type: 'postgres',
-    host:
-        process.env['NODE_ENV'] === 'production'
-            ? process.env['DB_HOST'] || 'localhost'
-            : 'localhost',
+    host: DB_HOST,
     port: Number(process.env['DB_PORT']) || 5432,
     username: process.env['DB_USER'] || 'postgres',
     password: process.env['DB_PASSWD'] || 'postgres',
@@ -91,37 +109,42 @@ try {
     exit(1);
 }
 
+const userRepo = DB.getRepository(ORMUser);
+
 // -------------------=[ add us + testy as users to DB ]=-------------------- //
 
 setupDefaultUsers(DB);
 
 // ------------------------=[ define login endpoint ]=----------------------- //
 
-// Validation funcs for nick & pw.
-const validateNick = () =>
-    body('nickname')
-        .escape()
-        .notEmpty()
-        .withMessage('nick empty')
-        .isLength({ max: 64 })
-        .withMessage('nick invalid length')
-        .isAlphanumeric()
-        .withMessage('invalid char in nick');
-
-const validatePw = () =>
-    body('password')
-        .escape()
-        .notEmpty()
-        .withMessage('pw empty')
-        .isLength({ min: 4, max: 64 })
-        .withMessage('pw invalid length')
-        .isAlphanumeric()
-        .withMessage('pw invalid char');
+/** Validation funcs for nick & pw. */
+const loginValidation = checkSchema(
+    {
+        nickname: {
+            escape: true,
+            notEmpty: { errorMessage: 'nick empty' },
+            isLength: {
+                options: { max: 64 },
+                errorMessage: 'nick invalid length',
+            },
+            isAlphanumeric: { errorMessage: 'invalid char in nick' },
+        },
+        password: {
+            escape: true,
+            notEmpty: { errorMessage: 'pw empty' },
+            isLength: {
+                options: { min: 4, max: 64 },
+                errorMessage: 'pw invalid length',
+            },
+            isAlphanumeric: { errorMessage: 'pw invalid char' },
+        },
+    },
+    ['body']
+);
 
 app.post(
     '/api/login',
-    validateNick(),
-    validatePw(),
+    loginValidation,
     async (req: Request, res: Response): Promise<void> => {
         // create sublogger which will have the prefix 'auth:login' on console
         const loginLog = log.getSubLogger({ name: 'login' });
@@ -130,7 +153,14 @@ app.post(
         const errors = validationResult(req);
         if (!errors.isEmpty()) {
             loginLog.warn('Got bad request from', req.ip);
-            res.status(400).json({ errors: errors.array() });
+            res.status(400).json(
+                mkApiResponse<ValidationError[]>(
+                    'Validation failed',
+                    'error',
+                    undefined,
+                    errors.array()
+                )
+            );
             return;
         }
 
@@ -141,12 +171,14 @@ app.post(
         const userPass: string = bodyData['password'];
 
         try {
-            const user = await DB.manager.findOneBy(ORMUser, {
+            const user = await userRepo.findOneBy({
                 nickname: userNick,
             });
             if (user === null) {
                 loginLog.warn('Cannot find user', userNick, 'in DB');
-                res.status(401).json({ error: 'Invalid credentials' });
+                res.status(401).json(
+                    mkApiResponse('Invalid credentials', 'error')
+                );
                 return;
             }
 
@@ -155,39 +187,72 @@ app.post(
                 user.hashedPw
             );
             if (!isPasswordValid) {
-                res.status(401).json({ error: 'Invalid credentials' });
+                res.status(401).json(
+                    mkApiResponse('Invalid credentials', 'error')
+                );
                 return;
             }
 
-            const token = jwt.sign({ nickname: user.nickname }, SECRET_KEY, {
+            // Fail if user already logged in!
+            if (user.isLoggedIn) {
+                res.status(409).json(
+                    mkApiResponse('Already logged in', 'error')
+                );
+                return;
+            }
+
+            // Using standard claim fields here. no need for custom fields in
+            // our case -> https://en.wikipedia.org/wiki/JSON_Web_Token#Standard_fields
+            const token = jwt.sign({ sub: String(user.id) }, SECRET_KEY, {
+                issuer: 'auth-service',
                 algorithm: 'HS256',
-                expiresIn: '1h',
+                expiresIn: '6h',
+                audience: 'backend',
             });
 
+            // Toggle login-status in DB
+            user.isLoggedIn = true;
+            const result = await userRepo.update({ id: user.id }, user);
+            if (result.affected !== 1) {
+                loginLog.error('Failed to update user login state in DB');
+                res.status(500).json(
+                    mkApiResponse('Failed updating login-status', 'error')
+                );
+            }
+
             res.cookie('token', token, {
-                httpOnly: true,
-                secure: process.env['NODE_ENV'] === 'production',
-                sameSite: 'strict',
+                ...TOKEN_COOKIE_OPTIONS,
                 maxAge: 60 * 60 * 1000, // 1h
             });
-            res.json({ success: true });
+            res.json(
+                mkApiResponse('Setting auth cookie successful', 'success')
+            );
         } catch (err) {
             loginLog.fatal(err as Error);
-            res.status(500).json({ error: 'Internal server error' });
+            res.status(500).json(
+                mkApiResponse('Internal server error', 'error')
+            );
         }
     }
 );
 
 // ------------------=[ logout aka clear-cookie endpoint ]=------------------ //
 
-app.post('/api/logout', authenticate, (req, res) => {
-    void req;
-    res.clearCookie('token', {
-        httpOnly: true,
-        secure: process.env['NODE_ENV'] === 'production',
-        sameSite: 'strict',
+app.post('/api/logout', authenticate, async (req, res) => {
+    const logLogout = log.getSubLogger({ name: 'logout' });
+
+    // Toggle login-status in DB
+    const result = await userRepo.update(req.userId!, {
+        isLoggedIn: false,
     });
-    res.json({ success: true });
+    if (result.affected !== 1) {
+        logLogout.error('Failed to update user logout state in DB');
+        res.status(500).json(mkApiResponse('User update error', 'error'));
+        return;
+    }
+    logLogout.info(`User logout state updated in DB for UID ${req.userId}`);
+    res.clearCookie('token', TOKEN_COOKIE_OPTIONS);
+    res.json(mkApiResponse('Auth cookie cleared', 'success'));
 });
 
 // --------------------------------=[ misc ]=-------------------------------- //
@@ -207,37 +272,30 @@ app.post('/api/logout', authenticate, (req, res) => {
 
 if (process.env['NODE_ENV'] === 'development') {
     // this is only a demo endpoint
-    app.get('/api/protected', authenticate, (req: Request, res: Response) => {
-        const nickname = req.user!.nickname;
-        res.json({ msg: `hello ${nickname}!` });
-    });
-}
-
-////////////////////////////////////////////////////////////////////////////////
-// Another example endpoint...
-//
-// Example user endpoint which extracts the user from the token-cookie
-// certainly a TODO to move this to user-service!
-//
-// with this endpoint you can retrieve the complete authenticated user data
-// (definitely nothing we want for production!). retrieve a valid auth cookie
-// then use: `curl -v localhost:3001/api/user -H 'Cookie: token=.....'`
-app.get('/api/user', authenticate, async (req, res) => {
-    const { nickname } = req.user!;
-    try {
-        const user = await DB.manager.findOneBy(ORMUser, {
-            nickname: nickname,
-        });
-        if (user === null) {
-            res.status(401).json({ error: 'User not found' });
-            return;
+    app.get(
+        '/api/protected',
+        authenticate,
+        async (req: Request, res: Response) => {
+            if (req.userId === undefined) {
+                res.status(500).json(
+                    mkApiResponse('Token verification malfunction', 'error')
+                );
+                return;
+            }
+            const user = await getUserById(DB, req.userId);
+            if (user === null) {
+                res.status(500).json(
+                    mkApiResponse(
+                        'Invalid userId in token or DB error',
+                        'error'
+                    )
+                );
+                return;
+            }
+            res.json(mkApiResponse(`hello ${user.nickname}!`, 'success'));
         }
-        res.json(user);
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: 'Internal server error' });
-    }
-});
+    );
+}
 
 // endpoint for validating if a valid Session-Cookie is still set. Used in
 // restoreSession-logic in AuthProvider
@@ -246,21 +304,20 @@ app.get('/api/validateSession', async (req, res) => {
 
     try {
         const token = req.cookies['token'];
-        verifyToken(token, SECRET_KEY);
-    } catch (err) {
-        void err;
-        res.status(200).json({ valid: false });
+        verifyToken(token, SECRET_KEY, logValidate);
+    } catch {
+        res.status(200).json(mkApiResponse('Session invalid', 'error'));
         logValidate.info('validateSession failed');
         return;
     }
-    res.status(200).json({ valid: true });
+    res.status(200).json(mkApiResponse('Session valid', 'success'));
 });
 
 // --------=[ Fallback enpoint for catching invalid methods etc.. ]=-------- //
 
 app.all('/api/login', (req: Request, res: Response) => {
     log.warn('Invalid Request:', req.method);
-    res.status(405).json({ error: 'Unsupported Method' });
+    res.status(405).json(mkApiResponse('Unsupported Method', 'error'));
 });
 
 // -----------------=[ launch the express server finally ]=----------------- //

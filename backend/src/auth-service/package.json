@@ -1,4 +1,5 @@
 {
+    "$schema": "https://json.schemastore.org/package.json",
     "name": "auth-service",
     "description": "ft_transcendence auth-service",
     "private": true,
@@ -8,13 +9,14 @@
         "dev": "NODE_ENV=development tsx watch src/main.ts",
         "dev-win": "set NODE_ENV=development&& tsx watch src/main.ts",
         "build": "tsc -b",
-        "type-check": "tsc -b ../../../common/tsconfig.json && tsc --noEmit",
-        "type-check:watch": "tsc -b ../../../common/tsconfig.json && tsc --noEmit --watch",
+        "type-check": "tsc -b ../../../ftr-common/tsconfig.json && tsc --noEmit",
+        "type-check:watch": "tsc -b ../../../ftr-common/tsconfig.json && tsc --noEmit --watch",
         "lint": "eslint .",
         "lint-fix": "eslint . --fix",
-        "start": "NODE_ENV=production node --enable-source-maps --import tsx src/main.ts"
+        "start": "NODE_ENV=production node --enable-source-maps ../../dist/auth-service/main.js"
     },
     "dependencies": {
+        "backend-utils": "*",
         "bcryptjs": "^3.0.3",
         "dotenv": "^17.4.2",
         "express-validator": "^7.3.2",

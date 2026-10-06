@@ -1,26 +1,30 @@
 {
+    "$schema": "https://json.schemastore.org/package.json",
     "name": "user-service",
     "description": "ft_transcendence user-service",
     "private": true,
     "version": "0.0.0",
     "type": "module",
     "scripts": {
-        "dev": "NODE_ENV=development tsx watch userProfile/src/main.ts",
+        "dev": "NODE_ENV=development tsx watch src/main.ts",
+        "dev-win": "set NODE_ENV=development&& tsx watch src/main.ts",
         "build": "tsc -b",
-        "type-check": "tsc -b ../../../common/tsconfig.json && tsc --noEmit",
-        "type-check:watch": "tsc -b ../../../common/tsconfig.json && tsc --noEmit --watch",
         "lint": "eslint .",
         "lint-fix": "eslint . --fix",
-        "start": "NODE_ENV=production node ../../dist/user-service/main.js"
+        "start": "NODE_ENV=production node ../../dist/user-service/src/main.js"
     },
     "dependencies": {
+        "backend-utils": "*",
+        "bcryptjs": "^3.0.3",
         "dotenv": "^17.4.2",
+        "express-validator": "^7.3.2",
         "jsonwebtoken": "^9.0.3",
         "pg": "^8.22.0",
-        "reflect-metadata": "^0.2.2",
+        "tslog": "^5.1.0",
         "typeorm": "^1.1.0"
     },
     "devDependencies": {
+        "@types/bcryptjs": "^2.4.6",
         "@types/dotenv": "^6.1.1",
         "@types/jsonwebtoken": "^9.0.10",
         "@types/pg": "^8.20.3"

@@ -1,33 +1,47 @@
 import {
     useEffect,
+    useEffectEvent,
     useRef,
     useState,
     type ReactNode,
     type SyntheticEvent,
 } from 'react';
+import axios from 'axios';
+
 import {
-    BLACK_HOLE_DURATION_SECONDS,
-    BLACK_HOLE_QUEST_ID,
-    DEFAULT_QUESTS,
-    formatQuestCountdown,
     getQuestStatusChanges,
     resolveQuestLogEntries,
-    type QuestLogEntry,
     type QuestStatusChange,
     type ResolvedQuestLogEntry,
 } from './QuestLog';
-import type { Character } from 'common/sharedTypes';
-import { CharacterPreviewView } from '../login/CharacterPreview';
+
+import { useBlackHoleTimeout } from '../../game/BlackHoleTimeout';
+
+import {
+    API_USER,
+    BLACK_HOLE_DURATION_SECONDS,
+    type ApiResponse,
+    type Character,
+    type FriendListEntry,
+    type FriendRequestState,
+    type PublicUserProfile,
+    QUESTS,
+} from 'ftr-common/sharedTypes';
+
 import { EventLogItems, type EventLogEntry } from './EventLogItems';
+import { FRIENDS_PANEL_ID, FriendList, useFriendListPanel } from './FriendList';
+import { Leaderboard } from './Leaderboard';
 import { MatchHistory } from './MatchHistory';
+import { PROFILE_PANEL_ID, ProfilePanel } from './Profile';
+import { HudPanelHeader } from './HudPanelHeader';
+import { MAX_EVENT_LOG_ENTRIES } from '../../lib/eventLogUtils';
 
 import './GameUI.css';
 
 const QUEST_LOG_ID = 'game-quest-log';
-const PROFILE_PANEL_ID = 'game-profile-panel';
+const MATCH_HISTORY_PANEL_ID = 'game-match-history-panel';
+const LEADERBOARD_PANEL_ID = 'game-leaderboard-panel';
 const EVENT_LOG_TITLE_ID = 'game-event-log-title';
-
-export const MAX_EVENT_LOG_ENTRIES = 10;
 
 export type DialogPanelState = {
     readonly isOpen: boolean;
@@ -38,16 +52,27 @@ type GameUIProps = {
     readonly nickname: string;
     readonly email: string;
     readonly character: Character;
-    readonly quests?: readonly QuestLogEntry[];
+    readonly quests?: typeof QUESTS;
     readonly completedQuestIds?: readonly string[];
     readonly events?: readonly EventLogEntry[];
     readonly matchHistory?: readonly EventLogEntry[];
     readonly onChatMessage?: (message: string) => void;
     readonly onQuestStatusChange?: (change: QuestStatusChange) => void;
-    readonly onBlackHoleExpired?: () => void;
+    readonly onBlackHoleCountdownExpired?: () => void;
     readonly onLogout?: () => Promise<void>;
     readonly dialog?: DialogPanelState;
     readonly onDialogNext?: () => void;
+    readonly blackHoleCountdownActive?: boolean;
+    readonly blackHoleConnected?: boolean;
+    readonly restoredBlackHoleSecondsRemaining?: number;
+    readonly restoredBlackHoleCountdownCompleted?: boolean;
+    readonly onBlackHoleTimerChange?: (
+        secondsRemaining: number,
+        completed: boolean
+    ) => void;
+    readonly friendRequest?: FriendRequestState | null;
+    readonly friends?: readonly FriendListEntry[];
+    readonly onFriendRemove?: (friendPlayerId: string) => void;
     readonly isSpectator?: boolean;
 };
 
@@ -73,16 +98,16 @@ function HudPanelToggle({
     panelLabel,
     onToggle,
 }: HudPanelToggleProps) {
-    let action = 'öffnen';
+    let action = 'open';
     if (isOpen) {
-        action = 'schließen';
+        action = 'close';
     }
     let actionLabel = `${panelLabel} ${action}`;
     let badge: ReactNode = null;
     let bottomBadgeElement: ReactNode = null;
 
     if (questProgress !== undefined) {
-        const questProgressLabel = `${questProgress.completed} von ${questProgress.total} Aufgaben erledigt`;
+        const questProgressLabel = `${questProgress.completed} of ${questProgress.total} quests completed`;
 
         actionLabel = `${actionLabel}, ${questProgressLabel}`;
         badge = (
@@ -118,66 +143,6 @@ function HudPanelToggle({
     );
 }
 
-/** Beispielereignisse für das Event Log.
-const DEFAULT_EVENTS: readonly EventLogEntry[] = [
-    {
-        id: 'user-b-logout',
-        timestamp: '16:52:00',
-        description: '"UserB" log out',
-    },
-    {
-        id: 'user-c-login',
-        timestamp: '16:52:01',
-        description: '"UserC" log in',
-    },
-    {
-        id: 'user-c-message',
-        timestamp: '16:52:05',
-        description: '"UserC" says: Hallo',
-    },
-    {
-        id: 'user-a-message',
-        timestamp: '16:52:10',
-        description: '"UserA" says: Hi',
-    },
-    {
-        id: 'user-b-login',
-        timestamp: '16:52:15',
-        description: '"UserB" log in',
-    },
-    {
-        id: 'user-a-login',
-        timestamp: '16:52:20',
-        description: '"UserA" log in',
-    },
-    {
-        id: 'user-a-message-2',
-        timestamp: '16:52:25',
-        description: '"UserA" says: challenge?',
-    },
-    {
-        id: 'user-c-message-2',
-        timestamp: '16:52:30',
-        description: '"UserC" says: accepted!',
-    },
-    {
-        id: 'user-b-message-2',
-        timestamp: '16:52:35',
-        description: '"UserB" says: lets play!',
-    },
-    {
-        id: 'user-b-logout-2',
-        timestamp: '16:52:40',
-        description: 'UserB rage quits!',
-    },
-    {
-        id: 'user-c-message-3',
-        timestamp: '16:52:30',
-        description: '"UserC" says: okay?',
-    },
-];
-*/
-
 /**
  * React HUD for controls that do not belong in the Three.js scene.
  */
@@ -185,40 +150,108 @@ export function GameUI({
     nickname,
     email,
     character,
-    quests = DEFAULT_QUESTS,
+    quests = QUESTS,
     completedQuestIds = [],
     events = [],
     matchHistory = [],
     onChatMessage,
     onQuestStatusChange,
-    onBlackHoleExpired,
+    onBlackHoleCountdownExpired,
     onLogout,
     dialog,
     onDialogNext,
+    blackHoleCountdownActive = true,
+    blackHoleConnected = true,
+    restoredBlackHoleSecondsRemaining = BLACK_HOLE_DURATION_SECONDS,
+    restoredBlackHoleCountdownCompleted = false,
+    onBlackHoleTimerChange,
+    friendRequest,
+    friends = [],
+    onFriendRemove,
     isSpectator = false,
 }: GameUIProps) {
     const [isQuestLogOpen, setIsQuestLogOpen] = useState(false);
     const [isProfileOpen, setIsProfileOpen] = useState(false);
+    const [isMatchHistoryOpen, setIsMatchHistoryOpen] = useState(false);
+    const [isLeaderboardOpen, setIsLeaderboardOpen] = useState(false);
     const [isChatOpen, setIsChatOpen] = useState(false);
     const [chatMessage, setChatMessage] = useState('');
-    const [isBlackHoleVisible, setIsBlackHoleVisible] = useState(false);
     const [isLoggingOut, setIsLoggingOut] = useState(false);
-    const [blackHoleSecondsRemaining, setBlackHoleSecondsRemaining] = useState(
-        BLACK_HOLE_DURATION_SECONDS
-    );
+    const [selectedProfileNickname, setSelectedProfileNickname] =
+        useState(nickname);
+    const [publicProfile, setPublicProfile] =
+        useState<PublicUserProfile | null>(null);
+    const [isProfileLoading, setIsProfileLoading] = useState(false);
+    const [profileLoadFailed, setProfileLoadFailed] = useState(false);
     const eventListRef = useRef<HTMLOListElement>(null);
+    const matchHistoryListRef = useRef<HTMLOListElement>(null);
     const chatInputRef = useRef<HTMLInputElement>(null);
     const previousResolvedQuestsRef = useRef<
         readonly ResolvedQuestLogEntry[] | null
     >(null);
-    const hasBlackHoleExpiredRef = useRef(false);
+    const {
+        isOpen: friendsPanelOpen,
+        toggle: handleFriendsToggle,
+        close: handleFriendsClose,
+    } = useFriendListPanel(friendRequest);
 
     const handleQuestLogToggle = (): void => {
         setIsQuestLogOpen((isOpen) => !isOpen);
     };
 
     const handleProfileToggle = (): void => {
-        setIsProfileOpen((isOpen) => !isOpen);
+        if (isProfileOpen) {
+            setIsProfileOpen(false);
+            return;
+        }
+
+        setSelectedProfileNickname(nickname);
+        setPublicProfile(null);
+        setIsProfileLoading(false);
+        setProfileLoadFailed(false);
+        setIsProfileOpen(true);
+    };
+
+    const handleProfileClose = (): void => {
+        setIsProfileOpen(false);
+    };
+
+    const handlePlayerProfileOpen = (playerNickname: string): void => {
+        const normalizedNickname = playerNickname.trim();
+        if (!normalizedNickname) {
+            return;
+        }
+        if (isProfileOpen && selectedProfileNickname === normalizedNickname) {
+            return;
+        }
+
+        setSelectedProfileNickname(normalizedNickname);
+        setPublicProfile(null);
+        setIsProfileLoading(false);
+        setProfileLoadFailed(false);
+        setIsMatchHistoryOpen(false);
+        setIsLeaderboardOpen(false);
+        setIsProfileOpen(true);
+    };
+
+    const handleMatchHistoryToggle = (): void => {
+        setIsMatchHistoryOpen((isOpen) => !isOpen);
+    };
+
+    const handleMatchHistoryClose = (): void => {
+        setIsMatchHistoryOpen(false);
+    };
+
+    const handleLeaderboardToggle = (): void => {
+        setIsLeaderboardOpen((isOpen) => !isOpen);
+    };
+
+    const handleLeaderboardClose = (): void => {
+        setIsLeaderboardOpen(false);
+    };
+
+    const handleQuestLogClose = (): void => {
+        setIsQuestLogOpen(false);
     };
 
     const handleLogout = async (): Promise<void> => {
@@ -239,60 +272,58 @@ export function GameUI({
         event.stopPropagation();
     };
 
+    const handleChatToggle = useEffectEvent((event: KeyboardEvent): void => {
+        const isReturnOrEnter =
+            event.key === 'Enter' || event.code === 'NumpadEnter';
+
+        if (!isReturnOrEnter || event.repeat || event.isComposing) {
+            return;
+        }
+
+        event.preventDefault();
+        event.stopPropagation();
+
+        if (isChatOpen) {
+            const submittedMessage = chatMessage.trim();
+            if (submittedMessage) {
+                onChatMessage?.(submittedMessage);
+            }
+            // empty the chat input and close the chat window after sending a message
+            setChatMessage('');
+            setIsChatOpen(false);
+            return;
+        }
+
+        setIsChatOpen(true);
+    });
+
     const displayedEvents = events.slice(-MAX_EVENT_LOG_ENTRIES);
     const latestEventId = displayedEvents.at(-1)?.id;
-    const blackHoleCountdown = formatQuestCountdown(blackHoleSecondsRemaining);
+    const isStartEvaluationCompleted = completedQuestIds.includes(
+        QUESTS.START_EVALUATION_QUEST_ID.id
+    );
+    const {
+        countdown: blackHoleCountdown,
+        questCompleted: isBlackHoleQuestCompleted,
+    } = useBlackHoleTimeout({
+        active: blackHoleCountdownActive,
+        connected: blackHoleConnected,
+        restoredSecondsRemaining: restoredBlackHoleSecondsRemaining,
+        restoredCompleted: restoredBlackHoleCountdownCompleted,
+        evaluationCompleted: isStartEvaluationCompleted,
+        onCountdownExpired: onBlackHoleCountdownExpired,
+        onTimerChange: onBlackHoleTimerChange,
+    });
     const resolvedQuests = resolveQuestLogEntries(
         quests,
         completedQuestIds,
-        blackHoleSecondsRemaining
+        isBlackHoleQuestCompleted
     );
     const completedQuestCount = resolvedQuests.filter(
         (quest) => quest.completed
     ).length;
 
-    /** blackhole timer */
-    useEffect(() => {
-        const blackHoleDeadline =
-            Date.now() + BLACK_HOLE_DURATION_SECONDS * 1_000;
-        let intervalId: number | undefined;
-
-        const updateBlackHoleTimer = (): void => {
-            const millisecondsRemaining = blackHoleDeadline - Date.now();
-            const secondsRemaining = Math.max(
-                0,
-                Math.ceil(millisecondsRemaining / 1_000)
-            );
-
-            setBlackHoleSecondsRemaining(secondsRemaining);
-
-            if (secondsRemaining === 0 && intervalId !== undefined) {
-                window.clearInterval(intervalId);
-                intervalId = undefined;
-            }
-        };
-
-        intervalId = window.setInterval(updateBlackHoleTimer, 1_000);
-        updateBlackHoleTimer();
-
-        return () => {
-            if (intervalId !== undefined) {
-                window.clearInterval(intervalId);
-            }
-        };
-    }, []);
-
-    useEffect(() => {
-        if (blackHoleSecondsRemaining > 0 || hasBlackHoleExpiredRef.current) {
-            return;
-        }
-
-        hasBlackHoleExpiredRef.current = true;
-        setIsBlackHoleVisible(true);
-        onBlackHoleExpired?.();
-    }, [blackHoleSecondsRemaining, onBlackHoleExpired]);
-
-    /** Meldet ausschließlich tatsächliche Änderungen eines Quest-Status. */
+    /** Reports only actual changes to a quest status. */
     useEffect(() => {
         const statusChanges = getQuestStatusChanges(
             previousResolvedQuestsRef.current,
@@ -306,13 +337,21 @@ export function GameUI({
         }
     }, [onQuestStatusChange, resolvedQuests]);
 
-    /** Auto Scroll des Eventlogs zum neuesten Eintrag. */
+    /** Automatically scrolls the event log to the latest entry. */
     useEffect(() => {
         const eventList = eventListRef.current;
         if (!eventList) return;
 
         eventList.scrollTop = eventList.scrollHeight;
     }, [latestEventId]);
+
+    /** Automatically scrolls the match history to the latest entry. */
+    useEffect(() => {
+        const matchHistoryList = matchHistoryListRef.current;
+        if (!matchHistoryList) return;
+
+        matchHistoryList.scrollTop = matchHistoryList.scrollHeight;
+    }, [matchHistory]);
 
     useEffect(() => {
         if (!isChatOpen) return;
@@ -321,37 +360,59 @@ export function GameUI({
     }, [isChatOpen]);
 
     useEffect(() => {
-        const handleChatToggle = (event: KeyboardEvent): void => {
-            const isReturnOrEnter =
-                event.key === 'Enter' || event.code === 'NumpadEnter';
+        if (!isProfileOpen || selectedProfileNickname === nickname) {
+            return;
+        }
 
-            if (!isReturnOrEnter || event.repeat || event.isComposing) {
-                return;
-            }
+        const controller = new AbortController();
 
-            event.preventDefault();
-            event.stopPropagation();
+        const loadPublicProfile = async (): Promise<void> => {
+            setIsProfileLoading(true);
+            setProfileLoadFailed(false);
 
-            if (isChatOpen) {
-                const submittedMessage = chatMessage.trim();
-                if (submittedMessage) {
-                    onChatMessage?.(submittedMessage);
+            try {
+                const response = await axios.get<
+                    ApiResponse<PublicUserProfile>
+                >(
+                    API_USER.profile +
+                        '/' +
+                        encodeURIComponent(selectedProfileNickname),
+                    { signal: controller.signal }
+                );
+                const profile = response.data.data;
+                if (!profile) {
+                    throw new Error('Public profile response has no data');
                 }
-                //  empty the chat input and close the chat window after sending a message
-                setChatMessage('');
-                setIsChatOpen(false);
-                return;
-            }
 
-            setIsChatOpen(true);
+                if (!controller.signal.aborted) {
+                    setPublicProfile(profile);
+                }
+            } catch (error) {
+                if (controller.signal.aborted) {
+                    return;
+                }
+
+                console.error('Failed to load player profile:', error);
+                setProfileLoadFailed(true);
+            } finally {
+                if (!controller.signal.aborted) {
+                    setIsProfileLoading(false);
+                }
+            }
         };
 
+        void loadPublicProfile();
+
+        return () => controller.abort();
+    }, [isProfileOpen, nickname, selectedProfileNickname]);
+
+    useEffect(() => {
         window.addEventListener('keydown', handleChatToggle, true);
 
         return () => {
             window.removeEventListener('keydown', handleChatToggle, true);
         };
-    }, [chatMessage, isChatOpen, onChatMessage]);
+    }, []);
 
     let hudClassName = 'hud';
     if (isSpectator) {
@@ -366,45 +427,96 @@ export function GameUI({
             onPointerDown={stopGameInteraction}
         >
             <div className='hud-profile'>
-                <HudPanelToggle
-                    controls={PROFILE_PANEL_ID}
-                    icon='👤'
+                <div className='hud-profile-toggles'>
+                    <HudPanelToggle
+                        controls={PROFILE_PANEL_ID}
+                        icon='👤'
+                        isOpen={isProfileOpen}
+                        panelLabel='Profile'
+                        onToggle={handleProfileToggle}
+                    />
+                    <HudPanelToggle
+                        controls={FRIENDS_PANEL_ID}
+                        icon='👥'
+                        isOpen={friendsPanelOpen}
+                        panelLabel='Friendlist'
+                        onToggle={handleFriendsToggle}
+                    />
+                    <HudPanelToggle
+                        controls={MATCH_HISTORY_PANEL_ID}
+                        icon='📊'
+                        isOpen={isMatchHistoryOpen}
+                        panelLabel='Match History'
+                        onToggle={handleMatchHistoryToggle}
+                    />
+                    <HudPanelToggle
+                        controls={LEADERBOARD_PANEL_ID}
+                        icon='🏆'
+                        isOpen={isLeaderboardOpen}
+                        panelLabel='Leaderboard'
+                        onToggle={handleLeaderboardToggle}
+                    />
+                </div>
+
+                <ProfilePanel
+                    character={character}
+                    email={email}
+                    isLoading={isProfileLoading}
+                    isLoggingOut={isLoggingOut}
                     isOpen={isProfileOpen}
-                    panelLabel='Profil'
-                    onToggle={handleProfileToggle}
+                    loadFailed={profileLoadFailed}
+                    nickname={nickname}
+                    publicProfile={publicProfile}
+                    selectedNickname={selectedProfileNickname}
+                    canLogout={onLogout !== undefined}
+                    onClose={handleProfileClose}
+                    onLogout={handleLogout}
+                />
+
+                <FriendList
+                    friendRequest={friendRequest}
+                    friends={friends}
+                    isOpen={friendsPanelOpen}
+                    onClose={handleFriendsClose}
+                    onRemoveFriend={onFriendRemove}
                 />
 
                 <aside
-                    id={PROFILE_PANEL_ID}
-                    className='hud-panel hud-profile-panel'
-                    aria-label='Spielerprofil'
-                    hidden={!isProfileOpen}
+                    id={MATCH_HISTORY_PANEL_ID}
+                    className='hud-panel hud-match-history-panel'
+                    aria-label='Match History'
+                    hidden={!isMatchHistoryOpen}
                 >
-                    <h2 className='hud-title'>Profil</h2>
-                    {isProfileOpen && (
-                        <CharacterPreviewView
-                            character={character}
-                            className='hud-profile-character-preview'
-                            canvasClassName='hud-profile-character-preview-canvas'
-                        />
-                    )}
-                    <p className='hud-profile-nickname'>
-                        {/* TODO: edit nickname */}
-                        <strong>Nickname:</strong> {nickname} ✏️
-                    </p>
-                    <p className='hud-profile-email'>
-                        <strong>Email:</strong> {email}
-                    </p>
-                    <MatchHistory entries={matchHistory} />
-                    <button
-                        type='button'
-                        className='hud-profile-logout'
-                        disabled={isLoggingOut || !onLogout}
-                        aria-busy={isLoggingOut}
-                        onClick={() => void handleLogout()}
+                    <HudPanelHeader
+                        panelLabel='Match History'
+                        onClose={handleMatchHistoryClose}
                     >
-                        {isLoggingOut ? 'Logging out…' : '🚪 Logout'}
-                    </button>
+                        Match History
+                    </HudPanelHeader>
+                    <MatchHistory
+                        entries={matchHistory}
+                        listref={matchHistoryListRef}
+                        onPlayerProfileOpen={handlePlayerProfileOpen}
+                    />
+                </aside>
+
+                <aside
+                    id={LEADERBOARD_PANEL_ID}
+                    className='hud-panel hud-leaderboard-panel'
+                    aria-label='Leaderboard'
+                    hidden={!isLeaderboardOpen}
+                >
+                    <HudPanelHeader
+                        panelLabel='Leaderboard'
+                        onClose={handleLeaderboardClose}
+                    >
+                        Leaderboard
+                    </HudPanelHeader>
+                    <Leaderboard
+                        currentNickname={nickname}
+                        isOpen={isLeaderboardOpen}
+                        onPlayerProfileOpen={handlePlayerProfileOpen}
+                    />
                 </aside>
             </div>
 
@@ -427,7 +539,12 @@ export function GameUI({
                 aria-label='Quest Log'
                 hidden={!isQuestLogOpen}
             >
-                <h2 className='hud-title'>Quest Log Checklist:</h2>
+                <HudPanelHeader
+                    panelLabel='Quest Log'
+                    onClose={handleQuestLogClose}
+                >
+                    Quest Log Checklist:
+                </HudPanelHeader>
                 <ul className='hud-quest-list'>
                     {resolvedQuests.map((quest) => {
                         let marker = '🟥';
@@ -437,11 +554,11 @@ export function GameUI({
                             marker = '✅';
                         }
 
-                        if (quest.id === BLACK_HOLE_QUEST_ID) {
+                        if (quest.id === QUESTS.BLACK_HOLE_QUEST_ID.id) {
                             blackHoleTimer = (
                                 <time
                                     className='hud-black-hole-timer'
-                                    aria-label={`🕳️ Black Hole Timer: ${blackHoleCountdown} verbleibend`}
+                                    aria-label={`🕳️ Black Hole Timer: ${blackHoleCountdown} remaining`}
                                 >
                                     {blackHoleCountdown}
                                 </time>
@@ -460,7 +577,13 @@ export function GameUI({
                                 >
                                     {marker}
                                 </span>
-                                <span className='hud-quest-text'>
+                                <span
+                                    className={
+                                        quest.completed
+                                            ? 'hud-quest-text hud-quest-text-completed'
+                                            : 'hud-quest-text'
+                                    }
+                                >
                                     {quest.text}
                                 </span>
                                 {blackHoleTimer}
@@ -500,7 +623,10 @@ export function GameUI({
                         role='log'
                         aria-live='polite'
                     >
-                        <EventLogItems entries={displayedEvents} />
+                        <EventLogItems
+                            entries={displayedEvents}
+                            onPlayerProfileOpen={handlePlayerProfileOpen}
+                        />
                     </ol>
                 </aside>
             )}
@@ -512,8 +638,8 @@ export function GameUI({
                     className='hud-chat-input'
                     type='text'
                     value={chatMessage}
-                    aria-label='Chat-Nachricht'
-                    placeholder='Nachricht eingeben...'
+                    aria-label='Chat message'
+                    placeholder='Enter a message...'
                     autoComplete='off'
                     onChange={(event) =>
                         setChatMessage(event.currentTarget.value)
@@ -522,18 +648,6 @@ export function GameUI({
                     onKeyUp={stopGameInteraction}
                 />
             </div>
-
-            {isBlackHoleVisible && (
-                <div
-                    className='hud-black-hole-overlay'
-                    role='alert'
-                    aria-label='Du wurdest vom Black Hole eingesogen'
-                >
-                    <span className='hud-black-hole-icon' aria-hidden='true'>
-                        🕳️
-                    </span>
-                </div>
-            )}
         </div>
     );
 }

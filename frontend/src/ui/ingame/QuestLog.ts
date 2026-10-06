@@ -1,16 +1,18 @@
-import type { GameRuntimeEvent } from '../../game/main';
+import {
+    QUESTS,
+    EventType,
+    GameEvent,
+    type QuestLogEntry,
+    type EventDataQuestCompleted,
+    type EventDataGameResult,
+} from 'ftr-common/sharedTypes';
 
-export const BLACK_HOLE_QUEST_ID = 'avoid-blackhole';
-export const BLACK_HOLE_DURATION_SECONDS = 5 * 60; // 5 minutes in seconds (05:00)
-export const MEET_PLAYER_QUEST_ID = 'meet-player';
-export const RPS_WIN_QUEST_ID = 'win-rps-minigame';
-export const TTT_WIN_QUEST_ID = 'win-ttt-minigame';
+type MinigameName = NonNullable<EventDataGameResult['game']>;
 
-export type QuestLogEntry = {
-    readonly id: string;
-    readonly text: string;
-    readonly completed?: boolean;
-};
+const WIN_QUEST_ID_BY_GAME: ReadonlyMap<MinigameName, string> = new Map([
+    ['Rock-Paper-Scissors', QUESTS.RPS_WIN_QUEST_ID.id],
+    ['Tic-Tac-Toe', QUESTS.TTT_WIN_QUEST_ID.id],
+]);
 
 export type ResolvedQuestLogEntry = QuestLogEntry & {
     readonly completed: boolean;
@@ -22,89 +24,32 @@ export type QuestStatusChange = {
     readonly completed: boolean;
 };
 
-/** Beispielaufgaben für das Quest Log. */
-export const DEFAULT_QUESTS: readonly QuestLogEntry[] = [
-    {
-        // TODO: logikal quest id for entering campus, maybe use the token or door trigger
-        id: 'FIND_RUBBERDUCK',
-        text: 'Find the Rubber Duck',
-    },
-    {
-        id: 'GET_COFFEE',
-        text: 'Get a Coffee',
-    },
-    {
-        id: 'GET_PAPER',
-        text: 'Get a Piece of Paper',
-    },
-    {
-        id: 'LOGIN_COMPUTER',
-        text: 'Log In to Computer c2r12s6',
-    },
-    {
-        id: 'FIND_EVALUATING_STUDENT',
-        text: 'Find the Evaluating Student',
-    },
-    {
-        id: 'START_EVALUATION',
-        text: 'Start Evaluation',
-    },
-    {
-        id: BLACK_HOLE_QUEST_ID,
-        text: "Don't get blackholed",
-    },
-
-    // Secondary quests, once blackhole is disabled ?
-    /* 
-    {
-        id: RPS_WIN_QUEST_ID,
-        text: 'Gewinne eine Runde Schere, Stein, Papier',
-    },
-    {
-        id: TTT_WIN_QUEST_ID,
-        text: 'Gewinne eine Runde Tic-Tac-Toe',
-    },
-    {
-        id: MEET_PLAYER_QUEST_ID,
-        text: 'Finde einen anderen Student',
-    },
-    */
-];
-
-/** blackhole timer */
-export function formatQuestCountdown(totalSeconds: number): string {
-    const minutes = Math.floor(totalSeconds / 60);
-    const seconds = totalSeconds % 60;
-
-    return [minutes, seconds]
-        .map((part) => String(part).padStart(2, '0'))
-        .join(':');
-}
-
 function isQuestCompleted(
     quest: QuestLogEntry,
-    blackHoleSecondsRemaining: number,
+    blackHoleQuestCompleted: boolean,
     completedQuestIds: ReadonlySet<string>
 ): boolean {
-    if (quest.id === BLACK_HOLE_QUEST_ID) {
-        return blackHoleSecondsRemaining > 0;
+    if (quest.id === QUESTS.BLACK_HOLE_QUEST_ID.id) {
+        return blackHoleQuestCompleted;
     }
 
     return quest.completed === true || completedQuestIds.has(quest.id);
 }
 
 export function resolveQuestLogEntries(
-    quests: readonly QuestLogEntry[],
+    quests: typeof QUESTS,
     completedQuestIds: readonly string[],
-    blackHoleSecondsRemaining: number
+    blackHoleQuestCompleted: boolean
 ): ResolvedQuestLogEntry[] {
     const completedQuestIdSet = new Set(completedQuestIds);
 
-    return quests.map((quest) => ({
-        ...quest,
+    // build & return an array of ResolvedQuestLogEntries from the quests-obj
+    return Object.values(quests).map((quest) => ({
+        id: quest.id,
+        text: quest.text,
         completed: isQuestCompleted(
             quest,
-            blackHoleSecondsRemaining,
+            blackHoleQuestCompleted,
             completedQuestIdSet
         ),
     }));
@@ -145,31 +90,34 @@ export function getQuestStatusChanges(
 
 export function describeQuestStatusChange(change: QuestStatusChange): string {
     if (change.completed) {
-        return `✅ Quest abgeschlossen: ${change.questText}`;
+        return `✅ Quest succeeded: ${change.questText}`;
     }
 
-    return `❌ Quest fehlgeschlagen: ${change.questText}`;
+    return `❌ Quest failed: ${change.questText}`;
 }
 
-function getCompletedQuestId(event: GameRuntimeEvent): string | null {
-    if (event.type === 'player_in_range') {
-        return MEET_PLAYER_QUEST_ID;
+function getCompletedQuestId(event: GameEvent): string | null {
+    if (event.eventType === EventType.QuestCompleted) {
+        const evData = event.data as EventDataQuestCompleted;
+        return evData.questId;
     }
 
-    if (event.type !== 'game_result' || event.outcome !== 'won') {
-        return null;
-    }
+    if (event.eventType === EventType.PlayerInRange)
+        return QUESTS.MEET_PLAYER_QUEST_ID.id;
 
-    if (event.game === 'Rock-Paper-Scissors') {
-        return RPS_WIN_QUEST_ID;
-    }
+    if (event.eventType !== EventType.GameResult) return null;
 
-    return TTT_WIN_QUEST_ID;
+    const evData = event.data as EventDataGameResult;
+
+    // the looser does not get the quest!
+    if (evData.outcome === 'lost') return null;
+
+    return WIN_QUEST_ID_BY_GAME.get(evData.game) ?? null;
 }
 
 export function applyQuestCompletionEvent(
     currentQuestIds: string[],
-    event: GameRuntimeEvent
+    event: GameEvent
 ): string[] {
     const completedQuestId = getCompletedQuestId(event);
 

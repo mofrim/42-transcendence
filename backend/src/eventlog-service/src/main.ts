@@ -1,34 +1,52 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import { DataSource } from 'typeorm';
+import { DataSource, type FindManyOptions } from 'typeorm';
 import { exit } from 'node:process';
 import { Logger } from 'tslog';
 import cookieParser from 'cookie-parser';
-import { body, validationResult } from 'express-validator';
 
 import type { ILogObj } from 'tslog';
 import type { Express, Request, Response, NextFunction } from 'express';
 
-import { ORMEventLog, ORMUser } from 'common/ormTypes';
-import { EventType } from 'common/sharedTypes';
-import { authenticateMid } from 'common/middleware';
+import { ORMEventLog, ORMUser } from 'ftr-common/ormTypes';
+import {
+    API_EVENTLOG,
+    EventType,
+    MAX_MATCH_HISTORY_ENTRIES,
+    type MatchHistResponse,
+    type EventDataGameResult,
+} from 'ftr-common/sharedTypes';
+import { authenticateMid } from 'ftr-common/middleware';
+import { getUserById } from 'backend-utils';
+import { mkApiResponse } from 'ftr-common/utils';
+import 'ftr-common/expressTypes';
 
 // Initialize main tslog-logger
-const log = new Logger<ILogObj>({ name: 'eventlog', minLevel: 'INFO' });
+const log = new Logger<ILogObj>({
+    name: 'eventlog',
+    minLevel: process.env['NODE_ENV'] === 'development' ? 'DEBUG' : 'INFO',
+});
 
 if (process.env['NODE_ENV'] === 'development') {
     log.info('loading dev.env...');
     dotenv.config({ path: '../../../dev.env', quiet: true });
 }
 
+// enforce config through dotenv only! add any require env-vars here
+const REQUIRED_ENV = ['EVENTLOG_SERVICE_PORT', 'JWT_SECRET'];
+if (REQUIRED_ENV.some((v) => process.env[v] === undefined)) {
+    log.error(`env not like it should be! exiting...`);
+    exit(1);
+}
+
+const SECRET_KEY: string = process.env['JWT_SECRET']!;
+const PORT = Number(process.env['EVENTLOG_SERVICE_PORT'])!;
+
 // using partial function evaluation here to set the local logger and SECRET_KEY
 // in auth middleware function
 const authenticate = (req: Request, res: Response, next: NextFunction) =>
     authenticateMid(req, res, next, log, SECRET_KEY);
-
-const SECRET_KEY: string = process.env['JWT_SECRET'] || 'FooBarBaz';
-const PORT = Number(process.env['EVENTLOG_SERVICE_PORT']) || 3002;
 
 const app: Express = express();
 
@@ -37,10 +55,9 @@ app.use(express.json());
 
 // reject any non-JSON bodies early
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
-    void req;
     if (err instanceof SyntaxError && err.message.includes('JSON')) {
         log.warn('Got invalid JSON body from IP ', req.ip);
-        res.status(400).json({ error: 'Invalid JSON body' });
+        res.status(400).json(mkApiResponse('Invalid JSON body', 'error'));
     } else {
         next(err);
     }
@@ -65,91 +82,83 @@ const DB = new DataSource({
 
 try {
     await DB.initialize();
+    log.info('user-service connected to DB');
 } catch (err) {
     log.error('Failed to connect to database!');
     log.error(err as Error);
     exit(1);
 }
 
-// get the id belonging to a nickname string
-const getUserId = async (nick: string): Promise<number | null> => {
-    try {
-        const exists = await DB.manager.findOneBy(ORMUser, { nickname: nick });
-        return exists === null ? null : exists.id;
-    } catch (err) {
-        console.error(err);
-        return null;
-    }
-};
+/** ORMEventLog */
+const eventLogRepo = DB.getRepository(ORMEventLog);
+const eventLogWithUserOptions = {
+    relations: { user: true },
+    select: {
+        id: true,
+        eventType: true,
+        data: true,
+        user: {
+            nickname: true,
+            id: true,
+        },
+        logtime: true,
+    },
+} satisfies FindManyOptions<ORMEventLog>;
 
-// -------------------------=[ the POST endpoint ]=------------------------- //
+// ------------------------=[  normal eventlogging ]=------------------------ //
 
-// the data-validation for the POST endpoint. what do we want here? what do we
-// allow here? so far we only reject empty data
-const validateEventData = () =>
-    body('data').notEmpty().withMessage('empty data');
+const eventLogRoute = app.route(API_EVENTLOG.root);
 
-app.post(
-    '/api/eventlog',
+eventLogRoute.post(
     authenticate,
-    validateEventData(),
     async (req: Request, res: Response): Promise<void> => {
         const logPost = log.getSubLogger({ name: 'POST' });
 
-        // check any errors from Validation
-        const errors = validationResult(req);
-        if (!errors.isEmpty()) {
-            logPost.warn('Got bad request from', req.ip);
-            res.status(400).json({ errors: errors.array() });
-            return;
-        }
-
-        const { eventType, data, user } = req.body;
+        const { eventType, data, logtime } = req.body;
 
         if (!Object.values(EventType).includes(eventType)) {
-            res.status(400).json({
-                error: 'Invalid event type',
-            });
+            res.status(400).json(mkApiResponse('Invalid event type', 'error'));
             return;
         }
 
-        const userId = await getUserId(user);
-        if (userId === null) {
-            res.status(400).json({
-                error: `User ${user} not found`,
-            });
+        const user = await getUserById(DB, req.userId!);
+        if (user === null) {
+            res.status(400).json(
+                mkApiResponse(`UID ${req.userId} not found`, 'error')
+            );
             return;
         }
 
-        if (typeof data !== 'string') {
-            res.status(400).json({
-                error: 'Event data must be a string',
-            });
+        if (typeof data !== 'object') {
+            res.status(400).json(
+                mkApiResponse('Event data must be an object', 'error')
+            );
             return;
         }
 
         try {
-            const event = DB.manager.create(ORMEventLog, {
-                eventType: eventType,
-                data: data,
-                // this has to be Partial<ORMUser> so...
-                user: { id: userId },
+            const savedEvent = await eventLogRepo.save({
+                eventType,
+                data,
+                logtime,
+                user: { id: user.id },
             });
+            logPost.info('stored event:', savedEvent);
 
-            const savedEvent = await DB.manager.save(event);
-
-            res.status(201).json(savedEvent);
+            // only info we need in frontend is that saving was successful and
+            // the id under which it was saved
+            res.status(201).json(
+                mkApiResponse('Event stored', 'success', savedEvent.id)
+            );
         } catch (err) {
             logPost.error(err as Error);
 
-            res.status(500).json({
-                error: 'Failed to save event',
-            });
+            res.status(500).json(
+                mkApiResponse('Failed to save event', 'error')
+            );
         }
     }
 );
-
-// --------------------------=[ the GET endpoint ]=-------------------------- //
 
 // TODO add proper api documentation here & for other endpoints!
 //
@@ -161,89 +170,248 @@ app.post(
 // - limit=[number] will output the last `number` logs
 // - user=[nickname] will filter the logs for the given nickname
 //
-app.get(
-    '/api/eventlog',
+// if no uid is specified user will be determined from JWT
+eventLogRoute.get(
     authenticate,
     async (req: Request, res: Response): Promise<void> => {
-        const logGet = log.getSubLogger({ name: 'GET' });
+        const logGet = log.getSubLogger({ name: 'GET(eventlog)' });
 
-        const limit = Number(req.query['limit'] ?? 50);
-        const queryUser = req.query['user'];
+        const queryUser = req.query['uid'];
+        let queryUID;
 
-        if (!Number.isInteger(limit) || limit <= 0) {
-            res.status(400).json({
-                error: 'limit must be a positive integer',
-            });
+        let limit: number | undefined;
+        if (queryUser) {
+            limit =
+                req.query['limit'] != null
+                    ? Number(req.query['limit'])
+                    : undefined;
+        } else {
+            limit = Number(req.query['limit'] ?? 10);
+        }
+
+        if (!(limit === undefined) && !(Number.isInteger(limit) && limit > 0)) {
+            res.status(400).json(
+                mkApiResponse('limit must be a positive integer', 'error')
+            );
             return;
         }
 
         if (queryUser != null) {
-            if ((await getUserId(String(queryUser))) === null) {
-                res.status(400).json({
-                    error: `User ${queryUser} not found`,
-                });
+            if ((await getUserById(DB, Number(queryUser))) === null) {
+                res.status(400).json(
+                    mkApiResponse(`User ${queryUser} not found`, 'error')
+                );
                 return;
             }
+            queryUID = Number(queryUser);
         }
 
         try {
-            let events;
-            if (queryUser == null) {
-                events = await DB.manager.find(ORMEventLog, {
-                    order: {
-                        id: 'DESC',
-                    },
-                    take: limit,
-                    relations: { user: true },
-                    select: {
-                        id: true,
-                        eventType: true,
-                        data: true,
-                        user: {
-                            nickname: true,
-                        },
-                    },
-                });
-            } else {
-                events = await DB.manager.find(ORMEventLog, {
-                    order: {
-                        id: 'DESC',
-                    },
-                    take: limit,
-                    where: {
-                        user: {
-                            nickname: String(queryUser),
-                        },
-                    },
-                    relations: { user: true },
-                    select: {
-                        id: true,
-                        eventType: true,
-                        data: true,
-                        user: {
-                            nickname: true,
-                        },
-                    },
-                });
-                // ordering from descending
-                events.reverse();
-            }
-
-            res.status(200).json(events);
+            const events = await eventLogRepo.find({
+                ...eventLogWithUserOptions,
+                order: {
+                    id: 'DESC', // get entries starting from most recent
+                },
+                take: limit,
+                // @ts-expect-error exactOptionalPropertyTypes
+                //
+                // NOTE: we would get code-dup because TS does ot want `where`
+                // attribute to be undefined. writing it like this here is just
+                // shorter and still correct.
+                where:
+                    queryUser != null
+                        ? {
+                              user: {
+                                  id: queryUID,
+                              },
+                          }
+                        : undefined,
+            });
+            events.reverse(); // make order in slice ascending again
+            res.status(200).json(
+                mkApiResponse<ORMEventLog[]>(
+                    'Found eventlogs',
+                    'success',
+                    undefined,
+                    events
+                )
+            );
         } catch (err) {
             logGet.error(err as Error);
-            res.status(500).json({
-                error: 'Failed to fetch events',
+            res.status(500).json(
+                mkApiResponse('Failed to fetch events', 'error')
+            );
+        }
+    }
+);
+
+// get everything, regardless of user from eventlog
+// FIXME so far only here for debugging..
+app.get(
+    API_EVENTLOG.all,
+    authenticate,
+    async (req: Request, res: Response): Promise<void> => {
+        const logGet = log.getSubLogger({ name: 'GET(eventlog)' });
+        void req;
+
+        try {
+            const events = await eventLogRepo.find(eventLogWithUserOptions);
+            events.reverse(); // make order in slice ascending again
+            res.status(200).json(
+                mkApiResponse<ORMEventLog[]>(
+                    'Found eventlogs',
+                    'success',
+                    undefined,
+                    events
+                )
+            );
+        } catch (err) {
+            logGet.error(err as Error);
+            res.status(500).json(
+                mkApiResponse('Failed to fetch events', 'error')
+            );
+        }
+    }
+);
+
+// ----------------------=[ match history endpoints ]=---------------------- //
+
+const matchHistoryRoute = app.route(API_EVENTLOG.matchHistory);
+
+matchHistoryRoute.get(
+    authenticate,
+    async (req: Request, res: Response): Promise<void> => {
+        const logGet = log.getSubLogger({ name: 'GET(matchhist)' });
+
+        // req.userId will always be set after successful auth
+        const userId = req.userId!;
+
+        try {
+            const events = await eventLogRepo.find({
+                order: {
+                    id: 'DESC', // get entries starting from most recent
+                },
+                take: MAX_MATCH_HISTORY_ENTRIES,
+                where: {
+                    user: { id: userId },
+                    eventType: EventType.GameResult,
+                },
+                select: {
+                    id: true,
+                    data: {
+                        game: true,
+                        outcome: true,
+                        opponentNickname: true,
+                    },
+                    logtime: true,
+                },
             });
+            events.reverse(); // make order in slice ascending again
+            res.status(200).json(
+                mkApiResponse<MatchHistResponse[]>(
+                    'Found eventlogs',
+                    'success',
+                    undefined,
+                    events as MatchHistResponse[]
+                )
+            );
+        } catch (err) {
+            logGet.error(err as Error);
+            res.status(500).json(
+                mkApiResponse('Failed to fetch events', 'error')
+            );
+        }
+    }
+);
+
+// a simple enpoint for storing the matchresult. almost the same as the standard
+// post endpoint but returns the stored GameResult in response for parsing in
+// frontend
+matchHistoryRoute.post(
+    authenticate,
+    async (req: Request, res: Response): Promise<void> => {
+        const logPost = log.getSubLogger({ name: 'POST(matchhist)' });
+
+        const { eventType, data, logtime } = req.body;
+
+        if (eventType !== EventType.GameResult) {
+            res.status(400).json(mkApiResponse('Invalid event type', 'error'));
+            return;
+        }
+
+        const user = await getUserById(DB, req.userId!);
+        if (user === null) {
+            res.status(400).json(
+                mkApiResponse(`UID ${req.userId} not found`, 'error')
+            );
+            return;
+        }
+
+        if (typeof data !== 'object') {
+            res.status(400).json(
+                mkApiResponse('Event data must be an object', 'error')
+            );
+            return;
+        }
+
+        try {
+            const savedEvent = await eventLogRepo.save({
+                eventType,
+                data,
+                logtime,
+                user: { id: user.id },
+            });
+            const savedEventMatchHist: MatchHistResponse = {
+                id: savedEvent.id,
+                data: savedEvent.data as EventDataGameResult,
+                logtime: savedEvent.logtime,
+            };
+            logPost.info('stored event:', savedEvent);
+            res.status(201).json(
+                mkApiResponse<MatchHistResponse>(
+                    'Saving event successful',
+                    'success',
+                    undefined,
+                    savedEventMatchHist
+                )
+            );
+        } catch (err) {
+            logPost.error(err as Error);
+
+            res.status(500).json(
+                mkApiResponse('Failed to save event', 'error')
+            );
+        }
+    }
+);
+
+// ------------------------=[ the reset endpoint ]=-------------------------- //
+
+// can be used to reset eventlog during tests / dev
+// NOTE admin only endpoint!
+eventLogRoute.delete(
+    authenticate,
+    async (req: Request, res: Response): Promise<void> => {
+        const logDel = log.getSubLogger({ name: 'DELETE' });
+        void req;
+
+        try {
+            await eventLogRepo.deleteAll();
+            res.status(204).end();
+        } catch (err) {
+            logDel.error(err as Error);
+            res.status(500).json(
+                mkApiResponse('Failed to fetch events', 'error')
+            );
         }
     }
 );
 
 // --------=[ fallback endpoint for catching unsuppoerted methods ]=-------- //
 
-app.all('/api/eventlog', (req: Request, res: Response) => {
-    log.warn('Invalid Request to /api/eventlog:', req.method);
-    res.status(405).json({ error: 'Unsupported Method' });
+eventLogRoute.all((req: Request, res: Response) => {
+    log.warn(`Invalid Request to ${API_EVENTLOG.root}:`, req.method);
+    res.status(405).json(mkApiResponse('Unsupported Method', 'error'));
 });
 
 // ---------------------=[ finally launch the server ]=--------------------- //

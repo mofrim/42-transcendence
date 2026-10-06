@@ -1,19 +1,22 @@
 {
+    "$schema": "https://json.schemastore.org/package.json",
     "name": "ftr-backend",
     "description": "ft_transcendence backend",
     "private": true,
     "version": "0.0.0",
     "type": "module",
     "scripts": {
-        "build": "tsc -b",
-        "type-check": "tsc -b ../common/tsconfig.json && tsc --noEmit",
-        "type-check:watch": "tsc -b ../common/tsconfig.json && tsc --noEmit --watch",
+        "build": "tsc -b ./src/backend-utils/tsconfig.json && tsc -b",
+        "type-check": "tsc -b ../ftr-common/tsconfig.json && tsc -b ./src/backend-utils/tsconfig.json && tsc --noEmit",
+        "type-check:watch": "tsc -b ../ftr-common/tsconfig.json ./src/backend-utils/tsconfig.json && concurrently \"tsc -b ./src/backend-utils/tsconfig.json --watch\" \"tsc --noEmit --watch\"",
         "lint": "eslint .",
         "lint-fix": "eslint . --fix",
-        "dev:all": "concurrently \"npm --prefix ./src/conn-service run dev\" \"npm --prefix ./src/auth-service run dev\" \"npm --prefix ./src/user-service run dev\""
+        "dev:all": "concurrently \"npm --prefix ./src/conn-service run dev\" \"npm --prefix ./src/auth-service run dev\" \"npm --prefix ./src/user-service run dev\" \"npm --prefix ./src/eventlog-service run dev\"",
+        "dev:event": "concurrently \"npm --prefix ./src/auth-service run dev\" \"npm --prefix ./src/eventlog-service run dev\"",
+        "dev:user": "concurrently \"npm --prefix ./src/auth-service run dev\" \"npm --prefix ./src/user-service run dev\""
     },
     "dependencies": {
-        "common": "*",
+        "ftr-common": "*",
         "cookie-parser": "^1.4.7",
         "express": "^5.2.1",
         "reflect-metadata": "^0.2.2",
@@ -23,7 +26,12 @@
         "@types/cookie-parser": "^1.4.10",
         "@types/cors": "^2.8.19",
         "@types/express": "^5.0.6",
+        "@types/jest": "^30.0.0",
+        "@types/supertest": "^7.2.1",
         "concurrently": "^10.0.4",
+        "jest": "^30.5.1",
+        "supertest": "^7.2.2",
+        "ts-jest": "^29.4.12",
         "tsx": "^4.23.1"
     }
 }

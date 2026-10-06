@@ -1,25 +1,105 @@
 import express from 'express';
 import cors from 'cors';
-import type { Express } from 'express';
+import cookieParser from 'cookie-parser';
+import type { Express, Request } from 'express';
 import http from 'http';
 import { randomUUID } from 'node:crypto';
+import { setTimeout as delay } from 'node:timers/promises';
 import { Server } from 'socket.io';
 import type { Socket } from 'socket.io';
 import { GameManager } from './gameManager.ts';
-
+import { SaveGameBackend } from './SaveGameBackend.ts';
+import { verifyToken } from 'ftr-common/middleware';
 import type {
     ChatSendPayload,
+    FriendRemoveAcknowledgement,
+    FriendRemovePayload,
+    FriendRequestAcknowledgement,
+    FriendRequestPayload,
+    FriendResponsePayload,
+    FriendStateSnapshot,
     ReceivedChatPayload,
     RPSBattleChoicePayload,
     RPSRequestDataPayload,
+    PlayerMovementPayload,
+    PlayerPosition,
     PlayerConnectedPayload,
     PlayerUpdatePayload,
     TTTMarkPayload,
-} from 'common/sharedTypes';
+    SaveGameSnapshot,
+} from 'ftr-common/sharedTypes';
+import {
+    API_USER,
+    SPECTATOR_NAME,
+    TTTGameState,
+    TTTMark,
+} from 'ftr-common/sharedTypes';
+import { Logger, type ILogObj } from 'tslog';
+import dotenv from 'dotenv';
+import { exit } from 'node:process';
+import { UserServiceClient } from './userServiceClient.ts';
 
-import { SPECTATOR_NAME, TTTGameState, TTTMark } from 'common/sharedTypes';
+// Initialize main tslog-logger
+const log = new Logger<ILogObj>({
+    name: 'connService',
+    minLevel: process.env['NODE_ENV'] === 'development' ? 'DEBUG' : 'INFO',
+});
 
-const PORT = 3000;
+// ---------------------------=[ env parsing... ]=--------------------------- //
+
+if (process.env['NODE_ENV'] === 'development') {
+    log.info('loading dev.env...');
+    dotenv.config({ path: '../../../dev.env', quiet: true });
+}
+
+// enforce config through dotenv only! add any require env-vars here
+const REQUIRED_ENV = [
+    'CONN_SERVICE_PORT',
+    'USER_SERVICE_ADDR',
+    'USER_SERVICE_PORT',
+    'INTERNAL_JWT_SECRET',
+    'JWT_SECRET',
+];
+if (REQUIRED_ENV.some((v) => process.env[v] === undefined)) {
+    log.error(`env not like it should be! exiting...`);
+    exit(1);
+}
+
+// TS sadly does not realize they were checked for undefness ;(
+const PORT: string = process.env['CONN_SERVICE_PORT']!;
+const SECRET_KEY: string = process.env['JWT_SECRET']!;
+const INTERNAL_SECRET_KEY: string = process.env['INTERNAL_JWT_SECRET']!;
+
+const USER_SERVICE_ENDPOINT =
+    process.env['USER_SERVICE_ADDR'] + ':' + process.env['USER_SERVICE_PORT'];
+
+const USER_INTERNAL_ENDPOINT = USER_SERVICE_ENDPOINT + API_USER.rootInternal;
+
+type PendingFriendRequest = {
+    readonly requesterUserId: number;
+    readonly requesterNickname: string;
+    readonly recipientUserId: number;
+    readonly recipientNickname: string;
+};
+
+const pendingFriendRequests = new Map<number, PendingFriendRequest>();
+const friendsByUser = new Map<number, Set<number>>();
+const userNicknames = new Map<number, string>();
+
+const gameManager = new GameManager();
+const saveGame = new SaveGameBackend();
+
+function getAuthenticatedUserId(socket: Socket | undefined): number | null {
+    const userId = Number(socket?.data.userId);
+    return Number.isSafeInteger(userId) ? userId : null;
+}
+
+function getUserRoom(userId: number): string {
+    return `user:${userId}`;
+}
+
+// --------------=[ launching the express / socket.io server ]=-------------- //
+
 const app: Express = express();
 
 app.use(cors());
@@ -27,25 +107,57 @@ app.use(cors());
 const server: http.Server = app.listen(PORT, (): void => {
     console.log(`listening on port: ${PORT}`);
 });
-
 const io = new Server(server, {
     cors: { origin: '*' },
 });
 
-const gameManager = new GameManager();
+io.engine.use(cookieParser());
 
-// TODO add event logging to all loggable socket-events like chat-msg,
-// player_connect, etc.
-
-io.on('connection', (socket) => {
+io.use((socket, next) => {
     const requestedRole = socket.handshake.auth['role'];
+    if (requestedRole === 'spectator') {
+        next();
+        return;
+    }
+
+    const token = (socket.request as Request).cookies['token'];
+    if (typeof token !== 'string') {
+        log.error('Received invalid token:', token);
+        next(new Error('Unauthorized'));
+        return;
+    }
+
+    try {
+        const authenticatedUserId = verifyToken(token, SECRET_KEY, log);
+        const requestedUserId = socket.handshake.auth['userId'];
+        if (
+            !Number.isSafeInteger(requestedUserId) ||
+            requestedUserId !== authenticatedUserId
+        ) {
+            log.error('requested & authenticated UID mismatch or invalid UID');
+            next(new Error('Session identity mismatch'));
+            return;
+        }
+        socket.data.userId = authenticatedUserId;
+        next();
+    } catch (err) {
+        log.error('Token verification failed:', err);
+        next(new Error('Unauthorized'));
+    }
+});
+
+// ------------=[ this is where all events handling is defined ]=------------ //
+
+io.on('connection', async (socket) => {
+    const requestedRole = socket.handshake.auth['role'];
+    let authenticatedPlayerUserId: number | null = null;
 
     if (
         requestedRole !== undefined &&
         requestedRole !== 'player' &&
         requestedRole !== 'spectator'
     ) {
-        console.log(
+        log.info(
             `disconnecting client: ${JSON.stringify(socket.conn.remoteAddress)}`
         );
         socket.disconnect(true);
@@ -69,9 +181,23 @@ io.on('connection', (socket) => {
         socket.data.role = 'spectator';
         socket.data.nickname = SPECTATOR_NAME;
     } else {
+        const userId = getAuthenticatedUserId(socket);
+        if (userId === null) {
+            socket.disconnect(true);
+            return;
+        }
+        authenticatedPlayerUserId = userId;
         socket.data.role = 'player';
         socket.data.nickname = nickname;
         socket.data.character = character;
+        const normalizedNickname = String(nickname).trim();
+        if (normalizedNickname.length > 0) {
+            userNicknames.set(userId, normalizedNickname);
+        }
+        socket.join(getUserRoom(userId));
+        socket.on('friend_sync', (acknowledge: unknown) => {
+            acknowledgeFriend(acknowledge, getFriendStateSnapshot(userId));
+        });
     }
 
     /**
@@ -121,65 +247,170 @@ io.on('connection', (socket) => {
     });
 
     // send initial data to the connected client
-    socket.emit('initData', gameManager.getMapData());
+    socket.emit('initData', gameManager.tttGame);
 
     if (isSpectator) {
         console.log('Spectator connected:', socket.id);
         return;
     }
 
-    // the only other action preformed currently by the backend apart from
-    // handling ttt and rps game
+    if (authenticatedPlayerUserId === null) {
+        socket.disconnect(true);
+        return;
+    }
+    const playerUserId = authenticatedPlayerUserId;
+    const playerData = gameManager.createPlayer(socket.id, nickname);
+
     const connectedPlayer: PlayerConnectedPayload = {
         id: socket.id,
         character,
         nickname,
         isInitialSnapshot: false,
     };
+
+    // -----------------=[ Game-State persistence logic ]=------------------- //
+
+    const restoredSaveGame = saveGame.connect(playerUserId, socket.id);
+    const userService = new UserServiceClient(
+        playerUserId,
+        USER_INTERNAL_ENDPOINT,
+        INTERNAL_SECRET_KEY,
+        log
+    );
+
+    await userService.updateUserPresence(true);
+
+    if (restoredSaveGame) {
+        Object.assign(playerData.position, restoredSaveGame.position);
+        Object.assign(connectedPlayer, restoredSaveGame.position, {
+            state: playerData.state,
+        });
+        log.info('Restored player state from SaveGame');
+    } else {
+        // NOTE: if no SaveGame found (null) try to get player position from
+        // DB... All of this is a little bit hacky as it would be a reasonable
+        // refac to use _only_ the DB for storing state. But this is where we
+        // are now :/
+        try {
+            const userData = await userService.getUserState();
+
+            if (userData !== undefined) {
+                const pos = userData.position;
+                const bhTimer = userData.blackholeTimer;
+                // unfortunately need to create an initial SaveGame in order to
+                // easily hook into propagation of the restored state.
+                saveGame.getOrCreateSave(
+                    socket.data.userId,
+                    pos,
+                    bhTimer != 0 ? bhTimer : undefined
+                );
+                Object.assign(playerData.position, pos);
+                Object.assign(connectedPlayer, pos, {
+                    state: playerData.state,
+                });
+            }
+            log.info('Restored player state from DB!');
+        } catch {
+            log.error('Failed getting player pos from DB');
+        }
+    }
+
+    gameManager.players.set(socket.id, playerData);
+
     socket.broadcast.emit('player_connected', connectedPlayer);
     console.log('Client connected:', socket.id);
 
-    gameManager.players.set(
-        socket.id,
-        gameManager.createPlayer(socket.id, nickname)
-    );
-
-    // TTT-Disconnect
-    // dissconnect and remove player from gameManager
-    socket.on('disconnect', () => {
-        console.log('Client disconnected:', socket.id);
-        // Check if the player is still in the Tic Tac Toe game and reset if necessary
-        if (gameManager.tttGame.players.includes(socket.id)) {
-            const [playerOneID, playerTwoID] = gameManager.tttGame.players;
-
-            for (const playerID of [playerOneID, playerTwoID]) {
-                if (!playerID) continue;
-
-                const tttPlayer = gameManager.players.get(playerID);
-                if (!tttPlayer) continue;
-
-                tttPlayer.inGame = false;
-                tttPlayer.gameID = null;
-            }
-
-            console.log('Player still exists after disconnect: ' + socket.id);
-            gameManager.tttGame = gameManager.createTTTGame();
-            io.emit('update', {
-                type: 'ttt_reset',
-            });
+    socket.on('save_game_restore', (acknowledge: unknown) => {
+        if (typeof acknowledge !== 'function') {
+            return;
         }
-
-        playerGameReset(socket.id);
-
-        gameManager.removePlayer(socket.id);
-
-        socket.broadcast.emit('player_disconnected', socket.id);
+        acknowledge(saveGame.getSnapshot(playerUserId, socket.id));
     });
 
-    socket.on('update', (data) => {
+    // disconnect and remove player from gameManager
+    socket.on('disconnect', async () => {
+        log.info('Client disconnected:', socket.id);
+
+        // get latest saveGameSnap for disconnecting user.. process it later.
+        const snapshot: SaveGameSnapshot | null = saveGame.getSnapshot(
+            playerUserId,
+            socket.id
+        );
+
+        const shouldMarkOffline = !saveGame.disconnect(
+            playerUserId,
+            socket.id,
+            gameManager.players.get(socket.id)?.position
+        );
+        playerGameReset(socket.id);
+
+        gameManager.players.delete(socket.id);
+
+        socket.broadcast.emit('player_disconnected', socket.id);
+
+        if (shouldMarkOffline) {
+            await userService.updateUserPresence(false);
+        }
+
+        // sync playerData to DB on disco...
+        //
+        // NOTE: in order to avoid cheating and/or users messing with this data
+        // the requests to backend services should only be made **inside** the
+        // backend so they are not visible and callable from frontend! this
+        // would have been secure backend-design!!!
+        // However, this means the backend needs some at least authenticated
+        // connection to backend services, or we just expose some services,
+        // which are not proxied which are backend-internal
+        //
+        // TODO maybe also move quests syncing to backend correspondingly
+
+        if (snapshot !== null) {
+            try {
+                await userService.updateUserState(
+                    snapshot.position,
+                    snapshot.blackHoleSecondsRemaining
+                );
+                log.info('Snapshot stored in DB for UID', socket.data.userId);
+            } catch {
+                log.error(
+                    'Storing snapshot in DB failed for UID',
+                    socket.data.userId
+                );
+            }
+        }
+    });
+
+    // NEXT
+    // NOTE: from an anti-cheat / backend-frontend trust-design - perspective it
+    // would be the correct workflow to let the Quests emit update events which
+    // then would be collected here and corresponding action be taken like
+    // toggling quest-status etc.
+    socket.on('update', (data, acknowledge) => {
         switch (data.type) {
             case 'player_update':
                 handlePlayerUpdate(socket, data);
+                break;
+            case 'save_game_timer':
+                saveGame.SaveGameBlackholeTimer(
+                    getAuthenticatedUserId(socket),
+                    socket.id,
+                    gameManager.players.get(socket.id)?.position,
+                    data
+                );
+                break;
+            case 'save_game_quest_status':
+                saveGame.SaveGameQuestStatus(
+                    getAuthenticatedUserId(socket),
+                    socket.id,
+                    gameManager.players.get(socket.id)?.position,
+                    data
+                );
+                break;
+            case 'black_hole_timeout':
+                saveGame.clearForBlackHoleTimeout(playerUserId, socket.id);
+                break;
+            case 'save_game_restart':
+                saveGame.restartAfterBlackHole(playerUserId, socket.id);
                 break;
 
             case 'ttt_mark':
@@ -204,10 +435,8 @@ io.on('connection', (socket) => {
                 handleRPSRequest(socket, data);
                 break;
             case 'rps_accept':
-                handleRPSAccept(socket, data);
-                break;
             case 'rps_decline':
-                handleRPSDecline(socket, data);
+                handleRPSResponse(socket, data);
                 break;
             case 'rps_choice':
                 handleRPSChoice(socket, data);
@@ -215,8 +444,18 @@ io.on('connection', (socket) => {
             case 'rps_invalid':
                 handleRPSInvalid(socket);
                 break;
+            case 'friend_request':
+                handleFriendRequest(socket, data, acknowledge);
+                break;
+            case 'friend_accept':
+            case 'friend_decline':
+                handleFriendResponse(socket, data, acknowledge);
+                break;
+            case 'friend_remove':
+                handleFriendRemove(socket, data, acknowledge);
+                break;
             case 'game_reset':
-                handleGameReset(socket);
+                playerGameReset(socket.id);
                 break;
             default:
                 console.log('Unknown data type:', data.type);
@@ -253,25 +492,321 @@ function handleRPSRequest(socket: Socket, data: RPSRequestDataPayload) {
     });
 }
 
-function handlePlayerUpdate(socket: Socket, data: PlayerUpdatePayload) {
-    const player = gameManager.players.get(socket.id);
-    if (!player) {
+type FriendAcknowledgement =
+    | boolean
+    | FriendRequestAcknowledgement
+    | FriendRemoveAcknowledgement
+    | FriendStateSnapshot;
+
+function acknowledgeFriend(
+    acknowledge: unknown,
+    result: FriendAcknowledgement
+): void {
+    if (typeof acknowledge === 'function') {
+        acknowledge(result);
+    }
+}
+
+function areFriends(firstUserId: number, secondUserId: number): boolean {
+    return friendsByUser.get(firstUserId)?.has(secondUserId) ?? false;
+}
+
+function addFriendship(firstUserId: number, secondUserId: number): void {
+    for (const [userId, friendUserId] of [
+        [firstUserId, secondUserId],
+        [secondUserId, firstUserId],
+    ] as const) {
+        const friends = friendsByUser.get(userId) ?? new Set<number>();
+        friendsByUser.set(userId, friends);
+        friends.add(friendUserId);
+    }
+}
+
+function removeFriendship(firstUserId: number, secondUserId: number): void {
+    for (const [userId, friendUserId] of [
+        [firstUserId, secondUserId],
+        [secondUserId, firstUserId],
+    ] as const) {
+        const friends = friendsByUser.get(userId);
+        friends?.delete(friendUserId);
+        if (friends?.size === 0) {
+            friendsByUser.delete(userId);
+        }
+    }
+}
+
+function getPendingFriendRequestSnapshot(
+    userId: number
+): FriendStateSnapshot['pendingRequest'] {
+    const incomingRequest = pendingFriendRequests.get(userId);
+    if (incomingRequest !== undefined) {
+        return {
+            direction: 'incoming',
+            playerId: String(incomingRequest.requesterUserId),
+            nickname: incomingRequest.requesterNickname,
+        };
+    }
+
+    for (const request of pendingFriendRequests.values()) {
+        if (request.requesterUserId === userId) {
+            return {
+                direction: 'outgoing',
+                playerId: String(request.recipientUserId),
+                nickname: request.recipientNickname,
+            };
+        }
+    }
+
+    return null;
+}
+
+function getFriendStateSnapshot(userId: number): FriendStateSnapshot {
+    const friends = Array.from(
+        friendsByUser.get(userId) ?? [],
+        (friendUserId) => ({
+            playerId: String(friendUserId),
+            nickname: userNicknames.get(friendUserId) ?? String(friendUserId),
+        })
+    );
+
+    return {
+        friends,
+        pendingRequest: getPendingFriendRequestSnapshot(userId),
+    };
+}
+
+function emitFriendState(userId: number): void {
+    io.to(getUserRoom(userId)).emit(
+        'friend_state',
+        getFriendStateSnapshot(userId)
+    );
+}
+
+function handleFriendRequest(
+    socket: Socket,
+    data: FriendRequestPayload,
+    acknowledge: unknown
+): void {
+    const requestedPlayerId = data.requestedPlayerID;
+    const requestingUserId = getAuthenticatedUserId(socket);
+    let requestedUserId: number | null = null;
+    if (typeof requestedPlayerId === 'string') {
+        requestedUserId = getAuthenticatedUserId(
+            io.sockets.sockets.get(requestedPlayerId)
+        );
+    }
+    if (
+        typeof requestedPlayerId !== 'string' ||
+        requestedPlayerId === socket.id ||
+        !gameManager.players.has(requestedPlayerId) ||
+        requestingUserId === null ||
+        requestedUserId === null
+    ) {
+        acknowledgeFriend(acknowledge, {
+            accepted: false,
+            reason: 'invalid_target',
+        });
+        return;
+    }
+
+    if (requestingUserId === requestedUserId) {
+        acknowledgeFriend(acknowledge, {
+            accepted: false,
+            reason: 'same_account',
+        });
+        return;
+    }
+
+    const requestingPlayer = gameManager.players.get(socket.id);
+    const requestedPlayer = gameManager.players.get(requestedPlayerId);
+    if (!requestingPlayer || !requestedPlayer) {
+        acknowledgeFriend(acknowledge, {
+            accepted: false,
+            reason: 'invalid_target',
+        });
+        return;
+    }
+    if (areFriends(requestingUserId, requestedUserId)) {
+        acknowledgeFriend(acknowledge, {
+            accepted: false,
+            reason: 'already_friends',
+        });
+        return;
+    }
+
+    const existingRequest = pendingFriendRequests.get(requestedUserId);
+    if (existingRequest?.requesterUserId === requestingUserId) {
+        acknowledgeFriend(acknowledge, {
+            accepted: false,
+            reason: 'duplicate',
+        });
+        return;
+    }
+
+    if (
+        getPendingFriendRequestSnapshot(requestingUserId) !== null ||
+        getPendingFriendRequestSnapshot(requestedUserId) !== null
+    ) {
+        acknowledgeFriend(acknowledge, {
+            accepted: false,
+            reason: 'duplicate_request',
+        });
+        return;
+    }
+
+    const pendingRequest: PendingFriendRequest = {
+        requesterUserId: requestingUserId,
+        requesterNickname: requestingPlayer.nickname,
+        recipientUserId: requestedUserId,
+        recipientNickname: requestedPlayer.nickname,
+    };
+
+    pendingFriendRequests.set(requestedUserId, pendingRequest);
+    const payload: FriendRequestPayload = {
+        type: 'friend_request',
+        id: socket.id,
+        requestedPlayerID: requestedPlayerId,
+        friendUserId: requestingUserId,
+        nickname: requestingPlayer.nickname,
+    };
+    acknowledgeFriend(acknowledge, {
+        accepted: true,
+        friendUserId: requestedUserId,
+    });
+    io.to(getUserRoom(requestedUserId)).emit('update', payload);
+    emitFriendState(requestingUserId);
+}
+
+function handleFriendResponse(
+    socket: Socket,
+    data: FriendResponsePayload,
+    acknowledge: unknown
+): void {
+    const respondingUserId = getAuthenticatedUserId(socket);
+    const requesterUserId = data.friendUserId;
+    if (
+        respondingUserId === null ||
+        !Number.isSafeInteger(requesterUserId) ||
+        requesterUserId === respondingUserId
+    ) {
+        acknowledgeFriend(acknowledge, false);
+        return;
+    }
+
+    const pendingRequest = pendingFriendRequests.get(respondingUserId);
+    const respondingPlayer = gameManager.players.get(socket.id);
+    if (
+        pendingRequest === undefined ||
+        pendingRequest.requesterUserId !== requesterUserId ||
+        !respondingPlayer ||
+        pendingRequest.recipientUserId !== respondingUserId
+    ) {
+        acknowledgeFriend(acknowledge, false);
+        return;
+    }
+
+    pendingFriendRequests.delete(respondingUserId);
+
+    if (data.type === 'friend_accept') {
+        addFriendship(respondingUserId, requesterUserId);
+    }
+
+    const respondingUserPayload: FriendResponsePayload = {
+        type: data.type,
+        id: String(requesterUserId),
+        friendUserId: requesterUserId,
+        nickname: pendingRequest.requesterNickname,
+    };
+    io.to(getUserRoom(respondingUserId)).emit('update', respondingUserPayload);
+
+    const payload: FriendResponsePayload = {
+        type: data.type,
+        id: socket.id,
+        friendUserId: respondingUserId,
+        nickname: respondingPlayer.nickname,
+    };
+    io.to(getUserRoom(requesterUserId)).emit('update', payload);
+    acknowledgeFriend(acknowledge, true);
+}
+
+function handleFriendRemove(
+    socket: Socket,
+    data: FriendRemovePayload,
+    acknowledge: unknown
+): void {
+    const removedUserId = data.friendUserId;
+    const requestingUserId = getAuthenticatedUserId(socket);
+    if (
+        !Number.isSafeInteger(removedUserId) ||
+        requestingUserId === null ||
+        removedUserId === requestingUserId
+    ) {
+        acknowledgeFriend(acknowledge, {
+            removed: false,
+            reason: 'invalid_target',
+        });
+        return;
+    }
+
+    const requestingPlayer = gameManager.players.get(socket.id);
+    if (!requestingPlayer) {
+        acknowledgeFriend(acknowledge, {
+            removed: false,
+            reason: 'invalid_target',
+        });
+        return;
+    }
+
+    const friendshipExisted = areFriends(requestingUserId, removedUserId);
+
+    removeFriendship(requestingUserId, removedUserId);
+    const requestingUserPayload: FriendRemovePayload = {
+        type: 'friend_remove',
+        id: socket.id,
+        friendUserId: removedUserId,
+    };
+    socket
+        .to(getUserRoom(requestingUserId))
+        .emit('update', requestingUserPayload);
+    acknowledgeFriend(acknowledge, { removed: true });
+    if (!friendshipExisted) {
+        return;
+    }
+
+    const payload: FriendRemovePayload = {
+        type: 'friend_remove',
+        id: socket.id,
+        friendUserId: requestingUserId,
+        nickname: requestingPlayer.nickname,
+    };
+    io.to(getUserRoom(removedUserId)).emit('update', payload);
+}
+
+function handlePlayerUpdate(socket: Socket, data: PlayerMovementPayload) {
+    const position: PlayerPosition = {
+        x: data.x,
+        y: data.y,
+        z: data.z,
+    };
+
+    if (!gameManager.updatePlayer(socket.id, position, data.state)) {
         console.log('Player not found for id: ' + socket.id);
         return;
     }
 
-    gameManager.updatePlayer(socket.id, data.x, data.y, data.z, data.state);
+    const userId = getAuthenticatedUserId(socket);
+    if (userId !== null) {
+        saveGame.updatePosition(userId, socket.id, position);
+    }
 
-    socket.broadcast.emit('update', {
+    const playerUpdate: PlayerUpdatePayload = {
         type: 'player_update',
         id: socket.id,
-        x: data.x,
-        y: data.y,
-        z: data.z,
+        ...position,
         state: data.state,
-        // Das Backend entfernte character aus normalen Positionsupdates
-        character: socket.data.character,
-    });
+    };
+
+    socket.broadcast.volatile.emit('update', playerUpdate);
 }
 
 function handleTTTStart(socket: Socket) {
@@ -344,10 +879,6 @@ function handleTTTLeave(socket: Socket): void {
     });
 }
 
-function wait(ms: number) {
-    return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
 function handleTTTMark(socket: Socket, data: TTTMarkPayload) {
     const result = gameManager.tttMarkField(socket.id, data.fieldName);
 
@@ -367,6 +898,7 @@ function handleTTTMark(socket: Socket, data: TTTMarkPayload) {
     }
 
     const checkWin = gameManager.checkWin();
+    let winnerNickname: string | null = null;
     if (checkWin >= 1 && checkWin <= 8) {
         // use server-stored nicknames only for visible TTT text while retaining socket IDs for game logic.
         const winner = gameManager.players.get(socket.id);
@@ -374,75 +906,57 @@ function handleTTTMark(socket: Socket, data: TTTMarkPayload) {
         if (!winner) {
             return;
         }
+        winnerNickname = winner.nickname;
+    } else if (!gameManager.checkDraw()) {
+        return;
+    }
 
-        const finishedGame = gameManager.tttGame;
-        finishedGame.state = TTTGameState.Finished;
-
+    const finishedGame = gameManager.tttGame;
+    finishedGame.state = TTTGameState.Finished;
+    if (winnerNickname !== null) {
         io.emit('update', {
             type: 'ttt_win',
             id: socket.id,
             winner: checkWin,
-            nickname: winner.nickname,
+            nickname: winnerNickname,
         });
-
-        wait(3000).then(() => {
-            if (gameManager.tttGame !== finishedGame) return;
-
-            const playerOneID = finishedGame.players[0];
-            const playerTwoID = finishedGame.players[1];
-
-            if (!playerOneID || !playerTwoID) return;
-
-            const playerOne = gameManager.players.get(playerOneID);
-            const playerTwo = gameManager.players.get(playerTwoID);
-
-            if (!playerOne || !playerTwo) return;
-
-            playerOne.inGame = false;
-            playerOne.gameID = null;
-            playerTwo.inGame = false;
-            playerTwo.gameID = null;
-
-            gameManager.tttGame = gameManager.createTTTGame();
-        });
-        return;
-    }
-
-    const checkDraw = gameManager.checkDraw();
-    if (checkDraw) {
-        const finishedGame = gameManager.tttGame;
-        finishedGame.state = TTTGameState.Finished;
-
+    } else {
         console.log('Game is a draw.');
         io.emit('update', {
             type: 'ttt_draw',
         });
-
-        wait(3000).then(() => {
-            if (gameManager.tttGame !== finishedGame) return;
-
-            const playerOneID = finishedGame.players[0];
-            const playerTwoID = finishedGame.players[1];
-
-            if (!playerOneID || !playerTwoID) return;
-
-            const playerOne = gameManager.players.get(playerOneID);
-            const playerTwo = gameManager.players.get(playerTwoID);
-
-            if (!playerOne || !playerTwo) return;
-
-            playerOne.inGame = false;
-            playerOne.gameID = null;
-            playerTwo.inGame = false;
-            playerTwo.gameID = null;
-
-            gameManager.tttGame = gameManager.createTTTGame();
-        });
-        return;
     }
+
+    void delay(3000).then(() => {
+        if (gameManager.tttGame !== finishedGame) return;
+
+        const playerOneID = finishedGame.players[0];
+        const playerTwoID = finishedGame.players[1];
+
+        if (!playerOneID || !playerTwoID) return;
+
+        const playerOne = gameManager.players.get(playerOneID);
+        const playerTwo = gameManager.players.get(playerTwoID);
+
+        if (!playerOne || !playerTwo) return;
+
+        playerOne.inGame = false;
+        playerOne.gameID = null;
+        playerTwo.inGame = false;
+        playerTwo.gameID = null;
+
+        gameManager.tttGame = gameManager.createTTTGame();
+    });
 }
 
 function playerGameReset(playerID: string) {
+    if (gameManager.resetTTTGameForPlayer(playerID)) {
+        io.emit('update', {
+            type: 'ttt_reset',
+        });
+        return;
+    }
+
     const player = gameManager.players.get(playerID);
 
     if (!player) return;
@@ -458,32 +972,16 @@ function playerGameReset(playerID: string) {
     gameManager.removeRPSGame(gameID);
 }
 
-function handleGameReset(socket: Socket) {
-    playerGameReset(socket.id);
-}
-
 function handleRPSInvalid(socket: Socket) {
-    const player = gameManager.players.get(socket.id);
+    const timedOutGame = gameManager.rpsTimeout(socket.id);
 
-    if (!player) return;
+    if (!timedOutGame) return;
 
-    const gameID = player.gameID;
-
-    if (!gameID) return;
-
-    const rpsGame = gameManager.rpsGame.get(gameID);
-
-    if (!rpsGame) return;
-
-    const playerOne = rpsGame.playerOne;
-    const playerTwo = rpsGame.playerTwo;
-
-    io.emit('update', {
+    io.to([timedOutGame.playerOne, timedOutGame.playerTwo]).emit('update', {
         type: 'rps_invalid',
-        playerOne: playerOne,
-        playerTwo: playerTwo,
+        playerOne: timedOutGame.playerOne,
+        playerTwo: timedOutGame.playerTwo,
     });
-    //gameManager.removeRPSGame(gameID);
 }
 
 function handleRPSChoice(socket: Socket, data: RPSBattleChoicePayload): void {
@@ -519,17 +1017,11 @@ function handleRPSChoice(socket: Socket, data: RPSBattleChoicePayload): void {
     const PlayerTwo = rpsGame.playerTwo;
 
     if (gameResultCheck === 2) {
-        const { playerOne, playerTwo, choice } = gameManager.resultDraw(
-            PlayerOne,
-            PlayerTwo,
-            rpsGame.playerOneChoice
-        );
-
         io.to([PlayerOne, PlayerTwo]).emit('update', {
             type: 'rps_draw',
-            playerOne: playerOne,
-            playerTwo: playerTwo,
-            choice: choice,
+            playerOne: PlayerOne,
+            playerTwo: PlayerTwo,
+            choice: rpsGame.playerOneChoice,
         });
     } else {
         let winner = PlayerOne;
@@ -544,27 +1036,20 @@ function handleRPSChoice(socket: Socket, data: RPSBattleChoicePayload): void {
             loserChoice = rpsGame.playerOneChoice;
         }
 
-        const gameResult = gameManager.resultWinner(
+        io.to([PlayerOne, PlayerTwo]).emit('update', {
+            type: 'rps_winner',
             winner,
             winnerChoice,
             loser,
-            loserChoice
-        );
-
-        io.to([PlayerOne, PlayerTwo]).emit('update', {
-            type: 'rps_winner',
-            winner: gameResult.winner,
-            winnerChoice: gameResult.winnerChoice,
-            loser: gameResult.loser,
-            loserChoice: gameResult.loserChoice,
+            loserChoice,
         });
     }
 
     gameManager.removeRPSGame(gameID);
 }
 
-function handleRPSAccept(socket: Socket, data: RPSRequestDataPayload) {
-    const result = gameManager.rpsAccept({
+function handleRPSResponse(socket: Socket, data: RPSRequestDataPayload) {
+    const result = gameManager.rpsRespond({
         ...data,
         id: socket.id,
     });
@@ -572,27 +1057,7 @@ function handleRPSAccept(socket: Socket, data: RPSRequestDataPayload) {
     if (result == 0) return;
 
     socket.broadcast.emit('update', {
-        type: 'rps_accept',
-        id: socket.id,
-        requestedPlayerID: data.requestedPlayerID,
-    });
-
-    /* console.log("START");
-    wait(2500).then(() => {
-      console.log("END");
-    }); */
-}
-
-function handleRPSDecline(socket: Socket, data: RPSRequestDataPayload) {
-    const result = gameManager.rpsDeclined({
-        ...data,
-        id: socket.id,
-    });
-
-    if (result == 0) return;
-
-    socket.broadcast.emit('update', {
-        type: 'rps_decline',
+        type: data.type,
         id: socket.id,
         requestedPlayerID: data.requestedPlayerID,
     });

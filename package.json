@@ -1,4 +1,5 @@
 {
+    "$schema": "https://json.schemastore.org/package.json",
     "name": "ft_transcendence",
     "private": true,
     "type": "module",
@@ -8,26 +9,37 @@
         "backend/src/auth-service",
         "backend/src/eventlog-service",
         "backend/src/user-service",
+        "backend/src/backend-utils",
+        "backend/tests",
         "frontend",
-        "common"
+        "ftr-common"
     ],
     "scripts": {
+        "install-githooks": "node .githooks/install.mjs",
+        "postinstall": "node -e \"if(require('node:fs').existsSync('.git')) import('./.githooks/install.mjs')\"",
         "dev:backend": "npm run dev -w backend",
         "dev:frontend": "npm run dev -w frontend",
-        "build": "npm run build -w common && npm run build -w backend && npm run build -w frontend"
+        "build:common": "npm run build -w ftr-common",
+        "build:backend-utils": "npm run build -w backend/src/backend-utils",
+        "build": "npm run build -w ftr-common && npm run build -w ftr-backend && npm run build -w frontend"
     },
     "devDependencies": {
         "@eslint/js": "^10.0.1",
         "@types/node": "^24.12.3",
         "@types/three": "^0.185.4",
-        "common": "*",
+        "@typescript/native": "npm:typescript@^7.0.2",
         "eslint": "^10.4.1",
         "eslint-config-prettier": "^10.1.8",
+        "ftr-common": "*",
         "prettier": "^3.8.4",
-        "typescript": "^6.0.3",
+        "ts-jest": "^29.4.12",
+        "typescript": "npm:@typescript/typescript6@^6.0.2",
         "typescript-eslint": "^8.59.2"
     },
     "dependencies": {
         "tslog": "^5.1.0"
+    },
+    "overrides": {
+        "test-exclude": "8.0.0"
     }
 }

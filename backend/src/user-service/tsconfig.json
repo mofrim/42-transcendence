@@ -3,11 +3,9 @@
     "compilerOptions": {
         "types": ["node"],
         "moduleResolution": "nodenext",
-        "rootDir": "./userProfile/src",
+        "rootDir": "./src",
         "outDir": "../../dist/user-service/src"
     },
-    "include": [
-        "./userProfile/src/**/*.ts",
-        "./userProfile/src/**/*.d.ts"
-    ]
+    "include": ["./src/**/*.ts"],
+    "references": [{ "path": "../backend-utils" }]
 }
