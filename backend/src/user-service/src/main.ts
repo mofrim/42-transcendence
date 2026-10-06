@@ -348,7 +348,7 @@ app.post(API_USER.tospp, authenticate, async (req: Request, res: Response) => {
         }
         user.TOSPPchecked = true;
         const result = await userRepo.update(user.id, user);
-        if (result.affected == null) {
+        if (result.affected !== 1) {
             logTosPp.warn(`updating TOS/PP of uid ${user.id} failed`);
             res.status(500).json(
                 mkApiResponse('TOS/PP update failure', 'error')
@@ -465,7 +465,7 @@ app.delete(API_USER.uid, authenticate, async (req: Request, res: Response) => {
 
     try {
         const result = await userRepo.delete(userId);
-        if (result.affected == null) {
+        if (result.affected !== 1) {
             logGet.warn(`userId-enpoint queried with wrong uid ${userId}`);
             return res.status(404).json(mkApiResponse('invalid id', 'error'));
         }
@@ -587,7 +587,7 @@ app.post(API_USER.quests, authenticate, async (req: Request, res: Response) => {
         }
         user.quests[req.body.quest] = true;
         const result = await userRepo.update(user.id, user);
-        if (result.affected == null) {
+        if (result.affected !== 1) {
             logQst.warn(`updating quests of uid ${user.id} failed`);
             res.status(500).json(
                 mkApiResponse('quest update failure', 'error')
