@@ -8,6 +8,7 @@ import {
     PREPARATION_QUEST_IDS,
     PlayerState,
     QUESTS,
+    type QuestId,
 } from 'ftr-common/sharedTypes';
 
 export class Story_Manager {
@@ -31,7 +32,7 @@ export class Story_Manager {
     private camPositionBackup: THREE.Vector3;
 
     // TODO: TEMP - need to be changed with Database
-    questState: Map<string, boolean>;
+    questState: Map<QuestId, boolean>;
 
     constructor(
         scene: THREE.Scene,
@@ -589,7 +590,7 @@ export class Story_Manager {
     }
 
     async caseInteraction(
-        type: string,
+        type: QuestId,
         message: string,
         animation: PlayerAnimationState
     ): Promise<void> {
@@ -700,8 +701,7 @@ export class Story_Manager {
     }
 
     // Callback
-    // TODO: If Questlog Id is enum, than change also here?
-    onQuestInteraction?: (questId: string) => void;
+    onQuestInteraction?: (questId: QuestId) => void;
     onQuestFinished?: () => void;
     onQuestDuckFound?: () => void;
     onQuestEvaluator?: () => void;

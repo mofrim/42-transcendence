@@ -75,6 +75,8 @@ export const QUESTS = Object.freeze({
     },
 });
 
+export type QuestId = (typeof QUESTS)[keyof typeof QUESTS]['id'];
+
 // use only the IDs for this one as this is the info that will be transfered
 // between BE and FE (BackEnd & FrontEnd)
 export type QuestStatus = {
@@ -103,13 +105,13 @@ export const PREPARATION_QUEST_IDS = [
 export type PreparationQuestId = (typeof PREPARATION_QUEST_IDS)[number];
 
 export type QuestLogEntry = {
-    readonly id: string;
+    readonly id: QuestId;
     readonly text: string;
     readonly completed?: boolean;
 };
 
 export type QuestCompleteHandler<TAnimation> = (
-    questId: string,
+    questId: QuestId,
     message: string,
     animation: TAnimation
 ) => Promise<void>;
