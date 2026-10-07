@@ -335,11 +335,11 @@ export class Input {
             case 'KeyD':
                 this.keys[1] = 1;
                 break;
-            /** Print debug information about the
             case 'KeyP':
-                this.posPrintDebug();
+                if (import.meta.env.MODE !== 'production') {
+                    this.posPrintDebug();
+                }
                 break;
-            */
         }
     };
 
@@ -405,6 +405,7 @@ export class Input {
      * Log players current position to console.
      *
      * Keep, as it might be useful for further development.
+     */
     private posPrintDebug(): void {
         const player = this.getPlayer();
         if (!player) return;
@@ -418,5 +419,4 @@ export class Input {
                 player.group.position.z.toFixed(2)
         );
     }
-    */
 }
