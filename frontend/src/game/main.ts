@@ -142,7 +142,6 @@ export function startGame(
 
     const scene = new THREE.Scene();
     const npcManager = new NPCManager(scene, tokenQuestFrontdesk);
-    // const renderer = new THREE.WebGLRenderer({ antialias: true });
     const runtimeResourceDisposer = createResourceDisposer();
     const followGroup = new THREE.Group();
     const dirLight = new THREE.DirectionalLight(0xffffff, 1.25);
@@ -155,7 +154,6 @@ export function startGame(
     let display: THREE.Object3D | null = null;
     const textureLoader = new THREE.TextureLoader();
     const texture = textureLoader.load(IMG_GRADIENT);
-    // const texture = new THREE.TextureLoader().load('textures/gradientMaps/twoTone2.jpg');
     texture.minFilter = THREE.NearestFilter;
     texture.magFilter = THREE.NearestFilter;
 
@@ -186,8 +184,6 @@ export function startGame(
 
     const worldOctree = new Octree();
     const worldOctreeInteractive = new Octree();
-    //const octreeDelete = new Octree();
-    //const OctreeSpawn = new Octree();
     const mesh_col: GLBMesh[] = [];
     const mesh_RP: THREE.Mesh[] = [];
     const tttBox: TTTMeshBoard = new TTTMeshBoard();
@@ -273,15 +269,6 @@ export function startGame(
         }
     }
 
-    //let camDistance = 0;
-
-    /* function createSkyBox():void {
-        const skyGeometry = new THREE.SphereGeometry(70, 32, 32);
-        const skyMaterial = new THREE.MeshBasicMaterial({ color: 0x87CEEB, side: THREE.BackSide });
-        const sky = new THREE.Mesh(skyGeometry, skyMaterial);
-        scene.add(sky);
-    } */
-
     void init().catch((error: unknown) => {
         if (!renderLoop.isDisposed) {
             console.error('Game runtime initialization failed:', error);
@@ -289,11 +276,8 @@ export function startGame(
     });
 
     async function init() {
-        //scene = new THREE.Scene();
         scene.background = new THREE.Color(0x999999);
-        /* scene.fog = new THREE.Fog( 0x5b6470, 2, 30 ); */
 
-        //followGroup = new THREE.Group();
         scene.add(followGroup);
 
         // Door A and B positions from Blender 3D scene
@@ -302,9 +286,6 @@ export function startGame(
         groupDoorMain.position.set(9.9817, 0.01149, -0.7933);
         scene.add(groupDoorA, groupDoorB, groupDoorMain);
 
-        //dirLight = new THREE.DirectionalLight(0xffffff, 2.5);
-        // initial position (local to followGroup) - matches previous values
-        //dirLight.position.set( - 2, 5, - 3 );
         dirLight.position.set(15, 30, -5);
         dirLight.target.position.set(50, 0, 5);
         dirLight.castShadow = true;
@@ -322,14 +303,10 @@ export function startGame(
         camFill.near = 1;
         camFill.far = 50;
 
-        /** Shadow map size is set to balance between quality and performance. */
+        // Shadow map size is set to balance between quality and performance.
         dirLight.shadow.mapSize.setScalar(6144);
         fillLight.shadow.mapSize.setScalar(6144);
         scene.add(dirLight, dirLight.target, fillLight, fillLight.target);
-
-        /* dirLightLow.shadow.mapSize.set( 1024, 1024 );
-        followGroup.add( dirLightLow );
-        followGroup.add( dirLightLow.target ); */
 
         // add a small ambient light to lift shadows slightly
         const ambientLight = new THREE.AmbientLight(0xffffff, 2.0);
@@ -375,9 +352,6 @@ export function startGame(
             camera = new Camera(window, renderer, mesh_col);
             return camera.camera;
         });
-        //const startV = new THREE.Vector3(0, 1, 0);
-        //camDistance = startV.distanceTo(camera.camera.position);
-        //console.log("Distance " + camDistance);
         npcManager.initialize();
         const plane = new THREE.Mesh(
             new THREE.BoxGeometry(35, 0.05, 35),
@@ -406,7 +380,6 @@ export function startGame(
             syncLostTokenQuestStatus();
             interactionManager.onInteraction = async (interaction) => {
                 storyManager?.handleInteraction(interaction);
-                //onQuestComplete?.(interaction);
                 const completedQuests = new Set(await initialQuestStateReady);
 
                 if (
@@ -504,70 +477,12 @@ export function startGame(
         if (storyManager) {
             onGameplayReady?.();
         }
-        /* const testCube = new THREE.Mesh(
-            new THREE.BoxGeometry(1, 1, 1),
-            new THREE.MeshBasicMaterial({ color: 0xff0000 })
-        );
-        testCube.position.copy(new THREE.Vector3(0, 0.5, 0));
-        scene.add(testCube);
-        scene.add(new THREE.AmbientLight(0xffffff, 12)); */
     }
-
-    // Legacy DB quest loader for reference.
-    // The world-state code that followed this setup now in applyQuestStateToWorld().
-    //
-    // async function loadAndSetQuestStateFromDB(): Promise<void> {
-    //     // Not because it makes much sense from a code-architectural POV
-    //     // but, yeah, fetch quests from DB and set door-states
-    //     // accordingly...
-    //
-    //     // NOTE: not usin signals here bc we are not in a useEffect or sth
-    //     let quests: QuestTuple[] | undefined = undefined;
-    //     try {
-    //         const res = await api.get<ApiResponse<QuestTuple[]>>(
-    //             API_USER.quests
-    //         );
-    //         if (res.data.data !== undefined) quests = res.data.data;
-    //     } catch {
-    //         console.warn('Could not get quests from DB');
-    //     }
-    //
-    //     if (quests !== undefined) {
-    //         // Arrrghl! TYPE-HELL!! Make a simple Set from QuestTuple-arrrr
-    //         // in order to not get stupid every time (well by now its 2
-    //         // times, but who knows?) we query for solved quests.
-    //         const completedQuests = new Set<string>(
-    //             quests.flatMap((obj) =>
-    //                 Object.entries(obj)
-    //                     .filter(([, v]) => v)
-    //                     .map(([k]) => k)
-    //             )
-    //         );
-    //         // Play Intro only if the player has not completed the FIND_LOST_DROPPED_TOKEN quest yet
-    //         /* if (!completedQuests.has('FIND_LOST_DROPPED_TOKEN'))
-    //             await storyManager?.GameIntro(); */
-    //     }
-    // }
 
     async function applyQuestStateToWorld(
         completedQuestIds: readonly string[]
     ): Promise<void> {
         const completedQuests = new Set(completedQuestIds);
-
-        // if (quests !== undefined) {
-        // Arrrghl! TYPE-HELL!! Make a simple Set from QuestTuple-arrrr
-        // in order to not get stupid every time (well by now its 2
-        // times, but who knows?) we query for solved quests.
-        // const completedQuests = new Set<string>(
-        //     quests.flatMap((obj) =>
-        //         Object.entries(obj)
-        //             .filter(([, v]) => v)
-        //             .map(([k]) => k)
-        //     )
-        // );
-        // Play Intro only if the player has not completed the FIND_LOST_DROPPED_TOKEN quest yet
-        /* if (!completedQuests.has('FIND_LOST_DROPPED_TOKEN'))
-                await storyManager?.GameIntro(); */
 
         // Set the state of the environment based on the completed quests
         if (completedQuests.has('ENTER_CAMPUS_TOKEN')) {
@@ -703,27 +618,6 @@ export function startGame(
         multiplayer?.restartSaveGameAfterBlackHole();
         onGameReset?.();
     }
-    // Test function fo spawn and delete
-    /* function onDeleteCollision(): void {
-        if(!player || !multiplayer) return;
-
-        const result = octreeDelete.capsuleIntersect(player.playerCollider);
-        if (result) {
-            if (multiplayer.players.get(1)) {
-                console.log("DELETE COLLISION");
-                multiplayer.players.get(1).removePlayer();
-            }
-        }
-    }
-    function onSpawnCollision(): void {
-        const result = OctreeSpawn.capsuleIntersect(player.playerCollider);
-        if (result) {
-            if (multiplayer.players.get(1) === undefined) {
-                console.log("SPAWN COLLISION");
-                multiplayer.spawnPlayer(1);
-            }
-        }
-    } */
     const multiplayerRuntimeActions = createMultiplayerRuntimeActions({
         isDisposed: () => renderLoop.isDisposed,
         getMultiplayer: () => multiplayer,
