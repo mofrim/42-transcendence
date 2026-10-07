@@ -353,15 +353,6 @@ export class Story_Manager {
         });
     }
 
-    // for testing. need to be replaces with dialogue system
-    waitForMouseClick(): Promise<void> {
-        return new Promise((resolve) => {
-            window.addEventListener('pointerdown', () => resolve(), {
-                once: true,
-            });
-        });
-    }
-
     stopCurrentDialogueCamera(): void {
         this.advanceDialogueCamera = true;
     }
@@ -774,20 +765,4 @@ export class Story_Manager {
     onQuestEvaluator?: () => void;
     onQuestLogin?: () => void;
     onQuestStartEvaluation?: () => void;
-
-    /** ===================================================
-    // TODO: TESTING FUNCTIONS. Delete if not needed anymore
-    // ===================================================
-
-    async CutscenePositionTest(): Promise<void> {
-        this.startCutscene();
-
-        this.transformModelForCutscene({ x: 10, y: 0, z: 5 });
-        //this.player.controls.requestedAnimation = 'Falling';
-
-        await this.waitForMouseClick();
-
-        this.endCutscene();
-    }
-    */
 }
