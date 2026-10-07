@@ -4,16 +4,11 @@ import { Camera } from './camera';
 import { InteractionManager } from './interaction_manager';
 import { Interaction } from './interaction';
 import {
+    type DialogState,
     PREPARATION_QUEST_IDS,
     PlayerState,
     QUESTS,
 } from 'ftr-common/sharedTypes';
-
-// TODO: move this to sharedTypes.ts
-type DialogState = {
-    readonly isOpen: boolean;
-    readonly message: string;
-};
 
 export class Story_Manager {
     scene: THREE.Scene;

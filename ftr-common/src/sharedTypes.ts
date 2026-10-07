@@ -304,6 +304,11 @@ export const API_USER = Object.freeze({
 // endregion
 // ----------------------------=[ other types ]=---------------------------- //
 
+export type DialogState = {
+    readonly isOpen: boolean;
+    readonly message: string;
+};
+
 export enum PlayerState {
     Idle = 'Idle',
     Run = 'Run',
