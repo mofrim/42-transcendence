@@ -46,8 +46,10 @@ export class FrontDoorQuest {
             PlayerState.ThumbsUp
         );
         this.interaction.reset(false);
-        // TODO: add animation for opening the door
-        /** erlaube nun die Öffnung */
+        /**
+         * erlaube nun die Öffnung
+         * add animation for opening the door
+         * */
         return true;
     }
 }

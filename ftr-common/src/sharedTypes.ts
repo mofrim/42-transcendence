@@ -131,8 +131,6 @@ export enum EventType {
     ChatMsg = 'ChatMsg',
     QuestCompleted = 'QuestCompleted',
     Blackholed = 'Blackholed',
-    NickChange = 'NickChange',
-    CharChange = 'CharChange',
     None = 'None',
 }
 
