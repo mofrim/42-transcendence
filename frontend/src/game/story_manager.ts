@@ -708,7 +708,7 @@ export class Story_Manager {
     onQuestLogin?: () => void;
     onQuestStartEvaluation?: () => void;
 
-    // ===================================================
+    /** ===================================================
     // TODO: TESTING FUNCTIONS. Delete if not needed anymore
     // ===================================================
 
@@ -722,4 +722,5 @@ export class Story_Manager {
 
         this.endCutscene();
     }
+    */
 }
