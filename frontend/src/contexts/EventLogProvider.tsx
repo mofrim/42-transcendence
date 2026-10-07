@@ -1,4 +1,9 @@
 // contexts/EventLogContext.tsx
+
+// NOTE: For possible future improvements implement loading of eventlog from DB
+// here. Also the whole useMatchHistory hook could be embedded into the
+// eventlog-context as it is strongly related to it.
+
 import React, { useState, useCallback } from 'react';
 import axios from 'axios';
 import type { EventLogEntry } from '../ui/ingame/EventLogItems';
@@ -18,14 +23,18 @@ import {
     getGameEventProfileNicknames,
 } from '../lib/eventLogUtils.ts';
 
-// TODO handle reset / loading of old events on login
-
 export const EventLogProvider: React.FC<{ children: React.ReactNode }> = ({
     children,
 }) => {
     const [events, setEvents] = useState<EventLogEntry[]>([]);
 
     const appendEvent = useCallback(async (event: GameEvent) => {
+        // avoid double entries as useMatchHistory's saveMatchResult is already
+        // storing the match-result in DB
+        if (event.eventType === EventType.GameResult) {
+            return;
+        }
+
         const now = new Date();
         const timestamp = EVENT_TIME_FORMAT.format(now);
         const description = describeGameEvent(event);
@@ -79,6 +88,7 @@ export const EventLogProvider: React.FC<{ children: React.ReactNode }> = ({
             value={{
                 events,
                 appendEvent,
+                setEvents,
             }}
         >
             {children}

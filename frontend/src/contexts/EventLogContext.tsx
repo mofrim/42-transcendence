@@ -5,6 +5,7 @@ import { GameEvent } from 'ftr-common/sharedTypes';
 type EventLogContextType = {
     events: EventLogEntry[];
     appendEvent: (event: GameEvent) => Promise<void>;
+    setEvents: React.Dispatch<React.SetStateAction<EventLogEntry[]>>;
 };
 
 export const EventLogContext = createContext<EventLogContextType | undefined>(

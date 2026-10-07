@@ -1,3 +1,6 @@
+// NOTE: For future improvements it might be worth thinking about merging this
+// into EventLogContext
+
 import { useCallback, useEffect, useState } from 'react';
 import axios from 'axios';
 import {
@@ -10,6 +13,13 @@ import {
     type MatchHistResponse,
 } from 'ftr-common/sharedTypes';
 import type { EventLogEntry } from '../ui/ingame/EventLogItems';
+import { useEventLog } from './useEventLog';
+import {
+    EVENT_TIME_FORMAT,
+    MAX_EVENT_LOG_ENTRIES,
+    describeGameEvent,
+    getGameEventProfileNicknames,
+} from '../lib/eventLogUtils.ts';
 
 const MATCH_HISTORY_DATE_TIME_FORMAT = new Intl.DateTimeFormat(undefined, {
     dateStyle: 'short',
@@ -40,6 +50,10 @@ function parseMatchHistoryEntry(respoData: MatchHistResponse): EventLogEntry {
 
 export function useMatchHistory({ isSpectator }: UseMatchHistoryOptions) {
     const [matchHistory, setMatchHistory] = useState<EventLogEntry[]>([]);
+
+    // we need to update the ingame-eventlog manually which is only possible
+    // through setEvents from EventLogContext.
+    const { setEvents } = useEventLog();
 
     useEffect(() => {
         if (isSpectator) {
@@ -109,12 +123,30 @@ export function useMatchHistory({ isSpectator }: UseMatchHistoryOptions) {
                     );
                     return newHist;
                 });
+
+                // NOTE: also handle updating the **InGame**-EventLog here only
+                // because the event is already stored in DB but would otherwise
+                // not appear in the log. This is basically code-dup with
+                // frontend/src/contexts/EventLogProvider.tsx
+                const timestamp = EVENT_TIME_FORMAT.format(event.logtime);
+                const description = describeGameEvent(event);
+
+                const ev: EventLogEntry = {
+                    id: response.data.data!.id!.toString(),
+                    timestamp,
+                    description,
+                    profileNicknames: getGameEventProfileNicknames(event),
+                };
+
+                setEvents((currentEvents) =>
+                    [...currentEvents, ev].slice(-MAX_EVENT_LOG_ENTRIES)
+                );
             } catch (error) {
                 console.error('Failed to save match result:', error);
             }
         },
-        [isSpectator]
+        [isSpectator, setEvents]
     );
 
-    return { matchHistory, saveMatchResult };
+    return { matchHistory, saveMatchResult, setMatchHistory };
 }
