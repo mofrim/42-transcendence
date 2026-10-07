@@ -23,9 +23,12 @@ import {
     User,
     API_USER,
     QuestIDs,
+    PLAYER_START_POSITION,
+    InitialQuestStatus,
     type PublicUserProfile,
     type QuestId,
     type QuestTuple,
+    BLACK_HOLE_DURATION_SECONDS,
 } from 'ftr-common/sharedTypes';
 import { authenticateInternalMid } from 'ftr-common/internalAuth';
 
@@ -365,7 +368,45 @@ app.post(API_USER.tospp, authenticate, async (req: Request, res: Response) => {
     }
 });
 
-// ----------=[ UID GET endpoint - keep as last GET endpoint!!! ]=---------- //
+// reset endpoint
+//
+// used to reset all game state like quests and BHtimer on blackhole
+app.delete(API_USER.root, authenticate, async (req: Request, res: Response) => {
+    const logRst = log.getSubLogger({ name: 'Reset' });
+
+    try {
+        const user = await userRepo.findOneBy({ id: req.userId! });
+        if (user === null) {
+            logRst.error('somehow user not found in DB');
+            res.status(401).json(mkApiResponse('User not found', 'error'));
+            return;
+        }
+
+        user.position = PLAYER_START_POSITION;
+        user.blackholeTimer = BLACK_HOLE_DURATION_SECONDS;
+        user.quests = InitialQuestStatus;
+        user.eventLogs = [];
+        user.friends = [];
+
+        const result = await userRepo.update(user.id, user);
+        if (result.affected !== 1) {
+            logRst.warn(`reset update of uid ${user.id} failed`);
+            res.status(500).json(
+                mkApiResponse('quest update failure', 'error')
+            );
+            return;
+        }
+
+        res.status(204).json(mkApiResponse('user reset success', 'success'));
+    } catch (err) {
+        logRst.error(err as Error);
+        res.status(500).json(
+            mkApiResponse('Failed to fetch user profile', 'error')
+        );
+    }
+});
+
+// --------------------=[ mostly admin only endpoints ]=-------------------- //
 
 // get all users
 // WARN admin only endpoint!
@@ -445,7 +486,7 @@ app.get(API_USER.uid, authenticate, async (req: Request, res: Response) => {
 });
 
 // delete users by uid
-// NOTE admin only endpoint!
+// WARN admin only endpoint!
 app.delete(API_USER.uid, authenticate, async (req: Request, res: Response) => {
     const logGet = log.getSubLogger({ name: 'DEL(userId)' });
 
@@ -570,6 +611,8 @@ app.post(
 
 // -----------------------=[ quest update endpoint ]=----------------------- //
 
+// update the status of single quest. only used for switching it to true ==
+// completed
 app.post(API_USER.quests, authenticate, async (req: Request, res: Response) => {
     const logQst = log.getSubLogger({ name: 'quests' });
     const questId = req.body.quest as QuestId;

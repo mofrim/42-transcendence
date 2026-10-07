@@ -32,8 +32,8 @@ import {
 } from '../ingame/QuestLog';
 import * as THREE from 'three';
 import axios from 'axios';
-
 import { useOptionalEventLog } from '../../hooks/useEventLog';
+import { api } from '../../lib/utils.ts';
 
 const SPECTATOR_EVENTS: readonly EventLogEntry[] = [];
 const appendSpectatorEvent: (
@@ -129,8 +129,6 @@ export const Game: React.FC<{
                     ...completedQsts,
                 ]),
             ];
-
-            console.log('[SaveGameRestore] restored quests:', completedQsts);
 
             gameRuntimeRef.current?.updateQuestStatus(completedQsts);
             setCompletedQuestIds(completedQsts);
@@ -297,7 +295,7 @@ export const Game: React.FC<{
         gameRuntimeRef.current?.continueDialogue();
     }, []);
 
-    const handleGameReset = useCallback((): void => {
+    const handleGameReset = useCallback(async (): Promise<void> => {
         setIsGameplayReady(false);
         playerJoinedLoggedRef.current = false;
         metPlayerNicknamesRef.current.clear();
@@ -305,6 +303,15 @@ export const Game: React.FC<{
         resetSaveGame();
         resetFriendRequest();
         setGameResetVersion((currentVersion) => currentVersion + 1);
+
+        // finally also reset user in DB so the savegame is not overwritten on
+        // app reload.
+        try {
+            await api.delete(API_USER.root);
+        } catch {
+            console.warn('[resetUserInDB] DB reset failed!');
+        }
+        console.log('[GameReset] user has been successfully reset');
     }, [resetFriendRequest, resetSaveGame]);
 
     /** suck up */
