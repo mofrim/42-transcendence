@@ -240,7 +240,7 @@ export const Game: React.FC<{
                 appendEvent(event);
             }
 
-            if (event.eventType === EventType.GameResult) {
+            if (event.eventType === EventType.MiniGameResult) {
                 void saveMatchResult(event);
             }
             setCompletedQuestIds((currentQuestIds) =>

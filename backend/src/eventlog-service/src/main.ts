@@ -15,7 +15,7 @@ import {
     EventType,
     MAX_MATCH_HISTORY_ENTRIES,
     type MatchHistResponse,
-    type EventDataGameResult,
+    type EventDataMiniGameResult,
 } from 'ftr-common/sharedTypes';
 import { authenticateMid } from 'ftr-common/middleware';
 import { getUserById } from 'backend-utils';
@@ -363,7 +363,7 @@ matchHistoryRoute.post(
             });
             const savedEventMatchHist: MatchHistResponse = {
                 id: savedEvent.id,
-                data: savedEvent.data as EventDataGameResult,
+                data: savedEvent.data as EventDataMiniGameResult,
                 logtime: savedEvent.logtime,
             };
             logPost.info('stored event:', savedEvent);

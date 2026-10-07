@@ -7,7 +7,7 @@ import {
     EventType,
     RPSChoice,
     User,
-    type EventDataGameResult,
+    type EventDataMiniGameResult,
     type GameEvent,
     type RPSDrawPayload,
     type RPSInvalidPayload,
@@ -191,7 +191,7 @@ export class MinigameEvent {
         );
         if (opponentId === null) return;
 
-        let outcome: NonNullable<EventDataGameResult['outcome']>;
+        let outcome: NonNullable<EventDataMiniGameResult['outcome']>;
         let yourChoice: RPSChoice;
         let opponentChoice: RPSChoice;
 
@@ -322,7 +322,8 @@ export class MinigameEvent {
 
         const localPlayerId = this.options.getPlayer()?.id;
         if (localPlayerId) {
-            let outcome: NonNullable<EventDataGameResult['outcome']> = 'lost';
+            let outcome: NonNullable<EventDataMiniGameResult['outcome']> =
+                'lost';
             if (data.id === localPlayerId) {
                 outcome = 'won';
             }
@@ -349,7 +350,7 @@ export class MinigameEvent {
 
     private emitLocalTTTResult(
         localPlayerId: string | undefined,
-        outcome: NonNullable<EventDataGameResult['outcome']>
+        outcome: NonNullable<EventDataMiniGameResult['outcome']>
     ): void {
         const opponent = this.getActiveTTTOpponent(localPlayerId);
         if (!opponent) return;
@@ -379,8 +380,8 @@ export class MinigameEvent {
     }
 
     private emitLocalGameResult(
-        game: NonNullable<EventDataGameResult['game']>,
-        outcome: NonNullable<EventDataGameResult['outcome']>,
+        game: NonNullable<EventDataMiniGameResult['game']>,
+        outcome: NonNullable<EventDataMiniGameResult['outcome']>,
         opponentNickname: string
     ): void {
         this.options.onGameEvent?.({

@@ -2,7 +2,7 @@ import {
     GameEvent,
     type EventDataChatMsg,
     type EventDataFriendRequest,
-    type EventDataGameResult,
+    type EventDataMiniGameResult,
     type EventDataPlayerInRange,
     type EventDataQuestCompleted,
 } from 'ftr-common/sharedTypes';
@@ -77,7 +77,7 @@ export const describeGameEvent = (event: GameEvent): string => {
             return `${event.user.nickname} completed quest ${questDescription}`;
         }
         case 'MiniGameResult': {
-            const evData = event.data as EventDataGameResult;
+            const evData = event.data as EventDataMiniGameResult;
             if (evData.outcome === 'draw') {
                 return `${event.user.nickname} drew a game of ${evData.game} against ${evData.opponentNickname}`;
             }
@@ -119,7 +119,7 @@ export const getGameEventProfileNicknames = (
         case 'FriendRequest':
             return [(event.data as EventDataFriendRequest).friendNick];
         case 'MiniGameResult': {
-            const evData = event.data as EventDataGameResult;
+            const evData = event.data as EventDataMiniGameResult;
             return [event.user.nickname, evData.opponentNickname];
         }
         default:

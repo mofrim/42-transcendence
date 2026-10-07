@@ -9,7 +9,7 @@ import {
     GameEvent,
     MAX_MATCH_HISTORY_ENTRIES,
     type ApiResponse,
-    type EventDataGameResult,
+    type EventDataMiniGameResult,
     type MatchHistResponse,
 } from 'ftr-common/sharedTypes';
 import type { EventLogEntry } from '../ui/ingame/EventLogItems';
@@ -101,7 +101,7 @@ export function useMatchHistory({ isSpectator }: UseMatchHistoryOptions) {
                 return;
             }
 
-            const evData = event.data as EventDataGameResult;
+            const evData = event.data as EventDataMiniGameResult;
             if (!evData) {
                 return;
             }

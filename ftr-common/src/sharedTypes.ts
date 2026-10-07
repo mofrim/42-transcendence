@@ -1,7 +1,7 @@
 // in this file we collect types that are shared at least among multiple files.
 import type * as THREE from 'three';
 
-export const BLACK_HOLE_DURATION_SECONDS = 30 * 60;
+export const BLACK_HOLE_DURATION_SECONDS = 3 * 60;
 
 // ----------------------------=[ quest types ]=---------------------------- //
 
@@ -182,7 +182,10 @@ export type EventDataQuestCompleted = Extract<
     { readonly questId: string }
 >;
 
-export type EventDataGameResult = Extract<EventData, { readonly game: string }>;
+export type EventDataMiniGameResult = Extract<
+    EventData,
+    { readonly game: string }
+>;
 
 export type EventDataFriendRequest = Extract<
     EventData,
@@ -213,7 +216,7 @@ export class GameEvent extends BaseEventLog {
 // matchhist. used in /api/eventlog/matchhist and useMatchHistory in frontend
 export type MatchHistResponse = {
     id: number;
-    data: EventDataGameResult;
+    data: EventDataMiniGameResult;
     logtime: Date;
 };
 

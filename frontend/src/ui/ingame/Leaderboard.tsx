@@ -6,7 +6,7 @@ import {
     QUESTS,
     type ApiResponse,
     type BaseEventLog,
-    type EventDataGameResult,
+    type EventDataMiniGameResult,
     type EventDataQuestCompleted,
 } from 'ftr-common/sharedTypes';
 import {
@@ -161,7 +161,7 @@ function buildLeaderboard(
             continue;
         }
 
-        const data = event.data as EventDataGameResult;
+        const data = event.data as EventDataMiniGameResult;
         if (
             !data ||
             typeof data.game !== 'string' ||

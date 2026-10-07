@@ -4,10 +4,10 @@ import {
     GameEvent,
     type QuestLogEntry,
     type EventDataQuestCompleted,
-    type EventDataGameResult,
+    type EventDataMiniGameResult,
 } from 'ftr-common/sharedTypes';
 
-type MinigameName = NonNullable<EventDataGameResult['game']>;
+type MinigameName = NonNullable<EventDataMiniGameResult['game']>;
 
 const WIN_QUEST_ID_BY_GAME: ReadonlyMap<MinigameName, string> = new Map([
     ['Rock-Paper-Scissors', QUESTS.RPS_WIN_QUEST_ID.id],
@@ -107,7 +107,7 @@ function getCompletedQuestId(event: GameEvent): string | null {
 
     if (event.eventType !== EventType.MiniGameResult) return null;
 
-    const evData = event.data as EventDataGameResult;
+    const evData = event.data as EventDataMiniGameResult;
 
     // the looser does not get the quest!
     if (evData.outcome === 'lost') return null;
