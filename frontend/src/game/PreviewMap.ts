@@ -91,7 +91,6 @@ export function createMapPreview({
     renderer.shadowMap.type = THREE.PCFShadowMap;
 
     const scene = new THREE.Scene();
-    // const camera = new THREE.PerspectiveCamera(38, 1, 0.01, 1_000);
     const camera = new THREE.PerspectiveCamera(20, 1, 0.01, 1_000);
     const resourceDisposer = createResourceDisposer({
         shouldCloseImageBitmap: () => true,
@@ -115,7 +114,6 @@ export function createMapPreview({
     const rendererSize = new THREE.Vector2();
     const cameraViewSize = new THREE.Vector2();
     const animationTimer = new THREE.Timer();
-    //const cameraDirection = new THREE.Vector3(0.75, 0.37, 1).normalize();
 
     let reducedMotionQuery: MediaQueryList | null = null;
     if (typeof window.matchMedia === 'function') {
@@ -159,12 +157,9 @@ export function createMapPreview({
          * Aber an den Bildschirmrändern noch sehr viel ungenutzter Raum ist */
         const distance = (modelRadius / Math.sin(limitingHalfFov)) * 0.42;
 
-        // camera.position.copy(cameraDirection).multiplyScalar(distance);
-        // camera.position.set(0, 0, 15);
         const py = 0;
         const px = -1;
         camera.position.set(px, py, 25);
-        // camera.near = Math.max(0.01, distance - modelRadius * 1.25);
         camera.near = 1;
         camera.far = Math.max(camera.near + 1, distance + modelRadius * 2.5);
         camera.lookAt(px, py, 0);

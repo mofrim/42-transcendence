@@ -232,7 +232,6 @@ export class Story_Manager {
             const updateCamera = (currentTime: number) => {
                 // Stop immediately if requested
                 if (this.advanceDialogueCamera) {
-                    // console.log("1 ### Camera move event completed.");
                     resolve();
                     return;
                 }
@@ -251,7 +250,6 @@ export class Story_Manager {
                     return;
                 }
 
-                // console.log("2 ### Camera move event completed.");
                 resolve();
             };
 
@@ -434,8 +432,6 @@ export class Story_Manager {
             new THREE.Vector3(15, 7, 0),
             new THREE.Vector3(17, 7, 0)
         );
-
-        //this.transformModelForCutscene({ x: 10, y: 0, z: 10 });
 
         this.moveCameraDialog(
             new THREE.Vector3(16.3, 1.1, 13),
@@ -671,7 +667,6 @@ export class Story_Manager {
     }
 
     async handleInteraction(interaction: Interaction): Promise<void> {
-        //console.log(`Interaction triggered: ${interaction.typeID}`);
         const completeQuest = this.caseInteraction.bind(this);
         const playDialog = this.playDialogInteraction.bind(this);
 

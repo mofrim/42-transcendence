@@ -131,10 +131,7 @@ const RemotePlayerImplementation = class Remote_Player {
             return;
         }
 
-        //console.log("Animating spawn " + this.id);
-        //console.log("Animating spawn...");
         this.group.position.copy(position);
-        //console.log("spawnY: " + this.group.position.y.toFixed(4));
         this.nameLabel.visible = true;
         this.lifecycleController.startSpawn();
     }
@@ -235,7 +232,6 @@ const RemotePlayerImplementation = class Remote_Player {
     }
 
     startDespawn(): Promise<void> {
-        // console.log("DESTROY");
         if (this.lifecycleController.state === 'active') {
             this.prepareForTermination();
         }
@@ -418,7 +414,6 @@ const RemotePlayerImplementation = class Remote_Player {
         path: string,
         generation: number
     ): Promise<void> {
-        //console.log("Enemy character loading...");
         let gltf: Awaited<ReturnType<GLTFLoader['loadAsync']>>;
         try {
             gltf = await REMOTE_PLAYER_LOADER.loadAsync(path);
@@ -428,9 +423,6 @@ const RemotePlayerImplementation = class Remote_Player {
         }
 
         const loadedModel = gltf.scene;
-        //model.position.set(x, y, z);
-        //model.rotation.y = rot;
-        //this.colAr.push(this.model);
         if (!this.canAcceptLoad(generation)) {
             this.rejectLoadedModel(loadedModel);
             return;
@@ -442,19 +434,6 @@ const RemotePlayerImplementation = class Remote_Player {
                 loadedModel,
                 this.resourceDisposer
             );
-            /* object.material = new THREE.MeshToonMaterial({
-                        color: object.material.color.clone(),
-                        gradientMap: Remote_Player.gradientTexture,
-                            transparent: true,
-                            opacity: 0
-                    }); */
-
-            /* object.material = new THREE.MeshToonMaterial({
-                        color: 0xffffff,
-                        gradientMap: Remote_Player.gradientTexture,
-                            transparent: true,
-                            opacity: 0
-                    }); */
         } catch (error) {
             this.rejectLoadedModel(loadedModel);
             this.handleVisualLoadFailure(generation, path, error);

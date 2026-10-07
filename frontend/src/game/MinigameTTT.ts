@@ -180,7 +180,6 @@ export class TTT_Game extends MinigameOverlay {
 
     waitforInitMesh(data: TTTInitGamePayload): void {
         const loop = () => {
-            //console.log("Waiting for board to be ready...");
             if (this.board.cells.length === 0) {
                 this.boardInitFrameSlot.request(loop);
             } else {
@@ -189,7 +188,6 @@ export class TTT_Game extends MinigameOverlay {
                     cell.material.color.set(0xffffff);
                     cell.material.map = this.getTextureForMark(box);
                     cell.material.needsUpdate = true;
-                    //console.log("# Initializing board: " + box);
                 }
             }
         };
@@ -209,7 +207,6 @@ export class TTT_Game extends MinigameOverlay {
         const userBSprite = this.vsSprite.get('UserB');
         const vsSprite = this.vsSprite.get('VS');
         const beamSprite = this.vsSprite.get('Beam');
-        //this.overlayScene.add(mesh);
 
         if (!userASprite || !userBSprite || !vsSprite || !beamSprite) return;
 
@@ -278,10 +275,7 @@ export class TTT_Game extends MinigameOverlay {
             0,
             this.animationFrameSlot,
             () => {
-                //console.log("Animation finished.");
                 this.finishResultAnimation(userSprite, beamSprite);
-
-                //this.endGame();
             }
         );
     }
@@ -312,10 +306,7 @@ export class TTT_Game extends MinigameOverlay {
             if (scaleX < 2) {
                 this.animationFrameSlot.request(loop);
             } else {
-                //console.log("Animation finished.");
                 this.finishResultAnimation(drawSprite, beamSprite);
-
-                //this.endGame();
             }
         };
         loop();
@@ -638,7 +629,6 @@ export class TTT_Game extends MinigameOverlay {
 
         for (const box of this.board.cells) {
             if (box.name === fieldName) {
-                //console.log("Marking now:" + fieldName);
                 box.material.map = this.getTextureForMark(mark);
                 box.material.needsUpdate = true;
             }

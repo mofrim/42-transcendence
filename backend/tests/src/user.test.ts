@@ -25,7 +25,6 @@ describe('basic get cookie test', () => {
         expect(res.statusCode).toEqual(200);
         expect(res.headers['set-cookie']).toBeDefined();
         authCookieRoot = res.headers['set-cookie'] as string;
-        // console.log(`set cookie for root: ${res.headers['set-cookie']}`);
     });
 });
 
@@ -34,7 +33,6 @@ describe('basic user-service test', () => {
         const res = await request(userBaseUrl)
             .get(API_USER.root)
             .set('Cookie', authCookieFm);
-        // console.log(`got response: ${JSON.stringify(res.body, null, 2)}`);
         expect(res.statusCode).toEqual(200);
         expect(res.body.data.nickname).toEqual('freddy');
     });
@@ -70,7 +68,6 @@ describe('basic user-service test', () => {
         const res = await request(userBaseUrl)
             .get(API_USER.root + '/0')
             .set('Cookie', authCookieRoot);
-        // console.log(`got response: ${JSON.stringify(res.body, null, 2)}`);
         expect(res.statusCode).toEqual(200);
         expect(res.body.id).toEqual(0);
         expect(res.body.data.nickname).toEqual('root');
@@ -80,7 +77,6 @@ describe('basic user-service test', () => {
         const res = await request(userBaseUrl)
             .get(API_USER.root + '/0')
             .set('Cookie', authCookieFm);
-        // console.log(`got response: ${JSON.stringify(res.body, null, 2)}`);
         expect(res.statusCode).toEqual(401);
     });
 
@@ -88,7 +84,6 @@ describe('basic user-service test', () => {
         const res = await request(userBaseUrl)
             .get(API_USER.all)
             .set('Cookie', authCookieFm);
-        // console.log(`got response: ${JSON.stringify(res.body, null, 2)}`);
         expect(res.statusCode).toEqual(401);
     });
 
@@ -96,7 +91,6 @@ describe('basic user-service test', () => {
         const res = await request(userBaseUrl)
             .get(API_USER.all)
             .set('Cookie', authCookieRoot);
-        // console.log(`got response: ${JSON.stringify(res.body, null, 2)}`);
         expect(res.statusCode).toEqual(200);
     });
 });
@@ -111,7 +105,6 @@ describe('add/del user aka register tests', () => {
         const res = await request(userBaseUrl)
             .post(API_USER.register)
             .send(user);
-        // console.log(`got response: ${JSON.stringify(res.body, null, 2)}`);
         expect(res.statusCode).toEqual(403);
     });
 

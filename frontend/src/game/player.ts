@@ -117,10 +117,6 @@ export class Player {
             Player.colRad
         );
 
-        // apply lift
-        //this.playerCollider.translate(new THREE.Vector3(0, Player.offset, 0));
-        // start with scale 0 for spawn animation
-        //this.group.scale.set(0, 1, 0);
         this.PlayerToStartPosition();
         Player.offset = (Player.colEndY - Player.colStartY) / 2 + Player.colRad;
 
@@ -157,10 +153,6 @@ export class Player {
 
         this.loadModel(path);
 
-        //if(sv > 0.2)
-        //if(sv < 0.9)
-        //else
-        //    sv = 1;
         // value just for spawn animation
         this.lifecycleController.startSpawn();
     }
@@ -388,7 +380,6 @@ export class Player {
     static loader = new GLTFLoader();
 
     loadModel(path: string): void {
-        //const loader = new GLTFLoader();
         if (!this.isActive() || this.finalized || this.model !== null) {
             return;
         }
@@ -474,7 +465,6 @@ export class Player {
         }
 
         try {
-            //this.model.rotation.y = Math.PI;
             this.group.rotation.y = Math.PI;
             this.model = loadedModel;
             this.mixer = preparedMixer;
@@ -510,11 +500,9 @@ export class Player {
             // determine if the surface we bumped into is something we can stand on
             this.playerOnFloor = result.normal.y >= 0.15; // allow slopes up to ~81° but ignore sheer vertical walls
             if (!this.playerOnFloor) {
-                //console.log("WALL COLLISION");
                 this.playerVelocity.projectOnPlane(result.normal);
             }
             if (result.depth >= 1e-10) {
-                //console.log("FLOOR COLLISION " + result.depth);
                 this.playerCollider.translate(
                     result.normal.multiplyScalar(result.depth)
                 );
@@ -619,7 +607,6 @@ export class Player {
                 this.group.quaternion.copy(rotate);
             }
         }
-        //console.log(this.group.position);
         if (this.mixer) {
             this.mixer.update(delta);
         }

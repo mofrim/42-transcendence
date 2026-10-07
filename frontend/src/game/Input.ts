@@ -303,7 +303,6 @@ export class Input {
         );
         const firstHit = this.tttRaycastHits[0];
         if (!firstHit) return;
-        // console.log('Clicked on: ' + firstHit.object.name);
         if (firstHit.object.name.includes('TTT_Board')) {
             this.getMultiplayer()?.emitTTTMark(firstHit.object.name);
         } else if (firstHit.object.name.includes('TTT_Start')) {

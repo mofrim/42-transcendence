@@ -337,19 +337,6 @@ export function startGame(
             gameHandlers: minigameEvent.handlers,
         });
 
-        // NOTE uncommented for React! we need the domElement
-        // THREE.WebGLRenderer returns for React to handle it.
-        //
-        //renderer = new THREE.WebGLRenderer({ antialias: true });
-
-        // NOTE uncommented for React!
-        //
-        // document.body.appendChild(renderer.domElement);
-
-        // NOTE uncommented for React!
-        //
-        //container.appendChild(renderer.domElement);
-
         renderLoop.start(() => {
             camera = new Camera(window, renderer, mesh_col);
             return camera.camera;
@@ -361,7 +348,6 @@ export function startGame(
         );
         plane.position.set(0, -0.025, 0);
         plane.receiveShadow = true;
-        //scene.add(plane);
         worldOctree.fromGraphNode(plane);
         if (!isSpectator && player && camera) {
             // Removed the unused TTT button constructor argument

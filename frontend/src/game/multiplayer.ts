@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 
-// import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import type { Socket } from 'socket.io-client';
 import type { Player } from './player.js';
 import { Remote_Player } from './remote_player.js';
@@ -660,10 +659,6 @@ export class MultiplayerManager {
         position: PlayerPosition,
         state: PlayerState
     ) {
-        //console.log("ID 1 " + playe.id + " to position: " + playe.group.position.y.toFixed(4) + " , y: " + y.toFixed(4));
-        //if(player.id == 1)
-        //    this.multiplayerMovementTest(player);
-        //console.log("ID 1 " + player.id + " to position: " + player.group.position.y.toFixed(4));
         player.state = state;
 
         if (!player.isSpawned) {

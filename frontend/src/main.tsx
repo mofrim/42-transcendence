@@ -1,4 +1,3 @@
-// import { StrictMode } from 'react';
 import { ConfigProvider } from 'antd';
 import { createRoot } from 'react-dom/client';
 import { LoginProvider } from './ui/login/LoginProvider.tsx';
@@ -73,7 +72,6 @@ const renderApp = (): void => {
                                 .
                             </>
                         }
-                        // version='v0.0.0'
                     />
                 </LoginProvider>
             </AuthProvider>

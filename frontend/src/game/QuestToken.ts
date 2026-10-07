@@ -58,11 +58,6 @@ export class LostTokenQuest {
             return false;
         }
 
-        /* await completeQuest(
-            QUESTS.FIND_LOST_DROPPED_TOKEN_QUEST_ID.id,
-            LOST_TOKEN_SUCCESS_MESSAGE,
-            PlayerState.ThumbsUp
-        ); */
         this.collect();
 
         onCollected?.();

@@ -2,9 +2,6 @@ import * as THREE from 'three';
 import { CanvasTextSprite } from './CanvasTextSprite';
 import { type PreparationQuestId, QUESTS } from 'ftr-common/sharedTypes';
 
-/* import { Player } from './player';
-import { Camera } from './camera'; */
-
 export const EVALUATOR_LOCATION_INTERACTION_ID = 'WHERE_IS_EVALUATOR';
 export const EVENT_SPACE_DOOR_A_INTERACTION_ID = 'EVENT_SPACE_DOOR_A';
 export const EVENT_SPACE_DOOR_B_INTERACTION_ID = 'EVENT_SPACE_DOOR_B';
@@ -19,14 +16,6 @@ export type InteractionTypeId =
     | typeof EVENT_SPACE_DOOR_B_INTERACTION_ID
     | typeof QUESTS.FIND_LOST_DROPPED_TOKEN_QUEST_ID.id
     | typeof QUESTS.ENTER_CAMPUS_TOKEN_QUEST_ID.id;
-
-/* export enum IID {
-    FIND_RUBBERDUCK = 'FIND_RUBBERDUCK',
-    GET_COFFEE = 'GET_COFFEE',
-    GET_PAPER = 'GET_PAPER',
-    LOGIN_COMPUTER = 'LOGIN_COMPUTER',
-    START_EVALUATION = 'START_EVALUATION'
-} */
 
 export class Interaction {
     zone: THREE.Box3;
@@ -50,9 +39,6 @@ export class Interaction {
 
         const center = this.position.clone().setY(this.position.y + size.y / 2);
         this.zone = new THREE.Box3().setFromCenterAndSize(center, size);
-
-        /* const helper = new THREE.Box3Helper(this.zone, 0xff0000);
-        this.scene.add(helper); */
     }
 
     enableInteraction(): void {

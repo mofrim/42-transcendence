@@ -45,7 +45,6 @@ function createPlayerMaterial(
     mesh: THREE.Mesh
 ): THREE.Material {
     if (source.name === 'Outline') {
-        //console.log("OUTLINE MESH FOUND");
         mesh.castShadow = false; // important: prevents shadow artifacts
         return new THREE.MeshBasicMaterial({
             color: 0x000000,

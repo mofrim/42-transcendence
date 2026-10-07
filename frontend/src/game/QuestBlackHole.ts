@@ -3,17 +3,6 @@ import * as THREE from 'three';
 export { formatQuestCountdown } from './BlackHoleTimeout.js';
 
 export function addBlackhole(scene: THREE.Scene): void {
-    /* const blackholeTex = textureLoader.load('textures/Blackhole.png');
-    const material = new THREE.MeshBasicMaterial({
-        map: blackholeTex,
-        transparent: true,
-    });
-    const geometry = new THREE.PlaneGeometry(40, 40);
-    const plane = new THREE.Mesh(geometry, material);
-    plane.rotation.x = Math.PI / 2.3;
-    plane.position.set(16, 20, -5);
-    scene.add(plane); */
-
     const sphere = new THREE.Mesh(
         new THREE.SphereGeometry(8, 32, 32),
         new THREE.MeshBasicMaterial({ color: 0x000000 })

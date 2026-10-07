@@ -14,7 +14,6 @@ describe('basic get cookie test', () => {
         expect(res.headers['set-cookie']).toBeDefined();
         if ('set-cookie' in res.headers) {
             authCookie = res.headers['set-cookie'] as string;
-            // console.log(`got cookie: ${authCookie}`);
         }
     });
 });

@@ -143,7 +143,6 @@ export class RPS_Game extends MinigameOverlay {
             opponentCharacter,
             this.resourceDisposer
         );
-        //this.removeText();
         this.animationFrameSlot.cancel();
         this.inBattleMode = true;
         this.player.inRPSBattleMode = true;

@@ -48,16 +48,12 @@ export class Camera {
         const dist = start.distanceTo(end);
         const camDistance = 3.0;
 
-        //console.log("Colliders RESET" );
-
         const epsilon = 0.05;
         if (Math.abs(dist - camDistance) > epsilon) {
             if (dist < camDistance) {
-                //console.log("RESET 1");
                 this.camera.position.addScaledVector(direction, delta * 2);
             }
             if (dist > camDistance) {
-                //console.log("RESET 2");
                 this.camera.position.addScaledVector(direction, -delta * 2);
             }
         }
@@ -94,32 +90,6 @@ export class Camera {
                 nearestIntersection.distance - 0.1,
                 this.camera.position
             );
-            //this.testDirect(this.rayPos, hits[0].point, this.camera.position);
         }
     }
-
-    /* const capsuleMaterial = new THREE.MeshBasicMaterial({color: 0xff0000, wireframe: true});
-    const C1 = new THREE.Mesh(new THREE.SphereGeometry(0.10, 8, 8), capsuleMaterial);
-    const C2 = new THREE.Mesh(new THREE.SphereGeometry(0.10, 8, 8), capsuleMaterial);
-    const C3 = new THREE.Mesh(new THREE.SphereGeometry(0.10, 8, 8), capsuleMaterial);
-    const C4 = new THREE.Mesh(new THREE.SphereGeometry(0.10, 8, 8), capsuleMaterial);
-    const C5 = new THREE.Mesh(new THREE.SphereGeometry(0.10, 8, 8), capsuleMaterial);
-    scene.add(C1, C2, C3, C4, C5); */
-
-    /* testDirect(start, end, camPos){
-
-        dir.subVectors(end, start).normalize();
-
-        C1.position.copy(start);
-
-        C2.position.copy(camPos);
-
-        C3.position.copy(rayPos);
-        C3.position.addScaledVector(dir, 1.0);
-
-        C4.position.copy(rayPos);
-        C4.position.addScaledVector(dir, 1.5);
-
-        C5.position.copy(end);
-    } */
 }

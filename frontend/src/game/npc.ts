@@ -71,15 +71,10 @@ export class NPC {
     }
 
     loadEnemyCharacter(path: string, animation: string): void {
-        //console.log("Enemy character loading...");
-
         NPC_LOADER.load(path, (gltf) => {
             this.model = gltf.scene;
 
             this.group.add(this.model);
-
-            //model.position.set(x, y, z);
-            //model.rotation.y = rot;
 
             const meshes = this.model.getObjectsByProperty(
                 'isMesh',
@@ -91,17 +86,13 @@ export class NPC {
 
                 const material = object.material as THREE.MeshStandardMaterial;
 
-                // console.log("Material name: ", material.name);
-
                 if (material.name === 'Outline') {
-                    // console.log("OUTLINE MESH FOUND");
                     object.material = new THREE.MeshBasicMaterial({
                         color: 0x000000,
                     });
                     object.castShadow = false; // important: prevents shadow artifacts
                     continue;
                 }
-                // console.log("Material NOT OUTLINE: ");
                 object.material = new THREE.MeshToonMaterial({
                     color: material.color,
                     gradientMap: NPC.gradientTexture,
@@ -109,10 +100,6 @@ export class NPC {
             }
 
             const mix = new THREE.AnimationMixer(this.model);
-
-            /* for (const clip of gltf.animations) {
-                console.log("NPC has animation:", clip.name);
-            } */
 
             const clip = THREE.AnimationClip.findByName(
                 gltf.animations,

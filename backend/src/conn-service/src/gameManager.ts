@@ -172,8 +172,6 @@ export class GameManager {
         const playerRequested = this.players.get(data.requestedPlayerID);
         const playerThis = this.players.get(data.id);
 
-        //console.log("RPS Game Requested: " + data.id + " requested player: " + data.requestedPlayerID);
-
         if (!playerRequested || !playerThis) {
             console.log('One of the players not found for RPS game.');
             return 0;
@@ -291,7 +289,6 @@ export class GameManager {
         if (!player.gameID) return 0;
 
         const rpsGame = this.rpsGame.get(player.gameID);
-        //console.log("RPS GAMEID: " + player.gameID + "  Choice made : " + data.choice);
         if (!rpsGame) {
             console.log('RPS game not found for player: ' + player.id);
             return 0;
@@ -361,32 +358,27 @@ export class GameManager {
         const rpsGame = this.rpsGame.get(gameID);
 
         if (!rpsGame) {
-            //console.log("RPS game not found for gameID: " + gameID);
             return 0;
         }
         if (
             rpsGame.playerOneChoice == RPSChoice.None ||
             rpsGame.playerTwoChoice == RPSChoice.None
         ) {
-            //console.log("Invalid Round. Choices not made yet!");
             return 1;
         }
         if (rpsGame.playerOneChoice === rpsGame.playerTwoChoice) {
-            //console.log("DRAW!");
             return 2;
         }
         if (
             RPS_WINNING_CHOICES.get(rpsGame.playerOneChoice) ===
             rpsGame.playerTwoChoice
         ) {
-            //console.log("WINNER PLAYER ONE!");
             return 3;
         }
         if (
             RPS_WINNING_CHOICES.get(rpsGame.playerTwoChoice) ===
             rpsGame.playerOneChoice
         ) {
-            //console.log("WINNER PLAYER TWO!");
             return 4;
         }
         return 0;
@@ -500,13 +492,11 @@ export class GameManager {
     }
 
     startTTTGame(playerID: string): number {
-        //console.log("Starting TTTGame for player: " + playerID);
         if (
             this.tttGame.state == TTTGameState.WaitingForFirstPlayer &&
             !this.tttGame.players[0]
         ) {
             console.log('Player 1 joined the game: ' + playerID);
-            //this.tttGame.players.push(playerID);
             this.tttGame.players[0] = playerID;
             this.tttGame.state = TTTGameState.WaitingForSecondPlayer;
             return 1;
@@ -516,7 +506,6 @@ export class GameManager {
         ) {
             if (this.tttGame.players[0] === playerID) return 0;
             console.log('Player 2 joined the game: ' + playerID);
-            //this.tttGame.players.push(playerID);
             this.tttGame.players[1] = playerID;
             this.tttGame.state = TTTGameState.InGame;
             return 2;
@@ -524,7 +513,6 @@ export class GameManager {
             this.tttGame.state == TTTGameState.InGame ||
             this.tttGame.state == TTTGameState.Finished
         ) {
-            //console.log("Game already in progress or finished. Player: " + playerID + " cannot join.");
             return 0;
         }
         console.log('Invalid TTTGame. Resetting game.');
@@ -653,9 +641,7 @@ export class GameManager {
     }
 
     tttMarkField(playerID: string, field: string): TTTMark {
-        //console.log("Current Mark: " + this.tttGame.currentMark);
         if (this.tttGame.state !== TTTGameState.InGame) {
-            //console.log("Game not in progress. Cannot mark field.");
             return TTTMark.Empty;
         }
 
@@ -663,25 +649,20 @@ export class GameManager {
         const isPlayerTwo = playerID === this.tttGame.players[1];
 
         if (!isPlayerOne && !isPlayerTwo) {
-            //console.log("Player not in the game." + playerID);
             return TTTMark.Empty;
         }
 
-        //console.log("In Marking: " + field + " by player: " + playerID);
         const fieldIndex = this.tttGame.boardNames.indexOf(field);
 
-        //console.log("Marking now:" + field);
         if (
             fieldIndex === -1 ||
             this.tttGame.board[fieldIndex] !== TTTMark.Empty
         ) {
-            //console.log("Field already marked.");
             return TTTMark.Empty;
         }
 
         if (isPlayerOne) {
             if (this.tttGame.currentMark === TTTMark.X) {
-                //console.log("Not your turn.");
                 return TTTMark.Empty;
             }
             this.tttGame.currentMark = TTTMark.X;

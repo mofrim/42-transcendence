@@ -1,6 +1,5 @@
 import request from 'supertest';
 import { API_EVENTLOG } from 'ftr-common/sharedTypes';
-// import type { GameEvent} from 'ftr-common/sharedTypes';
 
 const authBaseUrl = 'http://localhost:3001';
 const eventlogBaseUrl = 'http://localhost:3002';
@@ -63,7 +62,6 @@ describe('matchhist test', () => {
                 },
                 logtime: '2026-09-06 20:42:12',
             });
-        // console.log(`got response: ${JSON.stringify(res.body, null, 2)}`);
         expect(res.statusCode).toEqual(201);
     });
 
@@ -80,7 +78,6 @@ describe('matchhist test', () => {
                 },
                 logtime: '2026-09-06 20:42:12',
             });
-        // console.log(`got response: ${JSON.stringify(res.body, null, 2)}`);
         expect(res.statusCode).toEqual(201);
     });
 
@@ -97,7 +94,6 @@ describe('matchhist test', () => {
                 },
                 logtime: '2026-09-06 20:42:12',
             });
-        // console.log(`got response: ${JSON.stringify(res.body, null, 2)}`);
         expect(res.statusCode).toEqual(201);
     });
 
@@ -114,7 +110,6 @@ describe('matchhist test', () => {
                 },
                 logtime: '2026-09-06 20:42:12',
             });
-        // console.log(`got response: ${JSON.stringify(res.body, null, 2)}`);
         expect(res.statusCode).toEqual(201);
     });
 
@@ -129,7 +124,6 @@ describe('matchhist test', () => {
                 },
                 logtime: new Date(),
             });
-        // console.log(`got response: ${JSON.stringify(res.body, null, 2)}`);
         expect(res.statusCode).toEqual(201);
     });
 
@@ -140,7 +134,6 @@ describe('matchhist test', () => {
         console.log(`got response: ${JSON.stringify(res.body, null, 2)}`);
         expect(res.statusCode).toEqual(200);
         expect(res.body.length).toBe(3);
-        // expect(res.body[1].data.game).toBe('Tic-Tac-Toe-Game');
     });
 
     it('should get ...', async () => {
