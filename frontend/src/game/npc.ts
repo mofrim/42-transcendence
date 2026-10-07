@@ -32,7 +32,6 @@ const MEME_NPC_CHAT_BUBBLE_TEXTS = [
     `${CHAT_BUBBLE_PREFIX}It was YOU!`,
 ] as const;
 
-/** ohne jump bisher */
 type NPCAnimationActions = {
     Idle: THREE.AnimationAction;
     Run: THREE.AnimationAction;

@@ -45,11 +45,10 @@ test('normalizes shared player states to supported animation states', () => {
     const runState: PlayerState = normalizePlayerAnimationState(
         PlayerState.Run
     );
-    const jumpState: PlayerState = normalizePlayerAnimationState(
-        PlayerState.Jump
-    );
+    const unsupportedState: PlayerState =
+        normalizePlayerAnimationState('Unsupported');
 
     assert.equal(idleState, PlayerState.Idle);
     assert.equal(runState, PlayerState.Run);
-    assert.equal(jumpState, PlayerState.Idle);
+    assert.equal(unsupportedState, PlayerState.Idle);
 });

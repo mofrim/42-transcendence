@@ -311,7 +311,6 @@ export type DialogState = {
 export enum PlayerState {
     Idle = 'Idle',
     Run = 'Run',
-    Jump = 'Jump',
     Falling = 'Falling',
     Angry = 'Angry',
     ArmStretch = 'ArmStretch',
