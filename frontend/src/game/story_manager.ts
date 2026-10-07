@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { Player, type PlayerAnimationState } from './player';
 import { Camera } from './camera';
 import { InteractionManager } from './interaction_manager';
+import { NPCManager } from './npc';
 import { Interaction } from './interaction';
 import {
     type DialogState,
@@ -10,6 +11,11 @@ import {
     QUESTS,
     type QuestId,
 } from 'ftr-common/sharedTypes';
+
+type NPCSnapshot = {
+    position: THREE.Vector3;
+    rotation: THREE.Euler;
+};
 
 export class Story_Manager {
     scene: THREE.Scene;
@@ -21,6 +27,7 @@ export class Story_Manager {
     keys: [number, number];
     skipCameraAnimation: boolean;
     interactionManager: InteractionManager;
+    npcManager: NPCManager;
     advanceDialogue: boolean;
     advanceDialogueCamera: boolean;
     // private = only Story_Manager should access these values.
@@ -30,6 +37,8 @@ export class Story_Manager {
     private readonly onDialogChange: ((state: DialogState) => void) | undefined;
     private readonly onGameReset: (() => void | Promise<void>) | undefined;
     private camPositionBackup: THREE.Vector3;
+
+    private readonly npcSnapshots = new Map<number, NPCSnapshot>();
 
     // TODO: TEMP - need to be changed with Database
     questState: Map<QuestId, boolean>;
@@ -42,6 +51,7 @@ export class Story_Manager {
         keyStates: { [key: string]: boolean },
         keys: [number, number],
         interactionManager: InteractionManager,
+        npcManager: NPCManager,
         onDialogChange?: (state: DialogState) => void,
         onGameReset?: () => void | Promise<void>
     ) {
@@ -53,6 +63,7 @@ export class Story_Manager {
         this.keyStates = keyStates;
         this.keys = keys;
         this.interactionManager = interactionManager;
+        this.npcManager = npcManager;
         this.onDialogChange = onDialogChange;
         this.onGameReset = onGameReset;
 
@@ -575,9 +586,65 @@ export class Story_Manager {
         this.endCutscene();
     }
 
+    async endGameCutscene(): Promise<void> {
+        this.startCutscene();
+
+        this.player.controls.requestedAnimation = PlayerState.Victory;
+
+        this.transformModelForCutscene({ x: 17, y: 0, z: 8 });
+
+        this.moveCameraDialog(
+            new THREE.Vector3(15.5, 1.5, 12),
+            new THREE.Vector3(18.5, 1.5, 12),
+            40,
+            new THREE.Vector3(15.5, 1.5, 8)
+        );
+
+        this.npcToEndGameCutscene();
+
+        await this.showDialog('I MADE IT! WOOHOO! I FINISHED THE GAME!');
+
+        this.stopCurrentDialogueCamera();
+
+        this.npcRestoreAfterEndGameCutscene();
+
+        await this.returnCameraToPlayer(1.0);
+
+        this.endCutscene();
+    }
+
     // ==================================================
     //
     // ==================================================
+
+    npcToEndGameCutscene(): void {
+        this.npcSnapshots.clear();
+
+        for (const [id, npc] of this.npcManager.getNPCs().entries()) {
+            this.npcSnapshots.set(id, {
+                position: npc.group.position.clone(),
+                rotation: npc.group.rotation.clone(),
+            });
+        }
+
+        let posX = 12;
+        for (const [, npc] of this.npcManager.getNPCs().entries()) {
+            npc.group.position.set(posX, 0, 3);
+            posX += 2;
+
+            npc.group.rotation.set(0, 0, 0);
+        }
+    }
+
+    npcRestoreAfterEndGameCutscene(): void {
+        for (const [id, npc] of this.npcManager.getNPCs().entries()) {
+            const snapshot = this.npcSnapshots.get(id);
+            if (snapshot) {
+                npc.group.position.copy(snapshot.position);
+                npc.group.rotation.copy(snapshot.rotation);
+            }
+        }
+    }
 
     async playDialogInteraction(
         message: string,

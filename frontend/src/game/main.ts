@@ -407,6 +407,7 @@ export function startGame(
                 input.keyStates,
                 input.keys,
                 interactionManager,
+                npcManager,
                 onDialogChange,
                 resetGameStateAfterBlackHole
             );
