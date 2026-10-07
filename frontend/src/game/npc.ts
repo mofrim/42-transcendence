@@ -239,6 +239,10 @@ export class NPCManager {
         this.npcs.set(npc.id, npc);
     }
 
+    getNPCs(): Map<number, NPC> {
+        return this.npcs;
+    }
+
     updateAnimations(delta: number): void {
         for (const npc of this.npcs.values()) {
             if (npc.group.visible) {
