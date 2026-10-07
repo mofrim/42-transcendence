@@ -1,7 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import { DataSource, type FindManyOptions } from 'typeorm';
+import { DataSource, In, IsNull, type FindManyOptions } from 'typeorm';
 import { exit } from 'node:process';
 import { Logger } from 'tslog';
 import cookieParser from 'cookie-parser';
@@ -245,18 +245,35 @@ eventLogRoute.get(
     }
 );
 
-// get everything, regardless of user from eventlog
-// FIXME so far only here for debugging..
 app.get(
-    API_EVENTLOG.all,
+    API_EVENTLOG.leaderboard,
     authenticate,
     async (req: Request, res: Response): Promise<void> => {
         const logGet = log.getSubLogger({ name: 'GET(eventlog)' });
         void req;
 
         try {
-            const events = await eventLogRepo.find(eventLogWithUserOptions);
-            events.reverse(); // make order in slice ascending again
+            const events = await eventLogRepo.find({
+                ...eventLogWithUserOptions,
+                where: [
+                    {
+                        eventType: In([
+                            EventType.QuestCompleted,
+                            EventType.Blackholed,
+                            EventType.MiniGameResult,
+                        ]),
+                    },
+                    {
+                        eventType: In([
+                            EventType.PlayerJoined,
+                            EventType.PlayerLeft,
+                        ]),
+                        data: IsNull(),
+                    },
+                ],
+                // make order ascending again
+                order: { id: 'ASC' },
+            });
             res.status(200).json(
                 mkApiResponse<ORMEventLog[]>(
                     'Found eventlogs',

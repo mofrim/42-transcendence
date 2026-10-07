@@ -284,7 +284,7 @@ const API_EVENTLOG_ROOT = '/api/eventlog' as const;
 
 export const API_EVENTLOG = Object.freeze({
     root: API_EVENTLOG_ROOT,
-    all: `${API_EVENTLOG_ROOT}/all`,
+    leaderboard: `${API_EVENTLOG_ROOT}/leaderboard`,
     matchHistory: `${API_EVENTLOG_ROOT}/matchhist`,
 });
 

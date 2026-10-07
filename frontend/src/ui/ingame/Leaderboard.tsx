@@ -241,7 +241,7 @@ export function Leaderboard({
 
             try {
                 const response = await axios.get<ApiResponse<BaseEventLog[]>>(
-                    API_EVENTLOG.all,
+                    API_EVENTLOG.leaderboard,
                     {
                         signal: controller.signal,
                     }
