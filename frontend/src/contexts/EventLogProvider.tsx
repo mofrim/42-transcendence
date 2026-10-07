@@ -31,7 +31,7 @@ export const EventLogProvider: React.FC<{ children: React.ReactNode }> = ({
     const appendEvent = useCallback(async (event: GameEvent) => {
         // avoid double entries as useMatchHistory's saveMatchResult is already
         // storing the match-result in DB
-        if (event.eventType === EventType.GameResult) {
+        if (event.eventType === EventType.MiniGameResult) {
             return;
         }
 

@@ -97,7 +97,7 @@ export function useMatchHistory({ isSpectator }: UseMatchHistoryOptions) {
 
     const saveMatchResult = useCallback(
         async (event: GameEvent): Promise<void> => {
-            if (isSpectator || event.eventType !== EventType.GameResult) {
+            if (isSpectator || event.eventType !== EventType.MiniGameResult) {
                 return;
             }
 
@@ -110,7 +110,7 @@ export function useMatchHistory({ isSpectator }: UseMatchHistoryOptions) {
                 const response = await axios.post<
                     ApiResponse<MatchHistResponse>
                 >(API_EVENTLOG.matchHistory, {
-                    eventType: EventType.GameResult,
+                    eventType: EventType.MiniGameResult,
                     data: evData,
                     logtime: event.logtime,
                 });

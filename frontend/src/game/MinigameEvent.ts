@@ -384,7 +384,7 @@ export class MinigameEvent {
         opponentNickname: string
     ): void {
         this.options.onGameEvent?.({
-            eventType: EventType.GameResult,
+            eventType: EventType.MiniGameResult,
             data: {
                 game,
                 outcome,

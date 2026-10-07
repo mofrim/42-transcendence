@@ -55,7 +55,7 @@ describe('matchhist test', () => {
             .post(API_EVENTLOG.root)
             .set('Cookie', authCookieFmaurer)
             .send({
-                eventType: 'GameResult',
+                eventType: 'MiniGameResult',
                 data: {
                     game: 'Tic-Tac-Toe-Game',
                     outcome: 'lost',
@@ -72,7 +72,7 @@ describe('matchhist test', () => {
             .post(API_EVENTLOG.root)
             .set('Cookie', authCookieFmaurer)
             .send({
-                eventType: 'GameResult',
+                eventType: 'MiniGameResult',
                 data: {
                     game: 'Tic-Tac-Toe-Game',
                     outcome: 'lost',
@@ -89,7 +89,7 @@ describe('matchhist test', () => {
             .post(API_EVENTLOG.root)
             .set('Cookie', authCookieFmaurer)
             .send({
-                eventType: 'GameResult',
+                eventType: 'MiniGameResult',
                 data: {
                     game: 'Rock-Paper-Scissors',
                     outcome: 'draw',
@@ -106,7 +106,7 @@ describe('matchhist test', () => {
             .post(API_EVENTLOG.root)
             .set('Cookie', authCookieMpazouki)
             .send({
-                eventType: 'GameResult',
+                eventType: 'MiniGameResult',
                 data: {
                     game: 'Rock-Paper-Scissors',
                     outcome: 'draw',

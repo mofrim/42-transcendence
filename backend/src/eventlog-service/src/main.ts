@@ -294,7 +294,7 @@ matchHistoryRoute.get(
                 take: MAX_MATCH_HISTORY_ENTRIES,
                 where: {
                     user: { id: userId },
-                    eventType: EventType.GameResult,
+                    eventType: EventType.MiniGameResult,
                 },
                 select: {
                     id: true,
@@ -325,8 +325,8 @@ matchHistoryRoute.get(
 );
 
 // a simple enpoint for storing the matchresult. almost the same as the standard
-// post endpoint but returns the stored GameResult in response for parsing in
-// frontend
+// post endpoint but returns the stored MiniGameResult in response for parsing
+// in frontend
 matchHistoryRoute.post(
     authenticate,
     async (req: Request, res: Response): Promise<void> => {
@@ -334,7 +334,7 @@ matchHistoryRoute.post(
 
         const { eventType, data, logtime } = req.body;
 
-        if (eventType !== EventType.GameResult) {
+        if (eventType !== EventType.MiniGameResult) {
             res.status(400).json(mkApiResponse('Invalid event type', 'error'));
             return;
         }

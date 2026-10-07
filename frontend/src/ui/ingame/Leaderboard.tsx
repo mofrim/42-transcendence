@@ -157,7 +157,7 @@ function buildLeaderboard(
             continue;
         }
 
-        if (event.eventType !== EventType.GameResult) {
+        if (event.eventType !== EventType.MiniGameResult) {
             continue;
         }
 

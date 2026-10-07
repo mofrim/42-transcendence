@@ -126,7 +126,7 @@ export enum EventType {
     PlayerLeft = 'PlayerLeft',
     PlayerInRange = 'PlayerInRange',
     FriendRequest = 'FriendRequest',
-    GameResult = 'GameResult',
+    MiniGameResult = 'MiniGameResult',
     ChatMsg = 'ChatMsg',
     QuestCompleted = 'QuestCompleted',
     Blackholed = 'Blackholed',

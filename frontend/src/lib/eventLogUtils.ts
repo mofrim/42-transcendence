@@ -76,7 +76,7 @@ export const describeGameEvent = (event: GameEvent): string => {
                 evData.questText ?? evData.questId ?? 'unknown quest';
             return `${event.user.nickname} completed quest ${questDescription}`;
         }
-        case 'GameResult': {
+        case 'MiniGameResult': {
             const evData = event.data as EventDataGameResult;
             if (evData.outcome === 'draw') {
                 return `${event.user.nickname} drew a game of ${evData.game} against ${evData.opponentNickname}`;
@@ -118,7 +118,7 @@ export const getGameEventProfileNicknames = (
             return [(event.data as EventDataPlayerInRange).remoteNick];
         case 'FriendRequest':
             return [(event.data as EventDataFriendRequest).friendNick];
-        case 'GameResult': {
+        case 'MiniGameResult': {
             const evData = event.data as EventDataGameResult;
             return [event.user.nickname, evData.opponentNickname];
         }
