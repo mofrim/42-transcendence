@@ -319,7 +319,8 @@ export function startGame(
                 playerModelPath,
                 scene,
                 worldOctree,
-                worldOctreeInteractive
+                worldOctreeInteractive,
+                user.id
             );
         }
         multiplayer = new MultiplayerManager(scene, mesh_RP, {

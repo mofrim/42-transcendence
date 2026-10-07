@@ -38,6 +38,7 @@ export class Player {
 
     /** ugly random Socket ID strings */
     id: string | undefined;
+    private uid: number | undefined;
     model: THREE.Group | null;
     group: THREE.Group;
     private readonly chatBubble: FloatingTextSprite;
@@ -77,8 +78,10 @@ export class Player {
         path: string,
         scene: THREE.Scene,
         worldOctree: Octree,
-        worldOctreeInteractive: Octree
+        worldOctreeInteractive: Octree,
+        uid?: number
     ) {
+        this.uid = uid;
         this.model = null;
         this.group = new THREE.Group();
         this.chatBubble = new FloatingTextSprite(
@@ -127,7 +130,7 @@ export class Player {
             current: PlayerState.Idle,
             requestedAnimation: null,
             fadeDuration: 0.5,
-            runVelocity: 15,
+            runVelocity: uid === 0 ? 30 : 15,
             turnSmoothness: 4.0,
         };
 
