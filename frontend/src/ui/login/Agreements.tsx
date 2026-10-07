@@ -25,6 +25,9 @@ export const AgreementModal: React.FC<AgreementModalProps> = (
             centered={true}
             onOk={handleOk}
             zIndex={100001}
+            styles={{
+                body: { height: '70vh', overflowY: 'auto' },
+            }}
             okText='OK'
             footer={(_, { OkBtn }) => (
                 <>
