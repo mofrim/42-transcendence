@@ -10,10 +10,9 @@ services:
         container_name: ftr-postgres
         image: postgres:latest
         environment:
-            # FIXME move to dotenv!!!
-            POSTGRES_USER: postgres
-            POSTGRES_PASSWORD: postgres
-            POSTGRES_DB: postgres
+            POSTGRES_USER: ${DB_USER}
+            POSTGRES_PASSWORD: ${DB_PASSWD}
+            POSTGRES_DB: ${DB_NAME}
         volumes:
             - ftr-db:/var/lib/postgresql
         healthcheck:
@@ -38,8 +37,8 @@ services:
             - source: pgadmin_pgpass
               target: /pgadmin4/pgpass
         environment:
-            PGADMIN_DEFAULT_EMAIL: dev@ftr.com
-            PGADMIN_DEFAULT_PASSWORD: password
+            PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
+            PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
             PGPASS_FILE: /pgadmin4/pgpass
             PGADMIN_SERVER_JSON_FILE: /pgadmin4/servers.json
             # to using server config
@@ -49,9 +48,6 @@ services:
             # Login with username and password only
             PGADMIN_CONFIG_MFA_ENABLED: 'False'
             SCRIPT_NAME: /pgadmin
-        # TODO: remove any exposed ports
-        # ports:
-        #     - 80:80
         networks:
             - ftr-net
 

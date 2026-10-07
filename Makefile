@@ -52,7 +52,7 @@ dock-fclean:
 dock-db:
 	$(call log_msg_start,Launching DB for dev...)
 	$(output_color_grey)
-	cd backend && docker compose -f ./compose-db.yaml -f ./compose-db.dev.yaml up -d
+	cd backend && docker compose -f ./compose-db.yaml -f ./compose-db.dev.yaml --env-file ../dev.env up -d
 	$(call log_msg_end,Done.)
 
 dock-db-clean: dock-db-down
@@ -75,7 +75,7 @@ dock-re:
 dock-db-down:
 	$(call log_msg_start,Shutting down DB...)
 	$(output_color_grey)
-	cd backend && docker compose -f ./compose-db.yaml down
+	cd backend && docker compose -f ./compose-db.yaml --env-file ../dev.env down
 	$(call log_msg_end,Done.)
 
 backend-dev:
@@ -83,7 +83,7 @@ backend-dev:
 	$(output_color_grey)
 	npm run build:common
 	npm run build:backend-utils
-	cd backend && docker compose -f ./compose-db.yaml -f ./compose-db.dev.yaml up -d && npm run dev:all
+	cd backend && docker compose -f ./compose-db.yaml -f ./compose-db.dev.yaml --env-file ../dev.env up -d && npm run dev:all
 	$(call log_msg_end,Done.)
 
 frontend-dev:
@@ -95,7 +95,7 @@ frontend-dev:
 # for Windows development
 backend-dev-win:
 	$(call log_msg_start,Launching all backend for dev-win...)
-	cd backend && docker compose -f ./compose-db.yaml --profile dev up -d
+	cd backend && docker compose -f ./compose-db.yaml -f ./compose-db.dev.yaml --env-file ../dev.env up -d
 	cd backend && start powershell -NoExit -Command "npm --prefix .\src\conn-service run dev-win"
 	cd backend && start powershell -NoExit -Command "npm --prefix .\src\auth-service run dev-win"
 	cd backend && start powershell -NoExit -Command "npm --prefix .\src\user-service run dev-win"
