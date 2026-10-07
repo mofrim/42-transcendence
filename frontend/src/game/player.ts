@@ -130,7 +130,7 @@ export class Player {
             current: PlayerState.Idle,
             requestedAnimation: null,
             fadeDuration: 0.5,
-            runVelocity: uid === 0 ? 30 : 15,
+            runVelocity: this.uid === 0 ? 30 : 15,
             turnSmoothness: 4.0,
         };
 
