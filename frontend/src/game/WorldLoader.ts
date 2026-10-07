@@ -152,8 +152,8 @@ export class WorldLoader {
         this.scene.add(object);
     }
 
+    /** also Play door opening animation */
     openEventSpaceDoors(): void {
-        // TODO: Play door opening animation
         this.doorGroupA.rotation.y = -1.83;
         this.doorGroupB.rotation.y = 1.42;
         this.eventSpaceDoorsOpenState = true;

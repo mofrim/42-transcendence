@@ -397,7 +397,11 @@ io.on('connection', async (socket) => {
                 }
                 const userId = getAuthenticatedUserId(socket);
                 if (userId !== null) {
-                    saveGame.updatePosition(userId, socket.id, playerUpdate);
+                    saveGame.updatePosition(userId, socket.id, {
+                        x: playerUpdate.x,
+                        y: playerUpdate.y,
+                        z: playerUpdate.z,
+                    });
                 }
                 socket.broadcast.volatile.emit('update', playerUpdate);
                 break;

@@ -13,7 +13,7 @@ import {
     type MatchHistResponse,
 } from 'ftr-common/sharedTypes';
 import type { EventLogEntry } from '../ui/ingame/EventLogItems';
-import { useEventLog } from './useEventLog';
+import { useOptionalEventLog } from './useEventLog';
 import {
     EVENT_TIME_FORMAT,
     MAX_EVENT_LOG_ENTRIES,
@@ -51,9 +51,8 @@ function parseMatchHistoryEntry(respoData: MatchHistResponse): EventLogEntry {
 export function useMatchHistory({ isSpectator }: UseMatchHistoryOptions) {
     const [matchHistory, setMatchHistory] = useState<EventLogEntry[]>([]);
 
-    // we need to update the ingame-eventlog manually which is only possible
-    // through setEvents from EventLogContext.
-    const { setEvents } = useEventLog();
+    const eventLog = useOptionalEventLog();
+    const setEvents = eventLog?.setEvents;
 
     useEffect(() => {
         if (isSpectator) {
@@ -138,6 +137,12 @@ export function useMatchHistory({ isSpectator }: UseMatchHistoryOptions) {
                     profileNicknames: getGameEventProfileNicknames(event),
                 };
 
+                if (!setEvents) {
+                    throw new Error(
+                        'useMatchHistory must be used within an EventLogProvider'
+                    );
+                }
+
                 setEvents((currentEvents) =>
                     [...currentEvents, ev].slice(-MAX_EVENT_LOG_ENTRIES)
                 );
@@ -147,6 +152,12 @@ export function useMatchHistory({ isSpectator }: UseMatchHistoryOptions) {
         },
         [isSpectator, setEvents]
     );
+
+    if (!isSpectator && !eventLog) {
+        throw new Error(
+            'useMatchHistory must be used within an EventLogProvider'
+        );
+    }
 
     return { matchHistory, saveMatchResult, setMatchHistory };
 }

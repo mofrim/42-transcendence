@@ -19,6 +19,7 @@ import {
 } from '../../game/BlackHoleTimeout';
 import { useMatchHistory } from '../../hooks/useMatchHistory';
 import { GameUI, type DialogPanelState } from '../ingame/GameUI';
+import type { EventLogEntry } from '../ingame/EventLogItems';
 import { useFriendRequest } from '../ingame/FriendRequest';
 import { useSaveGame } from './SaveGame';
 import {
@@ -32,7 +33,12 @@ import {
 import * as THREE from 'three';
 import axios from 'axios';
 
-import { useEventLog } from '../../hooks/useEventLog';
+import { useOptionalEventLog } from '../../hooks/useEventLog';
+
+const SPECTATOR_EVENTS: readonly EventLogEntry[] = [];
+const appendSpectatorEvent: (
+    event: GameEvent
+) => Promise<void> = async () => {};
 
 // the start-button. all this does is setting the gameRunning state var
 export const StartButton: React.FC = () => {
@@ -162,20 +168,9 @@ export const Game: React.FC<{
         isSpectator,
     });
 
-    // FIXME unfortunately useEventLog() cannot be loaded conditionally (leads
-    // to lint-error) so we have to handle it like this for spectator-mode
-    const { events: realEvents, appendEvent: realAppendEvent } = useEventLog();
-
-    // dummies for spectator mode
-    const spectatorEventLog = {
-        events: [],
-        appendEvent: () => {},
-    };
-
-    // set events, appendEvent conditionally
-    const { events, appendEvent } = isSpectator
-        ? spectatorEventLog
-        : { events: realEvents, appendEvent: realAppendEvent };
+    const eventLog = useOptionalEventLog();
+    const events = eventLog?.events ?? SPECTATOR_EVENTS;
+    const appendEvent = eventLog?.appendEvent ?? appendSpectatorEvent;
 
     /** used for blackhole timer tracking in leaderboard */
     useEffect(() => {
@@ -426,6 +421,10 @@ export const Game: React.FC<{
     let spectatorExitButton: React.ReactNode = null;
     let playerOnlyGameUIProps: Partial<React.ComponentProps<typeof GameUI>> =
         {};
+
+    if (!isSpectator && !eventLog) {
+        throw new Error('Game must be used within an EventLogProvider');
+    }
 
     if (isSpectator) {
         spectatorExitButton = (
