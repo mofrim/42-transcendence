@@ -25,7 +25,7 @@ export class LostTokenQuest {
     constructor(scene: THREE.Scene, interactionRange: THREE.Vector3) {
         this.interaction = new Interaction(
             scene,
-            QUESTS.FIND_LOST_DROPPED_TOKEN_QUEST_ID,
+            QUESTS.FIND_LOST_DROPPED_TOKEN_QUEST_ID.id,
             LOST_TOKEN_POSITION,
             interactionRange,
             true
@@ -54,7 +54,7 @@ export class LostTokenQuest {
         interaction: Interaction,
         onCollected?: () => void
     ): Promise<boolean> {
-        if (interaction.typeID !== QUESTS.FIND_LOST_DROPPED_TOKEN_QUEST_ID) {
+        if (interaction.typeID !== QUESTS.FIND_LOST_DROPPED_TOKEN_QUEST_ID.id) {
             return false;
         }
 

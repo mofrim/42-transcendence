@@ -63,7 +63,7 @@ export class EvaluatingStudentQuest {
             ),
             new Interaction(
                 scene,
-                QUESTS.EVALUATING_STUDENT_QUEST_ID,
+                QUESTS.EVALUATING_STUDENT_QUEST_ID.id,
                 EVALUATING_STUDENT_POSITION,
                 interactionRange,
                 false
@@ -205,7 +205,7 @@ export class EvaluatingStudentQuest {
             return true;
         }
 
-        if (interaction.typeID !== QUESTS.EVALUATING_STUDENT_QUEST_ID) {
+        if (interaction.typeID !== QUESTS.EVALUATING_STUDENT_QUEST_ID.id) {
             return false;
         }
 

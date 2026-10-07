@@ -73,7 +73,7 @@ export const QUESTS = Object.freeze({
         text: 'Enter the Event Space',
         completed: false,
     },
-});
+} as const);
 
 export type QuestId = (typeof QUESTS)[keyof typeof QUESTS]['id'];
 
@@ -101,7 +101,6 @@ export const PREPARATION_QUEST_IDS = [
     QUESTS.COMPUTER_LOGIN_QUEST_ID.id,
 ] as const;
 
-// FIXME this is basically `string`... so we could just use this
 export type PreparationQuestId = (typeof PREPARATION_QUEST_IDS)[number];
 
 export type QuestLogEntry = {

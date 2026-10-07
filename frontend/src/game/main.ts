@@ -576,11 +576,7 @@ export function startGame(
 
         if (interactionManager?.interactions) {
             for (const inter of interactionManager.interactions) {
-                console.log(
-                    typeof inter.typeID === 'object'
-                        ? inter.typeID.id
-                        : inter.typeID
-                );
+                console.log(inter.typeID);
             }
         } else console.log('No interactions found in interactionManager');
     }

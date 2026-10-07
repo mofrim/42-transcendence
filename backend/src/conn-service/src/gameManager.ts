@@ -1,3 +1,4 @@
+import { setTimeout as delay } from 'node:timers/promises';
 import {
     TTTGameState,
     RPSChoice,
@@ -10,9 +11,31 @@ import type {
     TTTGame,
     PlayerData,
     PlayerPosition,
+    PlayerMovementPayload,
+    PlayerUpdatePayload,
     RPSRequestDataPayload,
     RPSBattleChoicePayload,
+    RPSInvalidPayload,
+    RPSDrawPayload,
+    RPSWinnerPayload,
+    RPSAcceptDeclinePayload,
+    TTTMarkPayload,
+    TTTPlayerPayload,
+    TTTStartPayload,
+    TTTWinPayload,
+    TTTDrawPayload,
 } from 'ftr-common/sharedTypes';
+
+type TTTResetPayload = { type: 'ttt_reset' };
+type TTTLeftPayload = { type: 'ttt_left' };
+type TTTUpdatePayload =
+    | TTTMarkPayload
+    | TTTPlayerPayload
+    | TTTStartPayload
+    | TTTWinPayload
+    | TTTDrawPayload
+    | TTTResetPayload
+    | TTTLeftPayload;
 
 /** winning conditions states for Tic Tac Toe */
 const TTT_WINNING_LINES = [
@@ -69,6 +92,29 @@ export class GameManager {
         return true;
     }
 
+    handlePlayerUpdate(
+        playerID: string,
+        data: PlayerMovementPayload
+    ): PlayerUpdatePayload | null {
+        const position: PlayerPosition = {
+            x: data.x,
+            y: data.y,
+            z: data.z,
+        };
+
+        if (!this.updatePlayer(playerID, position, data.state)) {
+            console.log('Player not found for id: ' + playerID);
+            return null;
+        }
+
+        return {
+            type: 'player_update',
+            id: playerID,
+            ...position,
+            state: data.state,
+        };
+    }
+
     // ====================================================================================================
     // Rock Paper Scissors Game
     // ====================================================================================================
@@ -91,6 +137,31 @@ export class GameManager {
         }
 
         this.rpsGame.delete(gameID);
+    }
+
+    handleRPSRequest(
+        playerID: string,
+        data: RPSRequestDataPayload
+    ): RPSRequestDataPayload | null {
+        const result = this.rpsRequested({
+            ...data,
+            id: playerID,
+        });
+        if (result === 0) {
+            return null;
+        }
+
+        const requestingPlayer = this.players.get(playerID);
+        if (!requestingPlayer) {
+            return null;
+        }
+
+        return {
+            type: 'rps_request',
+            id: playerID,
+            requestedPlayerID: data.requestedPlayerID,
+            nickname: requestingPlayer.nickname,
+        };
     }
 
     rpsRequested(data: RPSRequestDataPayload): number {
@@ -186,6 +257,29 @@ export class GameManager {
         return 1;
     }
 
+    handleRPSResponse(
+        playerID: string,
+        data: RPSRequestDataPayload
+    ): RPSAcceptDeclinePayload | null {
+        if (data.type !== 'rps_accept' && data.type !== 'rps_decline') {
+            return null;
+        }
+
+        const result = this.rpsRespond({
+            ...data,
+            id: playerID,
+        });
+        if (result === 0) {
+            return null;
+        }
+
+        return {
+            type: data.type,
+            id: playerID,
+            requestedPlayerID: data.requestedPlayerID,
+        };
+    }
+
     rpsChoice(data: RPSBattleChoicePayload): number {
         const player = this.players.get(data.id);
 
@@ -250,6 +344,19 @@ export class GameManager {
         return rpsGame;
     }
 
+    handleRPSInvalid(playerID: string): RPSInvalidPayload | null {
+        const timedOutGame = this.rpsTimeout(playerID);
+        if (!timedOutGame) {
+            return null;
+        }
+
+        return {
+            type: 'rps_invalid',
+            playerOne: timedOutGame.playerOne,
+            playerTwo: timedOutGame.playerTwo,
+        };
+    }
+
     verifyRPSGame(gameID: string) {
         const rpsGame = this.rpsGame.get(gameID);
 
@@ -283,6 +390,69 @@ export class GameManager {
             return 4;
         }
         return 0;
+    }
+
+    handleRPSChoice(
+        playerID: string,
+        data: RPSBattleChoicePayload
+    ): RPSDrawPayload | RPSWinnerPayload | null {
+        const result = this.rpsChoice({
+            ...data,
+            id: playerID,
+        });
+        if (result === 0) {
+            console.log('RPS choice failed for player: ' + playerID);
+            return null;
+        }
+
+        const player = this.players.get(playerID);
+        if (!player || !player.gameID) {
+            return null;
+        }
+
+        const gameID = player.gameID;
+        const gameResult = this.verifyRPSGame(gameID);
+        if (gameResult < 2 || gameResult > 4) {
+            return null;
+        }
+
+        const rpsGame = this.rpsGame.get(gameID);
+        if (!rpsGame) {
+            return null;
+        }
+
+        let update: RPSDrawPayload | RPSWinnerPayload;
+        if (gameResult === 2) {
+            update = {
+                type: 'rps_draw',
+                playerOne: rpsGame.playerOne,
+                playerTwo: rpsGame.playerTwo,
+                choice: rpsGame.playerOneChoice,
+            };
+        } else {
+            let winner = rpsGame.playerOne;
+            let winnerChoice = rpsGame.playerOneChoice;
+            let loser = rpsGame.playerTwo;
+            let loserChoice = rpsGame.playerTwoChoice;
+
+            if (gameResult === 4) {
+                winner = rpsGame.playerTwo;
+                winnerChoice = rpsGame.playerTwoChoice;
+                loser = rpsGame.playerOne;
+                loserChoice = rpsGame.playerOneChoice;
+            }
+
+            update = {
+                type: 'rps_winner',
+                winner,
+                winnerChoice,
+                loser,
+                loserChoice,
+            };
+        }
+
+        this.removeRPSGame(gameID);
+        return update;
     }
 
     // ====================================================================================================
@@ -362,6 +532,61 @@ export class GameManager {
         return -1;
     }
 
+    handleTTTStart(playerID: string): TTTUpdatePayload[] {
+        const player = this.players.get(playerID);
+        if (!player || player.inGame) {
+            return [];
+        }
+
+        const state = this.startTTTGame(playerID);
+        if (state === 0) {
+            return [];
+        }
+
+        if (state === 1) {
+            player.inGame = true;
+            player.gameID = 'tttGame';
+            return [
+                {
+                    type: 'ttt_playerOne',
+                    id: playerID,
+                },
+            ];
+        }
+
+        if (state === 2) {
+            const playerOneID = this.tttGame.players[0];
+            const playerTwoID = this.tttGame.players[1];
+            if (!playerOneID || !playerTwoID) {
+                return [];
+            }
+
+            const playerOne = this.players.get(playerOneID);
+            const playerTwo = this.players.get(playerTwoID);
+            if (!playerOne || !playerTwo) {
+                return [];
+            }
+
+            player.inGame = true;
+            player.gameID = 'tttGame';
+            return [
+                {
+                    type: 'ttt_playerTwo',
+                    id: playerID,
+                },
+                {
+                    type: 'ttt_start',
+                    playerOne: playerOneID,
+                    playerTwo: playerTwoID,
+                    playerOneNickname: playerOne.nickname,
+                    playerTwoNickname: playerTwo.nickname,
+                },
+            ];
+        }
+
+        return [{ type: 'ttt_reset' }];
+    }
+
     /** Player left the Tic-Tac-Toe game by pressing ESC */
     leaveTTTGame(playerID: string): boolean {
         if (
@@ -373,6 +598,17 @@ export class GameManager {
         }
         this.tttGame = this.createTTTGame();
         return true;
+    }
+
+    handleTTTLeave(playerID: string): TTTLeftPayload | null {
+        const player = this.players.get(playerID);
+        if (!player || !this.leaveTTTGame(playerID)) {
+            return null;
+        }
+
+        player.inGame = false;
+        player.gameID = null;
+        return { type: 'ttt_left' };
     }
 
     resetTTTGameForPlayer(playerID: string): boolean {
@@ -396,6 +632,24 @@ export class GameManager {
 
         this.tttGame = this.createTTTGame();
         return true;
+    }
+
+    resetPlayerGame(playerID: string): boolean {
+        if (this.resetTTTGameForPlayer(playerID)) {
+            return true;
+        }
+
+        const player = this.players.get(playerID);
+        if (!player || !player.gameID) {
+            return false;
+        }
+
+        if (!this.rpsGame.has(player.gameID)) {
+            return false;
+        }
+
+        this.removeRPSGame(player.gameID);
+        return false;
     }
 
     tttMarkField(playerID: string, field: string): TTTMark {
@@ -444,6 +698,77 @@ export class GameManager {
         return TTTMark.O;
     }
 
+    handleTTTMark(playerID: string, data: TTTMarkPayload): TTTUpdatePayload[] {
+        const mark = this.tttMarkField(playerID, data.fieldName);
+        if (mark === TTTMark.Empty) {
+            console.log('Nothing marked: ' + playerID);
+            return [];
+        }
+
+        const updates: TTTUpdatePayload[] = [
+            {
+                type: 'ttt_mark',
+                id: playerID,
+                fieldName: data.fieldName,
+                mark,
+            },
+        ];
+
+        const winningLine = this.checkWin();
+        let winnerNickname: string | null = null;
+        if (winningLine >= 1 && winningLine <= TTT_WINNING_LINES.length) {
+            const winner = this.players.get(playerID);
+            if (!winner) {
+                return updates;
+            }
+            winnerNickname = winner.nickname;
+        } else if (!this.checkDraw()) {
+            return updates;
+        }
+
+        const finishedGame = this.tttGame;
+        finishedGame.state = TTTGameState.Finished;
+        if (winnerNickname !== null) {
+            updates.push({
+                type: 'ttt_win',
+                id: playerID,
+                winner: winningLine,
+                nickname: winnerNickname,
+            });
+        } else {
+            updates.push({ type: 'ttt_draw' });
+        }
+
+        void delay(3000).then(() => {
+            this.resetFinishedTTTGame(finishedGame);
+        });
+        return updates;
+    }
+
+    private resetFinishedTTTGame(finishedGame: TTTGame): void {
+        if (this.tttGame !== finishedGame) {
+            return;
+        }
+
+        const playerOneID = finishedGame.players[0];
+        const playerTwoID = finishedGame.players[1];
+        if (!playerOneID || !playerTwoID) {
+            return;
+        }
+
+        const playerOne = this.players.get(playerOneID);
+        const playerTwo = this.players.get(playerTwoID);
+        if (!playerOne || !playerTwo) {
+            return;
+        }
+
+        playerOne.inGame = false;
+        playerOne.gameID = null;
+        playerTwo.inGame = false;
+        playerTwo.gameID = null;
+        this.tttGame = this.createTTTGame();
+    }
+
     checkWin(): number {
         const board = this.tttGame.board;
         const winningLineIndex = TTT_WINNING_LINES.findIndex(
@@ -458,6 +783,7 @@ export class GameManager {
         );
         return winningLineIndex + 1;
     }
+
     /**
      * false: Game still in progress.
      * true: Draw. No Winner

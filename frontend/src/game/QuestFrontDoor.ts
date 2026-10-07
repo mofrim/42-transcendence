@@ -23,7 +23,7 @@ export class FrontDoorQuest {
     constructor(scene: THREE.Scene, interactionRange: THREE.Vector3) {
         this.interaction = new Interaction(
             scene,
-            QUESTS.ENTER_CAMPUS_TOKEN_QUEST_ID,
+            QUESTS.ENTER_CAMPUS_TOKEN_QUEST_ID.id,
             FRONT_DOOR_POSITION,
             /**  Der Radius, in dem die Taste E gedrückt werden kann */
             interactionRange,
@@ -36,7 +36,7 @@ export class FrontDoorQuest {
         interaction: Interaction,
         completeQuest: QuestCompleteHandler<PlayerAnimationState>
     ): Promise<boolean> {
-        if (interaction.typeID !== QUESTS.ENTER_CAMPUS_TOKEN_QUEST_ID) {
+        if (interaction.typeID !== QUESTS.ENTER_CAMPUS_TOKEN_QUEST_ID.id) {
             return false;
         }
 

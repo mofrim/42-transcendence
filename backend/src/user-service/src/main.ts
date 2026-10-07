@@ -24,6 +24,7 @@ import {
     API_USER,
     QuestIDs,
     type PublicUserProfile,
+    type QuestId,
     type QuestTuple,
 } from 'ftr-common/sharedTypes';
 import { authenticateInternalMid } from 'ftr-common/internalAuth';
@@ -571,9 +572,10 @@ app.post(
 
 app.post(API_USER.quests, authenticate, async (req: Request, res: Response) => {
     const logQst = log.getSubLogger({ name: 'quests' });
+    const questId = req.body.quest as QuestId;
 
-    if (!QuestIDs.some((val) => val === req.body.quest)) {
-        logQst.error(`requested quest '${req.body.quest}' not found in QUESTS`);
+    if (!QuestIDs.some((val) => val === questId)) {
+        logQst.error(`requested quest '${questId}' not found in QUESTS`);
         res.status(400).json(mkApiResponse('Quest not found', 'error'));
         return;
     }
@@ -585,7 +587,7 @@ app.post(API_USER.quests, authenticate, async (req: Request, res: Response) => {
             res.status(401).json(mkApiResponse('User not found', 'error'));
             return;
         }
-        user.quests[req.body.quest] = true;
+        user.quests = { ...user.quests, [questId]: true };
         const result = await userRepo.update(user.id, user);
         if (result.affected !== 1) {
             logQst.warn(`updating quests of uid ${user.id} failed`);
