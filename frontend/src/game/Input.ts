@@ -335,9 +335,6 @@ export class Input {
             case 'KeyD':
                 this.keys[1] = 1;
                 break;
-            case 'KeyO':
-                this.debugCutscene();
-                break;
             case 'KeyP':
                 this.posPrintDebug();
                 break;
@@ -402,15 +399,11 @@ export class Input {
         }
     };
 
-    /** TODO: Remove this function after debugging? */
-    private debugCutscene(): void {
-        const player = this.getPlayer();
-        if (!player) return;
-
-        this.getStoryManager()?.blackHoleCutscene();
-    }
-
-    /** TODO: Remove this function after debugging? */
+    /**
+     * Log players current position to console.
+     *
+     * Keep, as it might be useful for further development.
+     */
     private posPrintDebug(): void {
         const player = this.getPlayer();
         if (!player) return;
