@@ -374,13 +374,13 @@ separate match-history table.
 
 Product Owner, Tech Lead, Project Manager
 
-| Team member                     | Role(s)   | Responsibilities                                                                                   |
-| ------------------------------- | --------- | -------------------------------------------------------------------------------------------------- |
-| Anatolij Semykin (`alice`)   | Developer | Product direction, 3D environment, character assets, visual interactions, and frontend integration |
-| Daniel Helmert (`bob`)     | Developer | Architecture, real-time multiplayer, mini-games, frontend refactoring                              |
-| Moritz Maurer (`freddy`)       | Developer | Architecture, Planning, coordination, build reliability, and integration                           |
-| George Lukas Wagner (`jeff`) | Developer | Feature development, testing, and integration support                                              |
-| Maryam Pazouki (`mandy`)     | Developer | User-facing flows, Database, Documentation                                                         |
+| Team member                     | Role(s)                    | Responsibilities                                                                                   |
+| ------------------------------- | -------------------------- | -------------------------------------------------------------------------------------------------- |
+| Anatolij Semykin (`alice`)   | Developer, Product Owner   | Product direction, 3D environment, character assets, visual interactions, and frontend integration |
+| Daniel Helmert (`bob`)     | Developer, Tech Lead       | Architecture, real-time multiplayer, mini-games, frontend refactoring                              |
+| Moritz Maurer (`freddy`)       | Developer, Project Manager | Architecture, Planning, coordination, build reliability, and integration                           |
+| George Lukas Wagner (`jeff`) | Developer                  | Feature development, testing, and integration support                                              |
+| Maryam Pazouki (`mandy`)     | Developer                  | User-facing flows, Database, Documentation                                                         |
 
 The team shared responsibility for code review, debugging, testing, and
 integration. Role descriptions identify the main areas of responsibility and
