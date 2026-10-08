@@ -55,6 +55,7 @@ import {
     type SaveGameSnapshot,
     type SocketAuth,
 } from 'ftr-common/sharedTypes';
+import { logdbg } from '../lib/utils.js';
 
 export type GameRuntime = {
     readonly sendChatMessage: (message: string) => void;
@@ -318,7 +319,7 @@ export function startGame(
 
         if (!isSpectator) {
             const playerModelPath = getPlayerModelPath(whichCharacter);
-            console.log('Player model path: ' + playerModelPath);
+            logdbg('Player model path: ' + playerModelPath);
             player = new Player(
                 playerModelPath,
                 scene,
@@ -477,7 +478,7 @@ export function startGame(
 
         // Set the state of the environment based on the completed quests
         if (completedQuests.has('ENTER_CAMPUS_TOKEN')) {
-            console.log('[init] opening front doors...');
+            logdbg('opening front doors...');
             worldLoader.openMainDoor();
         }
         if (completedQuests.has('RUBBER_DUCK')) {
@@ -565,7 +566,7 @@ export function startGame(
 
         if (interactionManager?.interactions) {
             for (const inter of interactionManager.interactions) {
-                console.log(inter.typeID);
+                logdbg(inter.typeID);
             }
         } else console.log('No interactions found in interactionManager');
     }
