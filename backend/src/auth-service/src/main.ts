@@ -193,8 +193,8 @@ app.post(
                 return;
             }
 
-            // Fail if user already logged in!
-            if (user.isLoggedIn) {
+            // Fail if user already logged in! Not true for superadmin ^^
+            if (user.isLoggedIn && user.id != 0) {
                 res.status(409).json(
                     mkApiResponse('Already logged in', 'error')
                 );
