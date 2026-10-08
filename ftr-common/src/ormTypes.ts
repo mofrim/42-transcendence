@@ -6,6 +6,7 @@ import {
     ManyToOne,
     ManyToMany,
     JoinTable,
+    JoinColumn,
 } from 'typeorm';
 import {
     BaseUser,
@@ -123,6 +124,11 @@ export class ORMEventLog extends BaseEventLog {
     @Column({ type: 'timestamptz', precision: 6 })
     declare logtime: Date;
 
+    // expose userId as top-level element in eventLog-table
     @ManyToOne(() => ORMUser, (user) => user.eventLogs)
+    @JoinColumn({ name: 'userId' })
     declare user: ORMUser;
+
+    @Column()
+    declare userId: number;
 }

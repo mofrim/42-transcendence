@@ -82,7 +82,7 @@ const DB = new DataSource({
 
 try {
     await DB.initialize();
-    log.info('user-service connected to DB');
+    log.info('eventlog-service connected to DB');
 } catch (err) {
     log.error('Failed to connect to database!');
     log.error(err as Error);
@@ -405,12 +405,18 @@ matchHistoryRoute.post(
 // ------------------------=[ the reset endpoint ]=-------------------------- //
 
 // can be used to reset eventlog during tests / dev
-// NOTE admin only endpoint!
+// WARN admin only endpoint!
 eventLogRoute.delete(
     authenticate,
     async (req: Request, res: Response): Promise<void> => {
         const logDel = log.getSubLogger({ name: 'DELETE' });
-        void req;
+
+        // guard this endpoint
+        if (req.userId !== 0) {
+            logDel.warn('access denied for uid', req.userId);
+            res.status(401).json(mkApiResponse('invalid credentials', 'error'));
+            return;
+        }
 
         try {
             await eventLogRepo.deleteAll();
@@ -434,5 +440,5 @@ eventLogRoute.all((req: Request, res: Response) => {
 // ---------------------=[ finally launch the server ]=--------------------- //
 
 app.listen(PORT, () => {
-    log.info(`EventLog service listening on port ${PORT}`);
+    log.info('EventLog service listening on port', PORT);
 });

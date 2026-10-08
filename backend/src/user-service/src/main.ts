@@ -2,7 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import type { Express, NextFunction, Request, Response } from 'express';
-import { DataSource } from 'typeorm';
+import { DataSource, In } from 'typeorm';
 import { exit } from 'node:process';
 import cookieParser from 'cookie-parser';
 import { Logger, type ILogObj } from 'tslog';
@@ -121,6 +121,7 @@ try {
 }
 
 const userRepo = DB.getRepository(ORMUser);
+const eventRepo = DB.getRepository(ORMEventLog);
 
 // -------------------------=[ user GET endpoints ]=------------------------- //
 
@@ -385,17 +386,27 @@ app.delete(API_USER.root, authenticate, async (req: Request, res: Response) => {
         user.position = PLAYER_START_POSITION;
         user.blackholeTimer = BLACK_HOLE_DURATION_SECONDS;
         user.quests = InitialQuestStatus;
-        user.eventLogs = [];
         user.friends = [];
 
+        // update user table
         const result = await userRepo.update(user.id, user);
         if (result.affected !== 1) {
             logRst.warn(`reset update of uid ${user.id} failed`);
-            res.status(500).json(
-                mkApiResponse('quest update failure', 'error')
-            );
+            res.status(500).json(mkApiResponse('user reset failure', 'error'));
             return;
         }
+
+        // remove everything from eventlog table! result doesn't matter ^^
+        // delete only events relevant to in-game statistics. keep other things
+        // as they might be useful elsewhere
+        await eventRepo.delete({
+            userId: user.id,
+            eventType: In([
+                'MiniGameResult',
+                'QuestCompleted',
+                'PlayerInRange',
+            ]),
+        });
 
         res.status(204).json(mkApiResponse('user reset success', 'success'));
     } catch (err) {
@@ -467,7 +478,16 @@ app.get(API_USER.uid, authenticate, async (req: Request, res: Response) => {
     }
 
     try {
-        const user = await getUserByIdNoPw(DB, userId);
+        // get the whole user record including all relations
+        const user = await userRepo.findOne({
+            where: {
+                id: userId,
+            },
+            relations: {
+                friends: true,
+                eventLogs: true,
+            },
+        });
         if (user === null) {
             logGet.warn(`userId-enpoint queried with wrong uid ${userId}`);
             return res
@@ -656,5 +676,5 @@ app.all(API_USER.root, (req: Request, res: Response) => {
 // ---------------------------=[ launch server ]=--------------------------- //
 
 app.listen(PORT, (): void => {
-    log.info(`user-service listening on port: ${PORT}`);
+    log.info('user-service listening on port', PORT);
 });
