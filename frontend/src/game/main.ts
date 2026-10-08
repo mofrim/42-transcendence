@@ -70,6 +70,7 @@ export type GameRuntime = {
     readonly playIntroCutscene: () => Promise<void>;
     readonly continueDialogue: () => void;
     readonly triggerBlackHoleCutscene: () => void;
+    readonly triggerEndGameCutscene: () => void;
 };
 export type GameMode = NonNullable<SocketAuth['role']>;
 export function startGame(
@@ -116,6 +117,7 @@ export function startGame(
     let rpsGame: RPS_Game | null = null;
     let friendInteraction: FriendInteraction | null = null;
     let storyManager: Story_Manager | null = null;
+    let isEndGameCutsceneActive = false;
     const { promise: storyManagerReady, resolve: resolveStoryManagerReady } =
         Promise.withResolvers<Story_Manager>();
     let interactionManager: InteractionManager | null = null;
@@ -659,6 +661,27 @@ export function startGame(
                 })
                 .finally(() => {
                     isBlackHoleCutsceneActive = false;
+                });
+        },
+        triggerEndGameCutscene(): void {
+            if (
+                renderLoop.isDisposed ||
+                isEndGameCutsceneActive ||
+                isBlackHoleCutsceneActive ||
+                !storyManager
+            ) {
+                return;
+            }
+
+            isEndGameCutsceneActive = true;
+            input.stop();
+            void storyManager
+                .endGameCutscene()
+                .catch((error: unknown) => {
+                    console.error('End game cutscene failed:', error);
+                })
+                .finally(() => {
+                    isEndGameCutsceneActive = false;
                 });
         },
     };

@@ -7,6 +7,7 @@ import {
     EventType,
     User,
     API_USER,
+    QUESTS,
     type QuestTuple,
     type ApiResponse,
     type ReceivedChatPayload,
@@ -40,6 +41,19 @@ const appendSpectatorEvent: (
     event: GameEvent
 ) => Promise<void> = async () => {};
 
+function areAllQuestsCompleted(completedQuestIds: readonly string[]): boolean {
+    const completedQuestIdSet = new Set(completedQuestIds);
+    const blackHoleQuestCompleted = completedQuestIdSet.has(
+        QUESTS.START_EVALUATION_QUEST_ID.id
+    );
+
+    return Object.values(QUESTS).every((quest) =>
+        quest.id === QUESTS.BLACK_HOLE_QUEST_ID.id
+            ? blackHoleQuestCompleted
+            : completedQuestIdSet.has(quest.id)
+    );
+}
+
 // the start-button. all this does is setting the gameRunning state var
 export const StartButton: React.FC = () => {
     const { setGameRunning } = useLoginContext();
@@ -71,6 +85,8 @@ export const Game: React.FC<{
     // using ref here a lot because th
     const mountRef = useRef<HTMLDivElement>(null);
     const gameRuntimeRef = useRef<GameRuntime | null>(null);
+    const completedQuestIdsRef = useRef<string[]>([]);
+    const endGameCutsceneStartedRef = useRef(false);
     const metPlayerNicknamesRef = useRef(new Set<string>());
     const playerJoinedLoggedRef = useRef(false);
     const sawIntroCutsceneRef = useRef(
@@ -132,6 +148,7 @@ export const Game: React.FC<{
             ];
 
             gameRuntimeRef.current?.updateQuestStatus(completedQsts);
+            completedQuestIdsRef.current = completedQsts;
             setCompletedQuestIds(completedQsts);
             handleSaveGameStateRestore(snapshot);
 
@@ -237,9 +254,26 @@ export const Game: React.FC<{
             if (event.eventType === EventType.MiniGameResult) {
                 void saveMatchResult(event);
             }
-            setCompletedQuestIds((currentQuestIds) =>
-                applyQuestCompletionEvent(currentQuestIds, event)
+
+            const currentQuestIds = completedQuestIdsRef.current;
+            const nextQuestIds = applyQuestCompletionEvent(
+                currentQuestIds,
+                event
             );
+            if (nextQuestIds === currentQuestIds) {
+                return;
+            }
+
+            completedQuestIdsRef.current = nextQuestIds;
+            setCompletedQuestIds(nextQuestIds);
+
+            if (
+                !endGameCutsceneStartedRef.current &&
+                areAllQuestsCompleted(nextQuestIds)
+            ) {
+                endGameCutsceneStartedRef.current = true;
+                gameRuntimeRef.current?.triggerEndGameCutscene();
+            }
         },
         [appendEvent, saveMatchResult]
     );
@@ -300,6 +334,8 @@ export const Game: React.FC<{
         setIsGameplayReady(false);
         playerJoinedLoggedRef.current = false;
         metPlayerNicknamesRef.current.clear();
+        completedQuestIdsRef.current = [];
+        endGameCutsceneStartedRef.current = false;
         setCompletedQuestIds([]);
         resetSaveGame();
         resetFriendRequest();
