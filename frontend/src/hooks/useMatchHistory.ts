@@ -20,6 +20,7 @@ import {
     describeGameEvent,
     getGameEventProfileNicknames,
 } from '../lib/eventLogUtils.ts';
+import { logdbg } from '../lib/utils.ts';
 
 const MATCH_HISTORY_DATE_TIME_FORMAT = new Intl.DateTimeFormat(undefined, {
     dateStyle: 'short',
@@ -62,7 +63,7 @@ export function useMatchHistory({ isSpectator }: UseMatchHistoryOptions) {
         const controller = new AbortController();
 
         const loadMatchHistory = async (): Promise<void> => {
-            console.log('Loading MatchHistory from DB...');
+            logdbg('Loading MatchHistory from DB...');
             try {
                 const response = await axios.get<
                     ApiResponse<MatchHistResponse[]>

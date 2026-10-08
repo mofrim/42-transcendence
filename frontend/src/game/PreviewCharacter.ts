@@ -4,6 +4,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import type { Character } from 'ftr-common/sharedTypes';
 import { createResourceDisposer } from './ResourceDisposer.js';
 import { getPlayerModelPath } from './Assets.js';
+import { logdbg } from '../lib/utils.js';
 
 interface CharacterPreviewOptions {
     canvas?: HTMLCanvasElement | null;
@@ -212,7 +213,7 @@ export function createCharacterPreview({
             renderer.dispose();
             // Release the character preview immediately after disposing the renderer
             renderer.forceContextLoss();
-            console.log('characterPreview successfully disposed!');
+            logdbg('characterPreview successfully disposed!');
         },
     };
 }

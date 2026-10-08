@@ -7,6 +7,7 @@ import { MODEL_DOOR_A, MODEL_DOOR_B, MODEL_DOOR_MAIN } from './Assets.js';
 import type { ResourceDisposer } from './ResourceDisposer.js';
 
 import { type GLBMesh, type TTTMeshBoard } from 'ftr-common/sharedTypes';
+import { logdbg } from '../lib/utils.ts';
 
 type WorldLoaderOptions = {
     readonly scene: THREE.Scene;
@@ -81,19 +82,19 @@ export class WorldLoader {
             }
 
             if (path === MODEL_DOOR_A) {
-                console.log(mesh.name + ' added to groupDoorA');
+                logdbg(mesh.name + ' added to groupDoorA');
                 this.doorMeshNames.push(mesh.name);
                 this.doorGroupA.add(object);
                 this.worldOctreeInteractive.fromGraphNode(object);
             }
             if (path === MODEL_DOOR_B) {
-                console.log(mesh.name + ' added to groupDoorB');
+                logdbg(mesh.name + ' added to groupDoorB');
                 this.doorMeshNames.push(mesh.name);
                 this.doorGroupB.add(object);
                 this.worldOctreeInteractive.fromGraphNode(object);
             }
             if (path === MODEL_DOOR_MAIN) {
-                console.log(mesh.name + ' added to groupDoorMain');
+                logdbg(mesh.name + ' added to groupDoorMain');
                 this.doorMeshNames.push(mesh.name);
                 this.doorGroupMain.add(object);
                 this.worldOctreeInteractive.fromGraphNode(object);
@@ -170,7 +171,7 @@ export class WorldLoader {
 
             const openDoor = () => {
                 cr -= move;
-                console.log('cr: ' + cr);
+                logdbg('cr: ' + cr);
                 this.doorGroupA.rotation.y = cr;
 
                 if (cr > doorOpenValue) {
@@ -193,7 +194,7 @@ export class WorldLoader {
 
             const openDoor = () => {
                 cr += move;
-                console.log('cr: ' + cr);
+                logdbg('cr: ' + cr);
                 this.doorGroupB.rotation.y = cr;
 
                 if (cr < doorOpenValue) {

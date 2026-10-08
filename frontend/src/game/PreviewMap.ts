@@ -5,6 +5,7 @@ import { createResourceDisposer } from './ResourceDisposer.js';
 import { MODEL_MAP } from './Assets.js';
 import { type GLBMesh } from 'ftr-common/sharedTypes';
 import { IMG_GRADIENT } from './Assets.js';
+import { logdbg } from '../lib/utils.js';
 
 const MAX_PIXEL_RATIO = 1.5;
 const ROTATION_SPEED = THREE.MathUtils.degToRad(0.1);
@@ -467,7 +468,7 @@ export function createMapPreview({
             scene.clear();
             renderer.dispose();
             renderer.forceContextLoss();
-            console.log('mapPreview successfully disposed!');
+            logdbg('mapPreview successfully disposed!');
         },
     };
 }
