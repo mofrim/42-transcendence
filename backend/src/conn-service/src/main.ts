@@ -423,6 +423,26 @@ io.on('connection', async (socket) => {
                 break;
             case 'black_hole_timeout':
                 saveGame.clearForBlackHoleTimeout(playerUserId, socket.id);
+                for (const update of gameManager.handleBlackHoleTimeout(
+                    socket.id
+                )) {
+                    if (update.type === 'rps_winner') {
+                        io.to([update.winner, update.loser]).emit(
+                            'update',
+                            update
+                        );
+                    } else if (
+                        update.type === 'rps_accept' ||
+                        update.type === 'rps_decline'
+                    ) {
+                        io.to([update.id, update.requestedPlayerID]).emit(
+                            'update',
+                            update
+                        );
+                    } else {
+                        io.emit('update', update);
+                    }
+                }
                 break;
             case 'save_game_restart':
                 saveGame.restartAfterBlackHole(

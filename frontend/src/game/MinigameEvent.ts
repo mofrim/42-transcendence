@@ -38,6 +38,7 @@ type MinigameEventOptions = {
     readonly getMultiplayer: () => MultiplayerManager | null;
     readonly getTTTGame: () => TTT_Game | null;
     readonly getRPSGame: () => RPS_Game | null;
+    readonly isBlackHoleActive: () => boolean;
     readonly onGameEvent: ((event: GameEvent) => void) | undefined;
 };
 
@@ -60,15 +61,22 @@ export class MinigameEvent {
             this.reset();
         },
         onTTTMark: this.handleTTTUpdate.bind(this),
-        onTTTWin: this.handleTTTWin.bind(this),
-        onTTTDraw: this.handleTTTDraw.bind(this),
+        onTTTWin: this.handleTTTResult.bind(this),
+        onTTTDraw: this.handleTTTResult.bind(this),
         onRPSRequest: this.handleRPSRequest.bind(this),
         onRPSAccept: this.handleRPSAccept.bind(this),
         onRPSDecline: this.handleRPSDecline.bind(this),
         onRPSWinner: this.handleRPSWinner.bind(this),
         onRPSDraw: this.handleRPSDraw.bind(this),
         onRPSInvalid: this.handleRPSInvalid.bind(this),
+        onPlayerDisconnected: (id: string): void => {
+            const rpsGame = this.options.getRPSGame();
+            if (rpsGame?.battleRequestedPlayer === id) {
+                rpsGame.resetRPSGame();
+            }
+        },
         onDisconnect: (): void => {
+            this.options.getRPSGame()?.resetRPSGame();
             void this.options.getTTTGame()?.endGame();
         },
     };
@@ -147,6 +155,10 @@ export class MinigameEvent {
         console.log('Invalid RPS choice received.');
         const rpsGame = this.options.getRPSGame();
         if (!rpsGame) return;
+        if (this.options.isBlackHoleActive()) {
+            rpsGame.resetRPSGame();
+            return;
+        }
         rpsGame.yourChoice = RPSChoice.None;
         rpsGame.opponentChoice = RPSChoice.None;
         rpsGame.solutionRPSAnimation();
@@ -176,7 +188,11 @@ export class MinigameEvent {
             this.resolvePlayerNickname(opponentId)
         );
 
-        rpsGame.solutionRPSAnimation();
+        if (this.options.isBlackHoleActive()) {
+            rpsGame.resetRPSGame();
+            return;
+        }
+        rpsGame.solutionRPSAnimation('draw');
     }
 
     private handleRPSWinner(data: RPSWinnerPayload): void {
@@ -191,7 +207,7 @@ export class MinigameEvent {
         );
         if (opponentId === null) return;
 
-        let outcome: NonNullable<EventDataMiniGameResult['outcome']>;
+        let outcome: EventDataMiniGameResult['outcome'];
         let yourChoice: RPSChoice;
         let opponentChoice: RPSChoice;
 
@@ -212,14 +228,18 @@ export class MinigameEvent {
             outcome,
             this.resolvePlayerNickname(opponentId)
         );
+        if (this.options.isBlackHoleActive()) {
+            rpsGame.resetRPSGame();
+            return;
+        }
         rpsGame.yourChoice = yourChoice;
         rpsGame.opponentChoice = opponentChoice;
-        rpsGame.solutionRPSAnimation();
+        rpsGame.solutionRPSAnimation(outcome);
     }
 
     private handleRPSAccept(data: RPSRequestDataPayload): void {
         const player = this.getRequestedLocalPlayer(data);
-        if (!player) return;
+        if (!player || this.options.isBlackHoleActive()) return;
 
         const rpsGame = this.options.getRPSGame();
         if (!rpsGame) return;
@@ -233,7 +253,8 @@ export class MinigameEvent {
         console.log('Battle accepted from player ' + data.id);
         rpsGame.startRPSAnimation(
             this.options.localCharacter,
-            opponentPlayer.character
+            opponentPlayer.character,
+            data.id
         );
     }
 
@@ -243,8 +264,7 @@ export class MinigameEvent {
 
         const rpsGame = this.options.getRPSGame();
         if (!rpsGame) return;
-        player.battleRequested = false;
-        player.youSendRPGRequest = false;
+        rpsGame.resetRPSGame();
 
         const multiplayer = this.options.getMultiplayer();
         if (!multiplayer) return;
@@ -257,6 +277,10 @@ export class MinigameEvent {
     private handleRPSRequest(data: RPSRequestDataPayload): void {
         const player = this.getRequestedLocalPlayer(data);
         if (!player) return;
+        if (this.options.isBlackHoleActive()) {
+            this.options.getMultiplayer()?.emitBattleDecline(data.id);
+            return;
+        }
 
         player.battleRequested = true;
 
@@ -314,43 +338,44 @@ export class MinigameEvent {
                 data.playerTwoNickname
             ),
         };
+        if (opponentId !== null && this.options.isBlackHoleActive()) {
+            tttGame.resetGame();
+        }
     }
 
-    private handleTTTWin(data: TTTWinPayload): void {
+    private handleTTTResult(data: TTTWinPayload | TTTDrawPayload): void {
         const tttGame = this.options.getTTTGame();
         if (!tttGame) return;
 
         const localPlayerId = this.options.getPlayer()?.id;
-        if (localPlayerId) {
-            let outcome: NonNullable<EventDataMiniGameResult['outcome']> =
-                'lost';
-            if (data.id === localPlayerId) {
-                outcome = 'won';
-            }
-            this.emitLocalTTTResult(localPlayerId, outcome);
+        let outcome: EventDataMiniGameResult['outcome'];
+        if (data.type === 'ttt_draw') {
+            outcome = 'draw';
+        } else if (data.id === localPlayerId) {
+            outcome = 'won';
+        } else {
+            outcome = 'lost';
         }
 
-        tttGame.drawWin(data.winner);
-        tttGame.winner(data.id, data.nickname);
-        tttGame.endGame();
-        this.reset();
-    }
+        this.emitLocalTTTResult(localPlayerId, outcome);
 
-    private handleTTTDraw(_data: TTTDrawPayload): void {
-        const tttGame = this.options.getTTTGame();
-        if (!tttGame) return;
-        void _data;
-
-        this.emitLocalTTTResult(this.options.getPlayer()?.id, 'draw');
-
-        tttGame.draw();
-        tttGame.endGame();
+        if (this.options.isBlackHoleActive()) {
+            tttGame.resetGame();
+        } else {
+            if (data.type === 'ttt_win') {
+                tttGame.drawWin(data.winner);
+                tttGame.winner(data.id, data.nickname);
+            } else {
+                tttGame.draw();
+            }
+            void tttGame.endGame();
+        }
         this.reset();
     }
 
     private emitLocalTTTResult(
         localPlayerId: string | undefined,
-        outcome: NonNullable<EventDataMiniGameResult['outcome']>
+        outcome: EventDataMiniGameResult['outcome']
     ): void {
         const opponent = this.getActiveTTTOpponent(localPlayerId);
         if (!opponent) return;
@@ -380,8 +405,8 @@ export class MinigameEvent {
     }
 
     private emitLocalGameResult(
-        game: NonNullable<EventDataMiniGameResult['game']>,
-        outcome: NonNullable<EventDataMiniGameResult['outcome']>,
+        game: EventDataMiniGameResult['game'],
+        outcome: EventDataMiniGameResult['outcome'],
         opponentNickname: string
     ): void {
         this.options.onGameEvent?.({

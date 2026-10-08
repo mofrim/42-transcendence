@@ -640,6 +640,76 @@ export class GameManager {
         return false;
     }
 
+    /** while playing minigames a player could timeout into the black hole */
+    handleBlackHoleTimeout(
+        playerID: string
+    ): (TTTUpdatePayload | RPSWinnerPayload | RPSAcceptDeclinePayload)[] {
+        const player = this.players.get(playerID);
+        if (!player) {
+            return [];
+        }
+
+        if (this.tttGame.players.includes(playerID)) {
+            const opponentID = this.tttGame.players.find(
+                (id) => id !== null && id !== playerID
+            );
+            const opponent = this.players.get(opponentID ?? '');
+
+            const updates: TTTUpdatePayload[] = [];
+            if (this.tttGame.state === TTTGameState.InGame && opponent) {
+                updates.push({
+                    type: 'ttt_win',
+                    id: opponent.id,
+                    // A forfeit has no winning board line.
+                    winner: 0,
+                    nickname: opponent.nickname,
+                });
+            }
+
+            this.resetTTTGameForPlayer(playerID);
+            updates.push({ type: 'ttt_reset' });
+            return updates;
+        }
+
+        if (!player.gameID) {
+            return [];
+        }
+        const game = this.rpsGame.get(player.gameID);
+        if (!game) {
+            return [];
+        }
+
+        let opponentID: string;
+        if (game.playerOne === playerID) {
+            opponentID = game.playerTwo;
+        } else if (game.playerTwo === playerID) {
+            opponentID = game.playerOne;
+        } else {
+            return [];
+        }
+
+        let update: RPSWinnerPayload | RPSAcceptDeclinePayload;
+        if (game.state === RPSGameState.InGame) {
+            update = {
+                type: 'rps_winner',
+                winner: opponentID,
+                winnerChoice: RPSChoice.None,
+                loser: playerID,
+                loserChoice: RPSChoice.None,
+                forfeit: true,
+            };
+        } else {
+            update = {
+                type: 'rps_decline',
+                id: playerID,
+                requestedPlayerID: opponentID,
+            };
+        }
+
+        this.removeRPSGame(game.gameID);
+        return [update];
+    }
+
     tttMarkField(playerID: string, field: string): TTTMark {
         if (this.tttGame.state !== TTTGameState.InGame) {
             return TTTMark.Empty;

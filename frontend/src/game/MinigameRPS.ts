@@ -15,23 +15,20 @@ import {
     setPlayerOverlay,
 } from './GameOverlay';
 import { createResourceDisposer } from './ResourceDisposer';
-import type { Socket } from 'socket.io-client';
-import { RPSChoice } from 'ftr-common/sharedTypes';
+import {
+    RPSChoice,
+    type EventDataMiniGameResult,
+} from 'ftr-common/sharedTypes';
 
 const BATTLE_PROMPT_TEXT = '⌨️ [B] Battle Challenge';
 const BATTLE_PROMPT_SIZE = 20;
 const BATTLE_PROMPT_HEIGHT = 1.6;
 const RPS_FAST_ANIMATION_STEP = 0.0075;
-const RPS_WINNING_MATCHUPS = [
-    [RPSChoice.Rock, RPSChoice.Scissors],
-    [RPSChoice.Paper, RPSChoice.Rock],
-    [RPSChoice.Scissors, RPSChoice.Paper],
-] as const;
 
 export class RPS_Game extends MinigameOverlay {
-    socket: Socket;
     player: Player;
 
+    /** Opponent socket ID, retained from the invitation until the round ends. */
     battleRequestedPlayer: string;
     private readonly battlePrompt: FloatingTextSprite;
     private readonly getNearbyPlayer: () => Remote_Player | null;
@@ -53,13 +50,11 @@ export class RPS_Game extends MinigameOverlay {
 
     constructor(
         scene: THREE.Scene,
-        socket: Socket,
         player: Player,
         renderer: THREE.WebGLRenderer,
         getNearbyPlayer: () => Remote_Player | null
     ) {
         super();
-        this.socket = socket;
         this.player = player;
 
         this.battleRequestedPlayer = '';
@@ -131,12 +126,14 @@ export class RPS_Game extends MinigameOverlay {
 
     startRPSAnimation(
         playerCharacter: boolean,
-        opponentCharacter: boolean
+        opponentCharacter: boolean,
+        opponentPlayerId: string
     ): void {
         if (this.disposed) {
             return;
         }
 
+        this.battleRequestedPlayer = opponentPlayerId;
         setPlayerOverlay(
             this.rpsSprite,
             playerCharacter,
@@ -213,12 +210,14 @@ export class RPS_Game extends MinigameOverlay {
     }
 
     /** will be called from main */
-    solutionRPSAnimation(): void {
+    solutionRPSAnimation(outcome?: EventDataMiniGameResult['outcome']): void {
         if (this.disposed) {
             return;
         }
 
         this.animationFrameSlot.cancel();
+        this.inBattleChooseMode = false;
+        this.removeText();
         console.log('RPS Solution Animation Start');
 
         const userASprite = this.rpsSprite.get('UserA');
@@ -233,7 +232,7 @@ export class RPS_Game extends MinigameOverlay {
         userASprite!.position.set(0, MINIGAME_OVERLAY_Y, 0);
         userBSprite!.position.set(0, MINIGAME_OVERLAY_Y, 0);
 
-        this.verifyRPSWinner();
+        this.showRPSResult(outcome);
 
         if (
             this.yourChoice !== RPSChoice.None &&
@@ -254,43 +253,34 @@ export class RPS_Game extends MinigameOverlay {
             MINIGAME_RESULT_ANIMATION_STEP,
             -1,
             this.animationFrameSlot,
-            () => {
-                this.overlayScene.remove(...solutionSprites);
-
-                this.removeText();
-                this.resetRPSGame();
-
-                this.socket.emit('update', {
-                    type: 'game_reset',
-                });
-            }
+            () => this.resetRPSGame()
         );
     }
 
-    verifyRPSWinner(): void {
-        if (
-            this.yourChoice === RPSChoice.None ||
-            this.opponentChoice === RPSChoice.None
-        ) {
+    private showRPSResult(outcome?: EventDataMiniGameResult['outcome']): void {
+        if (outcome === undefined) {
             this.addText('Invalid Round...', 0, -0.225, 125);
             console.log('No Winner. Choices not made yet!');
             return;
         }
 
-        if (this.yourChoice === this.opponentChoice)
+        if (outcome === 'draw') {
             this.addText("🤝 It's a draw!", 0, -0.225, 125);
-        else if (
-            RPS_WINNING_MATCHUPS.some(
-                ([yourChoice, opponentChoice]) =>
-                    this.yourChoice === yourChoice &&
-                    this.opponentChoice === opponentChoice
-            )
-        )
+        } else if (outcome === 'won') {
             this.addText('🏆 You win!', 0, -0.225, 100);
-        else this.addText('You lose!', 0, -0.225, 100);
+        } else {
+            this.addText('You lose!', 0, -0.225, 100);
+        }
     }
 
     resetRPSGame(): void {
+        if (this.disposed) {
+            return;
+        }
+
+        this.animationFrameSlot.cancel();
+        this.removeText();
+        this.overlayScene.clear();
         this.rps_choiceMade = false;
         this.yourChoice = RPSChoice.None;
         this.opponentChoice = RPSChoice.None;
@@ -298,6 +288,8 @@ export class RPS_Game extends MinigameOverlay {
         this.player.inRPSBattleMode = false;
         this.inBattleChooseMode = false;
         this.player.youSendRPGRequest = false;
+        this.player.battleRequested = false;
+        this.battleRequestedPlayer = '';
     }
 
     render(): void {
@@ -309,14 +301,12 @@ export class RPS_Game extends MinigameOverlay {
             return;
         }
 
+        this.resetRPSGame();
         this.disposed = true;
-        this.animationFrameSlot.cancel();
-        this.removeText();
 
         this.battlePrompt.hide();
         this.resourceDisposer.disposeObject3D(this.battlePrompt);
 
         disposeOverlaySprites(this.rpsSprite, this.resourceDisposer);
-        this.overlayScene.clear();
     }
 }

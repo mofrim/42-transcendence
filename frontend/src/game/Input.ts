@@ -168,7 +168,8 @@ export class Input {
                 multiplayer.emitBattleAccept(rpsGame.battleRequestedPlayer);
                 rpsGame.startRPSAnimation(
                     this.whichCharacter,
-                    opponentPlayer.character
+                    opponentPlayer.character,
+                    opponentPlayer.id
                 );
             } else console.log('Player ID empty, cannot send accept request.');
         } else {
@@ -275,7 +276,12 @@ export class Input {
     }
 
     private readonly onClick = (event: MouseEvent): void => {
-        if (this.isLocalPlayerDespawning()) return;
+        if (
+            this.isLocalPlayerDespawning() ||
+            this.getStoryManager()?.inCutscene
+        ) {
+            return;
+        }
         this.tttPointer.set(
             THREE.MathUtils.mapLinear(
                 event.clientX,
@@ -347,6 +353,13 @@ export class Input {
         if (!player || this.isLocalPlayerDespawning()) return;
         this.keyStates[event.code] = false;
         player.controls.key = this.keys;
+        const storyManager = this.getStoryManager();
+        if (storyManager?.inCutscene) {
+            if (event.code === 'Escape') {
+                storyManager.skipCameraAnimation = true;
+            }
+            return;
+        }
         switch (event.code) {
             case 'ArrowUp':
             case 'KeyW':

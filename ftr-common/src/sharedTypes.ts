@@ -644,6 +644,7 @@ export type RPSWinnerPayload = {
     winnerChoice: RPSChoice;
     loser: string;
     loserChoice: RPSChoice;
+    forfeit?: boolean;
 };
 
 export type RPSAcceptDeclinePayload = {

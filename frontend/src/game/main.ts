@@ -125,6 +125,7 @@ export function startGame(
     } = Promise.withResolvers<readonly string[]>();
     let isLocalPlayerDespawning = false;
     let localPlayerDespawnPromise: Promise<void> | null = null;
+    let isBlackHoleCutsceneActive = false;
     const tokenQuestFrontdesk = new TokenQuestFrontdesk(onGameEvent);
     const minigameEvent = new MinigameEvent({
         user,
@@ -134,6 +135,7 @@ export function startGame(
         getMultiplayer: () => multiplayer,
         getTTTGame: () => tttGame,
         getRPSGame: () => rpsGame,
+        isBlackHoleActive: () => isBlackHoleCutsceneActive,
         onGameEvent,
     });
 
@@ -169,6 +171,7 @@ export function startGame(
         }
 
         stopLocalInput();
+        rpsGame?.dispose();
 
         localPlayerDespawnPromise = (async () => {
             try {
@@ -358,7 +361,6 @@ export function startGame(
             );
             rpsGame = new RPS_Game(
                 scene,
-                socket,
                 player,
                 renderer,
                 () => multiplayer?.getNearbyPlayer() ?? null
@@ -631,16 +633,32 @@ export function startGame(
             storyManager?.continueDialogue();
         },
         triggerBlackHoleCutscene(): void {
-            if (renderLoop.isDisposed) {
+            if (
+                renderLoop.isDisposed ||
+                isBlackHoleCutsceneActive ||
+                !storyManager
+            ) {
                 return;
             }
+            isBlackHoleCutsceneActive = true;
+            input.stop();
+            // Keep MinigameEvent's participants until the server result arrives.
+            tttGame?.resetGame();
+            rpsGame?.resetRPSGame();
             multiplayer?.emitBlackHoleTimeout();
-            multiplayer?.emitGameReset();
-            void storyManager?.blackHoleCutscene(true).then(() => {
-                if (!renderLoop.isDisposed) {
-                    onGameplayReady?.();
-                }
-            });
+            void storyManager
+                .blackHoleCutscene(true)
+                .then(() => {
+                    if (!renderLoop.isDisposed) {
+                        onGameplayReady?.();
+                    }
+                })
+                .catch((error: unknown) => {
+                    console.error('Black Hole cutscene failed:', error);
+                })
+                .finally(() => {
+                    isBlackHoleCutsceneActive = false;
+                });
         },
     };
 }

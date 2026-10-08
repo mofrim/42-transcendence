@@ -77,6 +77,7 @@ type MultiplayerGameHandlers = {
     readonly onRPSWinner?: (data: RPSWinnerPayload) => void;
     readonly onRPSDraw?: (data: RPSDrawPayload) => void;
     readonly onRPSInvalid?: (data: RPSInvalidPayload) => void;
+    readonly onPlayerDisconnected?: (id: string) => void;
     readonly onDisconnect?: (reason: string) => void;
 };
 
@@ -306,6 +307,7 @@ export class MultiplayerManager {
 
     private readonly handlePlayerDisconnected = (id: string): void => {
         console.log('someone left:', id);
+        this.gameHandlers.onPlayerDisconnected?.(id);
         const disconnectedPlayer = this.players.get(id);
         this.onGameEvent?.({
             eventType: EventType.PlayerLeft,
@@ -543,16 +545,6 @@ export class MultiplayerManager {
     emitTTTLeave(): void {
         this.socket.emit('update', {
             type: 'ttt_leave',
-        });
-    }
-
-    emitGameReset(): void {
-        if (!this.socket.connected) {
-            return;
-        }
-
-        this.socket.emit('update', {
-            type: 'game_reset',
         });
     }
 
