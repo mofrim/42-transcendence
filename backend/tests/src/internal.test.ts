@@ -46,7 +46,7 @@ describe('token minting & verification', () => {
     it('should authenticate and receive a JWT cookie', async () => {
         const res = await request(authBaseUrl)
             .post('/api/login')
-            .send({ nickname: 'freddy', password: 'Moritz' });
+            .send({ nickname: 'freddy', password: process.env['FMAURER_PW'] });
         expect(res.headers['set-cookie']).toBeDefined();
         if ('set-cookie' in res.headers) {
             authCookie = res.headers['set-cookie'] as string;

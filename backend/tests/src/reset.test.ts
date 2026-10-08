@@ -1,5 +1,8 @@
 import request from 'supertest';
 import { API_EVENTLOG, API_USER } from 'ftr-common/sharedTypes';
+import dotenv from 'dotenv';
+
+dotenv.config({ path: '../../dev.env', quiet: true });
 
 const userBaseUrl = 'http://localhost:3003';
 const authBaseUrl = 'http://localhost:3001';
@@ -13,7 +16,7 @@ describe('basic get cookie test', () => {
     it('should authenticate and receive a JWT cookie as freddy', async () => {
         const res = await request(authBaseUrl)
             .post('/api/login')
-            .send({ nickname: 'freddy', password: 'Moritz' });
+            .send({ nickname: 'freddy', password: process.env['FMAURER_PW'] });
         expect(res.headers['set-cookie']).toBeDefined();
         if ('set-cookie' in res.headers) {
             authCookieFm = res.headers['set-cookie'] as string;
@@ -21,9 +24,10 @@ describe('basic get cookie test', () => {
     });
 
     it('should authenticate and receive a JWT cookie', async () => {
-        const res = await request(authBaseUrl)
-            .post('/api/login')
-            .send({ nickname: 'mandy', password: 'Maryam' });
+        const res = await request(authBaseUrl).post('/api/login').send({
+            nickname: 'mandy',
+            password: process.env['MPAZOUKI_PW'],
+        });
         expect(res.headers['set-cookie']).toBeDefined();
         if ('set-cookie' in res.headers) {
             authCookieMp = res.headers['set-cookie'] as string;
@@ -31,16 +35,16 @@ describe('basic get cookie test', () => {
     });
 
     it('should authenticate and receive a JWT cookie', async () => {
-        const res = await request(authBaseUrl)
-            .post('/api/login')
-            .send({ nickname: 'superadmin', password: process.env['FTR_ROOT_PW'] });
+        const res = await request(authBaseUrl).post('/api/login').send({
+            nickname: 'superadmin',
+            password: process.env['FTR_ROOT_PW'],
+        });
         expect(res.headers['set-cookie']).toBeDefined();
         if ('set-cookie' in res.headers) {
             authCookieS = res.headers['set-cookie'] as string;
         }
     });
 });
-
 
 describe('resetting eventlog table for tests', () => {
     it('delete all eventlog', async () => {
@@ -158,7 +162,6 @@ describe('matchhist test', () => {
     });
 });
 
-
 describe('reset test', () => {
     it('try to reset the user Fm', async () => {
         const res = await request(userBaseUrl)
@@ -213,7 +216,6 @@ describe('after reset test', () => {
         expect(res.body.data.eventLogs[0].eventType).toEqual('PlayerLeft');
     });
 });
-
 
 // WARN don't forget to logout again!
 describe('basic get cookie test', () => {
