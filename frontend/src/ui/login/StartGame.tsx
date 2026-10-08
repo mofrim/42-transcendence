@@ -121,6 +121,7 @@ export const Game: React.FC<{
             }
 
             // merge quests from DB with possible quests from snapshot..
+            //
             // QUESTION what is the scenario for quests not being saved to DB
             // but to the snapshot?
             completedQsts = [
@@ -470,9 +471,6 @@ export const Game: React.FC<{
             {isSaveGameReady && (
                 <GameUI
                     key={gameResetVersion + ':' + blackHoleRestore.version}
-                    // NOTE now we can just use the users nickname from DB here..
-                    // this might change when we want to allow change user-prefs
-                    // from a in-game ui
                     nickname={user!.nickname}
                     email={user!.email}
                     character={character}

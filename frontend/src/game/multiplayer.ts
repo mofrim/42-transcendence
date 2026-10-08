@@ -304,7 +304,6 @@ export class MultiplayerManager {
         );
     };
 
-    // FIXME clarify EventData for this event!
     private readonly handlePlayerDisconnected = (id: string): void => {
         console.log('someone left:', id);
         const disconnectedPlayer = this.players.get(id);

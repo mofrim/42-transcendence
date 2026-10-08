@@ -31,7 +31,7 @@ export class LostTokenQuest {
             true
         );
 
-        /** TODO: leider kein 3D Modell für den Schlüssel habe */
+        // NOTE: leider kein 3D Modell für den Schlüssel habe
         this.marker = new CanvasTextSprite('🔑', 100, true);
         this.marker.position
             .copy(LOST_TOKEN_POSITION)
@@ -143,7 +143,6 @@ export class TokenQuestFrontdesk {
                 senderType: 'npc',
             },
             logtime: new Date(),
-            // FIXME is this save and working?
             user: new User({ nickname: FRONTDESK_NICKNAME }),
         });
     }

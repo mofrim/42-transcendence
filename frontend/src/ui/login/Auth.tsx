@@ -1,6 +1,5 @@
 import { useAuth } from '../../hooks/useAuthContext';
 
-// TODO add proper login / auth logic here
 export const AuthInputs: React.FC = () => {
     const { user } = useAuth();
 

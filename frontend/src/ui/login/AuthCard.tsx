@@ -16,7 +16,7 @@ interface LoginFormProps {
 const LoginForm: React.FC<LoginFormProps> = ({
     onSwitchToRegister,
 }: LoginFormProps) => {
-    // TODO this could be the state var for displaying a spinner or so..
+    // NOTE this could be the state var for displaying a spinner or so..
     // not really used so far but maybe later. if not -> remove
     const [loading, setLoading] = useState(false);
 

@@ -90,8 +90,6 @@ export const describeGameEvent = (event: GameEvent): string => {
         case 'Blackholed':
             return `${event.user.nickname} got blackholed`;
         default:
-            // QUESTION
-            // FIXME can we ever reach this? Are all possible events handled
             return `Something else happened...`;
     }
 };

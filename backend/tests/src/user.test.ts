@@ -20,7 +20,6 @@ describe('basic get cookie test', () => {
     it('should authenticate as root and receive a JWT cookie', async () => {
         const res = await request(authBaseUrl)
             .post('/api/login')
-            // FIXME obfuscate pw here! how?
             .send({ nickname: 'root', password: process.env['FTR_ROOT_PW'] });
         expect(res.statusCode).toEqual(200);
         expect(res.headers['set-cookie']).toBeDefined();

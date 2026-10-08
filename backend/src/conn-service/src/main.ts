@@ -380,7 +380,6 @@ io.on('connection', async (socket) => {
         }
     });
 
-    // NEXT
     // NOTE: from an anti-cheat / backend-frontend trust-design - perspective it
     // would be the correct workflow to let the Quests emit update events which
     // then would be collected here and corresponding action be taken like
