@@ -248,7 +248,8 @@ export class Input {
             console.log('No player in range to interact with.');
             return;
         }
-        multiplayer.emitBattleRequest(nearbyPlayer.id);
+        if (!nearbyPlayer.battleRequested && !this.getRPSGame()?.inBattleMode)
+            multiplayer.emitBattleRequest(nearbyPlayer.id);
     }
 
     private onPressF(): void {

@@ -216,7 +216,6 @@ export class RPS_Game extends MinigameOverlay {
         }
 
         this.animationFrameSlot.cancel();
-        this.inBattleChooseMode = false;
         this.removeText();
         console.log('RPS Solution Animation Start');
 
