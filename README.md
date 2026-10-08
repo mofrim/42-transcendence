@@ -514,6 +514,7 @@ its API.
 - `data`: nullable JSON-serialized event payload
 - `logtime`: timestamp with microsecond precision
 - `user`: many-to-one TypeORM relation to `users`
+- `userId`: explicitly declared foreign-key column referencing `users.id`
 
 The current match-history endpoint reads the most recent `GameResult` records
 from `event_logs`; there is no separate match-history table. Event payloads
@@ -534,48 +535,47 @@ The application is responsible for treating friendship pairs consistently and
 avoiding duplicate or reversed pairs where appropriate.
 
 The following entity-relationship diagram shows the current TypeORM-backed
-schema. The `users` to `event_logs` relation is created from
-`ORMEventLog.user`. The two relationships to `user_friends` are the join-table
-links created by `ORMUser.friends`.
+schema. Foreign-key directions are labelled explicitly so the two sides of
+the self-referencing friendship table are easy to distinguish.
 
 ```mermaid
 erDiagram
-    USERS ||--o{ EVENT_LOGS : generates
-    USERS ||--o{ USER_FRIENDS : has
-    USERS ||--o{ USER_FRIENDS : friend
+    USERS ||--o{ EVENT_LOGS : "userId -> id"
+    USER_FRIENDS }o--|| USERS : "user_id -> id"
+    USER_FRIENDS }o--|| USERS : "friend_id -> id"
 
     USERS {
-        int id PK
-        text nickname UK
-        boolean TOSPPchecked
-        boolean character
+        int id PK "generated"
+        text nickname UK "unique login name"
+        boolean TOSPPchecked "default false"
+        boolean character "default true"
         text email
-        text hashedPw
-        text quests "JSON-serialized"
-        boolean isLoggedIn
-        int blackholeTimer
-        text position "JSON-serialized"
+        text hashedPw "bcrypt hash"
+        json quests "simple-json"
+        boolean isLoggedIn "default false"
+        int blackholeTimer "seconds"
+        json position "simple-json"
     }
 
     EVENT_LOGS {
-        int id PK
+        int id PK "generated"
         enum eventType
-        text data "JSON-serialized"
+        json data "nullable simple-json"
         timestamptz logtime
         int userId FK
     }
 
     USER_FRIENDS {
-        int user_id PK, FK
-        int friend_id PK, FK
+        int user_id PK, FK "references users.id"
+        int friend_id PK, FK "references users.id"
     }
 ```
 
 `user_friends` is a TypeORM-generated join table rather than a separately
-declared entity. TypeORM also creates the foreign-key column used by
-`event_logs.user`. The schema is synchronized independently by each service
-that registers the shared entities, so all services must use the same database
-configuration.
+declared entity. The `event_logs.userId` column is explicitly declared and
+connected to the `user` relation with `@JoinColumn({ name: 'userId' })`.
+The schema is synchronized independently by each service that registers the
+shared entities, so all services must use the same database configuration.
 
 In practice, `auth-service` creates and validates records in `users`.
 `user-service` manages user data, friend relationships, quests, TOSPP state,
