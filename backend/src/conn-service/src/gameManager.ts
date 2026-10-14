@@ -447,12 +447,7 @@ export class GameManager {
         return update;
     }
 
-    // ====================================================================================================
-    // Tic Tac Toe Game
-    // ====================================================================================================
-
     createTTTGame(): TTTGame {
-        console.log('Creating new TTTGame.');
         return {
             players: [null, null],
 
