@@ -54,7 +54,7 @@ if (REQUIRED_ENV.some((v) => process.env[v] === undefined)) {
 }
 
 // TS sadly does not realize they were checked for undefness ;(
-const PORT: string = process.env['CONN_SERVICE_PORT']!;
+const PORT: number = Number(process.env['CONN_SERVICE_PORT']);
 const SECRET_KEY: string = process.env['JWT_SECRET']!;
 const INTERNAL_SECRET_KEY: string = process.env['INTERNAL_JWT_SECRET']!;
 
@@ -93,7 +93,7 @@ const app: Express = express();
 app.use(cors());
 
 const server: http.Server = app.listen(PORT, (): void => {
-    console.log(`listening on port: ${PORT}`);
+    log.info('listening on port:', PORT);
 });
 const io = new Server(server, {
     cors: { origin: '*' },
