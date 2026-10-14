@@ -387,6 +387,7 @@ io.on('connection', async (socket) => {
     socket.on('update', (data, acknowledge) => {
         switch (data.type) {
             case 'player_update': {
+                log.debug('[player_update]', data);
                 const playerUpdate = gameManager.handlePlayerUpdate(
                     socket.id,
                     data
@@ -395,6 +396,8 @@ io.on('connection', async (socket) => {
                     break;
                 }
                 const userId = getAuthenticatedUserId(socket);
+                log.debug('[player_update] updating UID', userId);
+                log.debug('[player_update] with playerUpdate', playerUpdate);
                 if (userId !== null) {
                     saveGame.updatePosition(userId, socket.id, {
                         x: playerUpdate.x,
